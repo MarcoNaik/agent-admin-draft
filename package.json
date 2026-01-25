@@ -1,0 +1,16 @@
+{
+  "name": "agent-factory",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "dev": "bun run --filter '@agent-factory/cli' dev",
+    "test": "bun run --filter '*' test",
+    "clean": "rm -rf packages/*/dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
