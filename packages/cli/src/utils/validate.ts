@@ -1,4 +1,4 @@
-import type { AgentConfig, ToolReference } from '@agent-factory/core'
+import type { AgentConfig, ToolReference } from '@marco-kueks/agent-factory-core'
 
 export function validateAgent(agent: AgentConfig): string[] {
   const errors: string[] = []

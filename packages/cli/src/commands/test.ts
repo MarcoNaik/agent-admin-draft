@@ -5,7 +5,7 @@ import { join } from 'path'
 import { readdir, readFile } from 'fs/promises'
 import YAML from 'yaml'
 import { loadAgent } from '../utils/agent'
-import type { TestCase, TestAssertion } from '@agent-factory/core'
+import type { TestCase, TestAssertion } from '@marco-kueks/agent-factory-core'
 
 interface TestResult {
   name: string
