@@ -1,6 +1,19 @@
 {
   "name": "create-agent-factory",
   "version": "0.1.0",
+  "description": "Create new Agent Factory projects with a single command",
+  "keywords": ["ai", "agents", "scaffolding", "create", "generator", "llm"],
+  "author": "marco-kueks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarcoNaik/agent-factory.git",
+    "directory": "packages/create-agent-factory"
+  },
+  "homepage": "https://github.com/MarcoNaik/agent-factory#readme",
+  "bugs": {
+    "url": "https://github.com/MarcoNaik/agent-factory/issues"
+  },
   "type": "module",
   "bin": {
     "create-agent-factory": "./dist/index.js"

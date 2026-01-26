@@ -7,6 +7,7 @@ export function getTemplates(projectName: string): Record<string, string> {
     'src/context.ts': getContextTs(),
     'src/tools.ts': getToolsTs(),
     'src/workflows/.gitkeep': '',
+    'api/chat.ts': getVercelApiHandler(),
     'tests/basic.test.yaml': getBasicTestYaml(),
     '.env.example': getEnvExample(),
     'README.md': getReadme(projectName),
@@ -27,10 +28,11 @@ function getPackageJson(name: string): string {
         deploy: 'af deploy',
       },
       dependencies: {
-        '@agent-factory/core': '^0.1.0',
+        '@marco-kueks/agent-factory-core': '^0.1.0',
+        '@marco-kueks/agent-factory-runtime': '^0.1.0',
       },
       devDependencies: {
-        '@agent-factory/cli': '^0.1.0',
+        '@marco-kueks/agent-factory-cli': '^0.1.0',
         'bun-types': '^1.0.0',
         typescript: '^5.3.0',
       },
@@ -65,7 +67,7 @@ function getTsConfig(): string {
 }
 
 function getAfConfig(): string {
-  return `import { defineConfig } from '@agent-factory/core'
+  return `import { defineConfig } from '@marco-kueks/agent-factory-core'
 
 export default defineConfig({
   port: 3000,
@@ -88,7 +90,7 @@ function getAgentTs(name: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 
-  return `import { defineAgent } from '@agent-factory/core'
+  return `import { defineAgent } from '@marco-kueks/agent-factory-core'
 import { context } from './context'
 import { tools } from './tools'
 
@@ -121,7 +123,7 @@ Always be concise, accurate, and helpful.\`,
 }
 
 function getContextTs(): string {
-  return `import { defineContext } from '@agent-factory/core'
+  return `import { defineContext } from '@marco-kueks/agent-factory-core'
 
 export const context = defineContext(async (request) => {
   const { conversationId, userId, channel, state } = request
@@ -141,7 +143,7 @@ Channel: \${channel}
 }
 
 function getToolsTs(): string {
-  return `import { defineTools } from '@agent-factory/core'
+  return `import { defineTools } from '@marco-kueks/agent-factory-core'
 
 export const tools = defineTools([
   {
@@ -216,11 +218,14 @@ conversation:
 }
 
 function getEnvExample(): string {
-  return `# Anthropic API Key
+  return `# Anthropic API Key (default provider)
 ANTHROPIC_API_KEY=your_api_key_here
 
 # Optional: OpenAI API Key (if using OpenAI models)
 # OPENAI_API_KEY=your_openai_api_key
+
+# Optional: Google AI API Key (if using Gemini models)
+# GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key
 
 # Optional: Custom API endpoint
 # AGENT_FACTORY_API_URL=https://api.agent-factory.dev
@@ -263,6 +268,7 @@ An AI agent built with Agent Factory.
 - \`src/context.ts\` - Dynamic context injection
 - \`src/tools.ts\` - Custom tools for the agent
 - \`src/workflows/\` - Multi-step workflows (coming soon)
+- \`api/chat.ts\` - Vercel Edge API handler for production
 - \`tests/\` - Test conversations
 - \`af.config.ts\` - Framework configuration
 
@@ -272,6 +278,27 @@ An AI agent built with Agent Factory.
 - \`bun run build\` - Build and validate the agent
 - \`bun run test\` - Run test conversations
 - \`bun run deploy\` - Deploy to Agent Factory cloud
+
+## Deploy to Vercel
+
+This project is ready for Vercel deployment:
+
+1. Push to GitHub
+2. Import in Vercel
+3. Add your \`ANTHROPIC_API_KEY\` to environment variables
+4. Deploy!
+
+The \`api/chat.ts\` file provides a streaming chat endpoint at \`/api/chat\`.
+
+## API Usage
+
+Send a POST request to \`/api/chat\`:
+
+\`\`\`bash
+curl -X POST https://your-app.vercel.app/api/chat \\
+  -H "Content-Type: application/json" \\
+  -d '{"message": "Hello!", "stream": true}'
+\`\`\`
 
 ## Documentation
 
@@ -304,5 +331,23 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Vercel
+.vercel/
+`
+}
+
+function getVercelApiHandler(): string {
+  return `import agent from '../src/agent'
+import { createVercelHandler } from '@marco-kueks/agent-factory-runtime/serverless/vercel'
+
+export default createVercelHandler(agent, {
+  streaming: true,
+  corsOrigins: ['*'],
+})
+
+export const config = {
+  runtime: 'edge',
+}
 `
 }
