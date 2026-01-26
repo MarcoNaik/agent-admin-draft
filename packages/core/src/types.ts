@@ -15,6 +15,7 @@ export interface ModelConfig {
   name: string
   temperature?: number
   maxTokens?: number
+  apiKey?: string
 }
 
 export interface ToolReference {
