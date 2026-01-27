@@ -15,6 +15,7 @@ export const devCommand = new Command('dev')
   .option('-p, --port <port>', 'Port to run on', '3000')
   .option('-c, --channel <channel>', 'Channel to open (web, api)', 'web')
   .option('--no-open', 'Do not open browser')
+  .option('--local', 'Run locally without cloud sync')
   .action(async (options) => {
     const spinner = ora()
     const cwd = process.cwd()
