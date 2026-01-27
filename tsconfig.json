@@ -15,8 +15,7 @@
     "rootDir": "src",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false,
-    "types": ["bun-types"]
+    "noEmit": false
   },
   "exclude": ["node_modules", "dist"]
 }
