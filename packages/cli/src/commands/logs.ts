@@ -14,18 +14,18 @@ export const logsCommand = new Command('logs')
     console.log(chalk.bold('Streaming Logs'))
     console.log()
 
-    const apiKey = process.env.AGENT_FACTORY_API_KEY
+    const apiKey = process.env.STRUERE_API_KEY
 
     if (!apiKey) {
-      console.log(chalk.red('Error:'), 'Missing AGENT_FACTORY_API_KEY environment variable')
+      console.log(chalk.red('Error:'), 'Missing STRUERE_API_KEY environment variable')
       console.log()
       console.log('Set your API key:')
-      console.log(chalk.gray('  $'), chalk.cyan('export AGENT_FACTORY_API_KEY=your_api_key'))
+      console.log(chalk.gray('  $'), chalk.cyan('export STRUERE_API_KEY=your_api_key'))
       console.log()
       process.exit(1)
     }
 
-    const apiUrl = process.env.AGENT_FACTORY_API_URL || 'https://api.agent-factory.dev'
+    const apiUrl = process.env.STRUERE_API_URL || 'https://api.struere.dev'
 
     if (options.follow) {
       spinner.start(`Connecting to ${options.env} logs`)
