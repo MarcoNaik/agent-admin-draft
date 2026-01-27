@@ -112,10 +112,10 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
     spinner.text = 'Fetching user info'
 
     const api = new ApiClient(undefined, token)
-    const { user, organization } = await api.getMe()
+    const { user, organization, cliToken } = await api.getMe()
 
     const credentials: Credentials = {
-      token,
+      token: cliToken || token,
       user: {
         id: user.id,
         email: user.email,
@@ -127,7 +127,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
         name: organization.name,
         slug: organization.slug
       },
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     }
 
     saveCredentials(credentials)
