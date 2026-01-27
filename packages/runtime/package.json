@@ -1,7 +1,7 @@
 {
-  "name": "@marco-kueks/agent-factory-runtime",
+  "name": "@struere/runtime",
   "version": "0.1.0",
-  "description": "Runtime execution engine for Agent Factory",
+  "description": "Runtime execution engine for Struere",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,7 +25,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@marco-kueks/agent-factory-core": "^0.1.0",
+    "@struere/core": "workspace:*",
     "ai": "^4.1.0",
     "@ai-sdk/anthropic": "^1.1.0",
     "@ai-sdk/openai": "^1.1.0",
