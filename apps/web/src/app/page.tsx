@@ -99,10 +99,19 @@ function HeroSection() {
   const [email, setEmail] = useState("")
   const [isButtonHovered, setIsButtonHovered] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Waitlist signup:", email)
+    setIsLoading(true)
+
+    await fetch("/api/waitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+
+    window.location.href = "https://app.struere.dev"
   }
 
   return (
@@ -224,13 +233,14 @@ function HeroSection() {
                 </div>
                 <button
                   type="submit"
-                  className={`relative bg-[#e8ecf0] text-[#0a1628] font-medium whitespace-nowrap h-11 px-6 text-xs transition-all duration-300 hover:bg-[#f5f7fa] ${
+                  disabled={isLoading}
+                  className={`relative bg-[#e8ecf0] text-[#0a1628] font-medium whitespace-nowrap h-11 px-6 text-xs transition-all duration-300 hover:bg-[#f5f7fa] disabled:opacity-70 ${
                     isButtonHovered ? "tracking-wider" : ""
                   }`}
                   onMouseEnter={() => setIsButtonHovered(true)}
                   onMouseLeave={() => setIsButtonHovered(false)}
                 >
-                  {"Join waitlist → early access"}
+                  {isLoading ? "Redirecting..." : "Join waitlist → early access"}
                 </button>
               </div>
             </form>
