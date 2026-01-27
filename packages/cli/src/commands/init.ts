@@ -13,8 +13,7 @@ export const initCommand = new Command('init')
   .description('Initialize a new Struere project')
   .argument('[project-name]', 'Project name')
   .option('-y, --yes', 'Skip prompts and use defaults')
-  .option('--headless', 'Use headless login if authentication is needed')
-  .action(async (projectNameArg: string | undefined, options: { yes?: boolean; headless?: boolean }) => {
+  .action(async (projectNameArg: string | undefined, options: { yes?: boolean }) => {
     const cwd = process.cwd()
     const spinner = ora()
 
@@ -46,7 +45,7 @@ export const initCommand = new Command('init')
     if (!credentials) {
       console.log(chalk.gray('Authentication required'))
       console.log()
-      credentials = await performLogin({ headless: options.headless })
+      credentials = await performLogin()
       if (!credentials) {
         console.log(chalk.red('Authentication failed'))
         process.exit(1)

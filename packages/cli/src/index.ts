@@ -15,7 +15,7 @@ import { whoamiCommand } from './commands/whoami'
 program
   .name('struere')
   .description('Struere CLI - Build, test, and deploy AI agents')
-  .version('0.2.2')
+  .version('0.2.3')
 
 program.addCommand(initCommand)
 program.addCommand(loginCommand)
