@@ -1,4 +1,4 @@
-import type { AgentConfig, ToolContext, ToolReference } from '@marco-kueks/agent-factory-core'
+import type { AgentConfig, ToolContext, ToolReference } from '@struere/core'
 import type {
   ExecutionRequest,
   ExecutionResponse,
