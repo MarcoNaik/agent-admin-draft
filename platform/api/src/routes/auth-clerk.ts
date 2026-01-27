@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { Webhook } from 'svix'
+import { sign } from 'hono/jwt'
 import { generateId } from '@struere/platform-shared'
 import { createDb, users, organizations } from '../db'
 import { clerkAuth } from '../middleware/clerk'
@@ -27,7 +28,17 @@ authClerkRoutes.get('/me', clerkAuth, async (c) => {
     .where(eq(organizations.id, auth.organizationId))
     .limit(1)
 
-  return c.json({ user, organization: org })
+  const cliToken = await sign(
+    {
+      sub: auth.userId,
+      org: auth.organizationId,
+      type: 'cli',
+      exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+    },
+    c.env.JWT_SECRET
+  )
+
+  return c.json({ user, organization: org, cliToken })
 })
 
 authClerkRoutes.post('/webhooks/clerk', async (c) => {
