@@ -5,7 +5,20 @@ import { join } from 'path'
 import { readdir, readFile } from 'fs/promises'
 import YAML from 'yaml'
 import { loadAgent } from '../utils/agent'
-import type { TestCase, TestAssertion } from '@marco-kueks/agent-factory-core'
+import { AgentExecutor } from '@struere/runtime'
+import type { AgentConfig, TestAssertion } from '@struere/core'
+import type { ToolCallResult } from '@struere/runtime'
+
+interface TestFile {
+  name: string
+  description?: string
+  conversation: Array<{
+    role: 'user' | 'assistant'
+    content: string
+    assertions?: TestAssertion[]
+  }>
+  assertions?: TestAssertion[]
+}
 
 interface TestResult {
   name: string
@@ -13,10 +26,17 @@ interface TestResult {
   errors: string[]
 }
 
+interface ExecutionContext {
+  lastResponse: string
+  toolCalls: ToolCallResult[]
+  state: Record<string, unknown>
+}
+
 export const testCommand = new Command('test')
   .description('Run test conversations')
   .argument('[pattern]', 'Test file pattern', '*.test.yaml')
   .option('-v, --verbose', 'Show detailed output')
+  .option('--dry-run', 'Parse tests without executing (no API calls)')
   .action(async (pattern, options) => {
     const spinner = ora()
     const cwd = process.cwd()
@@ -53,19 +73,27 @@ export const testCommand = new Command('test')
 
     spinner.succeed(`Found ${testFiles.length} test file(s)`)
 
+    if (options.dryRun) {
+      console.log()
+      console.log(chalk.yellow('Dry run mode - skipping execution'))
+      console.log()
+    }
+
     const results: TestResult[] = []
 
     for (const file of testFiles) {
       const filePath = join(testsDir, file)
       const content = await readFile(filePath, 'utf-8')
-      const testCase = YAML.parse(content) as TestCase
+      const testCase = YAML.parse(content) as TestFile
 
       if (options.verbose) {
         console.log()
         console.log(chalk.gray('Running:'), testCase.name)
       }
 
-      const result = await runTest(testCase, agent, options.verbose)
+      const result = options.dryRun
+        ? await runDryTest(testCase)
+        : await runTest(testCase, agent, options.verbose)
       results.push(result)
 
       if (result.passed) {
@@ -94,31 +122,73 @@ export const testCommand = new Command('test')
     }
   })
 
+async function runDryTest(testCase: TestFile): Promise<TestResult> {
+  return {
+    name: testCase.name,
+    passed: true,
+    errors: [],
+  }
+}
+
 async function runTest(
-  testCase: TestCase,
-  agent: { name: string },
+  testCase: TestFile,
+  agent: AgentConfig,
   verbose: boolean
 ): Promise<TestResult> {
   const errors: string[] = []
+  const executor = new AgentExecutor(agent)
+  const conversationId = `test-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-  for (const message of testCase.conversation || []) {
-    if (message.role === 'assistant' && message.assertions) {
-      for (const assertion of message.assertions) {
-        const passed = checkAssertion(assertion, '[mock response]')
-        if (!passed) {
-          errors.push(`Assertion failed: ${assertion.type} - ${JSON.stringify(assertion.value)}`)
+  const context: ExecutionContext = {
+    lastResponse: '',
+    toolCalls: [],
+    state: {},
+  }
+
+  try {
+    for (const message of testCase.conversation || []) {
+      if (message.role === 'user') {
+        if (verbose) {
+          console.log(chalk.cyan('    User:'), message.content.slice(0, 50) + (message.content.length > 50 ? '...' : ''))
+        }
+
+        const result = await executor.execute({
+          conversationId,
+          message: message.content,
+        })
+
+        context.lastResponse = result.message
+        context.toolCalls = result.toolCalls || []
+
+        if (verbose) {
+          console.log(chalk.green('    Assistant:'), result.message.slice(0, 50) + (result.message.length > 50 ? '...' : ''))
+          if (result.toolCalls && result.toolCalls.length > 0) {
+            console.log(chalk.yellow('    Tools:'), result.toolCalls.map((t) => t.name).join(', '))
+          }
+        }
+      }
+
+      if (message.assertions) {
+        for (const assertion of message.assertions) {
+          const passed = checkAssertion(assertion, context)
+          if (!passed) {
+            errors.push(formatAssertionError(assertion, context))
+          }
         }
       }
     }
-  }
 
-  if (errors.length === 0 && testCase.assertions) {
-    for (const assertion of testCase.assertions) {
-      const passed = checkAssertion(assertion, '[mock response]')
-      if (!passed) {
-        errors.push(`Assertion failed: ${assertion.type} - ${JSON.stringify(assertion.value)}`)
+    if (testCase.assertions) {
+      for (const assertion of testCase.assertions) {
+        const passed = checkAssertion(assertion, context)
+        if (!passed) {
+          errors.push(formatAssertionError(assertion, context))
+        }
       }
     }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    errors.push(`Execution error: ${errorMsg}`)
   }
 
   return {
@@ -128,17 +198,52 @@ async function runTest(
   }
 }
 
-function checkAssertion(assertion: TestAssertion, response: string): boolean {
+function checkAssertion(assertion: TestAssertion, context: ExecutionContext): boolean {
   switch (assertion.type) {
     case 'contains':
-      return typeof assertion.value === 'string' && response.includes(assertion.value)
+      return typeof assertion.value === 'string' && context.lastResponse.toLowerCase().includes(assertion.value.toLowerCase())
+
     case 'matches':
-      return typeof assertion.value === 'string' && new RegExp(assertion.value).test(response)
+      return typeof assertion.value === 'string' && new RegExp(assertion.value, 'i').test(context.lastResponse)
+
     case 'toolCalled':
-      return true
+      if (typeof assertion.value === 'string') {
+        return context.toolCalls.some((tc) => tc.name === assertion.value)
+      }
+      return false
+
     case 'stateEquals':
-      return true
+      if (typeof assertion.value === 'object' && assertion.value !== null) {
+        for (const [key, expected] of Object.entries(assertion.value)) {
+          if (context.state[key] !== expected) {
+            return false
+          }
+        }
+        return true
+      }
+      return false
+
     default:
       return false
+  }
+}
+
+function formatAssertionError(assertion: TestAssertion, context: ExecutionContext): string {
+  switch (assertion.type) {
+    case 'contains':
+      return `Expected response to contain "${assertion.value}", got: "${context.lastResponse.slice(0, 100)}..."`
+
+    case 'matches':
+      return `Expected response to match /${assertion.value}/, got: "${context.lastResponse.slice(0, 100)}..."`
+
+    case 'toolCalled':
+      const calledTools = context.toolCalls.map((tc) => tc.name).join(', ') || 'none'
+      return `Expected tool "${assertion.value}" to be called, called: [${calledTools}]`
+
+    case 'stateEquals':
+      return `State mismatch: expected ${JSON.stringify(assertion.value)}, got ${JSON.stringify(context.state)}`
+
+    default:
+      return `Assertion failed: ${assertion.type} - ${JSON.stringify(assertion.value)}`
   }
 }
