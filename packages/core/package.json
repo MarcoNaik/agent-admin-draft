@@ -1,18 +1,18 @@
 {
-  "name": "@marco-kueks/agent-factory-core",
+  "name": "@struere/core",
   "version": "0.1.0",
-  "description": "Core library for building AI agents with Agent Factory",
+  "description": "Core library for building AI agents with Struere",
   "keywords": ["ai", "agents", "llm", "anthropic", "openai", "framework"],
-  "author": "marco-kueks",
+  "author": "struere",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MarcoNaik/agent-factory.git",
+    "url": "git+https://github.com/struere/struere.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/MarcoNaik/agent-factory#readme",
+  "homepage": "https://struere.dev",
   "bugs": {
-    "url": "https://github.com/MarcoNaik/agent-factory/issues"
+    "url": "https://github.com/struere/struere/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
