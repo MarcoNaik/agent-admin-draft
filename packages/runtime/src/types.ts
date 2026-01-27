@@ -1,4 +1,4 @@
-import type { AgentConfig, ToolContext } from '@marco-kueks/agent-factory-core'
+import type { AgentConfig, ToolContext } from '@struere/core'
 
 export interface ExecutionRequest {
   conversationId: string
