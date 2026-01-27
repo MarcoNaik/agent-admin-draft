@@ -1,6 +1,6 @@
 {
   "name": "@struere/cli",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "CLI tool for developing, testing, and deploying AI agents",
   "keywords": [
     "ai",
@@ -37,7 +37,7 @@
     "test": "bun test",
     "prepublishOnly": "bun run build && bun run verify-build",
     "bump": "node scripts/bump-version.cjs",
-    "verify-build": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); const bundle = fs.readFileSync('./dist/index.js', 'utf8'); const match = bundle.match(/version\\(\\\"([^\\\"]+)\\\"\\)/); if (!match || match[1] !== pkg.version) { console.error('Version mismatch: package.json=' + pkg.version + ' bundle=' + (match ? match[1] : 'not found')); process.exit(1); } console.log('Build verified: v' + pkg.version);\""
+    "verify-build": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); const bundle = fs.readFileSync('./dist/index.js', 'utf8'); const match = bundle.match(/CURRENT_VERSION\\s*=\\s*[\\\"']([^\\\"']+)[\\\"']/); if (!match || match[1] !== pkg.version) { console.error('Version mismatch: package.json=' + pkg.version + ' bundle=' + (match ? match[1] : 'not found')); process.exit(1); } console.log('Build verified: v' + pkg.version);\""
   },
   "dependencies": {
     "@struere/core": "^0.1.0",

@@ -4,8 +4,8 @@ const path = require('path')
 
 const version = process.argv[2]
 if (!version) {
-  console.error('Usage: node scripts/bump-version.js <version>')
-  console.error('Example: node scripts/bump-version.js 0.2.3')
+  console.error('Usage: node scripts/bump-version.cjs <version>')
+  console.error('Example: node scripts/bump-version.cjs 0.2.3')
   process.exit(1)
 }
 
@@ -23,13 +23,13 @@ pkg.version = version
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 
 let src = fs.readFileSync(srcPath, 'utf8')
-src = src.replace(/\.version\('[^']+'\)/, `.version('${version}')`)
+src = src.replace(/const CURRENT_VERSION = '[^']+'/, `const CURRENT_VERSION = '${version}'`)
 fs.writeFileSync(srcPath, src)
 
 console.log(`Version bumped: ${oldVersion} → ${version}`)
 console.log('Updated:')
 console.log('  - package.json')
-console.log('  - src/index.ts')
+console.log('  - src/index.ts (CURRENT_VERSION)')
 console.log('')
 console.log('Next steps:')
 console.log('  1. git add -A && git commit -m "chore(cli): bump version to ' + version + '"')

@@ -19,10 +19,12 @@ export function getSyncUrl(): string {
 export class ApiClient {
   private baseUrl: string
   private tokenOverride?: string
+  private useClerkAuth: boolean
 
-  constructor(baseUrl?: string, token?: string) {
+  constructor(baseUrl?: string, token?: string, useClerkAuth = false) {
     this.baseUrl = baseUrl || getApiUrl()
     this.tokenOverride = token
+    this.useClerkAuth = useClerkAuth || !!token
   }
 
   private async request<T>(
@@ -83,10 +85,11 @@ export class ApiClient {
   }
 
   async getMe() {
+    const endpoint = this.useClerkAuth ? '/v1/auth/clerk/me' : '/v1/auth/me'
     return this.request<{
       user: { id: string; email: string; name: string; organizationId: string; role: string }
       organization: { id: string; name: string; slug: string; plan: string }
-    }>('/v1/auth/me')
+    }>(endpoint)
   }
 
   async refreshToken() {
