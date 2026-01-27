@@ -1,0 +1,30 @@
+name = "struere-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+find_additional_modules = true
+routes = [
+  { pattern = "api.struere.dev", custom_domain = true }
+]
+
+[vars]
+ENVIRONMENT = "development"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "struere-db"
+database_id = "24901069-a02a-4976-ab6c-2dcab110083a"
+
+[[r2_buckets]]
+binding = "BUNDLES"
+bucket_name = "struere-bundles"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "c6cfc100f6e54b0182603b2926798d19"
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
