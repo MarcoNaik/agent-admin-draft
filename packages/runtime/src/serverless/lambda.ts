@@ -1,4 +1,4 @@
-import type { AgentConfig } from '@marco-kueks/agent-factory-core'
+import type { AgentConfig } from '@struere/core'
 import { createHandler, type HandlerOptions, type ServerlessRequest } from './handler.js'
 
 export interface LambdaEvent {
