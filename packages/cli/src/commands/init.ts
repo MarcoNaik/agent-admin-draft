@@ -213,40 +213,16 @@ export function slugify(name: string): string {
 async function promptYesNo(message: string): Promise<boolean> {
   process.stdout.write(chalk.gray(`${message} (Y/n) `))
 
-  return new Promise((resolve) => {
-    process.stdin.resume()
-    process.stdin.setEncoding('utf8')
-
-    const onData = (data: string) => {
-      process.stdin.removeListener('data', onData)
-      process.stdin.pause()
-
-      const answer = data.trim().toLowerCase()
-      resolve(answer === '' || answer === 'y' || answer === 'yes')
-    }
-
-    process.stdin.on('data', onData)
-  })
+  const answer = await readLine()
+  return answer === '' || answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes'
 }
 
 async function promptText(message: string, defaultValue: string): Promise<string> {
   process.stdout.write(chalk.gray(`${message} `))
   process.stdout.write(chalk.cyan(`(${defaultValue}) `))
 
-  return new Promise((resolve) => {
-    process.stdin.resume()
-    process.stdin.setEncoding('utf8')
-
-    const onData = (data: string) => {
-      process.stdin.removeListener('data', onData)
-      process.stdin.pause()
-
-      const answer = data.trim()
-      resolve(answer || defaultValue)
-    }
-
-    process.stdin.on('data', onData)
-  })
+  const answer = await readLine()
+  return answer || defaultValue
 }
 
 async function promptChoice(
@@ -258,28 +234,40 @@ async function promptChoice(
 
   for (let i = 0; i < choices.length; i++) {
     const prefix = i === 0 ? chalk.cyan('❯') : chalk.gray(' ')
-    console.log(`${prefix} ${choices[i].label}`)
+    console.log(`${prefix} ${i + 1}. ${choices[i].label}`)
   }
 
   console.log()
   process.stdout.write(chalk.gray('Enter choice (1-' + choices.length + '): '))
 
+  const answer = await readLine()
+  const num = parseInt(answer, 10)
+  if (num >= 1 && num <= choices.length) {
+    return choices[num - 1].value
+  }
+  return choices[0].value
+}
+
+function readLine(): Promise<string> {
   return new Promise((resolve) => {
-    process.stdin.resume()
-    process.stdin.setEncoding('utf8')
+    let buffer = ''
 
-    const onData = (data: string) => {
-      process.stdin.removeListener('data', onData)
-      process.stdin.pause()
+    const onData = (chunk: Buffer) => {
+      const str = chunk.toString()
+      buffer += str
 
-      const num = parseInt(data.trim(), 10)
-      if (num >= 1 && num <= choices.length) {
-        resolve(choices[num - 1].value)
-      } else {
-        resolve(choices[0].value)
+      if (str.includes('\n') || str.includes('\r')) {
+        process.stdin.removeListener('data', onData)
+        process.stdin.pause()
+        process.stdin.setRawMode?.(false)
+        resolve(buffer.replace(/[\r\n]/g, '').trim())
       }
     }
 
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode?.(false)
+    }
+    process.stdin.resume()
     process.stdin.on('data', onData)
   })
 }
