@@ -111,7 +111,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
 
     spinner.text = 'Fetching user info'
 
-    const api = new ApiClient()
+    const api = new ApiClient(undefined, token)
     const { user, organization } = await api.getMe()
 
     const credentials: Credentials = {

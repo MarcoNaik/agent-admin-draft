@@ -18,16 +18,18 @@ export function getSyncUrl(): string {
 
 export class ApiClient {
   private baseUrl: string
+  private tokenOverride?: string
 
-  constructor(baseUrl?: string) {
+  constructor(baseUrl?: string, token?: string) {
     this.baseUrl = baseUrl || getApiUrl()
+    this.tokenOverride = token
   }
 
   private async request<T>(
     path: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = getToken()
+    const token = this.tokenOverride || getToken()
     const apiKey = getApiKey()
 
     const headers: Record<string, string> = {
