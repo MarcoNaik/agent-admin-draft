@@ -1,10 +1,13 @@
 {
   "name": "@struere/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI tool for developing, testing, and deploying AI agents",
   "keywords": ["ai", "agents", "cli", "developer-tools", "llm"],
   "author": "struere",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/struere/struere.git",
@@ -21,13 +24,13 @@
   "main": "./dist/index.js",
   "files": ["dist"],
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external commander --external chalk --external ora --external chokidar --external yaml --external @struere/runtime && chmod +x ./dist/index.js",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --external commander --external chalk --external ora --external chokidar --external yaml --external @struere/runtime && chmod +x ./dist/index.js",
     "dev": "tsc --watch",
     "test": "bun test"
   },
   "dependencies": {
-    "@struere/core": "workspace:*",
-    "@struere/runtime": "workspace:*",
+    "@struere/core": "^0.1.0",
+    "@struere/runtime": "^0.1.0",
     "chalk": "^5.3.0",
     "chokidar": "^3.5.3",
     "commander": "^12.0.0",
