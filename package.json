@@ -1,16 +1,30 @@
 {
-  "name": "agent-factory",
+  "name": "struere",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "platform/*",
+    "apps/*"
   ],
   "scripts": {
-    "build": "bun run --filter '*' build",
-    "dev": "bun run --filter '@agent-factory/cli' dev",
-    "test": "bun run --filter '*' test",
-    "clean": "rm -rf packages/*/dist"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:cli": "turbo run dev --filter=@struere/cli",
+    "dev:platform": "turbo run dev --filter=@struere/platform-*",
+    "dev:dashboard": "turbo run dev --filter=@struere/dashboard",
+    "dev:web": "turbo run dev --filter=@struere/web",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules/.cache",
+    "deploy:platform": "turbo run deploy --filter=@struere/platform-*"
   },
   "devDependencies": {
+    "turbo": "^2.3.0",
     "typescript": "^5.3.0"
+  },
+  "packageManager": "bun@1.0.0",
+  "engines": {
+    "node": ">=18"
   }
 }
