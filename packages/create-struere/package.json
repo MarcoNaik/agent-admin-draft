@@ -1,6 +1,6 @@
 {
   "name": "create-struere",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Create new Struere projects with a single command",
   "keywords": ["ai", "agents", "scaffolding", "create", "generator", "llm"],
   "author": "struere",

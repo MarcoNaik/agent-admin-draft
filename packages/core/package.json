@@ -5,6 +5,9 @@
   "keywords": ["ai", "agents", "llm", "anthropic", "openai", "framework"],
   "author": "struere",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/struere/struere.git",
