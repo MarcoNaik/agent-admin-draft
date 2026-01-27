@@ -15,7 +15,7 @@ export const whoamiCommand = new Command('whoami')
     if (!credentials) {
       console.log(chalk.yellow('Not logged in'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('af login'), chalk.gray('to log in'))
+      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to log in'))
       console.log()
       return
     }
@@ -65,7 +65,7 @@ export const whoamiCommand = new Command('whoami')
       console.log(chalk.gray('  Org ID:      '), chalk.gray(credentials.organization.id))
       console.log(chalk.gray('  Slug:        '), chalk.cyan(credentials.organization.slug))
       console.log()
-      console.log(chalk.gray('Use'), chalk.cyan('af whoami --refresh'), chalk.gray('to fetch latest info'))
+      console.log(chalk.gray('Use'), chalk.cyan('struere whoami --refresh'), chalk.gray('to fetch latest info'))
       console.log()
     }
   })

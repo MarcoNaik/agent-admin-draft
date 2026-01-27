@@ -8,20 +8,36 @@ import { loadAgent } from '../utils/agent'
 import { AgentExecutor } from '@struere/runtime'
 import { isLoggedIn, loadCredentials, getApiKey } from '../utils/credentials'
 import { getSyncUrl } from '../utils/api'
+import { hasProject, loadProject } from '../utils/project'
 
 export const devCommand = new Command('dev')
-  .description('Start development server with hot reload')
+  .description('Start development server with cloud sync')
   .option('-p, --port <port>', 'Port to run on', '3000')
   .option('-c, --channel <channel>', 'Channel to open (web, api)', 'web')
   .option('--no-open', 'Do not open browser')
-  .option('--local', 'Run locally without cloud sync')
-  .option('--cloud', 'Force cloud-connected mode')
   .action(async (options) => {
     const spinner = ora()
     const cwd = process.cwd()
 
     console.log()
     console.log(chalk.bold('Struere Dev Server'))
+    console.log()
+
+    if (!hasProject(cwd)) {
+      console.log(chalk.yellow('No struere.json found'))
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
+      console.log()
+      process.exit(1)
+    }
+
+    const project = loadProject(cwd)
+    if (!project) {
+      console.log(chalk.red('Failed to load struere.json'))
+      process.exit(1)
+    }
+
+    console.log(chalk.gray('Agent:'), chalk.cyan(project.agent.name))
     console.log()
 
     spinner.start('Loading configuration')
@@ -37,130 +53,23 @@ export const devCommand = new Command('dev')
 
     spinner.succeed(`Agent "${agent.name}" loaded`)
 
-    const useCloud = options.cloud || (!options.local && isLoggedIn())
+    const credentials = loadCredentials()
+    const apiKey = getApiKey()
 
-    if (useCloud) {
-      await runCloudDev(agent, cwd, port, options, spinner)
-    } else {
-      await runLocalDev(agent, cwd, port, options, spinner)
+    if (!credentials && !apiKey) {
+      spinner.fail('Not logged in')
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
+      console.log()
+      process.exit(1)
     }
+
+    await runCloudDev(agent, project, cwd, port, options, spinner)
   })
-
-async function runLocalDev(
-  agent: ReturnType<typeof loadAgent> extends Promise<infer T> ? T : never,
-  cwd: string,
-  port: number,
-  options: { channel: string; open: boolean },
-  spinner: ReturnType<typeof ora>
-) {
-  let executor = new AgentExecutor(agent)
-
-  const server = Bun.serve({
-    port,
-    async fetch(req) {
-      const url = new URL(req.url)
-
-      if (url.pathname === '/health') {
-        return Response.json({ status: 'ok', agent: agent.name, mode: 'local' })
-      }
-
-      if (url.pathname === '/api/chat' && req.method === 'POST') {
-        const body = await req.json() as { message: string; conversationId?: string; stream?: boolean }
-        const conversationId = body.conversationId || crypto.randomUUID()
-
-        if (body.stream) {
-          const stream = new ReadableStream({
-            async start(controller) {
-              const encoder = new TextEncoder()
-
-              const sendEvent = (event: string, data: unknown) => {
-                controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
-              }
-
-              sendEvent('start', { conversationId })
-
-              for await (const chunk of executor.stream({ conversationId, message: body.message })) {
-                sendEvent(chunk.type, chunk)
-              }
-
-              controller.close()
-            }
-          })
-
-          return new Response(stream, {
-            headers: {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive'
-            }
-          })
-        }
-
-        const response = await executor.execute({ conversationId, message: body.message })
-        return Response.json({
-          response: response.message,
-          conversationId: response.conversationId,
-          toolCalls: response.toolCalls,
-          usage: response.usage
-        })
-      }
-
-      if (url.pathname === '/' && options.channel === 'web') {
-        return new Response(getDevHtml(agent.name, 'local'), {
-          headers: { 'Content-Type': 'text/html' },
-        })
-      }
-
-      return new Response('Not Found', { status: 404 })
-    },
-  })
-
-  console.log()
-  console.log(chalk.gray('Mode:'), chalk.yellow('Local'))
-  console.log(chalk.green('Server running at'), chalk.cyan(`http://localhost:${port}`))
-  console.log()
-
-  if (options.channel === 'web' && options.open) {
-    const openUrl = `http://localhost:${port}`
-    if (process.platform === 'darwin') {
-      Bun.spawn(['open', openUrl])
-    } else if (process.platform === 'linux') {
-      Bun.spawn(['xdg-open', openUrl])
-    }
-  }
-
-  spinner.start('Watching for changes')
-
-  const watcher = chokidar.watch([join(cwd, 'src'), join(cwd, 'af.config.ts')], {
-    ignoreInitial: true,
-    ignored: /node_modules/,
-  })
-
-  watcher.on('change', async (path) => {
-    spinner.text = `Reloading (${path.replace(cwd, '.')})`
-    try {
-      agent = await loadAgent(cwd)
-      executor = new AgentExecutor(agent)
-      spinner.succeed(`Reloaded "${agent.name}"`)
-      spinner.start('Watching for changes')
-    } catch (error) {
-      spinner.fail(`Reload failed: ${error}`)
-      spinner.start('Watching for changes')
-    }
-  })
-
-  process.on('SIGINT', () => {
-    console.log()
-    spinner.stop()
-    watcher.close()
-    server.stop()
-    console.log(chalk.gray('Server stopped'))
-    process.exit(0)
-  })
-}
 
 async function runCloudDev(
   agent: ReturnType<typeof loadAgent> extends Promise<infer T> ? T : never,
+  project: { agentId: string; team: string; agent: { slug: string; name: string } },
   cwd: string,
   port: number,
   options: { channel: string; open: boolean },
@@ -168,15 +77,6 @@ async function runCloudDev(
 ) {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
-
-  if (!credentials && !apiKey) {
-    spinner.fail('Not logged in')
-    console.log()
-    console.log(chalk.gray('Run'), chalk.cyan('af login'), chalk.gray('to connect to Struere Cloud'))
-    console.log(chalk.gray('Or use'), chalk.cyan('af dev --local'), chalk.gray('for local development'))
-    console.log()
-    process.exit(1)
-  }
 
   spinner.start('Connecting to Struere Cloud')
 
@@ -213,7 +113,8 @@ async function runCloudDev(
         const configHash = hashString(bundle)
         ws.send(JSON.stringify({
           type: 'sync',
-          agentSlug: agent.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          agentId: project.agentId,
+          agentSlug: project.agent.slug,
           bundle,
           configHash
         }))
@@ -246,15 +147,15 @@ async function runCloudDev(
         spinner.fail(`Cloud error: ${data.message}`)
         if (data.code === 'INVALID_API_KEY' || data.code === 'NOT_AUTHENTICATED') {
           console.log()
-          console.log(chalk.gray('Run'), chalk.cyan('af login'), chalk.gray('to authenticate'))
+          console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
         }
         break
     }
   }
 
-  ws.onerror = (error) => {
+  ws.onerror = () => {
     spinner.fail('WebSocket error')
-    console.log(chalk.red('Connection error. Falling back to local mode.'))
+    console.log(chalk.red('Connection error'))
   }
 
   ws.onclose = () => {
@@ -285,9 +186,6 @@ async function runCloudDev(
 
         const body = await req.json() as { message: string; conversationId?: string; stream?: boolean }
 
-        const gatewayUrl = cloudUrl.replace('https://', 'https://gateway.')
-          .replace(/-dev\.struere\.dev.*/, '.struere.dev')
-
         const response = await fetch(`${process.env.STRUERE_GATEWAY_URL || 'https://gateway.struere.dev'}/v1/dev/${sessionId}/chat`, {
           method: 'POST',
           headers: {
@@ -307,8 +205,8 @@ async function runCloudDev(
           })
         }
 
-        const data = await response.json()
-        return Response.json(data)
+        const responseData = await response.json()
+        return Response.json(responseData)
       }
 
       if (url.pathname === '/' && options.channel === 'web') {
@@ -330,7 +228,7 @@ async function runCloudDev(
     }
   }
 
-  const watcher = chokidar.watch([join(cwd, 'src'), join(cwd, 'af.config.ts')], {
+  const watcher = chokidar.watch([join(cwd, 'src'), join(cwd, 'struere.config.ts')], {
     ignoreInitial: true,
     ignored: /node_modules/,
   })
@@ -345,7 +243,8 @@ async function runCloudDev(
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'sync',
-          agentSlug: agent.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          agentId: project.agentId,
+          agentSlug: project.agent.slug,
           bundle,
           configHash
         }))
@@ -504,12 +403,12 @@ function getDevHtml(agentName: string, mode: 'local' | 'cloud', cloudUrl?: strin
                 assistantDiv.textContent = fullText;
                 messages.scrollTop = messages.scrollHeight;
               } else if (data.type === 'tool-call-start') {
-                addMessage('tool', '🔧 Calling tool: ' + (data.toolName || data.toolCall?.name));
+                addMessage('tool', 'Calling tool: ' + (data.toolName || data.toolCall?.name));
               } else if (data.type === 'tool-result') {
                 const resultText = typeof data.toolResult === 'string'
                   ? data.toolResult
                   : JSON.stringify(data.toolResult || data.toolCall?.result, null, 2);
-                addMessage('tool', '✓ Result: ' + resultText);
+                addMessage('tool', 'Result: ' + resultText);
               } else if (data.type === 'finish') {
                 assistantDiv.classList.remove('streaming');
               } else if (data.type === 'error') {
@@ -540,7 +439,7 @@ function getDevHtml(agentName: string, mode: 'local' | 'cloud', cloudUrl?: strin
           const resultText = typeof tc.result === 'string'
             ? tc.result
             : JSON.stringify(tc.result, null, 2);
-          addMessage('tool', '🔧 ' + tc.name + ': ' + resultText);
+          addMessage('tool', tc.name + ': ' + resultText);
         }
       }
 

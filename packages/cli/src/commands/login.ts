@@ -2,13 +2,12 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { ApiClient, ApiError } from '../utils/api'
-import { saveCredentials, loadCredentials } from '../utils/credentials'
+import { saveCredentials, loadCredentials, Credentials } from '../utils/credentials'
 
-const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder'
 const AUTH_CALLBACK_PORT = 9876
 
 export const loginCommand = new Command('login')
-  .description('Log in to Agent Factory')
+  .description('Log in to Struere')
   .option('--headless', 'Login with email/password (no browser)')
   .action(async (options) => {
     const spinner = ora()
@@ -20,7 +19,7 @@ export const loginCommand = new Command('login')
     const existing = loadCredentials()
     if (existing) {
       console.log(chalk.yellow('Already logged in as'), chalk.cyan(existing.user.email))
-      console.log(chalk.gray('Run'), chalk.cyan('af logout'), chalk.gray('to log out first'))
+      console.log(chalk.gray('Run'), chalk.cyan('struere logout'), chalk.gray('to log out first'))
       console.log()
       return
     }
@@ -32,7 +31,32 @@ export const loginCommand = new Command('login')
     }
   })
 
+export interface PerformLoginOptions {
+  headless?: boolean
+}
+
+export async function performLogin(options: PerformLoginOptions = {}): Promise<Credentials | null> {
+  const spinner = ora()
+
+  console.log()
+  console.log(chalk.bold('Struere Login'))
+  console.log()
+
+  if (options.headless) {
+    return headlessLoginInternal(spinner)
+  } else {
+    return browserLoginInternal(spinner)
+  }
+}
+
 async function browserLogin(spinner: ReturnType<typeof ora>) {
+  const result = await browserLoginInternal(spinner)
+  if (result) {
+    printNextSteps()
+  }
+}
+
+async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Credentials | null> {
   spinner.start('Starting authentication server')
 
   const authPromise = new Promise<{ token: string; sessionId: string }>((resolve, reject) => {
@@ -94,14 +118,14 @@ async function browserLogin(spinner: ReturnType<typeof ora>) {
   spinner.start('Waiting for authentication')
 
   try {
-    const { token, sessionId } = await authPromise
+    const { token } = await authPromise
 
     spinner.text = 'Fetching user info'
 
     const api = new ApiClient()
     const { user, organization } = await api.getMe()
 
-    saveCredentials({
+    const credentials: Credentials = {
       token,
       user: {
         id: user.id,
@@ -115,7 +139,9 @@ async function browserLogin(spinner: ReturnType<typeof ora>) {
         slug: organization.slug
       },
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    })
+    }
+
+    saveCredentials(credentials)
 
     spinner.succeed('Logged in successfully')
 
@@ -123,25 +149,33 @@ async function browserLogin(spinner: ReturnType<typeof ora>) {
     console.log(chalk.green('Welcome,'), chalk.cyan(user.name))
     console.log(chalk.gray('Organization:'), organization.name)
     console.log()
-    printNextSteps()
+
+    return credentials
   } catch (error) {
     spinner.fail('Login failed')
     console.log()
     console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
     console.log()
-    console.log(chalk.gray('Try'), chalk.cyan('af login --headless'), chalk.gray('for email/password login'))
+    console.log(chalk.gray('Try'), chalk.cyan('struere login --headless'), chalk.gray('for email/password login'))
     console.log()
-    process.exit(1)
+    return null
   }
 }
 
 async function headlessLogin(spinner: ReturnType<typeof ora>) {
+  const result = await headlessLoginInternal(spinner)
+  if (result) {
+    printNextSteps()
+  }
+}
+
+async function headlessLoginInternal(spinner: ReturnType<typeof ora>): Promise<Credentials | null> {
   const email = await prompt('Email: ')
   const password = await prompt('Password: ', true)
 
   if (!email || !password) {
     console.log(chalk.red('Email and password are required'))
-    process.exit(1)
+    return null
   }
 
   spinner.start('Logging in')
@@ -151,7 +185,7 @@ async function headlessLogin(spinner: ReturnType<typeof ora>) {
     const { token, user } = await api.login(email, password)
     const { organization } = await api.getMe()
 
-    saveCredentials({
+    const credentials: Credentials = {
       token,
       user: {
         id: user.id,
@@ -165,7 +199,9 @@ async function headlessLogin(spinner: ReturnType<typeof ora>) {
         slug: organization.slug
       },
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    })
+    }
+
+    saveCredentials(credentials)
 
     spinner.succeed('Logged in successfully')
 
@@ -173,7 +209,8 @@ async function headlessLogin(spinner: ReturnType<typeof ora>) {
     console.log(chalk.green('Welcome,'), chalk.cyan(user.name))
     console.log(chalk.gray('Organization:'), organization.name)
     console.log()
-    printNextSteps()
+
+    return credentials
   } catch (error) {
     spinner.fail('Login failed')
     console.log()
@@ -183,15 +220,15 @@ async function headlessLogin(spinner: ReturnType<typeof ora>) {
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
     }
     console.log()
-    process.exit(1)
+    return null
   }
 }
 
 function printNextSteps() {
   console.log(chalk.gray('You can now use:'))
-  console.log(chalk.gray('  •'), chalk.cyan('af dev'), chalk.gray('- Start cloud-connected dev server'))
-  console.log(chalk.gray('  •'), chalk.cyan('af deploy'), chalk.gray('- Deploy your agent'))
-  console.log(chalk.gray('  •'), chalk.cyan('af logs'), chalk.gray('- View agent logs'))
+  console.log(chalk.gray('  •'), chalk.cyan('struere dev'), chalk.gray('- Start cloud-connected dev server'))
+  console.log(chalk.gray('  •'), chalk.cyan('struere deploy'), chalk.gray('- Deploy your agent'))
+  console.log(chalk.gray('  •'), chalk.cyan('struere logs'), chalk.gray('- View agent logs'))
   console.log()
 }
 

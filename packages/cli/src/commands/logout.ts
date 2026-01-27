@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import { clearCredentials, loadCredentials } from '../utils/credentials'
 
 export const logoutCommand = new Command('logout')
-  .description('Log out of Agent Factory')
+  .description('Log out of Struere')
   .action(async () => {
     console.log()
 
