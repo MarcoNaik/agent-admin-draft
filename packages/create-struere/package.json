@@ -1,0 +1,39 @@
+{
+  "name": "create-struere",
+  "version": "0.1.0",
+  "description": "Create new Struere projects with a single command",
+  "keywords": ["ai", "agents", "scaffolding", "create", "generator", "llm"],
+  "author": "struere",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/struere/struere.git",
+    "directory": "packages/create-struere"
+  },
+  "homepage": "https://struere.dev",
+  "bugs": {
+    "url": "https://github.com/struere/struere/issues"
+  },
+  "type": "module",
+  "bin": {
+    "create-struere": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": ["dist"],
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --external commander --external prompts --external chalk --external ora && chmod +x ./dist/index.js",
+    "dev": "bun run ./src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "ora": "^8.0.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/prompts": "^2.4.9",
+    "bun-types": "^1.0.0",
+    "typescript": "^5.3.0"
+  }
+}
