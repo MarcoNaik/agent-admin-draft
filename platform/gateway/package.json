@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@struere/platform-shared": "workspace:*",
-    "hono": "^4.0.0"
+    "hono": "^4.0.0",
+    "jose": "^6.1.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240117.0",
