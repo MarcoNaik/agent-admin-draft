@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { spawn } from 'child_process'
 import chalk from 'chalk'
 import ora from 'ora'
 import { getTemplates } from './templates'
@@ -23,6 +24,7 @@ export async function createProject(name: string, options: CreateOptions): Promi
     await mkdir(projectPath, { recursive: true })
     await mkdir(join(projectPath, 'src'), { recursive: true })
     await mkdir(join(projectPath, 'src', 'workflows'), { recursive: true })
+    await mkdir(join(projectPath, 'api'), { recursive: true })
     await mkdir(join(projectPath, 'tests'), { recursive: true })
 
     spinner.succeed('Project structure created')
@@ -41,15 +43,16 @@ export async function createProject(name: string, options: CreateOptions): Promi
     if (options.install) {
       spinner.start('Installing dependencies')
 
-      const proc = Bun.spawn(['bun', 'install'], {
-        cwd: projectPath,
-        stdout: 'pipe',
-        stderr: 'pipe',
+      const exitCode = await new Promise<number>((resolve) => {
+        const proc = spawn('bun', ['install'], {
+          cwd: projectPath,
+          stdio: 'pipe',
+        })
+        proc.on('close', (code) => resolve(code ?? 1))
+        proc.on('error', () => resolve(1))
       })
 
-      await proc.exited
-
-      if (proc.exitCode === 0) {
+      if (exitCode === 0) {
         spinner.succeed('Dependencies installed')
       } else {
         spinner.warn('Failed to install dependencies. Run `bun install` manually.')
