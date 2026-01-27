@@ -1,5 +1,6 @@
 import { syncMessageSchema, generateId } from '@struere/platform-shared'
 import type { SyncResponse } from '@struere/platform-shared'
+import * as jose from 'jose'
 
 interface SessionState {
   organizationId: string | null
@@ -93,10 +94,20 @@ export class DevSessionDO implements DurableObject {
     this.sessions.delete(ws)
   }
 
-  private async handleAuth(ws: WebSocket, session: SessionState, apiKey: string): Promise<void> {
+  private async handleAuth(ws: WebSocket, session: SessionState, token: string): Promise<void> {
     const db = this.env.DB as D1Database
 
-    const keyHash = await this.hashKey(apiKey)
+    if (token.includes('.')) {
+      const jwtResult = await this.verifyJwt(token)
+      if (jwtResult) {
+        session.organizationId = jwtResult.org
+        session.userId = jwtResult.sub
+        this.send(ws, { type: 'authenticated', organizationId: jwtResult.org })
+        return
+      }
+    }
+
+    const keyHash = await this.hashKey(token)
     const result = await db.prepare(`
       SELECT ak.organization_id, ak.permissions, u.id as user_id
       FROM api_keys ak
@@ -109,7 +120,7 @@ export class DevSessionDO implements DurableObject {
     }>()
 
     if (!result) {
-      this.send(ws, { type: 'error', code: 'INVALID_API_KEY', message: 'Invalid API key' })
+      this.send(ws, { type: 'error', code: 'INVALID_API_KEY', message: 'Invalid API key or token' })
       return
     }
 
@@ -123,6 +134,22 @@ export class DevSessionDO implements DurableObject {
     session.userId = result.user_id
 
     this.send(ws, { type: 'authenticated', organizationId: result.organization_id })
+  }
+
+  private async verifyJwt(token: string): Promise<{ sub: string; org: string } | null> {
+    try {
+      const jwtSecret = this.env.JWT_SECRET as string
+      if (!jwtSecret) return null
+
+      const secret = new TextEncoder().encode(jwtSecret)
+      const { payload } = await jose.jwtVerify(token, secret)
+
+      if (payload.type !== 'cli') return null
+
+      return { sub: payload.sub as string, org: payload.org as string }
+    } catch {
+      return null
+    }
   }
 
   private async handleSync(
