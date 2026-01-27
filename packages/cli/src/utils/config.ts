@@ -1,5 +1,5 @@
 import { join } from 'path'
-import type { FrameworkConfig } from '@marco-kueks/agent-factory-core'
+import type { FrameworkConfig } from '@struere/core'
 
 const defaultConfig: FrameworkConfig = {
   port: 3000,
