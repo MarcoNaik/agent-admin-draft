@@ -1,6 +1,6 @@
 {
   "name": "@struere/cli",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "CLI tool for developing, testing, and deploying AI agents",
   "keywords": ["ai", "agents", "cli", "developer-tools", "llm"],
   "author": "struere",
@@ -26,7 +26,10 @@
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --external commander --external chalk --external ora --external chokidar --external yaml --external @struere/runtime && chmod +x ./dist/index.js",
     "dev": "tsc --watch",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "bun run build && bun run verify-build",
+    "bump": "node scripts/bump-version.js",
+    "verify-build": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); const bundle = fs.readFileSync('./dist/index.js', 'utf8'); const match = bundle.match(/version\\(\\\"([^\\\"]+)\\\"\\)/); if (!match || match[1] !== pkg.version) { console.error('Version mismatch: package.json=' + pkg.version + ' bundle=' + (match ? match[1] : 'not found')); process.exit(1); } console.log('Build verified: v' + pkg.version);\""
   },
   "dependencies": {
     "@struere/core": "^0.1.0",

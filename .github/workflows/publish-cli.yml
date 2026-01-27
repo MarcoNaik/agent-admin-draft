@@ -1,0 +1,75 @@
+name: Publish CLI
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip actual publish)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run tests
+        run: bun test
+
+      - name: Build
+        run: bun run build
+
+      - name: Verify version match
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          BUNDLE_VERSION=$(grep -o 'version("[^"]*")' dist/index.js | head -1 | sed 's/version("//;s/")//')
+
+          echo "package.json version: $PKG_VERSION"
+          echo "Bundled version: $BUNDLE_VERSION"
+
+          if [ "$PKG_VERSION" != "$BUNDLE_VERSION" ]; then
+            echo "ERROR: Version mismatch!"
+            echo "package.json has $PKG_VERSION but bundle has $BUNDLE_VERSION"
+            exit 1
+          fi
+
+          echo "Version verified: $PKG_VERSION"
+
+      - name: Verify init command exists
+        run: |
+          if ! grep -q 'initCommand' dist/index.js; then
+            echo "ERROR: initCommand not found in bundle!"
+            exit 1
+          fi
+          echo "initCommand verified in bundle"
+
+      - name: Publish to npm
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry run publish
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: npm publish --access public --dry-run
