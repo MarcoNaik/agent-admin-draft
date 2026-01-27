@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { tool } from 'ai'
-import type { ToolReference, ToolParameters } from '@marco-kueks/agent-factory-core'
+import type { ToolReference, ToolParameters } from '@struere/core'
 import type { ToolDefinition, ConversationMessage } from '../types.js'
 
 type JSONSchemaProperty = {
