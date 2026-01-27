@@ -1,5 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { program } from 'commander'
+import { initCommand } from './commands/init'
 import { devCommand } from './commands/dev'
 import { buildCommand } from './commands/build'
 import { testCommand } from './commands/test'
@@ -14,8 +15,9 @@ import { whoamiCommand } from './commands/whoami'
 program
   .name('struere')
   .description('Struere CLI - Build, test, and deploy AI agents')
-  .version('0.1.0')
+  .version('0.2.0')
 
+program.addCommand(initCommand)
 program.addCommand(loginCommand)
 program.addCommand(logoutCommand)
 program.addCommand(whoamiCommand)

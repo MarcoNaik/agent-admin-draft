@@ -18,7 +18,7 @@ const defaultConfig: FrameworkConfig = {
 }
 
 export async function loadConfig(cwd: string): Promise<FrameworkConfig> {
-  const configPath = join(cwd, 'af.config.ts')
+  const configPath = join(cwd, 'struere.config.ts')
 
   try {
     const module = await import(configPath)
