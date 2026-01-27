@@ -2,7 +2,7 @@ import { getToken, getApiKey } from './credentials'
 
 const DEFAULT_API_URL = 'https://api.struere.dev'
 const DEFAULT_GATEWAY_URL = 'https://gateway.struere.dev'
-const DEFAULT_SYNC_URL = 'wss://sync.struere.dev'
+const DEFAULT_SYNC_URL = 'wss://gateway.struere.dev'
 
 export function getApiUrl(): string {
   return process.env.STRUERE_API_URL || DEFAULT_API_URL
@@ -89,6 +89,7 @@ export class ApiClient {
     return this.request<{
       user: { id: string; email: string; name: string; organizationId: string; role: string }
       organization: { id: string; name: string; slug: string; plan: string }
+      cliToken?: string
     }>(endpoint)
   }
 
