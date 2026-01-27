@@ -1,5 +1,5 @@
 import { join } from 'path'
-import type { AgentConfig } from '@marco-kueks/agent-factory-core'
+import type { AgentConfig } from '@struere/core'
 
 export async function loadAgent(cwd: string): Promise<AgentConfig> {
   const agentPath = join(cwd, 'src/agent.ts')
