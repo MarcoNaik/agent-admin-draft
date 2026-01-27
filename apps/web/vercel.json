@@ -1,0 +1,49 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "bun install",
+  "buildCommand": "bun run build",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/docs",
+      "destination": "https://docs.struere.dev",
+      "permanent": false
+    },
+    {
+      "source": "/app",
+      "destination": "https://app.struere.dev",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "destination": "https://app.struere.dev/sign-in",
+      "permanent": false
+    },
+    {
+      "source": "/signup",
+      "destination": "https://app.struere.dev/sign-up",
+      "permanent": false
+    }
+  ]
+}
