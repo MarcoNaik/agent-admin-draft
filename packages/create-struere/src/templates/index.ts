@@ -2,7 +2,7 @@ export function getTemplates(projectName: string): Record<string, string> {
   return {
     'package.json': getPackageJson(projectName),
     'tsconfig.json': getTsConfig(),
-    'af.config.ts': getAfConfig(),
+    'struere.config.ts': getStruereConfig(),
     'src/agent.ts': getAgentTs(projectName),
     'src/context.ts': getContextTs(),
     'src/tools.ts': getToolsTs(),
@@ -22,10 +22,10 @@ function getPackageJson(name: string): string {
       version: '0.1.0',
       type: 'module',
       scripts: {
-        dev: 'af dev',
-        build: 'af build',
-        test: 'af test',
-        deploy: 'af deploy',
+        dev: 'struere dev',
+        build: 'struere build',
+        test: 'struere test',
+        deploy: 'struere deploy',
       },
       dependencies: {
         '@struere/core': '^0.1.0',
@@ -66,7 +66,7 @@ function getTsConfig(): string {
   )
 }
 
-function getAfConfig(): string {
+function getStruereConfig(): string {
   return `import { defineConfig } from '@struere/core'
 
 export default defineConfig({
@@ -183,7 +183,7 @@ export const tools = defineTools([
     },
     handler: async (params) => {
       const expression = params.expression as string
-      const sanitized = expression.replace(/[^0-9+\-*/().\\s]/g, '')
+      const sanitized = expression.replace(/[^0-9+*/().\\s-]/g, '')
       try {
         const result = new Function(\`return \${sanitized}\`)()
         return { expression, result }
@@ -270,7 +270,7 @@ An AI agent built with Struere.
 - \`src/workflows/\` - Multi-step workflows (coming soon)
 - \`api/chat.ts\` - Vercel Edge API handler for production
 - \`tests/\` - Test conversations
-- \`af.config.ts\` - Framework configuration
+- \`struere.config.ts\` - Framework configuration
 
 ## Commands
 
