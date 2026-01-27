@@ -1,4 +1,4 @@
-import type { AgentConfig } from '@marco-kueks/agent-factory-core'
+import type { AgentConfig } from '@struere/core'
 import { AgentExecutor } from '../engine/AgentExecutor.js'
 import type { ExecutionRequest, StreamChunk } from '../types.js'
 
