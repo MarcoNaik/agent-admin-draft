@@ -1,14 +1,13 @@
-import { auth } from "@clerk/nextjs/server"
 import { Plus, Copy, Trash2, Key } from "lucide-react"
 import { api } from "@/lib/api"
+import { getAuthToken } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 
 export default async function ApiKeysPage() {
-  const { getToken } = await auth()
-  const token = await getToken()
+  const token = await getAuthToken()
 
   let apiKeys: Awaited<ReturnType<typeof api.apiKeys.list>>["apiKeys"] = []
   let error: string | null = null
