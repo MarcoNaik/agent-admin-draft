@@ -2,12 +2,13 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import chokidar from 'chokidar'
-import { join } from 'path'
+import { join, basename } from 'path'
 import { loadConfig } from '../utils/config'
 import { loadAgent } from '../utils/agent'
 import { loadCredentials, getApiKey } from '../utils/credentials'
-import { getSyncUrl } from '../utils/api'
-import { hasProject, loadProject } from '../utils/project'
+import { ApiClient, ApiError, getSyncUrl } from '../utils/api'
+import { hasProject, loadProject, saveProject } from '../utils/project'
+import { performLogin } from './login'
 
 export const devCommand = new Command('dev')
   .description('Sync agent to development environment')
@@ -19,15 +20,20 @@ export const devCommand = new Command('dev')
     console.log(chalk.bold('Struere Dev'))
     console.log()
 
+    let project = loadProject(cwd)
+
     if (!hasProject(cwd)) {
       console.log(chalk.yellow('No struere.json found'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
-      console.log()
-      process.exit(1)
+
+      const setupResult = await interactiveSetup(cwd)
+      if (!setupResult) {
+        process.exit(0)
+      }
+      project = setupResult
     }
 
-    const project = loadProject(cwd)
+    project = loadProject(cwd)
     if (!project) {
       console.log(chalk.red('Failed to load struere.json'))
       process.exit(1)
@@ -193,4 +199,183 @@ function hashString(str: string): string {
     hash = hash & hash
   }
   return Math.abs(hash).toString(16)
+}
+
+async function interactiveSetup(cwd: string): Promise<{
+  agentId: string
+  team: string
+  agent: { slug: string; name: string }
+} | null> {
+  const spinner = ora()
+
+  let credentials = loadCredentials()
+  if (!credentials) {
+    console.log(chalk.gray('Authentication required'))
+    console.log()
+    credentials = await performLogin()
+    if (!credentials) {
+      console.log(chalk.red('Authentication failed'))
+      return null
+    }
+  } else {
+    console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name))
+    console.log()
+  }
+
+  spinner.start('Fetching agents')
+  const api = new ApiClient()
+
+  let agents: Array<{ id: string; name: string; slug: string }> = []
+  try {
+    const { agents: existingAgents } = await api.listAgents()
+    agents = existingAgents
+    spinner.succeed(`Found ${agents.length} existing agent(s)`)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      spinner.fail('Session expired')
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to re-authenticate'))
+      return null
+    }
+    spinner.succeed('Ready to create agent')
+  }
+
+  console.log()
+  const choices = [
+    { value: 'link', label: 'Link to an existing agent' },
+    { value: 'create', label: 'Create a new agent' },
+    { value: 'cancel', label: 'Cancel' },
+  ]
+
+  if (agents.length === 0) {
+    choices.shift()
+  }
+
+  const action = await promptChoice('No agent configured. Would you like to:', choices)
+
+  if (action === 'cancel') {
+    console.log()
+    console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('when ready to set up'))
+    return null
+  }
+
+  let selectedAgent: { id: string; name: string; slug: string } | null = null
+
+  if (action === 'link' && agents.length > 0) {
+    console.log()
+    const agentChoices = agents.map((a) => ({ value: a.id, label: `${a.name} (${a.slug})` }))
+    const agentId = await promptChoice('Select an agent:', agentChoices)
+    selectedAgent = agents.find((a) => a.id === agentId) || null
+  } else if (action === 'create') {
+    console.log()
+    const projectName = slugify(basename(cwd))
+    const name = await promptText('Agent name:', projectName)
+
+    const displayName = name
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+
+    spinner.start('Creating agent')
+
+    try {
+      const { agent } = await api.createAgent({
+        name: displayName,
+        slug: name,
+        description: `${displayName} Agent`,
+      })
+      selectedAgent = { id: agent.id, name: displayName, slug: name }
+      spinner.succeed(`Created agent "${name}"`)
+    } catch (error) {
+      spinner.fail('Failed to create agent')
+      console.log()
+      if (error instanceof ApiError) {
+        console.log(chalk.red('Error:'), error.message)
+      } else {
+        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+      }
+      return null
+    }
+  }
+
+  if (!selectedAgent) {
+    return null
+  }
+
+  const projectData = {
+    agentId: selectedAgent.id,
+    team: credentials.organization.slug,
+    agent: {
+      slug: selectedAgent.slug,
+      name: selectedAgent.name,
+    },
+  }
+
+  saveProject(cwd, projectData)
+  console.log(chalk.green('✓'), 'Created struere.json')
+  console.log()
+
+  return projectData
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+async function promptChoice(
+  message: string,
+  choices: Array<{ value: string; label: string }>
+): Promise<string> {
+  console.log(chalk.gray(message))
+  console.log()
+
+  for (let i = 0; i < choices.length; i++) {
+    const prefix = i === 0 ? chalk.cyan('❯') : chalk.gray(' ')
+    console.log(`${prefix} ${i + 1}. ${choices[i].label}`)
+  }
+
+  console.log()
+  process.stdout.write(chalk.gray('Enter choice (1-' + choices.length + '): '))
+
+  const answer = await readLine()
+  const num = parseInt(answer, 10)
+  if (num >= 1 && num <= choices.length) {
+    return choices[num - 1].value
+  }
+  return choices[0].value
+}
+
+async function promptText(message: string, defaultValue: string): Promise<string> {
+  process.stdout.write(chalk.gray(`${message} `))
+  process.stdout.write(chalk.cyan(`(${defaultValue}) `))
+
+  const answer = await readLine()
+  return answer || defaultValue
+}
+
+function readLine(): Promise<string> {
+  return new Promise((resolve) => {
+    let buffer = ''
+
+    const onData = (chunk: Buffer) => {
+      const str = chunk.toString()
+      buffer += str
+
+      if (str.includes('\n') || str.includes('\r')) {
+        process.stdin.removeListener('data', onData)
+        process.stdin.pause()
+        process.stdin.setRawMode?.(false)
+        resolve(buffer.replace(/[\r\n]/g, '').trim())
+      }
+    }
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode?.(false)
+    }
+    process.stdin.resume()
+    process.stdin.on('data', onData)
+  })
 }
