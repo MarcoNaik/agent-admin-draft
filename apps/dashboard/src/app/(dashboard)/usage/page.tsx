@@ -1,12 +1,11 @@
-import { auth } from "@clerk/nextjs/server"
 import { Activity, Zap, Clock, CheckCircle } from "lucide-react"
 import { api } from "@/lib/api"
+import { getAuthToken } from "@/lib/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
 
 export default async function UsagePage() {
-  const { getToken } = await auth()
-  const token = await getToken()
+  const token = await getAuthToken()
 
   let usage: Awaited<ReturnType<typeof api.usage.get>> | null = null
   let error: string | null = null
