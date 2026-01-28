@@ -29400,6 +29400,28 @@ init_modules_watch_stub();
 var verifyToken2 = withLegacyReturn(verifyToken);
 
 // src/middleware/clerk.ts
+init_webapi();
+async function tryCliToken(token, jwtSecret) {
+  if (!jwtSecret) {
+    return null;
+  }
+  try {
+    const secret = new TextEncoder().encode(jwtSecret);
+    const { payload } = await jwtVerify(token, secret);
+    if (payload.type !== "cli") {
+      return null;
+    }
+    return {
+      clerkUserId: "",
+      userId: payload.sub,
+      organizationId: payload.org,
+      email: payload.email || ""
+    };
+  } catch {
+    return null;
+  }
+}
+__name(tryCliToken, "tryCliToken");
 var clerkAuth = createMiddleware(async (c, next) => {
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -29410,6 +29432,12 @@ var clerkAuth = createMiddleware(async (c, next) => {
   if (!token || token.length < 10) {
     console.error("[ClerkAuth] Token is empty or too short");
     throw new AuthenticationError("Invalid token format");
+  }
+  const cliAuthResult = await tryCliToken(token, c.env.JWT_SECRET);
+  if (cliAuthResult) {
+    c.set("auth", cliAuthResult);
+    await next();
+    return;
   }
   try {
     const payload = await verifyToken2(token, {

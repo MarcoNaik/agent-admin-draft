@@ -26,6 +26,13 @@ export const clerkAuth = createMiddleware<{
     throw new AuthenticationError('Invalid token format')
   }
 
+  const cliAuthResult = await tryCliToken(token, c.env.JWT_SECRET)
+  if (cliAuthResult) {
+    c.set('auth', cliAuthResult)
+    await next()
+    return
+  }
+
   try {
     const { payload } = await jwtVerify(token, JWKS, {
       issuer: 'https://clerk.struere.dev',
@@ -152,4 +159,32 @@ function generateSlug(name: string): string {
     .replace(/^-|-$/g, '')
     .slice(0, 50)
   return `${baseSlug}-${Date.now().toString(36)}`
+}
+
+async function tryCliToken(token: string, jwtSecret: string): Promise<AuthContext | null> {
+  if (!jwtSecret) {
+    console.error('[tryCliToken] JWT_SECRET is not configured')
+    return null
+  }
+
+  try {
+    const secret = new TextEncoder().encode(jwtSecret)
+    const { payload } = await jwtVerify(token, secret)
+
+    if (payload.type !== 'cli') {
+      console.log('[tryCliToken] Token is not a CLI token, type:', payload.type)
+      return null
+    }
+
+    console.log('[tryCliToken] CLI token verified successfully for user:', payload.sub)
+    return {
+      clerkUserId: '',
+      userId: payload.sub as string,
+      organizationId: payload.org as string,
+      email: (payload.email as string) || ''
+    }
+  } catch (err) {
+    console.log('[tryCliToken] Failed to verify as CLI token:', err instanceof Error ? err.message : err)
+    return null
+  }
 }

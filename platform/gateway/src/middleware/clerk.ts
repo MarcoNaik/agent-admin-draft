@@ -1,9 +1,34 @@
 import { createMiddleware } from 'hono/factory'
 import { verifyToken } from '@clerk/backend'
+import { jwtVerify } from 'jose'
 import { eq } from 'drizzle-orm'
 import { AuthenticationError, generateId } from '@struere/platform-shared'
 import { createDb, users, organizations } from '../db'
 import type { Env, AuthContext } from '../types'
+
+async function tryCliToken(token: string, jwtSecret: string): Promise<AuthContext | null> {
+  if (!jwtSecret) {
+    return null
+  }
+
+  try {
+    const secret = new TextEncoder().encode(jwtSecret)
+    const { payload } = await jwtVerify(token, secret)
+
+    if (payload.type !== 'cli') {
+      return null
+    }
+
+    return {
+      clerkUserId: '',
+      userId: payload.sub as string,
+      organizationId: payload.org as string,
+      email: (payload.email as string) || ''
+    }
+  } catch {
+    return null
+  }
+}
 
 export const clerkAuth = createMiddleware<{
   Bindings: Env
@@ -21,6 +46,13 @@ export const clerkAuth = createMiddleware<{
   if (!token || token.length < 10) {
     console.error('[ClerkAuth] Token is empty or too short')
     throw new AuthenticationError('Invalid token format')
+  }
+
+  const cliAuthResult = await tryCliToken(token, c.env.JWT_SECRET)
+  if (cliAuthResult) {
+    c.set('auth', cliAuthResult)
+    await next()
+    return
   }
 
   try {

@@ -240,33 +240,35 @@ async function interactiveSetup(cwd: string): Promise<{
     spinner.succeed('Ready to create agent')
   }
 
-  console.log()
-  const choices = [
-    { value: 'link', label: 'Link to an existing agent' },
-    { value: 'create', label: 'Create a new agent' },
-    { value: 'cancel', label: 'Cancel' },
-  ]
-
-  if (agents.length === 0) {
-    choices.shift()
-  }
-
-  const action = await promptChoice('No agent configured. Would you like to:', choices)
-
-  if (action === 'cancel') {
-    console.log()
-    console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('when ready to set up'))
-    return null
-  }
-
   let selectedAgent: { id: string; name: string; slug: string } | null = null
 
-  if (action === 'link' && agents.length > 0) {
+  if (agents.length === 0) {
+    console.log(chalk.gray('No existing agents found. Creating a new one...'))
+  } else {
     console.log()
-    const agentChoices = agents.map((a) => ({ value: a.id, label: `${a.name} (${a.slug})` }))
-    const agentId = await promptChoice('Select an agent:', agentChoices)
-    selectedAgent = agents.find((a) => a.id === agentId) || null
-  } else if (action === 'create') {
+    const choices = [
+      { value: 'link', label: 'Link to an existing agent' },
+      { value: 'create', label: 'Create a new agent' },
+      { value: 'cancel', label: 'Cancel' },
+    ]
+
+    const action = await promptChoiceArrows('No agent configured. Would you like to:', choices)
+
+    if (action === 'cancel') {
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('when ready to set up'))
+      return null
+    }
+
+    if (action === 'link') {
+      console.log()
+      const agentChoices = agents.map((a) => ({ value: a.id, label: `${a.name} (${a.slug})` }))
+      const agentId = await promptChoiceArrows('Select an agent:', agentChoices)
+      selectedAgent = agents.find((a) => a.id === agentId) || null
+    }
+  }
+
+  if (!selectedAgent) {
     console.log()
     const projectName = slugify(basename(cwd))
     const name = await promptText('Agent name:', projectName)
@@ -325,27 +327,66 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-async function promptChoice(
+async function promptChoiceArrows(
   message: string,
   choices: Array<{ value: string; label: string }>
 ): Promise<string> {
-  console.log(chalk.gray(message))
-  console.log()
+  return new Promise((resolve) => {
+    let selectedIndex = 0
 
-  for (let i = 0; i < choices.length; i++) {
-    const prefix = i === 0 ? chalk.cyan('❯') : chalk.gray(' ')
-    console.log(`${prefix} ${i + 1}. ${choices[i].label}`)
-  }
+    const render = () => {
+      process.stdout.write('\x1B[?25l')
+      process.stdout.write(`\x1B[${choices.length + 2}A`)
+      console.log(chalk.gray(message))
+      console.log()
+      for (let i = 0; i < choices.length; i++) {
+        const prefix = i === selectedIndex ? chalk.cyan('❯') : ' '
+        const label = i === selectedIndex ? chalk.cyan(choices[i].label) : choices[i].label
+        console.log(`${prefix} ${label}`)
+      }
+    }
 
-  console.log()
-  process.stdout.write(chalk.gray('Enter choice (1-' + choices.length + '): '))
+    console.log(chalk.gray(message))
+    console.log()
+    for (let i = 0; i < choices.length; i++) {
+      const prefix = i === selectedIndex ? chalk.cyan('❯') : ' '
+      const label = i === selectedIndex ? chalk.cyan(choices[i].label) : choices[i].label
+      console.log(`${prefix} ${label}`)
+    }
 
-  const answer = await readLine()
-  const num = parseInt(answer, 10)
-  if (num >= 1 && num <= choices.length) {
-    return choices[num - 1].value
-  }
-  return choices[0].value
+    if (!process.stdin.isTTY) {
+      resolve(choices[0].value)
+      return
+    }
+
+    process.stdin.setRawMode?.(true)
+    process.stdin.resume()
+
+    const onKeypress = (key: Buffer) => {
+      const char = key.toString()
+
+      if (char === '\x1B[A' || char === 'k') {
+        selectedIndex = (selectedIndex - 1 + choices.length) % choices.length
+        render()
+      } else if (char === '\x1B[B' || char === 'j') {
+        selectedIndex = (selectedIndex + 1) % choices.length
+        render()
+      } else if (char === '\r' || char === '\n') {
+        process.stdin.removeListener('data', onKeypress)
+        process.stdin.setRawMode?.(false)
+        process.stdin.pause()
+        process.stdout.write('\x1B[?25h')
+        resolve(choices[selectedIndex].value)
+      } else if (char === '\x03') {
+        process.stdin.removeListener('data', onKeypress)
+        process.stdin.setRawMode?.(false)
+        process.stdout.write('\x1B[?25h')
+        process.exit(0)
+      }
+    }
+
+    process.stdin.on('data', onKeypress)
+  })
 }
 
 async function promptText(message: string, defaultValue: string): Promise<string> {

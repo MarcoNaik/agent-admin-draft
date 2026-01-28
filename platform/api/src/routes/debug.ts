@@ -129,6 +129,48 @@ debugRoutes.post('/verify-token', async (c) => {
   }
 })
 
+debugRoutes.post('/verify-cli-token', async (c) => {
+  const { jwtVerify } = await import('jose')
+  const results: Record<string, unknown> = { timestamp: new Date().toISOString() }
+
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ error: 'Missing Authorization header' }, 400)
+  }
+
+  const token = authHeader.slice(7)
+  results.tokenLength = token.length
+  results.tokenPreview = token.slice(0, 50) + '...'
+
+  try {
+    const parts = token.split('.')
+    if (parts.length === 3) {
+      const header = JSON.parse(atob(parts[0]))
+      const payload = JSON.parse(atob(parts[1]))
+      results.header = header
+      results.payload = { sub: payload.sub, org: payload.org, type: payload.type, exp: payload.exp }
+    }
+  } catch (e) {
+    results.decodeError = String(e)
+  }
+
+  results.hasJwtSecret = !!c.env.JWT_SECRET
+  results.jwtSecretLength = c.env.JWT_SECRET?.length
+  results.jwtSecretPreview = c.env.JWT_SECRET?.slice(0, 8) + '...'
+
+  try {
+    const secret = new TextEncoder().encode(c.env.JWT_SECRET)
+    const { payload } = await jwtVerify(token, secret)
+    results.verified = true
+    results.verifiedPayload = payload
+  } catch (e) {
+    results.verified = false
+    results.verifyError = e instanceof Error ? e.message : String(e)
+  }
+
+  return c.json(results)
+})
+
 debugRoutes.get('/db-test', async (c) => {
   try {
     const db = createDb(c.env.DB)
