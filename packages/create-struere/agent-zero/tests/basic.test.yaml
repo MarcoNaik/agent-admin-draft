@@ -1,0 +1,17 @@
+name: Basic conversation test
+description: Verify the agent responds correctly to basic queries
+
+conversation:
+  - role: user
+    content: Hello, what can you do?
+  - role: assistant
+    assertions:
+      - type: contains
+        value: help
+
+  - role: user
+    content: What time is it?
+  - role: assistant
+    assertions:
+      - type: toolCalled
+        value: get_current_time

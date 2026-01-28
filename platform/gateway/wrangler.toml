@@ -28,6 +28,10 @@ id = "ea3537e6763c499f96fa3ec4c595be2e"
 binding = "CONVERSATIONS"
 id = "0c32663dd61841d4bbd14c124a81aedf"
 
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "ea3537e6763c499f96fa3ec4c595be2e"
+
 [[durable_objects.bindings]]
 name = "DEV_SESSIONS"
 class_name = "DevSessionDO"

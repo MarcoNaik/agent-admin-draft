@@ -1,53 +1,104 @@
 import { createMiddleware } from 'hono/factory'
+import { eq } from 'drizzle-orm'
+import * as jose from 'jose'
 import { AuthenticationError, AuthorizationError, parseApiKey, hashApiKey } from '@struere/platform-shared'
-import type { Env, ApiKeyContext } from '../types'
+import { createDb, apiKeys } from '../db'
+import type { Env, AuthContext, ApiKeyContext } from '../types'
+
+export const jwtAuth = createMiddleware<{
+  Bindings: Env
+  Variables: { auth: AuthContext }
+}>(async (c, next) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new AuthenticationError('Missing or invalid authorization header')
+  }
+
+  const token = authHeader.slice(7)
+
+  try {
+    const secret = new TextEncoder().encode(c.env.JWT_SECRET)
+    const { payload } = await jose.jwtVerify(token, secret)
+
+    c.set('auth', {
+      userId: payload.sub as string,
+      organizationId: payload.org as string,
+      email: payload.email as string
+    })
+
+    await next()
+  } catch {
+    throw new AuthenticationError('Invalid or expired token')
+  }
+})
 
 export const apiKeyAuth = createMiddleware<{
   Bindings: Env
   Variables: { apiKey: ApiKeyContext }
 }>(async (c, next) => {
   const authHeader = c.req.header('Authorization')
-  const key = parseApiKey(authHeader)
+  const key = parseApiKey(authHeader ?? null)
 
   if (!key) {
     throw new AuthenticationError('Missing or invalid API key')
   }
 
+  const db = createDb(c.env.DB)
   const keyHash = await hashApiKey(key)
 
-  const result = await c.env.DB.prepare(`
-    SELECT id, organization_id, permissions, expires_at
-    FROM api_keys
-    WHERE key_hash = ?
-  `).bind(keyHash).first<{
-    id: string
-    organization_id: string
-    permissions: string
-    expires_at: number | null
-  }>()
+  const [apiKey] = await db
+    .select()
+    .from(apiKeys)
+    .where(eq(apiKeys.keyHash, keyHash))
+    .limit(1)
 
-  if (!result) {
+  if (!apiKey) {
     throw new AuthenticationError('Invalid API key')
   }
 
-  if (result.expires_at && result.expires_at < Date.now() / 1000) {
+  if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
     throw new AuthenticationError('API key has expired')
   }
 
-  const permissions = JSON.parse(result.permissions) as string[]
-  if (!permissions.includes('agent:execute')) {
-    throw new AuthorizationError('API key does not have execute permission')
-  }
-
-  await c.env.DB.prepare(`
-    UPDATE api_keys SET last_used_at = ? WHERE id = ?
-  `).bind(Math.floor(Date.now() / 1000), result.id).run()
+  await db
+    .update(apiKeys)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKeys.id, apiKey.id))
 
   c.set('apiKey', {
-    apiKeyId: result.id,
-    organizationId: result.organization_id,
-    permissions
+    apiKeyId: apiKey.id,
+    organizationId: apiKey.organizationId,
+    permissions: apiKey.permissions
   })
 
   await next()
 })
+
+export function requirePermission(...required: string[]) {
+  return createMiddleware<{
+    Bindings: Env
+    Variables: { apiKey: ApiKeyContext }
+  }>(async (c, next) => {
+    const apiKey = c.get('apiKey')
+
+    const hasPermission = required.every(p => apiKey.permissions.includes(p))
+    if (!hasPermission) {
+      throw new AuthorizationError(`Missing required permissions: ${required.join(', ')}`)
+    }
+
+    await next()
+  })
+}
+
+export async function createJwt(
+  env: Env,
+  payload: { sub: string; org: string; email: string }
+): Promise<string> {
+  const secret = new TextEncoder().encode(env.JWT_SECRET)
+
+  return await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(secret)
+}

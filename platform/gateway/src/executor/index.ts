@@ -34,6 +34,23 @@ interface StreamOptions extends ExecuteOptions {
   onError: (error: Error) => Promise<void>
 }
 
+interface AgentConfig {
+  systemPrompt?: string | (() => string | Promise<string>)
+  model?: {
+    provider?: string
+    name?: string
+    apiKey?: string
+    temperature?: number
+    maxTokens?: number
+  }
+  tools?: Array<{
+    name: string
+    description?: string
+    parameters?: Record<string, unknown>
+    handler: (args: Record<string, unknown>) => Promise<unknown>
+  }>
+}
+
 export async function executeAgent(options: ExecuteOptions): Promise<ExecuteResult> {
   const { bundleCode, message, conversationId, userId, metadata, env, agent } = options
 
@@ -51,7 +68,7 @@ export async function executeAgent(options: ExecuteOptions): Promise<ExecuteResu
 
     const systemPrompt = typeof agentConfig.systemPrompt === 'function'
       ? await agentConfig.systemPrompt()
-      : agentConfig.systemPrompt
+      : agentConfig.systemPrompt || ''
 
     const result = await callLLM({
       model: agentConfig.model,
@@ -97,7 +114,7 @@ export async function streamAgent(options: StreamOptions): Promise<void> {
 
     const systemPrompt = typeof agentConfig.systemPrompt === 'function'
       ? await agentConfig.systemPrompt()
-      : agentConfig.systemPrompt
+      : agentConfig.systemPrompt || ''
 
     let fullContent = ''
     const toolCalls: ExecuteResult['toolCalls'] = []
@@ -136,7 +153,7 @@ export async function streamAgent(options: StreamOptions): Promise<void> {
   }
 }
 
-async function importAgentModule(bundleCode: string): Promise<Record<string, unknown>> {
+async function importAgentModule(bundleCode: string): Promise<{ default?: AgentConfig } & AgentConfig> {
   const blob = new Blob([bundleCode], { type: 'application/javascript' })
   const url = URL.createObjectURL(blob)
 

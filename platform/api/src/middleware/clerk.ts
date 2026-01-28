@@ -1,9 +1,12 @@
 import { createMiddleware } from 'hono/factory'
-import { verifyToken } from '@clerk/backend'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { eq } from 'drizzle-orm'
 import { AuthenticationError, generateId } from '@struere/platform-shared'
 import { createDb, users, organizations } from '../db'
 import type { Env, AuthContext } from '../types'
+
+const JWKS_URL = 'https://clerk.struere.dev/.well-known/jwks.json'
+const JWKS = createRemoteJWKSet(new URL(JWKS_URL))
 
 export const clerkAuth = createMiddleware<{
   Bindings: Env
@@ -24,16 +27,17 @@ export const clerkAuth = createMiddleware<{
   }
 
   try {
-    const payload = await verifyToken(token, {
-      secretKey: c.env.CLERK_SECRET_KEY,
-      clockSkewInMs: 60000
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: 'https://clerk.struere.dev',
+      clockTolerance: 60
     })
 
-    const clerkUserId = payload.sub
+    const clerkUserId = payload.sub as string
     if (!clerkUserId) {
       console.error('[ClerkAuth] Token payload missing sub claim')
       throw new AuthenticationError('Invalid token: missing user ID')
     }
+    const payloadEmail = (payload as Record<string, unknown>).email as string | undefined
 
     const db = createDb(c.env.DB)
 
@@ -51,7 +55,7 @@ export const clerkAuth = createMiddleware<{
       orgId = existingUser.organizationId
     } else {
       const clerkUserInfo = await fetchClerkUser(clerkUserId, c.env.CLERK_SECRET_KEY)
-      const userEmail = clerkUserInfo?.email || payload.email as string || `${clerkUserId}@unknown.local`
+      const userEmail = clerkUserInfo?.email || payloadEmail || `${clerkUserId}@unknown.local`
       const userName = clerkUserInfo?.name || userEmail.split('@')[0] || 'User'
 
       const now = new Date()
@@ -87,7 +91,7 @@ export const clerkAuth = createMiddleware<{
       clerkUserId,
       userId: internalUserId,
       organizationId: orgId,
-      email: existingUser?.email || payload.email as string || ''
+      email: existingUser?.email || payloadEmail || ''
     })
 
     await next()

@@ -9,6 +9,7 @@ import { apiKeyRoutes } from './routes/api-keys'
 import { deploymentRoutes } from './routes/deployments'
 import { usageRoutes } from './routes/usage'
 import { debugRoutes } from './routes/debug'
+import { statusRoutes } from './routes/status'
 import type { Env } from './types'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -27,6 +28,7 @@ app.use('*', cors({
 app.get('/health', (c) => c.json({ status: 'ok', version: '0.1.0' }))
 
 app.route('/v1/debug', debugRoutes)
+app.route('/v1/status', statusRoutes)
 app.route('/v1/auth', authRoutes)
 app.route('/v1/auth/clerk', authClerkRoutes)
 app.route('/v1/agents', agentRoutes)

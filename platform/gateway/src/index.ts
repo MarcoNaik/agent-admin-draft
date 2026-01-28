@@ -7,11 +7,25 @@ import { apiKeyAuth } from './middleware/auth'
 import { resolveAgent } from './middleware/resolve'
 import { DevSessionDO } from './durable-objects/DevSession'
 import { executeAgent, streamAgent } from './executor'
+import { api } from './api'
 import type { Env } from './types'
 
 export { DevSessionDO }
 
-const app = new Hono<{ Bindings: Env }>()
+interface GatewayVariables {
+  agentSlug: string
+  environment: 'development' | 'production'
+}
+
+const app = new Hono<{ Bindings: Env; Variables: GatewayVariables }>()
+
+app.use('*', async (c, next) => {
+  const host = c.req.header('host') || ''
+  if (host === 'api.struere.dev' || host.startsWith('api.')) {
+    return api.fetch(c.req.raw, c.env, c.executionCtx)
+  }
+  return next()
+})
 
 app.use('*', cors({
   origin: '*',
@@ -20,19 +34,23 @@ app.use('*', cors({
 
 app.use('*', async (c, next) => {
   const host = c.req.header('host') || ''
+  const reservedSubdomains = ['api', 'gateway', 'app', 'www', 'dashboard', 'admin']
 
   if (host.endsWith('-dev.struere.dev')) {
     const slug = host.replace('-dev.struere.dev', '')
-    c.set('agentSlug', slug)
-    c.set('environment', 'development')
+    if (!reservedSubdomains.includes(slug)) {
+      c.set('agentSlug', slug)
+      c.set('environment', 'development')
+    }
     return next()
   }
 
-  if (host.endsWith('.struere.dev') && !host.startsWith('gateway') && !host.startsWith('api')) {
+  if (host.endsWith('.struere.dev')) {
     const slug = host.replace('.struere.dev', '')
-    c.set('agentSlug', slug)
-    c.set('environment', 'production')
-    return next()
+    if (!reservedSubdomains.includes(slug)) {
+      c.set('agentSlug', slug)
+      c.set('environment', 'production')
+    }
   }
 
   return next()
@@ -67,7 +85,7 @@ app.all('*', async (c, next) => {
       return c.html(getNotDeployedHtml(agent.name, environment), 200)
     }
 
-    return c.html(getChatHtml(agent.name, slug, environment), 200)
+    return c.html(getChatHtml(agent.name, agent.slug, environment), 200)
   }
 
   if (path === '/chat' && c.req.method === 'POST') {
@@ -110,7 +128,8 @@ app.all('*', async (c, next) => {
       agentId: agent.id,
       versionId: agent.version_id,
       bundleKey: version.bundle_key,
-      organizationId: agent.organization_id
+      organizationId: agent.organization_id,
+      slug: agent.slug
     }
 
     if (stream) {
