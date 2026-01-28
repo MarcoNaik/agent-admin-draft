@@ -9,7 +9,7 @@ import {
   createApiKeySchema
 } from '@struere/platform-shared'
 import { createDb, apiKeys } from '../db'
-import { jwtAuth } from '../middleware/auth'
+import { clerkAuth } from '../middleware/clerk'
 import type { Env, AuthContext } from '../types'
 
 export const apiKeyRoutes = new Hono<{
@@ -17,7 +17,7 @@ export const apiKeyRoutes = new Hono<{
   Variables: { auth: AuthContext }
 }>()
 
-apiKeyRoutes.use('*', jwtAuth)
+apiKeyRoutes.use('*', clerkAuth)
 
 apiKeyRoutes.get('/', async (c) => {
   const auth = c.get('auth')
