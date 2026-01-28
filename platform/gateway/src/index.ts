@@ -64,10 +64,10 @@ app.all('*', async (c, next) => {
     const versionId = environment === 'development' ? agent.development_version_id : agent.production_version_id
 
     if (!versionId) {
-      return c.html(`<html><body><h1>${agent.name}</h1><p>Not deployed to ${environment} yet.</p><p>Run <code>struere ${environment === 'development' ? 'dev' : 'deploy'}</code> to deploy.</p></body></html>`, 200)
+      return c.html(getNotDeployedHtml(agent.name, environment), 200)
     }
 
-    return c.html(`<html><body><h1>${agent.name}</h1><p>Environment: ${environment}</p><p>POST to /chat to interact with this agent.</p></body></html>`, 200)
+    return c.html(getChatHtml(agent.name, slug, environment), 200)
   }
 
   if (path === '/chat' && c.req.method === 'POST') {
@@ -196,5 +196,196 @@ app.onError((err, c) => {
 })
 
 app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404))
+
+function getNotDeployedHtml(agentName: string, environment: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${agentName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0a; color: #fafafa; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { text-align: center; padding: 2rem; }
+    h1 { font-size: 2rem; margin-bottom: 1rem; }
+    p { color: #888; margin-bottom: 0.5rem; }
+    code { background: #1e1e1e; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${agentName}</h1>
+    <p>Not deployed to ${environment} yet.</p>
+    <p>Run <code>struere ${environment === 'development' ? 'dev' : 'deploy'}</code> to deploy.</p>
+  </div>
+</body>
+</html>`
+}
+
+function getChatHtml(agentName: string, slug: string, environment: string): string {
+  const envBadge = environment === 'production'
+    ? '<span style="background: #166534; color: #bbf7d0; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">Production</span>'
+    : '<span style="background: #854d0e; color: #fef08a; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">Development</span>'
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${agentName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0a; color: #fafafa; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 1rem 1.5rem; border-bottom: 1px solid #262626; display: flex; justify-content: space-between; align-items: center; background: #0a0a0a; }
+    header h1 { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; }
+    #messages { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+    .message { max-width: 80%; padding: 0.875rem 1rem; border-radius: 1rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+    .message.user { align-self: flex-end; background: #2563eb; border-bottom-right-radius: 0.25rem; }
+    .message.assistant { align-self: flex-start; background: #1c1c1c; border-bottom-left-radius: 0.25rem; }
+    .message.tool { align-self: flex-start; background: #172554; font-family: monospace; font-size: 0.875rem; border-left: 3px solid #3b82f6; border-radius: 0.5rem; max-width: 90%; }
+    .message.error { background: #450a0a; border-left: 3px solid #ef4444; }
+    .message.streaming::after { content: '▋'; animation: blink 1s infinite; }
+    @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #525252; }
+    .empty-state h2 { font-size: 1.25rem; margin-bottom: 0.5rem; color: #737373; }
+    .empty-state p { font-size: 0.875rem; }
+    form { padding: 1rem 1.5rem; border-top: 1px solid #262626; display: flex; gap: 0.75rem; background: #0a0a0a; }
+    input { flex: 1; padding: 0.875rem 1rem; background: #171717; border: 1px solid #262626; border-radius: 0.75rem; color: #fafafa; font-size: 1rem; outline: none; transition: border-color 0.2s; }
+    input:focus { border-color: #3b82f6; }
+    input:disabled { opacity: 0.5; }
+    input::placeholder { color: #525252; }
+    button { padding: 0.875rem 1.5rem; background: #2563eb; border: none; border-radius: 0.75rem; color: white; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+    button:hover:not(:disabled) { background: #1d4ed8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${agentName} ${envBadge}</h1>
+  </header>
+  <div id="messages">
+    <div class="empty-state">
+      <h2>Start a conversation</h2>
+      <p>Send a message to begin chatting with ${agentName}</p>
+    </div>
+  </div>
+  <form id="chat-form">
+    <input type="text" id="input" placeholder="Type a message..." autocomplete="off" autofocus />
+    <button type="submit">Send</button>
+  </form>
+  <script>
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('input');
+    const button = form.querySelector('button');
+    let conversationId = null;
+    let isProcessing = false;
+    let hasMessages = false;
+
+    function clearEmptyState() {
+      if (!hasMessages) {
+        messages.innerHTML = '';
+        hasMessages = true;
+      }
+    }
+
+    function addMessage(role, content, isStreaming = false) {
+      clearEmptyState();
+      const div = document.createElement('div');
+      div.className = 'message ' + role + (isStreaming ? ' streaming' : '');
+      div.textContent = content;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+      return div;
+    }
+
+    function setProcessing(processing) {
+      isProcessing = processing;
+      input.disabled = processing;
+      button.disabled = processing;
+    }
+
+    async function sendMessage(message) {
+      const assistantDiv = addMessage('assistant', '', true);
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, conversationId, stream: true }),
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.conversationId) conversationId = data.conversationId;
+
+                if (data.type === 'text-delta' && data.textDelta) {
+                  fullText += data.textDelta;
+                  assistantDiv.textContent = fullText;
+                  messages.scrollTop = messages.scrollHeight;
+                } else if (data.type === 'tool-call-start') {
+                  addMessage('tool', '🔧 ' + (data.toolName || 'Tool call'));
+                } else if (data.type === 'tool-result') {
+                  const result = typeof data.toolResult === 'string' ? data.toolResult : JSON.stringify(data.toolResult, null, 2);
+                  addMessage('tool', '→ ' + result);
+                } else if (data.type === 'finish') {
+                  assistantDiv.classList.remove('streaming');
+                } else if (data.type === 'error') {
+                  assistantDiv.textContent = data.error || data.message || 'An error occurred';
+                  assistantDiv.classList.remove('streaming');
+                  assistantDiv.classList.add('error');
+                }
+              } catch {}
+            }
+          }
+        }
+
+        if (!fullText && !assistantDiv.classList.contains('error')) {
+          assistantDiv.textContent = 'No response';
+          assistantDiv.classList.remove('streaming');
+        }
+      } catch (err) {
+        assistantDiv.textContent = 'Error: ' + err.message;
+        assistantDiv.classList.remove('streaming');
+        assistantDiv.classList.add('error');
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (isProcessing) return;
+
+      const message = input.value.trim();
+      if (!message) return;
+
+      addMessage('user', message);
+      input.value = '';
+      setProcessing(true);
+
+      await sendMessage(message);
+      setProcessing(false);
+      input.focus();
+    });
+  </script>
+</body>
+</html>`
+}
 
 export default app
