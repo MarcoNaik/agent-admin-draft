@@ -17,10 +17,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules/.cache",
-    "deploy": "turbo run deploy",
+    "deploy": "turbo run deploy --filter=@struere/platform-*",
     "deploy:api": "turbo run deploy --filter=@struere/platform-api",
-    "deploy:dashboard": "turbo run deploy --filter=@struere/dashboard",
-    "deploy:platform": "turbo run deploy --filter=@struere/platform-*",
     "db:migrate": "cd platform/api && wrangler d1 execute struere-db --remote --file=migrations/0000_init.sql && wrangler d1 execute struere-db --remote --file=migrations/0001_add_clerk_id.sql && wrangler d1 execute struere-db --remote --file=migrations/0002_make_password_nullable.sql",
     "db:migrate:local": "cd platform/api && wrangler d1 execute struere-db --local --file=migrations/0000_init.sql && wrangler d1 execute struere-db --local --file=migrations/0001_add_clerk_id.sql && wrangler d1 execute struere-db --local --file=migrations/0002_make_password_nullable.sql"
   },

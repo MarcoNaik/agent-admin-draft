@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "bun test",
-    "deploy": "vercel --prod"
+    "test": "bun test"
   },
   "dependencies": {
     "@clerk/nextjs": "^5.0.0",
