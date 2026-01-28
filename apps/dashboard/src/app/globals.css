@@ -5,6 +5,9 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
+    --background-primary: 0 0% 98%;
+    --background-secondary: 0 0% 100%;
+    --background-tertiary: 240 5% 96%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -21,31 +24,48 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
+    --border-selected: 240 5.9% 50%;
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
+    --content-primary: 240 10% 3.9%;
+    --content-secondary: 240 5% 46%;
+    --content-tertiary: 240 5% 65%;
+    --util-accent: 262 83% 58%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 20%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 6% 10%;
+    --background-primary: 240 6% 10%;
+    --background-secondary: 240 6% 13%;
+    --background-tertiary: 240 5% 18%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 240 6% 13%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 6% 13%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 240 5% 18%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    --muted: 240 5% 18%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --accent: 240 5% 18%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 240 5% 20%;
+    --border-selected: 240 5% 50%;
+    --input: 240 5% 20%;
     --ring: 240 4.9% 83.9%;
+    --content-primary: 0 0% 98%;
+    --content-secondary: 240 5% 65%;
+    --content-tertiary: 240 5% 45%;
+    --util-accent: 262 83% 58%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
   }
 }
 
@@ -55,5 +75,29 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+  .scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

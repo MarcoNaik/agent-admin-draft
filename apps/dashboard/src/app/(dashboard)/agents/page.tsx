@@ -1,8 +1,5 @@
-import { Plus } from "lucide-react"
-import Link from "next/link"
 import { api } from "@/lib/api"
 import { getAuthToken } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { AgentsList } from "@/components/agents-list"
 
@@ -20,29 +17,20 @@ export default async function AgentsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Agents</h1>
-          <p className="text-muted-foreground">Manage your AI agents</p>
+    <div className="flex w-full flex-col gap-2">
+      <div className="w-full">
+        <div className="flex flex-col items-center">
+          {error ? (
+            <Card className="w-full">
+              <CardContent className="py-8 text-center">
+                <p className="text-content-secondary">{error}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <AgentsList agents={agents} />
+          )}
         </div>
-        <Link href="/agents/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Agent
-          </Button>
-        </Link>
       </div>
-
-      {error ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <AgentsList agents={agents} />
-      )}
     </div>
   )
 }

@@ -39,7 +39,7 @@ export function AgentSidebar({ agentId }: AgentSidebarProps) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <nav className="flex w-14 flex-col items-center gap-2 border-r bg-background py-4">
+      <nav className="flex w-14 flex-col items-center gap-2 border-r bg-background-secondary py-4">
         {navItems.map((item) => {
           const fullPath = `${basePath}${item.href}`
           const isActive =
@@ -55,8 +55,8 @@ export function AgentSidebar({ agentId }: AgentSidebarProps) {
                   className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-util-accent text-white"
+                      : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
                   )}
                 >
                   <item.icon className="h-5 w-5" />

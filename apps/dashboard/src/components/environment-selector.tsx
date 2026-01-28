@@ -32,7 +32,7 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2 bg-background-secondary hover:bg-background-tertiary">
           <span
             className={`h-2 w-2 rounded-full ${
               selectedEnv === "production"
@@ -41,31 +41,31 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
             }`}
           />
           {selectedEnv === "production" ? "Production" : "Development"}
-          <span className="text-muted-foreground">•</span>
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="text-content-tertiary">•</span>
+          <span className="font-mono text-xs text-content-secondary">
             {currentUrl.replace('https://', '')}
           </span>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-80">
+      <DropdownMenuContent align="start" className="w-80 bg-background-secondary">
         <DropdownMenuItem
-          className="flex items-center gap-3 py-3"
+          className="flex items-center gap-3 py-3 hover:bg-background-tertiary"
           onClick={() => setSelectedEnv("production")}
         >
           <Globe className={`h-4 w-4 ${environments.production ? "text-green-500" : "text-gray-400"}`} />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Production</span>
+              <span className="font-medium text-content-primary">Production</span>
               {!environments.production && (
-                <span className="text-xs text-muted-foreground">(not deployed)</span>
+                <span className="text-xs text-content-secondary">(not deployed)</span>
               )}
             </div>
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="font-mono text-xs text-content-secondary">
               {productionUrl.replace('https://', '')}
             </span>
             {environments.production && (
-              <span className="text-xs text-muted-foreground">v{environments.production.version}</span>
+              <span className="text-xs text-content-secondary">v{environments.production.version}</span>
             )}
           </div>
           {selectedEnv === "production" && (
@@ -73,22 +73,22 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
           )}
         </DropdownMenuItem>
         <DropdownMenuItem
-          className="flex items-center gap-3 py-3"
+          className="flex items-center gap-3 py-3 hover:bg-background-tertiary"
           onClick={() => setSelectedEnv("development")}
         >
           <Code className={`h-4 w-4 ${environments.development ? "text-yellow-500" : "text-gray-400"}`} />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Development</span>
+              <span className="font-medium text-content-primary">Development</span>
               {!environments.development && (
-                <span className="text-xs text-muted-foreground">(not deployed)</span>
+                <span className="text-xs text-content-secondary">(not deployed)</span>
               )}
             </div>
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="font-mono text-xs text-content-secondary">
               {developmentUrl.replace('https://', '')}
             </span>
             {environments.development && (
-              <span className="text-xs text-muted-foreground">v{environments.development.version}</span>
+              <span className="text-xs text-content-secondary">v{environments.development.version}</span>
             )}
           </div>
           {selectedEnv === "development" && (
@@ -96,10 +96,10 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
           )}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="hover:bg-background-tertiary">
           <Link href={`/agents/${agentId}/settings`} className="flex items-center gap-3 py-3">
             <Settings className="h-4 w-4" />
-            <span className="font-medium">Agent Settings</span>
+            <span className="font-medium text-content-primary">Agent Settings</span>
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

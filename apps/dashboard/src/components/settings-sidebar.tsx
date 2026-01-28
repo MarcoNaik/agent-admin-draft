@@ -34,7 +34,7 @@ export function SettingsSidebar({ agentId }: SettingsSidebarProps) {
               "block rounded-md px-3 py-2 text-sm transition-colors",
               item.variant === "destructive"
                 ? "text-destructive hover:bg-destructive/10"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
             )}
           >
             {item.label}
@@ -46,8 +46,8 @@ export function SettingsSidebar({ agentId }: SettingsSidebarProps) {
             className={cn(
               "block rounded-md px-3 py-2 text-sm transition-colors",
               pathname === basePath && item.href === ""
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                ? "bg-background-tertiary text-content-primary"
+                : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
             )}
           >
             {item.label}
