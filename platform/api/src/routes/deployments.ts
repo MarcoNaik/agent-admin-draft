@@ -8,7 +8,7 @@ import {
   deployAgentSchema
 } from '@struere/platform-shared'
 import { createDb, agents, agentVersions, deployments } from '../db'
-import { jwtAuth } from '../middleware/auth'
+import { clerkAuth } from '../middleware/clerk'
 import type { Env, AuthContext } from '../types'
 
 export const deploymentRoutes = new Hono<{
@@ -16,7 +16,7 @@ export const deploymentRoutes = new Hono<{
   Variables: { auth: AuthContext }
 }>()
 
-deploymentRoutes.use('*', jwtAuth)
+deploymentRoutes.use('*', clerkAuth)
 
 deploymentRoutes.post('/agents/:agentId/deploy', async (c) => {
   const auth = c.get('auth')
@@ -70,8 +70,8 @@ deploymentRoutes.post('/agents/:agentId/deploy', async (c) => {
     ? 'struere.dev'
     : 'staging.struere.dev'
 
-  const deploymentUrl = environment === 'preview'
-    ? `https://${agent.slug}-${deploymentId.slice(0, 8)}.${baseUrl}`
+  const deploymentUrl = environment === 'development'
+    ? `https://${agent.slug}-dev.${baseUrl}`
     : `https://${agent.slug}.${baseUrl}`
 
   await db.insert(deployments).values({
@@ -84,9 +84,13 @@ deploymentRoutes.post('/agents/:agentId/deploy', async (c) => {
     createdAt: now
   })
 
+  const versionUpdate = environment === 'development'
+    ? { developmentVersionId: versionId, updatedAt: now }
+    : { productionVersionId: versionId, updatedAt: now }
+
   await db
     .update(agents)
-    .set({ currentVersionId: versionId, updatedAt: now })
+    .set(versionUpdate)
     .where(eq(agents.id, agentId))
 
   return c.json({

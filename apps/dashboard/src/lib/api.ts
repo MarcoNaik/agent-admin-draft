@@ -33,13 +33,27 @@ async function fetchApi<T>(path: string, options: ApiOptions = {}): Promise<T> {
   return data as T
 }
 
+export type Environment = 'development' | 'production'
+
+export interface EnvironmentInfo {
+  versionId: string
+  version: string
+  url: string
+  deployedAt: string
+}
+
 export interface Agent {
   id: string
   name: string
   slug: string
   description: string | null
   status: string
-  currentVersionId: string | null
+  developmentVersionId: string | null
+  productionVersionId: string | null
+  environments: {
+    development: EnvironmentInfo | null
+    production: EnvironmentInfo | null
+  }
   createdAt: string
   updatedAt: string
 }
@@ -78,7 +92,7 @@ export interface Deployment {
   id: string
   agentId: string
   versionId: string
-  environment: "preview" | "staging" | "production"
+  environment: Environment
   url: string
   status: string
   createdAt: string
@@ -88,7 +102,7 @@ export interface DeployKey {
   id: string
   name: string
   keyPrefix: string
-  environment: "preview" | "production"
+  environment: Environment
   createdAt: string
 }
 
@@ -96,7 +110,7 @@ export interface EnvironmentVariable {
   id: string
   key: string
   value: string
-  environment: "preview" | "production"
+  environment: Environment
   createdAt: string
 }
 
@@ -160,7 +174,7 @@ export const api = {
     list: (token: string, agentId: string) =>
       fetchApi<{ deployKeys: DeployKey[] }>(`/v1/agents/${agentId}/deploy-keys`, { token }),
 
-    create: (token: string, agentId: string, data: { name: string; environment: "preview" | "production" }) =>
+    create: (token: string, agentId: string, data: { name: string; environment: Environment }) =>
       fetchApi<{ deployKey: DeployKey & { key: string } }>(`/v1/agents/${agentId}/deploy-keys`, {
         method: "POST",
         body: data,
@@ -175,14 +189,14 @@ export const api = {
     list: (token: string, agentId: string) =>
       fetchApi<{ envVars: EnvironmentVariable[] }>(`/v1/agents/${agentId}/env-vars`, { token }),
 
-    set: (token: string, agentId: string, data: { key: string; value: string; environment: "preview" | "production" }) =>
+    set: (token: string, agentId: string, data: { key: string; value: string; environment: Environment }) =>
       fetchApi<{ envVar: EnvironmentVariable }>(`/v1/agents/${agentId}/env-vars`, {
         method: "POST",
         body: data,
         token,
       }),
 
-    delete: (token: string, agentId: string, key: string, environment: "preview" | "production") =>
+    delete: (token: string, agentId: string, key: string, environment: Environment) =>
       fetchApi<{ success: boolean }>(`/v1/agents/${agentId}/env-vars/${key}?environment=${environment}`, {
         method: "DELETE",
         token,

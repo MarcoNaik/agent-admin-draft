@@ -37,7 +37,7 @@ export const updateAgentSchema = z.object({
 export const deployAgentSchema = z.object({
   bundle: z.string(),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
-  environment: z.enum(['preview', 'staging', 'production']).default('preview'),
+  environment: z.enum(['development', 'production']).default('production'),
   metadata: z.object({
     modelProvider: z.string(),
     modelName: z.string(),

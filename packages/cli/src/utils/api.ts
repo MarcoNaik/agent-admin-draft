@@ -105,7 +105,12 @@ export class ApiClient {
         slug: string
         description: string | null
         status: string
-        currentVersionId: string | null
+        developmentVersionId: string | null
+        productionVersionId: string | null
+        environments: {
+          development: { versionId: string; version: string; url: string; deployedAt: string } | null
+          production: { versionId: string; version: string; url: string; deployedAt: string } | null
+        }
         createdAt: string
         updatedAt: string
       }>
@@ -123,7 +128,18 @@ export class ApiClient {
 
   async getAgent(agentId: string) {
     return this.request<{
-      agent: { id: string; name: string; slug: string; status: string; currentVersionId: string | null }
+      agent: {
+        id: string
+        name: string
+        slug: string
+        status: string
+        developmentVersionId: string | null
+        productionVersionId: string | null
+        environments: {
+          development: { versionId: string; version: string; url: string; deployedAt: string } | null
+          production: { versionId: string; version: string; url: string; deployedAt: string } | null
+        }
+      }
       versions: Array<{ id: string; version: string; status: string; deployedAt: string }>
     }>(`/v1/agents/${agentId}`)
   }
@@ -131,7 +147,7 @@ export class ApiClient {
   async deployAgent(agentId: string, data: {
     bundle: string
     version: string
-    environment: 'preview' | 'staging' | 'production'
+    environment: 'development' | 'production'
     metadata: { modelProvider: string; modelName: string; toolCount: number; bundleSize: number }
   }) {
     return this.request<{

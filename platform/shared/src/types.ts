@@ -37,7 +37,8 @@ export interface Agent {
   name: string
   slug: string
   description: string | null
-  currentVersionId: string | null
+  developmentVersionId: string | null
+  productionVersionId: string | null
   status: 'active' | 'paused' | 'deleted'
   createdAt: Date
   updatedAt: Date
@@ -62,11 +63,13 @@ export interface AgentVersionMetadata {
   bundleSize: number
 }
 
+export type Environment = 'development' | 'production'
+
 export interface Deployment {
   id: string
   agentId: string
   versionId: string
-  environment: 'preview' | 'staging' | 'production'
+  environment: Environment
   url: string
   status: 'pending' | 'active' | 'failed' | 'terminated'
   createdAt: Date

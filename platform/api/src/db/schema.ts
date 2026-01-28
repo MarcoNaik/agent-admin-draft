@@ -48,7 +48,8 @@ export const agents = sqliteTable('agents', {
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   description: text('description'),
-  currentVersionId: text('current_version_id'),
+  developmentVersionId: text('development_version_id'),
+  productionVersionId: text('production_version_id'),
   status: text('status', { enum: ['active', 'paused', 'deleted'] }).notNull().default('active'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
@@ -81,7 +82,7 @@ export const deployments = sqliteTable('deployments', {
   id: text('id').primaryKey(),
   agentId: text('agent_id').notNull().references(() => agents.id),
   versionId: text('version_id').notNull().references(() => agentVersions.id),
-  environment: text('environment', { enum: ['preview', 'staging', 'production'] }).notNull(),
+  environment: text('environment', { enum: ['development', 'production'] }).notNull(),
   url: text('url').notNull(),
   status: text('status', { enum: ['pending', 'active', 'failed', 'terminated'] }).notNull().default('pending'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull()

@@ -11,9 +11,11 @@ import { hasProject, loadProject } from '../utils/project'
 
 export const deployCommand = new Command('deploy')
   .description('Deploy agent to Struere Cloud')
-  .option('-e, --env <environment>', 'Target environment (preview, staging, production)', 'preview')
+  .option('-e, --env <environment>', 'Target environment (development, production)', 'production')
+  .option('--dev', 'Deploy to development environment (shorthand for --env development)')
   .option('--dry-run', 'Show what would be deployed without deploying')
   .action(async (options) => {
+    const environment = options.dev ? 'development' : options.env
     const spinner = ora()
     const cwd = process.cwd()
 
@@ -67,7 +69,7 @@ export const deployCommand = new Command('deploy')
       console.log('Would deploy:')
       console.log(chalk.gray('  -'), `Agent: ${chalk.cyan(agent.name)}`)
       console.log(chalk.gray('  -'), `Version: ${chalk.cyan(agent.version)}`)
-      console.log(chalk.gray('  -'), `Environment: ${chalk.cyan(options.env)}`)
+      console.log(chalk.gray('  -'), `Environment: ${chalk.cyan(environment)}`)
       console.log(chalk.gray('  -'), `Agent ID: ${chalk.cyan(project.agentId)}`)
       console.log()
       return
@@ -106,7 +108,7 @@ export const deployCommand = new Command('deploy')
     const bundle = await result.outputs[0].text()
     spinner.succeed(`Bundle created (${formatBytes(bundle.length)})`)
 
-    spinner.start(`Deploying to ${options.env}`)
+    spinner.start(`Deploying to ${environment}`)
 
     try {
       const api = new ApiClient()
@@ -114,7 +116,7 @@ export const deployCommand = new Command('deploy')
       const { deployment } = await api.deployAgent(project.agentId, {
         bundle,
         version: agent.version,
-        environment: options.env as 'preview' | 'staging' | 'production',
+        environment: environment as 'development' | 'production',
         metadata: {
           modelProvider: agent.model?.provider || 'anthropic',
           modelName: agent.model?.name || 'claude-sonnet-4-20250514',
@@ -123,7 +125,7 @@ export const deployCommand = new Command('deploy')
         }
       })
 
-      spinner.succeed(`Deployed to ${options.env}`)
+      spinner.succeed(`Deployed to ${environment}`)
 
       console.log()
       console.log(chalk.green('Success!'), 'Agent deployed')
