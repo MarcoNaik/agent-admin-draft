@@ -12,83 +12,82 @@ export const clerkAuth = createMiddleware<{
   const authHeader = c.req.header('Authorization')
 
   if (!authHeader?.startsWith('Bearer ')) {
+    console.error('[ClerkAuth] Missing Authorization header')
     throw new AuthenticationError('Missing or invalid authorization header')
   }
 
   const token = authHeader.slice(7)
 
-  try {
-    const authorizedParties = [
-      'https://struere.dev',
-      'https://app.struere.dev',
-      'http://localhost:3000',
-      'http://localhost:3001'
-    ]
-    if (c.env.CLERK_AUTHORIZED_PARTY) {
-      authorizedParties.push(c.env.CLERK_AUTHORIZED_PARTY)
-    }
+  if (!token || token.length < 10) {
+    console.error('[ClerkAuth] Token is empty or too short')
+    throw new AuthenticationError('Invalid token format')
+  }
 
+  try {
     const payload = await verifyToken(token, {
       secretKey: c.env.CLERK_SECRET_KEY,
-      authorizedParties
+      clockSkewInMs: 60000
     })
 
     const clerkUserId = payload.sub
-    let internalUserId = payload.metadata?.internalUserId as string
-    let orgId = payload.org_id || payload.metadata?.organizationId as string
-    const email = payload.email as string || ''
+    if (!clerkUserId) {
+      console.error('[ClerkAuth] Token payload missing sub claim')
+      throw new AuthenticationError('Invalid token: missing user ID')
+    }
 
     const db = createDb(c.env.DB)
 
-    if (!orgId || !internalUserId) {
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.clerkId, clerkUserId))
-        .limit(1)
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkId, clerkUserId))
+      .limit(1)
 
-      if (existingUser) {
-        internalUserId = existingUser.id
-        orgId = existingUser.organizationId
-      } else {
-        const clerkUserInfo = await fetchClerkUser(clerkUserId, c.env.CLERK_SECRET_KEY)
-        const userEmail = clerkUserInfo?.email || email || `${clerkUserId}@unknown.local`
-        const userName = clerkUserInfo?.name || userEmail.split('@')[0] || 'User'
+    let internalUserId: string
+    let orgId: string
 
-        const now = new Date()
-        const newOrgId = generateId('org')
-        const newUserId = generateId('usr')
+    if (existingUser) {
+      internalUserId = existingUser.id
+      orgId = existingUser.organizationId
+    } else {
+      const clerkUserInfo = await fetchClerkUser(clerkUserId, c.env.CLERK_SECRET_KEY)
+      const userEmail = clerkUserInfo?.email || payload.email as string || `${clerkUserId}@unknown.local`
+      const userName = clerkUserInfo?.name || userEmail.split('@')[0] || 'User'
 
-        await db.insert(organizations).values({
-          id: newOrgId,
-          name: `${userName}'s Organization`,
-          slug: generateSlug(userName),
-          plan: 'free',
-          createdAt: now,
-          updatedAt: now
-        })
+      const now = new Date()
+      const newOrgId = generateId('org')
+      const newUserId = generateId('usr')
 
-        await db.insert(users).values({
-          id: newUserId,
-          clerkId: clerkUserId,
-          email: userEmail,
-          name: userName,
-          organizationId: newOrgId,
-          role: 'owner',
-          createdAt: now,
-          updatedAt: now
-        })
+      await db.insert(organizations).values({
+        id: newOrgId,
+        name: `${userName}'s Organization`,
+        slug: generateSlug(userName),
+        plan: 'free',
+        createdAt: now,
+        updatedAt: now
+      })
 
-        internalUserId = newUserId
-        orgId = newOrgId
-      }
+      await db.insert(users).values({
+        id: newUserId,
+        clerkId: clerkUserId,
+        email: userEmail,
+        name: userName,
+        organizationId: newOrgId,
+        role: 'owner',
+        createdAt: now,
+        updatedAt: now
+      })
+
+      internalUserId = newUserId
+      orgId = newOrgId
+      console.log('[ClerkAuth] Created new user:', { userId: newUserId, orgId: newOrgId, email: userEmail })
     }
 
     c.set('auth', {
       clerkUserId,
-      userId: internalUserId || clerkUserId,
+      userId: internalUserId,
       organizationId: orgId,
-      email
+      email: existingUser?.email || payload.email as string || ''
     })
 
     await next()
@@ -96,8 +95,19 @@ export const clerkAuth = createMiddleware<{
     if (error instanceof AuthenticationError) {
       throw error
     }
-    console.error('Clerk token verification failed:', error)
-    throw new AuthenticationError('Invalid or expired token')
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[ClerkAuth] Token verification failed:', errorMessage)
+
+    if (errorMessage.includes('token has expired') || errorMessage.includes('exp')) {
+      throw new AuthenticationError('Token expired. Please sign in again.')
+    }
+
+    if (errorMessage.includes('signature')) {
+      throw new AuthenticationError('Invalid token signature')
+    }
+
+    throw new AuthenticationError('Authentication failed: ' + errorMessage)
   }
 })
 
@@ -111,7 +121,7 @@ async function fetchClerkUser(userId: string, secretKey: string): Promise<{ emai
     })
 
     if (!response.ok) {
-      console.error('Failed to fetch Clerk user:', response.status)
+      console.error('[ClerkAuth] Failed to fetch user from Clerk API:', response.status)
       return null
     }
 
@@ -126,7 +136,7 @@ async function fetchClerkUser(userId: string, secretKey: string): Promise<{ emai
 
     return { email, name }
   } catch (err) {
-    console.error('Error fetching Clerk user:', err)
+    console.error('[ClerkAuth] Error fetching Clerk user:', err)
     return null
   }
 }
@@ -139,17 +149,3 @@ function generateSlug(name: string): string {
     .slice(0, 50)
   return `${baseSlug}-${Date.now().toString(36)}`
 }
-
-export const clerkWebhook = createMiddleware<{
-  Bindings: Env
-}>(async (c, next) => {
-  const svixId = c.req.header('svix-id')
-  const svixTimestamp = c.req.header('svix-timestamp')
-  const svixSignature = c.req.header('svix-signature')
-
-  if (!svixId || !svixTimestamp || !svixSignature) {
-    throw new AuthenticationError('Missing webhook signature headers')
-  }
-
-  await next()
-})

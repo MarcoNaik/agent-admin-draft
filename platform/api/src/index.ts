@@ -8,18 +8,25 @@ import { agentRoutes } from './routes/agents'
 import { apiKeyRoutes } from './routes/api-keys'
 import { deploymentRoutes } from './routes/deployments'
 import { usageRoutes } from './routes/usage'
+import { debugRoutes } from './routes/debug'
 import type { Env } from './types'
 
 const app = new Hono<{ Bindings: Env }>()
 
 app.use('*', logger())
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'https://struere.dev', 'https://*.struere.dev'],
+  origin: (origin) => {
+    if (!origin) return 'http://localhost:3000'
+    if (origin.includes('localhost')) return origin
+    if (origin.includes('struere.dev')) return origin
+    return 'http://localhost:3000'
+  },
   credentials: true
 }))
 
 app.get('/health', (c) => c.json({ status: 'ok', version: '0.1.0' }))
 
+app.route('/v1/debug', debugRoutes)
 app.route('/v1/auth', authRoutes)
 app.route('/v1/auth/clerk', authClerkRoutes)
 app.route('/v1/agents', agentRoutes)

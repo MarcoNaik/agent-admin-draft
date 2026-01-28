@@ -11,6 +11,7 @@ export interface Env {
   CLERK_PUBLISHABLE_KEY: string
   CLERK_WEBHOOK_SECRET: string
   CLERK_AUTHORIZED_PARTY?: string
+  NEXT_PUBLIC_APP_URL?: string
 }
 
 export type Database = DrizzleD1Database<typeof schema>

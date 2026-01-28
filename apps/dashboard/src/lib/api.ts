@@ -21,6 +21,7 @@ async function fetchApi<T>(path: string, options: ApiOptions = {}): Promise<T> {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store",
   })
 
   const data = await response.json()
@@ -73,6 +74,41 @@ export interface UsageSummary {
   }
 }
 
+export interface Deployment {
+  id: string
+  agentId: string
+  versionId: string
+  environment: "preview" | "staging" | "production"
+  url: string
+  status: string
+  createdAt: string
+}
+
+export interface DeployKey {
+  id: string
+  name: string
+  keyPrefix: string
+  environment: "preview" | "production"
+  createdAt: string
+}
+
+export interface EnvironmentVariable {
+  id: string
+  key: string
+  value: string
+  environment: "preview" | "production"
+  createdAt: string
+}
+
+export interface AgentLog {
+  id: string
+  agentId: string
+  level: "info" | "warn" | "error" | "debug"
+  message: string
+  metadata: Record<string, unknown>
+  timestamp: string
+}
+
 export const api = {
   agents: {
     list: (token: string) =>
@@ -113,5 +149,51 @@ export const api = {
         user: { id: string; email: string; name: string; organizationId: string; role: string }
         organization: { id: string; name: string; slug: string; plan: string }
       }>("/v1/auth/clerk/me", { token }),
+  },
+
+  deployments: {
+    list: (token: string, agentId: string) =>
+      fetchApi<{ deployments: Deployment[] }>(`/v1/agents/${agentId}/deployments`, { token }),
+  },
+
+  deployKeys: {
+    list: (token: string, agentId: string) =>
+      fetchApi<{ deployKeys: DeployKey[] }>(`/v1/agents/${agentId}/deploy-keys`, { token }),
+
+    create: (token: string, agentId: string, data: { name: string; environment: "preview" | "production" }) =>
+      fetchApi<{ deployKey: DeployKey & { key: string } }>(`/v1/agents/${agentId}/deploy-keys`, {
+        method: "POST",
+        body: data,
+        token,
+      }),
+
+    delete: (token: string, agentId: string, keyId: string) =>
+      fetchApi<{ success: boolean }>(`/v1/agents/${agentId}/deploy-keys/${keyId}`, { method: "DELETE", token }),
+  },
+
+  envVars: {
+    list: (token: string, agentId: string) =>
+      fetchApi<{ envVars: EnvironmentVariable[] }>(`/v1/agents/${agentId}/env-vars`, { token }),
+
+    set: (token: string, agentId: string, data: { key: string; value: string; environment: "preview" | "production" }) =>
+      fetchApi<{ envVar: EnvironmentVariable }>(`/v1/agents/${agentId}/env-vars`, {
+        method: "POST",
+        body: data,
+        token,
+      }),
+
+    delete: (token: string, agentId: string, key: string, environment: "preview" | "production") =>
+      fetchApi<{ success: boolean }>(`/v1/agents/${agentId}/env-vars/${key}?environment=${environment}`, {
+        method: "DELETE",
+        token,
+      }),
+  },
+
+  logs: {
+    list: (token: string, agentId: string, options?: { level?: string; limit?: number }) =>
+      fetchApi<{ logs: AgentLog[] }>(
+        `/v1/agents/${agentId}/logs${options ? `?${new URLSearchParams(options as Record<string, string>)}` : ""}`,
+        { token }
+      ),
   },
 }
