@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm'
 import { createDb, executions, agents } from '../db'
-import { jwtAuth } from '../middleware/auth'
+import { clerkAuth } from '../middleware/clerk'
 import type { Env, AuthContext } from '../types'
 
 export const usageRoutes = new Hono<{
@@ -9,7 +9,7 @@ export const usageRoutes = new Hono<{
   Variables: { auth: AuthContext }
 }>()
 
-usageRoutes.use('*', jwtAuth)
+usageRoutes.use('*', clerkAuth)
 
 usageRoutes.get('/', async (c) => {
   const auth = c.get('auth')
