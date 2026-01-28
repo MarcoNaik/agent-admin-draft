@@ -12,7 +12,7 @@ import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { whoamiCommand } from './commands/whoami'
 
-const CURRENT_VERSION = '0.2.7'
+const CURRENT_VERSION = '0.2.8'
 
 async function checkForUpdates() {
   try {
