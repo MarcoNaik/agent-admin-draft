@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server"
 import { api } from "@/lib/api"
+import { getAuthToken } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 
 export default async function SettingsPage() {
-  const { getToken } = await auth()
-  const token = await getToken()
+  const token = await getAuthToken()
 
   let user: Awaited<ReturnType<typeof api.user.me>> | null = null
   let error: string | null = null
