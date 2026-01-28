@@ -134,7 +134,7 @@ export default function StatusPage() {
                     </span>
                   </div>
                   <p className="text-sm text-content-secondary mb-2">{test.message}</p>
-                  {test.data && (
+                  {test.data !== undefined && test.data !== null && (
                     <pre className="text-xs bg-background-primary rounded p-2 overflow-x-auto">
                       {JSON.stringify(test.data, null, 2)}
                     </pre>
