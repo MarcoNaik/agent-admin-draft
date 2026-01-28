@@ -186,11 +186,8 @@ export class DevSessionDO implements DurableObject {
     session.configHash = data.configHash
 
     const sessionId = `${session.organizationId}:${data.agentSlug}`
-    const isProduction = (this.env.ENVIRONMENT as string) === 'production'
 
-    session.previewUrl = isProduction
-      ? `https://${data.agentSlug}-dev.struere.dev`
-      : `https://${data.agentSlug}.dev.struere.dev`
+    session.previewUrl = `https://${data.agentSlug}-dev.struere.dev`
 
     await stateKv.put(`dev:${sessionId}`, JSON.stringify({
       organizationId: session.organizationId,
