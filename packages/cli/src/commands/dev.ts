@@ -8,6 +8,7 @@ import { loadAgent } from '../utils/agent'
 import { loadCredentials, getApiKey } from '../utils/credentials'
 import { ApiClient, ApiError, getSyncUrl } from '../utils/api'
 import { hasProject, loadProject, saveProject } from '../utils/project'
+import { scaffoldAgentFiles, hasAgentFiles } from '../utils/scaffold'
 import { performLogin } from './login'
 
 export const devCommand = new Command('dev')
@@ -315,6 +316,16 @@ async function interactiveSetup(cwd: string): Promise<{
 
   saveProject(cwd, projectData)
   console.log(chalk.green('✓'), 'Created struere.json')
+
+  if (!hasAgentFiles(cwd)) {
+    const scaffoldResult = scaffoldAgentFiles(cwd, selectedAgent.slug)
+    for (const file of scaffoldResult.createdFiles) {
+      console.log(chalk.green('✓'), `Created ${file}`)
+    }
+    console.log()
+    console.log(chalk.yellow('Run'), chalk.cyan('bun install'), chalk.yellow('to install dependencies'))
+  }
+
   console.log()
 
   return projectData
