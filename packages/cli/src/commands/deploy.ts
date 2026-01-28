@@ -10,12 +10,10 @@ import { ApiClient, ApiError } from '../utils/api'
 import { hasProject, loadProject } from '../utils/project'
 
 export const deployCommand = new Command('deploy')
-  .description('Deploy agent to Struere Cloud')
-  .option('-e, --env <environment>', 'Target environment (development, production)', 'production')
-  .option('--dev', 'Deploy to development environment (shorthand for --env development)')
+  .description('Deploy agent to production')
   .option('--dry-run', 'Show what would be deployed without deploying')
   .action(async (options) => {
-    const environment = options.dev ? 'development' : options.env
+    const environment = 'production'
     const spinner = ora()
     const cwd = process.cwd()
 

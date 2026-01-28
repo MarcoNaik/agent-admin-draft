@@ -186,8 +186,51 @@ export class DevSessionDO implements DurableObject {
     session.configHash = data.configHash
 
     const sessionId = `${session.organizationId}:${data.agentSlug}`
-
     session.previewUrl = `https://${data.agentSlug}-dev.struere.dev`
+
+    const bundlesBucket = this.env.BUNDLES as R2Bucket
+    const versionId = generateId('ver')
+    const deploymentId = generateId('dpl')
+    const now = Math.floor(Date.now() / 1000)
+    const bundleKey = `${session.organizationId}/${data.agentSlug}/dev.js`
+
+    await bundlesBucket.put(bundleKey, data.bundle, {
+      httpMetadata: { contentType: 'application/javascript' }
+    })
+
+    await db.prepare(`
+      INSERT INTO agent_versions (id, agent_id, version, bundle_key, config_hash, metadata, status, deployed_at, deployed_by)
+      VALUES (?, ?, 'dev', ?, ?, '{"modelProvider":"anthropic","modelName":"claude-sonnet-4-20250514","toolCount":0,"bundleSize":0}', 'active', ?, ?)
+      ON CONFLICT(agent_id, version) DO UPDATE SET
+        bundle_key = excluded.bundle_key,
+        config_hash = excluded.config_hash,
+        deployed_at = excluded.deployed_at
+    `).bind(versionId, agent.id, bundleKey, data.configHash, now, session.userId || 'dev').run()
+
+    const existingVersion = await db.prepare(`
+      SELECT id FROM agent_versions WHERE agent_id = ? AND version = 'dev'
+    `).bind(agent.id).first<{ id: string }>()
+
+    const actualVersionId = existingVersion?.id || versionId
+
+    const existingDeployment = await db.prepare(`
+      SELECT id FROM deployments WHERE agent_id = ? AND environment = 'development' AND status = 'active'
+    `).bind(agent.id).first<{ id: string }>()
+
+    if (existingDeployment) {
+      await db.prepare(`
+        UPDATE deployments SET version_id = ?, created_at = ? WHERE id = ?
+      `).bind(actualVersionId, now, existingDeployment.id).run()
+    } else {
+      await db.prepare(`
+        INSERT INTO deployments (id, agent_id, version_id, environment, url, status, created_at)
+        VALUES (?, ?, ?, 'development', ?, 'active', ?)
+      `).bind(deploymentId, agent.id, actualVersionId, session.previewUrl, now).run()
+    }
+
+    await db.prepare(`
+      UPDATE agents SET development_version_id = ?, updated_at = ? WHERE id = ?
+    `).bind(actualVersionId, now, agent.id).run()
 
     await stateKv.put(`dev:${sessionId}`, JSON.stringify({
       organizationId: session.organizationId,
@@ -204,7 +247,7 @@ export class DevSessionDO implements DurableObject {
     this.send(ws, {
       type: 'log',
       level: 'info',
-      message: `Agent synced successfully`,
+      message: `Agent synced to development`,
       timestamp: new Date().toISOString()
     })
   }

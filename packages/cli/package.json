@@ -1,6 +1,6 @@
 {
   "name": "@struere/cli",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "CLI tool for developing, testing, and deploying AI agents",
   "keywords": [
     "ai",
