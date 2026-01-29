@@ -123,6 +123,49 @@ export interface AgentLog {
   timestamp: string
 }
 
+export interface AgentConfig {
+  name?: string
+  version?: string
+  description?: string
+  systemPrompt?: string
+  model?: {
+    provider?: string
+    name?: string
+    temperature?: number
+    maxTokens?: number
+  }
+  tools?: Array<{
+    name: string
+    description?: string
+    parameters?: Record<string, unknown>
+  }>
+  state?: {
+    storage?: string
+    ttl?: number
+    prefix?: string
+  }
+}
+
+export interface AgentConfigResponse {
+  config: AgentConfig | null
+  error?: string
+  version?: {
+    id: string
+    version: string
+    bundleKey: string
+    bundleSize: number
+    configHash: string
+    metadata: {
+      modelProvider: string
+      modelName: string
+      toolCount: number
+      bundleSize: number
+    }
+    deployedAt: string
+    deployedBy: string
+  }
+}
+
 export const api = {
   agents: {
     list: (token: string) =>
@@ -209,5 +252,10 @@ export const api = {
         `/v1/agents/${agentId}/logs${options ? `?${new URLSearchParams(options as Record<string, string>)}` : ""}`,
         { token }
       ),
+  },
+
+  config: {
+    get: (token: string, agentId: string, environment: Environment = "development") =>
+      fetchApi<AgentConfigResponse>(`/v1/agents/${agentId}/config?environment=${environment}`, { token }),
   },
 }
