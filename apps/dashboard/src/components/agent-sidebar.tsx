@@ -10,6 +10,7 @@ import {
   ScrollText,
   Clock,
   Settings,
+  Cpu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -25,6 +26,7 @@ interface AgentSidebarProps {
 
 const navItems = [
   { icon: Activity, label: "Health", href: "" },
+  { icon: Cpu, label: "Config", href: "/config" },
   { icon: Database, label: "Data", href: "/data" },
   { icon: Code, label: "Functions", href: "/functions" },
   { icon: FileText, label: "Files", href: "/files" },
