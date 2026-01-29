@@ -1,5 +1,4 @@
-import type { DrizzleD1Database } from 'drizzle-orm/d1'
-import type * as schema from './db/schema'
+export type { Database, AuthContext } from '@struere/platform-shared'
 
 export interface Env {
   DB: D1Database
@@ -12,15 +11,6 @@ export interface Env {
   CLERK_WEBHOOK_SECRET: string
   CLERK_AUTHORIZED_PARTY?: string
   NEXT_PUBLIC_APP_URL?: string
-}
-
-export type Database = DrizzleD1Database<typeof schema>
-
-export interface AuthContext {
-  clerkUserId?: string
-  userId: string
-  organizationId: string
-  email: string
 }
 
 export interface ApiKeyContext {
