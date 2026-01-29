@@ -35,9 +35,9 @@ interface ExtractedConfig {
   }
 }
 
-configRoutes.get('/agents/:agentId/config', async (c) => {
+configRoutes.get('/', async (c) => {
   const auth = c.get('auth')
-  const agentId = c.req.param('agentId')
+  const agentId = c.req.param('agentId') as string
   const environment = c.req.query('environment') || 'development'
   const db = createDb(c.env.DB)
 
