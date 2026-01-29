@@ -149,8 +149,12 @@ This command will:
 | `/agents/new` | Create new agent |
 | `/agents/[id]` | Agent health & performance dashboard |
 | `/agents/[id]/config` | View deployed agent configuration (model, tools, system prompt) |
-| `/agents/[id]/settings` | Deploy keys, env vars, agent config |
+| `/agents/[id]/data` | Agent data/state viewer |
+| `/agents/[id]/functions` | Agent functions/tools viewer |
+| `/agents/[id]/files` | Agent files viewer |
 | `/agents/[id]/logs` | Execution logs with level filtering |
+| `/agents/[id]/history` | Conversation history |
+| `/agents/[id]/settings` | Deploy keys, env vars, agent config |
 | `/api-keys` | API key management |
 | `/usage` | Usage statistics dashboard |
 
@@ -335,6 +339,7 @@ Agent execution layer with subdomain-based routing
 JWT_SECRET=...
 CLERK_SECRET_KEY=...
 CLERK_PUBLISHABLE_KEY=...
+ANTHROPIC_API_KEY=...  # Platform LLM API key (Cloudflare secret)
 ```
 
 ### Cloudflare Bindings
@@ -342,6 +347,7 @@ CLERK_PUBLISHABLE_KEY=...
 - BUNDLES: R2 bucket
 - STATE, CONVERSATIONS: KV namespaces
 - DEV_SESSIONS: Durable Object namespace
+- ANTHROPIC_API_KEY: Secret for LLM API calls
 
 ## Shared Platform (platform/shared)
 
