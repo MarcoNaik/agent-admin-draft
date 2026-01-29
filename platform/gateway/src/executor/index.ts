@@ -184,7 +184,7 @@ interface LLMOptions {
 }
 
 async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
-  const { model, systemPrompt, messages, tools } = options
+  const { model, systemPrompt, messages, tools, env } = options
 
   const provider = model?.provider || 'anthropic'
   const modelName = model?.name || 'claude-sonnet-4-20250514'
@@ -193,7 +193,7 @@ async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': model?.apiKey || '',
+      'x-api-key': model?.apiKey || env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
@@ -254,7 +254,7 @@ async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
 async function streamLLM(
   options: LLMOptions & { onChunk: (chunk: StreamChunk) => Promise<void> }
 ): Promise<void> {
-  const { model, systemPrompt, messages, tools, onChunk } = options
+  const { model, systemPrompt, messages, tools, env, onChunk } = options
 
   const modelName = model?.name || 'claude-sonnet-4-20250514'
 
@@ -262,7 +262,7 @@ async function streamLLM(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': model?.apiKey || '',
+      'x-api-key': model?.apiKey || env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
