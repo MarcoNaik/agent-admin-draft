@@ -10,15 +10,21 @@ interface EntityTimelineProps {
   events: EntityEvent[]
 }
 
-function formatTimestamp(timestamp: string): string {
-  const date = new Date(timestamp)
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(date)
+function formatTimestamp(timestamp: string | null | undefined): string {
+  if (!timestamp) return "-"
+  try {
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) return "-"
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(date)
+  } catch {
+    return "-"
+  }
 }
 
 function getEventTypeColor(eventType: string): string {

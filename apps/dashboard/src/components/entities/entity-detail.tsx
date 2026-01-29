@@ -10,13 +10,13 @@ interface EntityDetailProps {
 }
 
 function formatFieldValue(value: unknown, field?: EntityTypeField): React.ReactNode {
-  if (value === null || value === undefined) return <span className="text-muted-foreground">-</span>
+  if (value === null || value === undefined || value === "") return <span className="text-muted-foreground">-</span>
 
   if (field) {
     switch (field.type) {
       case "date":
       case "datetime":
-        return formatDate(String(value))
+        return formatDate(typeof value === "string" || value instanceof Date ? value : String(value))
       case "currency":
         return typeof value === "number"
           ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value)

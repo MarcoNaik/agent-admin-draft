@@ -12,13 +12,13 @@ interface EntityTableProps {
 }
 
 function formatFieldValue(value: unknown, field?: EntityTypeField): string {
-  if (value === null || value === undefined) return "-"
+  if (value === null || value === undefined || value === "") return "-"
 
   if (field) {
     switch (field.type) {
       case "date":
       case "datetime":
-        return formatDate(String(value))
+        return formatDate(typeof value === "string" || value instanceof Date ? value : String(value))
       case "currency":
         return typeof value === "number"
           ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value)
