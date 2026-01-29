@@ -5,6 +5,7 @@ import { PlatformError, createAgentRoutes, createApiKeyRoutes, createUsageRoutes
 import { authRoutes } from './routes/auth'
 import { authClerkRoutes } from './routes/auth-clerk'
 import { deploymentRoutes } from './routes/deployments'
+import { configRoutes } from './routes/config'
 import { debugRoutes } from './routes/debug'
 import { statusRoutes } from './routes/status'
 import { clerkAuth } from './middleware/clerk'
@@ -134,7 +135,8 @@ app.route('/v1/auth', authRoutes)
 app.route('/v1/auth/clerk', authClerkRoutes)
 app.route('/v1/agents', agentRoutes)
 app.route('/v1/api-keys', apiKeyRoutes)
-app.route('/v1/deployments', deploymentRoutes)
+app.route('/v1', deploymentRoutes)
+app.route('/v1', configRoutes)
 app.route('/v1/usage', usageRoutes)
 
 app.onError((err, c) => {
