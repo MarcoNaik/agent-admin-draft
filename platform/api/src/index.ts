@@ -133,10 +133,10 @@ app.get('/v1/status', async (c) => {
 app.route('/v1/debug', debugRoutes)
 app.route('/v1/auth', authRoutes)
 app.route('/v1/auth/clerk', authClerkRoutes)
+app.route('/v1/agents/:agentId/config', configRoutes)
 app.route('/v1/agents', agentRoutes)
 app.route('/v1/api-keys', apiKeyRoutes)
 app.route('/v1', deploymentRoutes)
-app.route('/v1', configRoutes)
 app.route('/v1/usage', usageRoutes)
 
 app.onError((err, c) => {
