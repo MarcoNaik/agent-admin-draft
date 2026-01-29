@@ -1,6 +1,6 @@
 "use client"
 
-import { Entity, EntityType, EntityTypeField } from "@/lib/api"
+import { Entity, EntityType, EntityTypeField, getSchemaFields } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 
@@ -89,9 +89,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
 }
 
 export function EntityDetail({ entityType, entity }: EntityDetailProps) {
+  const schemaFields = getSchemaFields(entityType.schema)
   const displayFields =
     entityType.displayConfig?.detailFields ||
-    entityType.schema.fields.map((f) => f.name)
+    schemaFields.map((f) => f.name)
 
   return (
     <div className="space-y-6">
@@ -104,7 +105,7 @@ export function EntityDetail({ entityType, entity }: EntityDetailProps) {
 
       <div className="grid gap-4 md:grid-cols-2">
         {displayFields.map((fieldName) => {
-          const field = entityType.schema.fields.find((f) => f.name === fieldName)
+          const field = schemaFields.find((f) => f.name === fieldName)
           const value = entity.data[fieldName]
 
           return (

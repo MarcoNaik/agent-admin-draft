@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Database, Layers, ChevronRight } from "lucide-react"
-import { api, EntityType } from "@/lib/api"
+import { api, EntityType, getSchemaFields } from "@/lib/api"
 import { getAuthToken } from "@/lib/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -67,7 +67,7 @@ export default async function EntityTypesPage() {
                     </div>
                   </div>
                   <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>{entityType.schema.fields.length} fields</span>
+                    <span>{getSchemaFields(entityType.schema).length} fields</span>
                     {entityType.entityCount !== undefined && (
                       <span>{entityType.entityCount} entities</span>
                     )}

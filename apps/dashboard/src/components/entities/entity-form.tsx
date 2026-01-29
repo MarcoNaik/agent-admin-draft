@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Entity, EntityType, EntityTypeField } from "@/lib/api"
+import { Entity, EntityType, EntityTypeField, getSchemaFields } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -155,6 +155,7 @@ function FieldInput({
 }
 
 export function EntityForm({ entityType, entity, onSubmit, onCancel }: EntityFormProps) {
+  const schemaFields = getSchemaFields(entityType.schema)
   const [formData, setFormData] = useState<Record<string, unknown>>(
     entity?.data || {}
   )
@@ -175,7 +176,7 @@ export function EntityForm({ entityType, entity, onSubmit, onCancel }: EntityFor
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    for (const field of entityType.schema.fields) {
+    for (const field of schemaFields) {
       if (field.required) {
         const value = formData[field.name]
         if (value === null || value === undefined || value === "") {
@@ -204,7 +205,7 @@ export function EntityForm({ entityType, entity, onSubmit, onCancel }: EntityFor
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
-        {entityType.schema.fields.map((field) => (
+        {schemaFields.map((field) => (
           <div key={field.name} className="space-y-2">
             <Label htmlFor={field.name}>
               {formatFieldName(field.name)}

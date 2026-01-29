@@ -12,6 +12,7 @@ export const clerkAuth = createMiddleware<{
   Bindings: Env
   Variables: { auth: AuthContext }
 }>(async (c, next) => {
+  console.log('[ClerkAuth] Starting auth for:', c.req.method, c.req.path)
   const authHeader = c.req.header('Authorization')
 
   if (!authHeader?.startsWith('Bearer ')) {
@@ -34,10 +35,12 @@ export const clerkAuth = createMiddleware<{
   }
 
   try {
+    console.log('[ClerkAuth] Verifying Clerk JWT...')
     const { payload } = await jwtVerify(token, JWKS, {
       issuer: 'https://clerk.struere.dev',
       clockTolerance: 60
     })
+    console.log('[ClerkAuth] JWT verified, sub:', payload.sub)
 
     const clerkUserId = payload.sub as string
     if (!clerkUserId) {
@@ -101,9 +104,13 @@ export const clerkAuth = createMiddleware<{
       email: existingUser?.email || payloadEmail || ''
     })
 
+    console.log('[ClerkAuth] Auth set, calling next() for:', c.req.path)
     await next()
+    console.log('[ClerkAuth] next() completed for:', c.req.path)
   } catch (error) {
+    console.error('[ClerkAuth] Caught error:', error)
     if (error instanceof AuthenticationError) {
+      console.error('[ClerkAuth] Re-throwing AuthenticationError')
       throw error
     }
 

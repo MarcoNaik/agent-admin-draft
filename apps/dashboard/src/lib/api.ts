@@ -175,7 +175,35 @@ export interface EntityTypeField {
 }
 
 export interface EntityTypeSchema {
-  fields: EntityTypeField[]
+  fields?: EntityTypeField[]
+  type?: string
+  properties?: Record<string, { type?: string; format?: string; enum?: string[]; description?: string; minLength?: number; maxLength?: number; minimum?: number; maximum?: number }>
+  required?: string[]
+}
+
+export function getSchemaFields(schema: EntityTypeSchema): EntityTypeField[] {
+  if (schema.fields) return schema.fields
+  if (schema.properties) {
+    const required = schema.required || []
+    return Object.entries(schema.properties).map(([name, prop]) => {
+      let fieldType: EntityTypeField["type"] = "text"
+      if (prop.type === "number" || prop.type === "integer") fieldType = "number"
+      else if (prop.format === "email") fieldType = "email"
+      else if (prop.format === "date") fieldType = "date"
+      else if (prop.format === "date-time") fieldType = "datetime"
+      else if (prop.type === "boolean") fieldType = "boolean"
+      else if (prop.enum) fieldType = "enum"
+      else if (prop.type === "object" || prop.type === "array") fieldType = "json"
+      return {
+        name,
+        type: fieldType,
+        required: required.includes(name),
+        enum: prop.enum,
+        description: prop.description
+      }
+    })
+  }
+  return []
 }
 
 export interface IndexMapping {

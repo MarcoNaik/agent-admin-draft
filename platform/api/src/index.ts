@@ -37,7 +37,27 @@ app.use('*', cors({
   credentials: true
 }))
 
-app.get('/health', (c) => c.json({ status: 'ok', version: '0.1.0' }))
+app.get('/health', (c) => c.json({ status: 'ok', version: '0.1.0', build: '20260129-v2' }))
+
+app.post('/v1/packs/install-test', clerkAuth, async (c) => {
+  const auth = c.get('auth')
+  return c.json({ success: true, auth: { userId: auth.userId, orgId: auth.organizationId } })
+})
+
+app.post('/v1/test-no-auth', async (c) => {
+  return c.json({ success: true, message: 'no auth required' })
+})
+
+app.post('/v1/test-simple-auth', async (c, next) => {
+  const auth = c.req.header('Authorization')
+  if (!auth) {
+    return c.json({ error: 'no auth' }, 401)
+  }
+  console.log('[SimpleAuth] Has auth header, calling next')
+  await next()
+}, async (c) => {
+  return c.json({ success: true, message: 'simple auth passed' })
+})
 
 app.get('/v1/status', async (c) => {
   const { createRemoteJWKSet, jwtVerify, decodeJwt, decodeProtectedHeader } = await import('jose')
@@ -157,13 +177,24 @@ app.route('/v1/jobs', jobRoutes)
 app.route('/v1/packs', packRoutes)
 
 app.onError((err, c) => {
-  if (err instanceof PlatformError) {
-    return c.json(err.toJSON(), err.statusCode as 400)
+  console.error('[ErrorHandler] Error for:', c.req.method, c.req.path, 'Error:', err)
+  console.error('[ErrorHandler] Error name:', err?.name, 'instanceof PlatformError:', err instanceof PlatformError)
+
+  const isPlatformError = err instanceof PlatformError ||
+    (err && typeof err === 'object' && 'code' in err && 'statusCode' in err && 'toJSON' in err)
+
+  if (isPlatformError) {
+    const platformErr = err as PlatformError
+    console.error('[ErrorHandler] PlatformError:', platformErr.code, platformErr.statusCode)
+    return c.json(platformErr.toJSON(), platformErr.statusCode as 400)
   }
-  console.error('Unhandled error:', err)
+  console.error('[ErrorHandler] Unhandled error:', err)
   return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500)
 })
 
-app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404))
+app.notFound((c) => {
+  console.error('[NotFound] Route not found:', c.req.method, c.req.path)
+  return c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404)
+})
 
 export default app

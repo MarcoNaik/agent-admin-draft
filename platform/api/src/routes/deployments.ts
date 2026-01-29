@@ -16,9 +16,7 @@ export const deploymentRoutes = new Hono<{
   Variables: { auth: AuthContext }
 }>()
 
-deploymentRoutes.use('*', clerkAuth)
-
-deploymentRoutes.post('/agents/:agentId/deploy', async (c) => {
+deploymentRoutes.post('/agents/:agentId/deploy', clerkAuth, async (c) => {
   const auth = c.get('auth')
   const agentId = c.req.param('agentId')
   const body = await c.req.json()
@@ -106,7 +104,7 @@ deploymentRoutes.post('/agents/:agentId/deploy', async (c) => {
   }, 201)
 })
 
-deploymentRoutes.get('/agents/:agentId/deployments', async (c) => {
+deploymentRoutes.get('/agents/:agentId/deployments', clerkAuth, async (c) => {
   const auth = c.get('auth')
   const agentId = c.req.param('agentId')
   const db = createDb(c.env.DB)
@@ -134,7 +132,7 @@ deploymentRoutes.get('/agents/:agentId/deployments', async (c) => {
   return c.json({ deployments: result })
 })
 
-deploymentRoutes.post('/agents/:agentId/rollback', async (c) => {
+deploymentRoutes.post('/agents/:agentId/rollback', clerkAuth, async (c) => {
   const auth = c.get('auth')
   const agentId = c.req.param('agentId')
   const { versionId, environment = 'production' } = await c.req.json() as { versionId: string; environment?: 'development' | 'production' }

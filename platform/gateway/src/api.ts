@@ -1,16 +1,25 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { PlatformError, createAgentRoutes, createApiKeyRoutes, createUsageRoutes } from '@struere/platform-shared'
+import { PlatformError, createAgentRoutes, createApiKeyRoutes, createUsageRoutes, createEntityTypeRoutes, createEntityRoutes, createEventRoutes, createRoleRoutes, createPolicyRoutes, createUserRoleRoutes, createJobRoutes } from '@struere/platform-shared'
 import { authRoutes } from './routes/auth'
 import { authClerkRoutes } from './routes/auth-clerk'
 import { deploymentRoutes } from './routes/deployments'
 import { debugRoutes } from './routes/debug'
+import { createPackRoutes } from './routes/packs'
 import { clerkAuth } from './middleware/clerk'
 import type { Env } from './types'
 
 const agentRoutes = createAgentRoutes<Env>(clerkAuth)
 const apiKeyRoutes = createApiKeyRoutes<Env>(clerkAuth)
 const usageRoutes = createUsageRoutes<Env>(clerkAuth)
+const entityTypeRoutes = createEntityTypeRoutes<Env>(clerkAuth)
+const entityRoutes = createEntityRoutes<Env>(clerkAuth)
+const eventRoutes = createEventRoutes<Env>(clerkAuth)
+const roleRoutes = createRoleRoutes<Env>(clerkAuth)
+const policyRoutes = createPolicyRoutes<Env>(clerkAuth)
+const userRoleRoutes = createUserRoleRoutes<Env>(clerkAuth)
+const jobRoutes = createJobRoutes<Env>(clerkAuth)
+const packRoutes = createPackRoutes<Env>(clerkAuth)
 
 const api = new Hono<{ Bindings: Env }>()
 
@@ -128,6 +137,14 @@ api.route('/v1/agents', agentRoutes)
 api.route('/v1/api-keys', apiKeyRoutes)
 api.route('/v1', deploymentRoutes)
 api.route('/v1/usage', usageRoutes)
+api.route('/v1/entity-types', entityTypeRoutes)
+api.route('/v1/entities', entityRoutes)
+api.route('/v1/events', eventRoutes)
+api.route('/v1/roles', roleRoutes)
+api.route('/v1/policies', policyRoutes)
+api.route('/v1/user-roles', userRoleRoutes)
+api.route('/v1/jobs', jobRoutes)
+api.route('/v1/packs', packRoutes)
 api.route('/debug', debugRoutes)
 
 api.onError((err, c) => {

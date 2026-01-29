@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Entity, EntityType, EntityTypeField } from "@/lib/api"
+import { Entity, EntityType, EntityTypeField, getSchemaFields } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 
@@ -72,9 +72,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
 export function EntityTable({ entityType, entities, onRowClick }: EntityTableProps) {
   const router = useRouter()
 
+  const schemaFields = getSchemaFields(entityType.schema)
   const columns =
     entityType.displayConfig?.listFields ||
-    entityType.schema.fields.slice(0, 5).map((f) => f.name)
+    schemaFields.slice(0, 5).map((f) => f.name)
 
   const handleRowClick = (entity: Entity) => {
     if (onRowClick) {
@@ -114,7 +115,7 @@ export function EntityTable({ entityType, entities, onRowClick }: EntityTablePro
               className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
             >
               {columns.map((col) => {
-                const field = entityType.schema.fields.find((f) => f.name === col)
+                const field = schemaFields.find((f) => f.name === col)
                 return (
                   <td key={col} className="px-4 py-3 text-sm">
                     {formatFieldValue(entity.data[col], field)}
