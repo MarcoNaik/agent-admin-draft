@@ -10,6 +10,14 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./db": {
+      "import": "./dist/db/index.js",
+      "types": "./dist/db/index.d.ts"
+    },
+    "./routes": {
+      "import": "./dist/routes/index.js",
+      "types": "./dist/routes/index.d.ts"
     }
   },
   "scripts": {
@@ -19,9 +27,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "drizzle-orm": "^0.29.0",
+    "hono": "^4.0.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240222.0",
     "typescript": "^5.3.0"
   }
 }
