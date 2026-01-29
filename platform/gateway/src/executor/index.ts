@@ -1,5 +1,14 @@
 import type { StreamChunk } from '@struere/platform-shared'
 import type { Env, AgentContext } from '../types'
+import {
+  builtinTools,
+  createToolContext,
+  createDefaultActorContext,
+  wrapAllToolsWithPermissions,
+  mergeTools,
+  formatToolForLLM
+} from '../tools'
+import type { ToolContext, ConversationActor, AgentBundleTool } from '../tools'
 
 interface ExecuteOptions {
   bundleCode: string
@@ -9,6 +18,7 @@ interface ExecuteOptions {
   metadata?: Record<string, unknown>
   env: Env
   agent: AgentContext
+  conversationActor?: ConversationActor
 }
 
 interface ExecuteResult {
@@ -49,18 +59,85 @@ interface AgentConfig {
     parameters?: Record<string, unknown>
     handler: (args: Record<string, unknown>) => Promise<unknown>
   }>
+  enableBuiltinTools?: boolean | string[]
+}
+
+interface MergedTool {
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+  handler: (args: Record<string, unknown>) => Promise<unknown>
+}
+
+async function prepareTools(
+  agentConfig: AgentConfig,
+  env: Env,
+  agent: AgentContext,
+  conversationActor: ConversationActor
+): Promise<{ tools: MergedTool[]; toolContexts: Map<string, ToolContext> }> {
+  const tools: MergedTool[] = []
+  const toolContexts = new Map<string, ToolContext>()
+
+  const enableBuiltin = agentConfig.enableBuiltinTools
+  const shouldEnableBuiltin = enableBuiltin === true ||
+    (Array.isArray(enableBuiltin) && enableBuiltin.length > 0) ||
+    enableBuiltin === undefined
+
+  if (shouldEnableBuiltin) {
+    const builtinToolNames = Array.isArray(enableBuiltin)
+      ? enableBuiltin
+      : Object.keys(builtinTools)
+
+    for (const toolName of builtinToolNames) {
+      const tool = builtinTools[toolName]
+      if (!tool) continue
+
+      const ctx = await createToolContext(env, agent, toolName, conversationActor)
+      toolContexts.set(toolName, ctx)
+
+      const wrappedTools = wrapAllToolsWithPermissions({ [toolName]: tool }, ctx)
+      const wrappedTool = wrappedTools[toolName]
+
+      tools.push({
+        name: wrappedTool.name,
+        description: wrappedTool.description,
+        parameters: wrappedTool.parameters,
+        handler: wrappedTool.handler
+      })
+    }
+  }
+
+  const bundleTools: AgentBundleTool[] = agentConfig.tools || []
+  for (const bundleTool of bundleTools) {
+    const existingIdx = tools.findIndex(t => t.name === bundleTool.name)
+    if (existingIdx === -1) {
+      tools.push({
+        name: bundleTool.name,
+        description: bundleTool.description || '',
+        parameters: bundleTool.parameters || {},
+        handler: bundleTool.handler
+      })
+    }
+  }
+
+  return { tools, toolContexts }
 }
 
 export async function executeAgent(options: ExecuteOptions): Promise<ExecuteResult> {
-  const { bundleCode, message, conversationId, userId, metadata, env, agent } = options
+  const { bundleCode, message, conversationId, userId, metadata, env, agent, conversationActor } = options
 
   const conversationKey = `conv:${agent.organizationId}:${conversationId}`
   const existingConv = await env.CONVERSATIONS.get(conversationKey, 'json') as {
-    messages: Array<{ role: string; content: string }>
+    messages: Array<{ role: string; content: string | Array<{ type: string; tool_use_id?: string; content?: string; text?: string }> }>
+    actor?: ConversationActor
   } | null
 
   const messages = existingConv?.messages || []
   messages.push({ role: 'user', content: message })
+
+  const actor: ConversationActor = conversationActor ||
+    existingConv?.actor ||
+    createDefaultActorContext(agent.organizationId, userId)
 
   try {
     const agentModule = await importAgentModule(bundleCode)
@@ -70,17 +147,20 @@ export async function executeAgent(options: ExecuteOptions): Promise<ExecuteResu
       ? await agentConfig.systemPrompt()
       : agentConfig.systemPrompt || ''
 
-    const result = await callLLM({
+    const { tools } = await prepareTools(agentConfig, env, agent, actor)
+
+    const result = await callLLMWithToolLoop({
       model: agentConfig.model,
       systemPrompt,
       messages,
-      tools: agentConfig.tools,
-      env
+      tools,
+      env,
+      maxIterations: 10
     })
 
     messages.push({ role: 'assistant', content: result.content })
 
-    await env.CONVERSATIONS.put(conversationKey, JSON.stringify({ messages }), {
+    await env.CONVERSATIONS.put(conversationKey, JSON.stringify({ messages, actor }), {
       expirationTtl: 60 * 60 * 24
     })
 
@@ -98,15 +178,20 @@ export async function executeAgent(options: ExecuteOptions): Promise<ExecuteResu
 }
 
 export async function streamAgent(options: StreamOptions): Promise<void> {
-  const { bundleCode, message, conversationId, env, agent, onChunk, onComplete, onError } = options
+  const { bundleCode, message, conversationId, userId, env, agent, conversationActor, onChunk, onComplete, onError } = options
 
   const conversationKey = `conv:${agent.organizationId}:${conversationId}`
   const existingConv = await env.CONVERSATIONS.get(conversationKey, 'json') as {
     messages: Array<{ role: string; content: string }>
+    actor?: ConversationActor
   } | null
 
   const messages = existingConv?.messages || []
   messages.push({ role: 'user', content: message })
+
+  const actor: ConversationActor = conversationActor ||
+    existingConv?.actor ||
+    createDefaultActorContext(agent.organizationId, userId)
 
   try {
     const agentModule = await importAgentModule(bundleCode)
@@ -116,6 +201,8 @@ export async function streamAgent(options: StreamOptions): Promise<void> {
       ? await agentConfig.systemPrompt()
       : agentConfig.systemPrompt || ''
 
+    const { tools } = await prepareTools(agentConfig, env, agent, actor)
+
     let fullContent = ''
     const toolCalls: ExecuteResult['toolCalls'] = []
     let usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
@@ -124,7 +211,7 @@ export async function streamAgent(options: StreamOptions): Promise<void> {
       model: agentConfig.model,
       systemPrompt,
       messages,
-      tools: agentConfig.tools,
+      tools,
       env,
       onChunk: async (chunk) => {
         if (chunk.type === 'text-delta' && chunk.content) {
@@ -138,7 +225,7 @@ export async function streamAgent(options: StreamOptions): Promise<void> {
 
     messages.push({ role: 'assistant', content: fullContent })
 
-    await env.CONVERSATIONS.put(conversationKey, JSON.stringify({ messages }), {
+    await env.CONVERSATIONS.put(conversationKey, JSON.stringify({ messages, actor }), {
       expirationTtl: 60 * 60 * 24
     })
 
@@ -154,14 +241,8 @@ export async function streamAgent(options: StreamOptions): Promise<void> {
 }
 
 async function importAgentModule(bundleCode: string): Promise<{ default?: AgentConfig } & AgentConfig> {
-  const blob = new Blob([bundleCode], { type: 'application/javascript' })
-  const url = URL.createObjectURL(blob)
-
-  try {
-    return await import(url)
-  } finally {
-    URL.revokeObjectURL(url)
-  }
+  const dataUrl = `data:application/javascript;base64,${btoa(bundleCode)}`
+  return await import(dataUrl)
 }
 
 interface LLMOptions {
@@ -173,21 +254,103 @@ interface LLMOptions {
     maxTokens?: number
   }
   systemPrompt: string
-  messages: Array<{ role: string; content: string }>
-  tools?: Array<{
-    name: string
-    description?: string
-    parameters?: Record<string, unknown>
-    handler: (args: Record<string, unknown>) => Promise<unknown>
-  }>
+  messages: Array<{ role: string; content: string | Array<{ type: string; tool_use_id?: string; content?: string; text?: string }> }>
+  tools: MergedTool[]
   env: Env
 }
 
-async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
+interface LLMOptionsWithLoop extends LLMOptions {
+  maxIterations: number
+}
+
+async function callLLMWithToolLoop(options: LLMOptionsWithLoop): Promise<ExecuteResult> {
+  const { model, systemPrompt, messages, tools, env, maxIterations } = options
+
+  const allToolCalls: ExecuteResult['toolCalls'] = []
+  let totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+  let iteration = 0
+  let finalContent = ''
+
+  const workingMessages = [...messages]
+
+  while (iteration < maxIterations) {
+    iteration++
+
+    const result = await callLLMSingle({
+      model,
+      systemPrompt,
+      messages: workingMessages,
+      tools,
+      env
+    })
+
+    totalUsage.inputTokens += result.usage.inputTokens
+    totalUsage.outputTokens += result.usage.outputTokens
+    totalUsage.totalTokens += result.usage.totalTokens
+
+    finalContent = result.content
+    allToolCalls.push(...result.toolCalls)
+
+    if (result.finishReason !== 'tool_calls' || result.toolCalls.length === 0) {
+      break
+    }
+
+    const assistantContent: Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown>; text?: string }> = []
+
+    if (result.content) {
+      assistantContent.push({ type: 'text', text: result.content })
+    }
+
+    for (const tc of result.toolCalls) {
+      assistantContent.push({
+        type: 'tool_use',
+        id: tc.id,
+        name: tc.name,
+        input: tc.arguments
+      })
+    }
+
+    workingMessages.push({ role: 'assistant', content: assistantContent })
+
+    const toolResults: Array<{ type: string; tool_use_id: string; content: string }> = []
+    for (const tc of result.toolCalls) {
+      toolResults.push({
+        type: 'tool_result',
+        tool_use_id: tc.id,
+        content: typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result)
+      })
+    }
+
+    workingMessages.push({ role: 'user', content: toolResults })
+  }
+
+  return {
+    content: finalContent,
+    toolCalls: allToolCalls,
+    usage: totalUsage,
+    finishReason: iteration >= maxIterations ? 'max_tokens' : 'stop'
+  }
+}
+
+async function callLLMSingle(options: LLMOptions): Promise<ExecuteResult> {
   const { model, systemPrompt, messages, tools, env } = options
 
-  const provider = model?.provider || 'anthropic'
   const modelName = model?.name || 'claude-sonnet-4-20250514'
+
+  const formattedMessages = messages.map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }))
+
+  const formattedTools = tools.map(t => ({
+    name: t.name,
+    description: t.description,
+    input_schema: {
+      type: 'object' as const,
+      properties: t.parameters,
+      ...extractRequired(t.parameters)
+    }
+  }))
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -201,15 +364,8 @@ async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
       max_tokens: model?.maxTokens || 4096,
       temperature: model?.temperature || 0.7,
       system: systemPrompt,
-      messages: messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content
-      })),
-      tools: tools?.map(t => ({
-        name: t.name,
-        description: t.description,
-        input_schema: t.parameters || { type: 'object', properties: {} }
-      }))
+      messages: formattedMessages,
+      tools: formattedTools.length > 0 ? formattedTools : undefined
     })
   })
 
@@ -226,15 +382,24 @@ async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
     if (block.type === 'text' && block.text) {
       content += block.text
     } else if (block.type === 'tool_use' && block.id && block.name) {
-      const tool = tools?.find(t => t.name === block.name)
+      const tool = tools.find(t => t.name === block.name)
       if (tool) {
-        const result = await tool.handler(block.input || {})
-        toolCalls.push({
-          id: block.id,
-          name: block.name,
-          arguments: block.input || {},
-          result
-        })
+        try {
+          const result = await tool.handler(block.input || {})
+          toolCalls.push({
+            id: block.id,
+            name: block.name,
+            arguments: block.input || {},
+            result
+          })
+        } catch (error) {
+          toolCalls.push({
+            id: block.id,
+            name: block.name,
+            arguments: block.input || {},
+            result: { error: error instanceof Error ? error.message : 'Tool execution failed' }
+          })
+        }
       }
     }
   }
@@ -247,8 +412,18 @@ async function callLLM(options: LLMOptions): Promise<ExecuteResult> {
       outputTokens: data.usage.output_tokens,
       totalTokens: data.usage.input_tokens + data.usage.output_tokens
     },
-    finishReason: data.stop_reason === 'end_turn' ? 'stop' : 'tool_calls'
+    finishReason: data.stop_reason === 'tool_use' ? 'tool_calls' : 'stop'
   }
+}
+
+function extractRequired(parameters: Record<string, unknown>): { required?: string[] } {
+  const required: string[] = []
+  for (const [key, value] of Object.entries(parameters)) {
+    if (value && typeof value === 'object' && 'required' in value && value.required === true) {
+      required.push(key)
+    }
+  }
+  return required.length > 0 ? { required } : {}
 }
 
 async function streamLLM(
@@ -257,6 +432,21 @@ async function streamLLM(
   const { model, systemPrompt, messages, tools, env, onChunk } = options
 
   const modelName = model?.name || 'claude-sonnet-4-20250514'
+
+  const formattedMessages = messages.map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }))
+
+  const formattedTools = tools.map(t => ({
+    name: t.name,
+    description: t.description,
+    input_schema: {
+      type: 'object' as const,
+      properties: t.parameters,
+      ...extractRequired(t.parameters)
+    }
+  }))
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -271,15 +461,8 @@ async function streamLLM(
       temperature: model?.temperature || 0.7,
       stream: true,
       system: systemPrompt,
-      messages: messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content
-      })),
-      tools: tools?.map(t => ({
-        name: t.name,
-        description: t.description,
-        input_schema: t.parameters || { type: 'object', properties: {} }
-      }))
+      messages: formattedMessages,
+      tools: formattedTools.length > 0 ? formattedTools : undefined
     })
   })
 

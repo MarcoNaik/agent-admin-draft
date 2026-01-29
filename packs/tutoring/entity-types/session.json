@@ -1,0 +1,109 @@
+{
+  "$schema": "https://struere.dev/schemas/entity-type/v1.json",
+  "name": "Session",
+  "slug": "session",
+  "description": "A scheduled tutoring session between a teacher and student",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "subject": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "Subject being taught in this session"
+      },
+      "scheduledAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Scheduled start time of the session (ISO 8601)"
+      },
+      "durationMinutes": {
+        "type": "integer",
+        "minimum": 15,
+        "maximum": 480,
+        "default": 60,
+        "description": "Duration of the session in minutes"
+      },
+      "location": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "Location of the session (physical address or virtual meeting link)"
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 2000,
+        "description": "Pre-session notes or instructions"
+      },
+      "feedback": {
+        "type": "object",
+        "properties": {
+          "teacherNotes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Teacher's notes after the session"
+          },
+          "topicsCovered": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of topics covered during the session"
+          },
+          "homework": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Homework or assignments given"
+          },
+          "studentProgress": {
+            "type": "string",
+            "enum": ["needs_improvement", "satisfactory", "good", "excellent"],
+            "description": "Assessment of student's progress"
+          }
+        }
+      }
+    },
+    "required": ["subject", "scheduledAt", "durationMinutes"]
+  },
+  "statuses": {
+    "values": ["scheduled", "confirmed", "completed", "cancelled", "no_show"],
+    "default": "scheduled",
+    "transitions": {
+      "scheduled": ["confirmed", "cancelled"],
+      "confirmed": ["completed", "cancelled", "no_show"],
+      "completed": [],
+      "cancelled": [],
+      "no_show": []
+    }
+  },
+  "indexMapping": {
+    "idx_0": "subject",
+    "idx_date_0": "scheduledAt"
+  },
+  "searchFields": ["subject", "location", "notes"],
+  "displayConfig": {
+    "titleField": "subject",
+    "subtitleField": "scheduledAt",
+    "listFields": ["subject", "scheduledAt", "durationMinutes", "location"],
+    "detailSections": [
+      {
+        "title": "Session Details",
+        "fields": ["subject", "scheduledAt", "durationMinutes", "location"]
+      },
+      {
+        "title": "Notes",
+        "fields": ["notes"]
+      },
+      {
+        "title": "Feedback",
+        "fields": ["feedback"]
+      }
+    ]
+  },
+  "hooks": {
+    "afterCreate": ["schedule_reminder_job"],
+    "afterStatusChange": {
+      "confirmed": ["schedule_confirmation_notification"],
+      "completed": ["trigger_entitlement_decrement", "schedule_followup"],
+      "cancelled": ["trigger_refund_check", "cancel_scheduled_jobs"],
+      "no_show": ["trigger_no_show_notification"]
+    }
+  }
+}

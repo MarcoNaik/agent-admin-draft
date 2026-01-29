@@ -1,0 +1,89 @@
+{
+  "$schema": "https://struere.dev/schemas/entity-type/v1.json",
+  "name": "Payment",
+  "slug": "payment",
+  "description": "A payment transaction for tutoring services",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "amount": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Payment amount"
+      },
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$",
+        "default": "USD",
+        "description": "ISO 4217 currency code"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["credit_card", "debit_card", "bank_transfer", "cash", "check", "paypal", "venmo", "zelle", "other"],
+        "description": "Payment method used"
+      },
+      "paidAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the payment was completed (ISO 8601)"
+      },
+      "externalId": {
+        "type": "string",
+        "maxLength": 255,
+        "description": "External payment processor transaction ID (e.g., Stripe charge ID)"
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "Payment description or memo"
+      },
+      "metadata": {
+        "type": "object",
+        "description": "Additional payment processor metadata"
+      }
+    },
+    "required": ["amount", "currency", "method"]
+  },
+  "statuses": {
+    "values": ["pending", "completed", "failed", "refunded"],
+    "default": "pending",
+    "transitions": {
+      "pending": ["completed", "failed"],
+      "completed": ["refunded"],
+      "failed": ["pending"],
+      "refunded": []
+    }
+  },
+  "indexMapping": {
+    "idx_num_0": "amount",
+    "idx_date_0": "paidAt",
+    "idx_0": "externalId"
+  },
+  "searchFields": ["externalId", "description"],
+  "displayConfig": {
+    "titleField": "amount",
+    "subtitleField": "method",
+    "listFields": ["amount", "currency", "method", "paidAt", "externalId"],
+    "detailSections": [
+      {
+        "title": "Payment Details",
+        "fields": ["amount", "currency", "method", "paidAt"]
+      },
+      {
+        "title": "External Reference",
+        "fields": ["externalId", "metadata"]
+      },
+      {
+        "title": "Description",
+        "fields": ["description"]
+      }
+    ]
+  },
+  "hooks": {
+    "afterStatusChange": {
+      "completed": ["confirm_related_session", "send_receipt"],
+      "failed": ["notify_payment_failure"],
+      "refunded": ["cancel_related_session", "send_refund_confirmation"]
+    }
+  }
+}

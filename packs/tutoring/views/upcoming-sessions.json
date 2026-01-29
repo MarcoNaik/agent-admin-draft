@@ -1,0 +1,136 @@
+{
+  "$schema": "https://struere.dev/schemas/view/v1.json",
+  "packId": "tutoring",
+  "version": "1.0.0",
+  "id": "upcoming_sessions",
+  "name": "Upcoming Sessions",
+  "description": "Admin view of all scheduled and confirmed sessions",
+  "entityType": "session",
+  "access": {
+    "roles": ["admin"],
+    "requireAuthentication": true
+  },
+  "filters": {
+    "status": {
+      "operator": "in",
+      "value": ["scheduled", "confirmed"]
+    },
+    "scheduledAt": {
+      "operator": "gt",
+      "value": "$now"
+    }
+  },
+  "columns": [
+    {
+      "field": "subject",
+      "label": "Subject",
+      "sortable": true,
+      "width": "auto"
+    },
+    {
+      "field": "scheduledAt",
+      "label": "Scheduled For",
+      "sortable": true,
+      "format": "datetime",
+      "width": "180px"
+    },
+    {
+      "field": "durationMinutes",
+      "label": "Duration",
+      "sortable": true,
+      "format": "duration",
+      "width": "100px"
+    },
+    {
+      "field": "status",
+      "label": "Status",
+      "sortable": true,
+      "format": "status_badge",
+      "width": "120px"
+    }
+  ],
+  "relations": [
+    {
+      "relation": "scheduled_for",
+      "alias": "student",
+      "columns": [
+        {
+          "field": "firstName",
+          "label": "Student First Name"
+        },
+        {
+          "field": "lastName",
+          "label": "Student Last Name"
+        }
+      ],
+      "display": {
+        "format": "combined",
+        "template": "{firstName} {lastName}",
+        "label": "Student"
+      }
+    },
+    {
+      "relation": "taught_by",
+      "alias": "teacher",
+      "columns": [
+        {
+          "field": "firstName",
+          "label": "Teacher First Name"
+        },
+        {
+          "field": "lastName",
+          "label": "Teacher Last Name"
+        }
+      ],
+      "display": {
+        "format": "combined",
+        "template": "{firstName} {lastName}",
+        "label": "Teacher"
+      }
+    }
+  ],
+  "sorting": {
+    "default": {
+      "field": "scheduledAt",
+      "direction": "asc"
+    },
+    "allowed": ["scheduledAt", "subject", "status"]
+  },
+  "pagination": {
+    "defaultPageSize": 25,
+    "pageSizeOptions": [10, 25, 50, 100]
+  },
+  "actions": [
+    {
+      "id": "confirm_session",
+      "label": "Confirm",
+      "icon": "check",
+      "visibleWhen": {
+        "status": "scheduled"
+      },
+      "handler": {
+        "type": "status_change",
+        "newStatus": "confirmed"
+      }
+    },
+    {
+      "id": "cancel_session",
+      "label": "Cancel",
+      "icon": "x",
+      "visibleWhen": {
+        "status": ["scheduled", "confirmed"]
+      },
+      "handler": {
+        "type": "status_change",
+        "newStatus": "cancelled",
+        "requireConfirmation": true,
+        "confirmationMessage": "Are you sure you want to cancel this session?"
+      }
+    }
+  ],
+  "refreshInterval": 60000,
+  "export": {
+    "enabled": true,
+    "formats": ["csv", "json"]
+  }
+}

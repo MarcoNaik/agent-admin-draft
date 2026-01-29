@@ -38,7 +38,7 @@ export const apiKeyAuth = createMiddleware<{
   Variables: { apiKey: ApiKeyContext }
 }>(async (c, next) => {
   const authHeader = c.req.header('Authorization')
-  const key = parseApiKey(authHeader)
+  const key = parseApiKey(authHeader ?? null)
 
   if (!key) {
     throw new AuthenticationError('Missing or invalid API key')

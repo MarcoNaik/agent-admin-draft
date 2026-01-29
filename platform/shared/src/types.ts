@@ -167,3 +167,214 @@ export interface SyncResponse {
   timestamp?: string
   code?: string
 }
+
+export interface EntityTypeSchemaProperty {
+  type: string
+  format?: string
+  minLength?: number
+  maxLength?: number
+  minimum?: number
+  maximum?: number
+  pattern?: string
+  enum?: string[]
+  items?: { type: string }
+  default?: unknown
+  description?: string
+  properties?: Record<string, EntityTypeSchemaProperty>
+}
+
+export interface EntityTypeSchema {
+  type: 'object'
+  properties: Record<string, EntityTypeSchemaProperty>
+  required?: string[]
+}
+
+export interface IndexMapping {
+  idx_0?: string
+  idx_1?: string
+  idx_2?: string
+  idx_3?: string
+  idx_num_0?: string
+  idx_num_1?: string
+  idx_date_0?: string
+  idx_date_1?: string
+}
+
+export interface DisplayConfigSection {
+  title: string
+  fields: string[]
+}
+
+export interface DisplayConfig {
+  titleField: string | string[]
+  subtitleField?: string
+  listFields?: string[]
+  detailSections?: DisplayConfigSection[]
+}
+
+export interface EntityType {
+  id: string
+  organizationId: string
+  name: string
+  slug: string
+  schema: EntityTypeSchema
+  indexMapping: IndexMapping | null
+  searchFields: string[] | null
+  displayConfig: DisplayConfig | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Entity {
+  id: string
+  organizationId: string
+  entityTypeId: string
+  status: string
+  data: Record<string, unknown>
+  searchText: string | null
+  idx0: string | null
+  idx1: string | null
+  idx2: string | null
+  idx3: string | null
+  idxNum0: number | null
+  idxNum1: number | null
+  idxDate0: Date | null
+  idxDate1: Date | null
+  createdAt: Date
+  updatedAt: Date
+  deletedAt: Date | null
+}
+
+export interface EntityRelation {
+  id: string
+  organizationId: string
+  fromEntityId: string
+  toEntityId: string
+  relationType: string
+  metadata: Record<string, unknown> | null
+  createdAt: Date
+}
+
+export type ActorType = 'user' | 'agent' | 'system' | 'webhook'
+
+export interface Event {
+  id: string
+  organizationId: string
+  entityId: string | null
+  entityTypeSlug: string | null
+  eventType: string
+  schemaVersion: number
+  actorId: string | null
+  actorType: ActorType
+  payload: Record<string, unknown>
+  timestamp: Date
+}
+
+export interface IndexedFields {
+  idx0?: string | null
+  idx1?: string | null
+  idx2?: string | null
+  idx3?: string | null
+  idxNum0?: number | null
+  idxNum1?: number | null
+  idxDate0?: Date | null
+  idxDate1?: Date | null
+}
+
+export interface Role {
+  id: string
+  organizationId: string
+  name: string
+  description: string | null
+  isSystem: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Policy {
+  id: string
+  organizationId: string
+  roleId: string
+  resource: string
+  action: string
+  effect: 'allow' | 'deny'
+  priority: number
+  createdAt: Date
+}
+
+export interface ScopeRuleRecord {
+  id: string
+  policyId: string
+  type: 'field' | 'relation'
+  field: string | null
+  operator: string | null
+  value: string | null
+  relationPath: string | null
+  createdAt: Date
+}
+
+export interface FieldMaskRecord {
+  id: string
+  policyId: string
+  fieldPath: string
+  maskType: 'hide' | 'redact'
+  maskConfig: { pattern?: string; replacement?: string } | null
+  createdAt: Date
+}
+
+export interface UserRoleRecord {
+  id: string
+  userId: string
+  roleId: string
+  resourceType: string | null
+  resourceId: string | null
+  grantedBy: string | null
+  expiresAt: Date | null
+  createdAt: Date
+}
+
+export type JobStatus = 'pending' | 'claimed' | 'running' | 'completed' | 'failed' | 'dead'
+
+export interface Job {
+  id: string
+  organizationId: string
+  entityId: string | null
+  jobType: string
+  idempotencyKey: string | null
+  status: JobStatus
+  priority: number
+  payload: Record<string, unknown>
+  result: Record<string, unknown> | null
+  errorMessage: string | null
+  attempts: number
+  maxAttempts: number
+  claimedBy: string | null
+  claimedAt: Date | null
+  scheduledFor: Date
+  startedAt: Date | null
+  completedAt: Date | null
+  createdAt: Date
+}
+
+export interface JobStats {
+  pending: number
+  claimed: number
+  running: number
+  completed: number
+  failed: number
+  dead: number
+  total: number
+}
+
+export type ToolIdentityMode = 'inherit' | 'system' | 'configured'
+
+export interface ToolPermission {
+  id: string
+  agentId: string
+  toolName: string
+  identityMode: ToolIdentityMode
+  configuredRoleId: string | null
+  allowedActions: string[] | null
+  deniedFields: string[] | null
+  createdAt: Date
+}

@@ -1,0 +1,57 @@
+{
+  "name": "@struere/pack-tutoring",
+  "version": "1.0.0",
+  "description": "Tutoring business management pack for Struere platform",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "install:pack": "ts-node install.ts",
+    "build": "tsc --noEmit"
+  },
+  "keywords": [
+    "struere",
+    "pack",
+    "tutoring",
+    "education",
+    "scheduling"
+  ],
+  "dependencies": {
+    "@struere/core": "workspace:*",
+    "@struere/platform-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "struere": {
+    "type": "pack",
+    "id": "tutoring",
+    "entityTypes": [
+      "student",
+      "guardian",
+      "teacher",
+      "session",
+      "payment",
+      "entitlement"
+    ],
+    "roles": [
+      "admin",
+      "teacher",
+      "guardian"
+    ],
+    "views": [
+      "upcoming_sessions",
+      "my_sessions",
+      "pack_utilization"
+    ],
+    "jobs": [
+      "send_session_reminder",
+      "send_late_notice",
+      "decrement_entitlement",
+      "send_followup",
+      "check_entitlement_expiry",
+      "send_expiry_warning",
+      "send_low_sessions_warning"
+    ]
+  }
+}

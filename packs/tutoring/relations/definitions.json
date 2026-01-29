@@ -1,0 +1,146 @@
+{
+  "$schema": "https://struere.dev/schemas/relations/v1.json",
+  "packId": "tutoring",
+  "version": "1.0.0",
+  "relations": [
+    {
+      "type": "guardian_of",
+      "description": "Links a guardian to the students they are responsible for",
+      "fromEntityType": "guardian",
+      "toEntityType": "student",
+      "cardinality": "many_to_many",
+      "inverse": "has_guardian",
+      "metadata": {
+        "isPrimary": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this is the primary guardian"
+        },
+        "canPickup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this guardian can pick up the student"
+        },
+        "emergencyContact": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this guardian is an emergency contact"
+        }
+      },
+      "constraints": {
+        "minFromPerTo": 1,
+        "requireActive": true
+      }
+    },
+    {
+      "type": "teaches",
+      "description": "Links a teacher to the students they tutor",
+      "fromEntityType": "teacher",
+      "toEntityType": "student",
+      "cardinality": "many_to_many",
+      "inverse": "taught_by",
+      "metadata": {
+        "subjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subjects the teacher teaches to this student"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the teaching relationship started"
+        }
+      }
+    },
+    {
+      "type": "scheduled_for",
+      "description": "Links a session to the student receiving tutoring",
+      "fromEntityType": "session",
+      "toEntityType": "student",
+      "cardinality": "many_to_one",
+      "inverse": "sessions",
+      "required": true,
+      "cascadeDelete": false
+    },
+    {
+      "type": "taught_by",
+      "description": "Links a session to the teacher providing tutoring",
+      "fromEntityType": "session",
+      "toEntityType": "teacher",
+      "cardinality": "many_to_one",
+      "inverse": "teaching_sessions",
+      "required": true,
+      "cascadeDelete": false
+    },
+    {
+      "type": "payment_for",
+      "description": "Links a payment to the session it pays for",
+      "fromEntityType": "payment",
+      "toEntityType": "session",
+      "cardinality": "many_to_one",
+      "inverse": "payments",
+      "required": false,
+      "cascadeDelete": false
+    },
+    {
+      "type": "purchases",
+      "description": "Links a payment to the entitlement it purchased",
+      "fromEntityType": "payment",
+      "toEntityType": "entitlement",
+      "cardinality": "many_to_one",
+      "inverse": "purchase_payments",
+      "required": false,
+      "cascadeDelete": false
+    },
+    {
+      "type": "entitles",
+      "description": "Links an entitlement to the student who can use it",
+      "fromEntityType": "entitlement",
+      "toEntityType": "student",
+      "cardinality": "many_to_one",
+      "inverse": "entitlements",
+      "required": true,
+      "cascadeDelete": false
+    },
+    {
+      "type": "paid_by",
+      "description": "Links a payment to the guardian who made it",
+      "fromEntityType": "payment",
+      "toEntityType": "guardian",
+      "cardinality": "many_to_one",
+      "inverse": "payments",
+      "required": true,
+      "cascadeDelete": false
+    },
+    {
+      "type": "purchased_by",
+      "description": "Links an entitlement to the guardian who purchased it",
+      "fromEntityType": "entitlement",
+      "toEntityType": "guardian",
+      "cardinality": "many_to_one",
+      "inverse": "purchased_entitlements",
+      "required": true,
+      "cascadeDelete": false
+    }
+  ],
+  "indexes": [
+    {
+      "name": "guardian_student_lookup",
+      "relations": ["guardian_of"],
+      "description": "Fast lookup of guardian-student relationships"
+    },
+    {
+      "name": "session_participants",
+      "relations": ["scheduled_for", "taught_by"],
+      "description": "Fast lookup of session participants"
+    },
+    {
+      "name": "student_active_entitlements",
+      "relations": ["entitles"],
+      "filters": {
+        "status": ["active"]
+      },
+      "description": "Fast lookup of active entitlements for a student"
+    }
+  ]
+}

@@ -72,7 +72,7 @@ authClerkRoutes.post('/webhooks/clerk', async (c) => {
   switch (event.type) {
     case 'user.created': {
       const { id, email_addresses, first_name, last_name } = event.data
-      const email = email_addresses[0]?.email_address
+      const email = email_addresses?.[0]?.email_address
       const name = [first_name, last_name].filter(Boolean).join(' ') || email?.split('@')[0] || 'User'
 
       const now = new Date()
@@ -104,7 +104,7 @@ authClerkRoutes.post('/webhooks/clerk', async (c) => {
 
     case 'user.updated': {
       const { id, email_addresses, first_name, last_name } = event.data
-      const email = email_addresses[0]?.email_address
+      const email = email_addresses?.[0]?.email_address
       const name = [first_name, last_name].filter(Boolean).join(' ')
 
       const updates: Record<string, unknown> = { updatedAt: new Date() }
@@ -132,13 +132,14 @@ authClerkRoutes.post('/webhooks/clerk', async (c) => {
 
     case 'organization.created': {
       const { id, name, slug } = event.data
+      if (!name) break
       const now = new Date()
 
       await db.insert(organizations).values({
         id: generateId('org'),
         clerkId: id,
         name,
-        slug: slug || generateSlug(name),
+        slug: slug ?? generateSlug(name),
         plan: 'free',
         createdAt: now,
         updatedAt: now
@@ -160,6 +161,7 @@ authClerkRoutes.post('/webhooks/clerk', async (c) => {
 
     case 'organizationMembership.created': {
       const { organization, public_user_data, role } = event.data
+      if (!organization?.id || !public_user_data?.user_id) break
 
       const [org] = await db
         .select()

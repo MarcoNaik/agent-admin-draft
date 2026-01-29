@@ -95,7 +95,7 @@ authRoutes.post('/login', async (c) => {
     .where(eq(users.email, email))
     .limit(1)
 
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
     throw new AuthenticationError('Invalid email or password')
   }
 

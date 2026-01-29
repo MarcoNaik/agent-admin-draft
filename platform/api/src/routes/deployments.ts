@@ -137,7 +137,7 @@ deploymentRoutes.get('/agents/:agentId/deployments', async (c) => {
 deploymentRoutes.post('/agents/:agentId/rollback', async (c) => {
   const auth = c.get('auth')
   const agentId = c.req.param('agentId')
-  const { versionId } = await c.req.json()
+  const { versionId, environment = 'production' } = await c.req.json() as { versionId: string; environment?: 'development' | 'production' }
   const db = createDb(c.env.DB)
 
   const [agent] = await db
@@ -166,15 +166,25 @@ deploymentRoutes.post('/agents/:agentId/rollback', async (c) => {
     throw new NotFoundError('Version', versionId)
   }
 
-  await db
-    .update(agentVersions)
-    .set({ status: 'rolled_back' })
-    .where(eq(agentVersions.id, agent.currentVersionId!))
+  const currentVersionId = environment === 'development'
+    ? agent.developmentVersionId
+    : agent.productionVersionId
+
+  if (currentVersionId) {
+    await db
+      .update(agentVersions)
+      .set({ status: 'rolled_back' })
+      .where(eq(agentVersions.id, currentVersionId))
+  }
+
+  const versionUpdate = environment === 'development'
+    ? { developmentVersionId: versionId, updatedAt: new Date() }
+    : { productionVersionId: versionId, updatedAt: new Date() }
 
   await db
     .update(agents)
-    .set({ currentVersionId: versionId, updatedAt: new Date() })
+    .set(versionUpdate)
     .where(eq(agents.id, agentId))
 
-  return c.json({ success: true, currentVersionId: versionId })
+  return c.json({ success: true, versionId, environment })
 })

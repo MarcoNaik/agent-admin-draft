@@ -36,9 +36,27 @@ id = "ea3537e6763c499f96fa3ec4c595be2e"
 name = "DEV_SESSIONS"
 class_name = "DevSessionDO"
 
+[[durable_objects.bindings]]
+name = "JOB_SCHEDULER"
+class_name = "JobSchedulerDO"
+
+# Queues require paid plan - using DO alarms for job scheduling instead
+# [[queues.producers]]
+# queue = "struere-jobs"
+# binding = "JOBS_QUEUE"
+#
+# [[queues.consumers]]
+# queue = "struere-jobs"
+# max_batch_size = 10
+# max_retries = 3
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["DevSessionDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["JobSchedulerDO"]
 
 [env.staging]
 vars = { ENVIRONMENT = "staging" }

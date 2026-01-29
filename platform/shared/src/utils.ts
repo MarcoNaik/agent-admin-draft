@@ -103,3 +103,26 @@ export function formatBytes(bytes: number): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+const ULID_ENCODING = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+export function generateUlid(prefix: string = ''): string {
+  const timestamp = Date.now()
+  let encodedTime = ''
+  let t = timestamp
+  for (let i = 0; i < 10; i++) {
+    encodedTime = ULID_ENCODING[t % 32] + encodedTime
+    t = Math.floor(t / 32)
+  }
+
+  const randomArray = new Uint8Array(10)
+  crypto.getRandomValues(randomArray)
+  let randomPart = ''
+  for (let i = 0; i < 16; i++) {
+    const idx = i < 10 ? randomArray[i] % 32 : randomArray[i - 10] % 32
+    randomPart += ULID_ENCODING[idx]
+  }
+
+  const ulid = encodedTime + randomPart.slice(0, 16)
+  return prefix ? `${prefix}_${ulid}` : ulid
+}

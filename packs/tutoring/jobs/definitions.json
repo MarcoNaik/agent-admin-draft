@@ -1,0 +1,334 @@
+{
+  "$schema": "https://struere.dev/schemas/jobs/v1.json",
+  "packId": "tutoring",
+  "version": "1.0.0",
+  "jobs": [
+    {
+      "type": "send_session_reminder",
+      "description": "Send reminder notification before a scheduled session",
+      "trigger": {
+        "event": "session.confirmed",
+        "scheduling": {
+          "type": "relative",
+          "field": "scheduledAt",
+          "offset": "-24h"
+        }
+      },
+      "payload": {
+        "sessionId": "$entity.id",
+        "reminderType": "24h"
+      },
+      "idempotencyKey": "reminder:$entity.id:24h",
+      "handler": {
+        "type": "notification",
+        "config": {
+          "channels": ["email", "sms"],
+          "recipients": {
+            "roles": ["guardian"],
+            "via": "scheduled_for.has_guardian"
+          },
+          "template": "session_reminder",
+          "data": {
+            "sessionSubject": "$entity.subject",
+            "scheduledAt": "$entity.scheduledAt",
+            "teacherName": "$entity.taught_by.firstName $entity.taught_by.lastName",
+            "location": "$entity.location"
+          }
+        }
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoff": "exponential",
+        "initialDelay": "5m"
+      },
+      "timeout": "30s"
+    },
+    {
+      "type": "send_late_notice",
+      "description": "Send notification if session has not started after scheduled time",
+      "trigger": {
+        "type": "cron",
+        "schedule": "*/5 * * * *",
+        "filter": {
+          "entityType": "session",
+          "status": "confirmed",
+          "scheduledAt": {
+            "operator": "lt",
+            "value": "$now - 10m"
+          }
+        }
+      },
+      "payload": {
+        "sessionId": "$entity.id"
+      },
+      "idempotencyKey": "late_notice:$entity.id",
+      "handler": {
+        "type": "notification",
+        "config": {
+          "channels": ["email"],
+          "recipients": {
+            "roles": ["admin"]
+          },
+          "template": "session_late_notice",
+          "data": {
+            "sessionSubject": "$entity.subject",
+            "scheduledAt": "$entity.scheduledAt",
+            "studentName": "$entity.scheduled_for.firstName $entity.scheduled_for.lastName",
+            "teacherName": "$entity.taught_by.firstName $entity.taught_by.lastName"
+          }
+        }
+      },
+      "retryPolicy": {
+        "maxAttempts": 1
+      },
+      "timeout": "30s"
+    },
+    {
+      "type": "decrement_entitlement",
+      "description": "Decrement session count from entitlement when session completes",
+      "trigger": {
+        "event": "session.completed"
+      },
+      "payload": {
+        "sessionId": "$entity.id",
+        "studentId": "$entity.scheduled_for.id"
+      },
+      "idempotencyKey": "decrement:$entity.id",
+      "handler": {
+        "type": "custom",
+        "script": {
+          "steps": [
+            {
+              "action": "query",
+              "entityType": "entitlement",
+              "filters": {
+                "entitles": "$payload.studentId",
+                "status": "active",
+                "sessionsRemaining": { "operator": "gt", "value": 0 }
+              },
+              "orderBy": { "expiresAt": "asc" },
+              "limit": 1,
+              "output": "entitlement"
+            },
+            {
+              "action": "update",
+              "entityId": "$entitlement.id",
+              "data": {
+                "sessionsRemaining": "$entitlement.sessionsRemaining - 1"
+              },
+              "condition": "$entitlement != null"
+            },
+            {
+              "action": "emit_event",
+              "eventType": "entitlement.decremented",
+              "payload": {
+                "entitlementId": "$entitlement.id",
+                "remaining": "$entitlement.sessionsRemaining - 1",
+                "sessionId": "$payload.sessionId"
+              },
+              "condition": "$entitlement != null"
+            },
+            {
+              "action": "status_change",
+              "entityId": "$entitlement.id",
+              "newStatus": "exhausted",
+              "condition": "$entitlement != null && $entitlement.sessionsRemaining - 1 == 0"
+            }
+          ]
+        }
+      },
+      "retryPolicy": {
+        "maxAttempts": 5,
+        "backoff": "exponential",
+        "initialDelay": "1m"
+      },
+      "timeout": "60s"
+    },
+    {
+      "type": "send_followup",
+      "description": "Send follow-up notification to guardian after session completion",
+      "trigger": {
+        "event": "session.completed",
+        "scheduling": {
+          "type": "relative",
+          "field": "$event.timestamp",
+          "offset": "+2h"
+        }
+      },
+      "payload": {
+        "sessionId": "$entity.id"
+      },
+      "idempotencyKey": "followup:$entity.id",
+      "handler": {
+        "type": "notification",
+        "config": {
+          "channels": ["email"],
+          "recipients": {
+            "roles": ["guardian"],
+            "via": "scheduled_for.has_guardian"
+          },
+          "template": "session_followup",
+          "data": {
+            "sessionSubject": "$entity.subject",
+            "completedAt": "$event.timestamp",
+            "teacherName": "$entity.taught_by.firstName $entity.taught_by.lastName",
+            "feedback": "$entity.feedback",
+            "homework": "$entity.feedback.homework"
+          }
+        }
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoff": "exponential",
+        "initialDelay": "5m"
+      },
+      "timeout": "30s"
+    },
+    {
+      "type": "check_entitlement_expiry",
+      "description": "Check and expire entitlements that have passed their expiration date",
+      "trigger": {
+        "event": "entitlement.created",
+        "scheduling": {
+          "type": "absolute",
+          "field": "expiresAt"
+        }
+      },
+      "payload": {
+        "entitlementId": "$entity.id"
+      },
+      "idempotencyKey": "expiry_check:$entity.id",
+      "handler": {
+        "type": "custom",
+        "script": {
+          "steps": [
+            {
+              "action": "get",
+              "entityId": "$payload.entitlementId",
+              "output": "entitlement"
+            },
+            {
+              "action": "status_change",
+              "entityId": "$entitlement.id",
+              "newStatus": "expired",
+              "condition": "$entitlement.status == 'active'"
+            },
+            {
+              "action": "emit_event",
+              "eventType": "entitlement.expired",
+              "payload": {
+                "entitlementId": "$entitlement.id",
+                "studentId": "$entitlement.entitles.id",
+                "sessionsRemaining": "$entitlement.sessionsRemaining"
+              },
+              "condition": "$entitlement.status == 'active'"
+            }
+          ]
+        }
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoff": "linear",
+        "initialDelay": "1m"
+      },
+      "timeout": "30s"
+    },
+    {
+      "type": "send_expiry_warning",
+      "description": "Send warning notification when entitlement is about to expire",
+      "trigger": {
+        "event": "entitlement.created",
+        "scheduling": {
+          "type": "relative",
+          "field": "expiresAt",
+          "offset": "-7d"
+        }
+      },
+      "payload": {
+        "entitlementId": "$entity.id"
+      },
+      "idempotencyKey": "expiry_warning:$entity.id:7d",
+      "handler": {
+        "type": "notification",
+        "config": {
+          "channels": ["email"],
+          "recipients": {
+            "roles": ["guardian"],
+            "via": "purchased_by"
+          },
+          "template": "entitlement_expiring",
+          "data": {
+            "packageType": "$entity.type",
+            "sessionsRemaining": "$entity.sessionsRemaining",
+            "expiresAt": "$entity.expiresAt",
+            "studentName": "$entity.entitles.firstName $entity.entitles.lastName"
+          }
+        },
+        "condition": "$entity.status == 'active'"
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoff": "exponential",
+        "initialDelay": "5m"
+      },
+      "timeout": "30s"
+    },
+    {
+      "type": "send_low_sessions_warning",
+      "description": "Send warning when entitlement has low remaining sessions",
+      "trigger": {
+        "event": "entitlement.decremented",
+        "condition": "$payload.remaining <= 2 && $payload.remaining > 0"
+      },
+      "payload": {
+        "entitlementId": "$event.payload.entitlementId",
+        "remaining": "$event.payload.remaining"
+      },
+      "idempotencyKey": "low_sessions:$event.payload.entitlementId:$event.payload.remaining",
+      "handler": {
+        "type": "notification",
+        "config": {
+          "channels": ["email"],
+          "recipients": {
+            "roles": ["guardian"],
+            "via": "purchased_by"
+          },
+          "template": "low_sessions_warning",
+          "data": {
+            "packageType": "$entity.type",
+            "sessionsRemaining": "$payload.remaining",
+            "studentName": "$entity.entitles.firstName $entity.entitles.lastName"
+          }
+        }
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoff": "exponential",
+        "initialDelay": "5m"
+      },
+      "timeout": "30s"
+    }
+  ],
+  "templates": {
+    "session_reminder": {
+      "subject": "Reminder: Tutoring Session Tomorrow",
+      "body": "Hi,\n\nThis is a reminder that {{studentName}} has a {{sessionSubject}} session scheduled for {{scheduledAt | formatDate}}.\n\nTeacher: {{teacherName}}\nLocation: {{location}}\n\nPlease ensure the student is prepared and on time.\n\nBest regards,\nYour Tutoring Team"
+    },
+    "session_late_notice": {
+      "subject": "[Alert] Session May Be Late: {{sessionSubject}}",
+      "body": "A session appears to have not started on time.\n\nSession: {{sessionSubject}}\nScheduled: {{scheduledAt | formatDate}}\nStudent: {{studentName}}\nTeacher: {{teacherName}}\n\nPlease investigate."
+    },
+    "session_followup": {
+      "subject": "Session Complete: {{sessionSubject}}",
+      "body": "Hi,\n\n{{studentName}}'s {{sessionSubject}} session with {{teacherName}} has been completed.\n\n{{#if feedback}}\nTeacher Notes:\n{{feedback.teacherNotes}}\n\n{{#if feedback.homework}}\nHomework Assigned:\n{{feedback.homework}}\n{{/if}}\n{{/if}}\n\nBest regards,\nYour Tutoring Team"
+    },
+    "entitlement_expiring": {
+      "subject": "Your Tutoring Package Expires Soon",
+      "body": "Hi,\n\nThis is a reminder that {{studentName}}'s {{packageType}} package will expire on {{expiresAt | formatDate}}.\n\nSessions remaining: {{sessionsRemaining}}\n\nPlease use your remaining sessions or consider renewing your package.\n\nBest regards,\nYour Tutoring Team"
+    },
+    "low_sessions_warning": {
+      "subject": "Low Sessions Remaining",
+      "body": "Hi,\n\n{{studentName}}'s {{packageType}} package is running low on sessions.\n\nSessions remaining: {{sessionsRemaining}}\n\nConsider purchasing a new package to continue tutoring without interruption.\n\nBest regards,\nYour Tutoring Team"
+    }
+  }
+}

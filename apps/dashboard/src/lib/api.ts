@@ -166,6 +166,131 @@ export interface AgentConfigResponse {
   }
 }
 
+export interface EntityTypeField {
+  name: string
+  type: "text" | "number" | "email" | "phone" | "date" | "datetime" | "currency" | "boolean" | "enum" | "json"
+  required?: boolean
+  enum?: string[]
+  description?: string
+}
+
+export interface EntityTypeSchema {
+  fields: EntityTypeField[]
+}
+
+export interface IndexMapping {
+  [slot: string]: string
+}
+
+export interface DisplayConfig {
+  listFields?: string[]
+  detailFields?: string[]
+  searchFields?: string[]
+}
+
+export interface EntityType {
+  id: string
+  organizationId: string
+  name: string
+  slug: string
+  schema: EntityTypeSchema
+  indexMapping: IndexMapping | null
+  displayConfig: DisplayConfig | null
+  createdAt: string
+  updatedAt: string
+  entityCount?: number
+}
+
+export interface Entity {
+  id: string
+  organizationId: string
+  entityTypeId: string
+  entityTypeSlug?: string
+  status: string
+  data: Record<string, unknown>
+  searchText: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+}
+
+export interface EntityRelation {
+  id: string
+  organizationId: string
+  fromEntityId: string
+  toEntityId: string
+  relationType: string
+  metadata: Record<string, unknown> | null
+  createdAt: string
+  fromEntity?: Entity
+  toEntity?: Entity
+}
+
+export interface EntityEvent {
+  id: string
+  organizationId: string
+  entityId: string | null
+  entityTypeSlug: string | null
+  eventType: string
+  schemaVersion: number
+  actorId: string | null
+  actorType: "user" | "agent" | "system" | "webhook"
+  payload: Record<string, unknown>
+  timestamp: string
+}
+
+export interface Job {
+  id: string
+  organizationId: string
+  entityId: string | null
+  jobType: string
+  idempotencyKey: string | null
+  status: "pending" | "claimed" | "running" | "completed" | "failed" | "dead"
+  priority: number
+  payload: Record<string, unknown>
+  result: Record<string, unknown> | null
+  errorMessage: string | null
+  attempts: number
+  maxAttempts: number
+  claimedBy: string | null
+  claimedAt: string | null
+  scheduledFor: string
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string
+}
+
+export interface JobStats {
+  pending: number
+  running: number
+  completed: number
+  failed: number
+  dead: number
+}
+
+export interface EntityQueryParams {
+  status?: string
+  searchText?: string
+  limit?: number
+  offset?: number
+  sortBy?: string
+  sortOrder?: "asc" | "desc"
+}
+
+export interface JobQueryParams {
+  status?: string
+  jobType?: string
+  limit?: number
+  offset?: number
+}
+
+function buildQueryString(params?: Record<string, unknown>): string {
+  if (!params) return ""
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null)
+  if (entries.length === 0) return ""
+  return entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join("&")
+}
+
 export const api = {
   agents: {
     list: (token: string) =>
@@ -257,5 +382,57 @@ export const api = {
   config: {
     get: (token: string, agentId: string, environment: Environment = "development") =>
       fetchApi<AgentConfigResponse>(`/v1/agents/${agentId}/config?environment=${environment}`, { token }),
+  },
+
+  entityTypes: {
+    list: (token: string) =>
+      fetchApi<{ entityTypes: EntityType[] }>("/v1/entity-types", { token }),
+
+    get: (token: string, slug: string) =>
+      fetchApi<{ entityType: EntityType }>(`/v1/entity-types/${slug}`, { token }),
+  },
+
+  entities: {
+    list: (token: string, type: string, params?: EntityQueryParams) => {
+      const qs = buildQueryString({ type, ...params })
+      return fetchApi<{ entities: Entity[]; total: number }>(`/v1/entities${qs ? `?${qs}` : ""}`, { token })
+    },
+
+    get: (token: string, id: string) =>
+      fetchApi<{ entity: Entity; entityType: EntityType }>(`/v1/entities/${id}`, { token }),
+
+    create: (token: string, data: { type: string; data: Record<string, unknown>; status?: string }) =>
+      fetchApi<{ entity: Entity }>("/v1/entities", { method: "POST", body: data, token }),
+
+    update: (token: string, id: string, data: { data?: Record<string, unknown>; status?: string }) =>
+      fetchApi<{ entity: Entity }>(`/v1/entities/${id}`, { method: "PATCH", body: data, token }),
+
+    delete: (token: string, id: string) =>
+      fetchApi<{ success: boolean }>(`/v1/entities/${id}`, { method: "DELETE", token }),
+
+    relations: (token: string, id: string) =>
+      fetchApi<{ outgoing: EntityRelation[]; incoming: EntityRelation[] }>(`/v1/entities/${id}/relations`, { token }),
+
+    events: (token: string, id: string) =>
+      fetchApi<{ events: EntityEvent[] }>(`/v1/entities/${id}/events`, { token }),
+  },
+
+  jobs: {
+    list: (token: string, params?: JobQueryParams) => {
+      const qs = buildQueryString(params as Record<string, unknown> | undefined)
+      return fetchApi<{ jobs: Job[]; total: number }>(`/v1/jobs${qs ? `?${qs}` : ""}`, { token })
+    },
+
+    get: (token: string, id: string) =>
+      fetchApi<{ job: Job }>(`/v1/jobs/${id}`, { token }),
+
+    cancel: (token: string, id: string) =>
+      fetchApi<{ job: Job }>(`/v1/jobs/${id}/cancel`, { method: "POST", token }),
+
+    retry: (token: string, id: string) =>
+      fetchApi<{ job: Job }>(`/v1/jobs/${id}/retry`, { method: "POST", token }),
+
+    stats: (token: string) =>
+      fetchApi<JobStats>("/v1/jobs/stats", { token }),
   },
 }

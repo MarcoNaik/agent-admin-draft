@@ -1,0 +1,75 @@
+{
+  "$schema": "https://struere.dev/schemas/entity-type/v1.json",
+  "name": "Student",
+  "slug": "student",
+  "description": "A student receiving tutoring services",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "firstName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "Student's first name"
+      },
+      "lastName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "Student's last name"
+      },
+      "email": {
+        "type": "string",
+        "format": "email",
+        "description": "Student's email address"
+      },
+      "phone": {
+        "type": "string",
+        "pattern": "^\\+?[1-9]\\d{1,14}$",
+        "description": "Student's phone number in E.164 format"
+      },
+      "grade": {
+        "type": "string",
+        "description": "Current grade level (e.g., '9th', 'College Freshman')"
+      },
+      "school": {
+        "type": "string",
+        "maxLength": 200,
+        "description": "Name of the school the student attends"
+      }
+    },
+    "required": ["firstName", "lastName"]
+  },
+  "statuses": {
+    "values": ["active", "inactive", "graduated", "withdrawn"],
+    "default": "active",
+    "transitions": {
+      "active": ["inactive", "graduated", "withdrawn"],
+      "inactive": ["active", "withdrawn"],
+      "graduated": [],
+      "withdrawn": []
+    }
+  },
+  "indexMapping": {
+    "idx_0": "firstName",
+    "idx_1": "lastName",
+    "idx_2": "email",
+    "idx_3": "grade"
+  },
+  "searchFields": ["firstName", "lastName", "email", "school"],
+  "displayConfig": {
+    "titleField": ["firstName", "lastName"],
+    "subtitleField": "school",
+    "listFields": ["firstName", "lastName", "email", "grade", "school"],
+    "detailSections": [
+      {
+        "title": "Contact Information",
+        "fields": ["email", "phone"]
+      },
+      {
+        "title": "Academic Information",
+        "fields": ["grade", "school"]
+      }
+    ]
+  }
+}

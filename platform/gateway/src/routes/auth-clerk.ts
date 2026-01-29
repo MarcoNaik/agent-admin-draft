@@ -139,7 +139,7 @@ authClerkRoutes.post('/webhooks/clerk', async (c) => {
         id: generateId('org'),
         clerkId: id,
         name,
-        slug: slug || generateSlug(name),
+        slug: slug ?? generateSlug(name),
         plan: 'free',
         createdAt: now,
         updatedAt: now

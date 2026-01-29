@@ -1,19 +1,28 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { PlatformError, createAgentRoutes, createApiKeyRoutes, createUsageRoutes } from '@struere/platform-shared'
+import { PlatformError, createAgentRoutes, createApiKeyRoutes, createUsageRoutes, createEntityTypeRoutes, createEntityRoutes, createEventRoutes, createRoleRoutes, createPolicyRoutes, createUserRoleRoutes, createJobRoutes } from '@struere/platform-shared'
 import { authRoutes } from './routes/auth'
 import { authClerkRoutes } from './routes/auth-clerk'
 import { deploymentRoutes } from './routes/deployments'
 import { configRoutes } from './routes/config'
 import { debugRoutes } from './routes/debug'
 import { statusRoutes } from './routes/status'
+import { createPackRoutes } from './routes/packs'
 import { clerkAuth } from './middleware/clerk'
 import type { Env } from './types'
 
 const agentRoutes = createAgentRoutes<Env>(clerkAuth)
 const apiKeyRoutes = createApiKeyRoutes<Env>(clerkAuth)
 const usageRoutes = createUsageRoutes<Env>(clerkAuth)
+const entityTypeRoutes = createEntityTypeRoutes<Env>(clerkAuth)
+const entityRoutes = createEntityRoutes<Env>(clerkAuth)
+const eventRoutes = createEventRoutes<Env>(clerkAuth)
+const roleRoutes = createRoleRoutes<Env>(clerkAuth)
+const policyRoutes = createPolicyRoutes<Env>(clerkAuth)
+const userRoleRoutes = createUserRoleRoutes<Env>(clerkAuth)
+const jobRoutes = createJobRoutes<Env>(clerkAuth)
+const packRoutes = createPackRoutes<Env>(clerkAuth)
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -138,6 +147,14 @@ app.route('/v1/agents', agentRoutes)
 app.route('/v1/api-keys', apiKeyRoutes)
 app.route('/v1', deploymentRoutes)
 app.route('/v1/usage', usageRoutes)
+app.route('/v1/entity-types', entityTypeRoutes)
+app.route('/v1/entities', entityRoutes)
+app.route('/v1/events', eventRoutes)
+app.route('/v1/roles', roleRoutes)
+app.route('/v1/policies', policyRoutes)
+app.route('/v1/user-roles', userRoleRoutes)
+app.route('/v1/jobs', jobRoutes)
+app.route('/v1/packs', packRoutes)
 
 app.onError((err, c) => {
   if (err instanceof PlatformError) {

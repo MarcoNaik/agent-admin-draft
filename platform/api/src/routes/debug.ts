@@ -21,9 +21,10 @@ debugRoutes.get('/health', (c) => {
 })
 
 debugRoutes.post('/verify-token', async (c) => {
-  const results: Record<string, unknown> = {
+  const steps: Array<{ step: string; value: unknown }> = []
+  const results: { timestamp: string; steps: typeof steps; error?: string; success?: boolean } = {
     timestamp: new Date().toISOString(),
-    steps: []
+    steps
   }
 
   try {

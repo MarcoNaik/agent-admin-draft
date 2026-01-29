@@ -18,6 +18,14 @@
     "./routes": {
       "import": "./dist/routes/index.js",
       "types": "./dist/routes/index.d.ts"
+    },
+    "./permissions": {
+      "import": "./dist/permissions/index.js",
+      "types": "./dist/permissions/index.d.ts"
+    },
+    "./services/entity-indexer": {
+      "import": "./dist/services/entity-indexer.js",
+      "types": "./dist/services/entity-indexer.d.ts"
     }
   },
   "scripts": {
@@ -27,12 +35,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "drizzle-orm": "^0.29.0",
+    "drizzle-orm": "^0.45.1",
     "hono": "^4.0.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240222.0",
+    "drizzle-kit": "^0.31.8",
     "typescript": "^5.3.0"
   }
 }

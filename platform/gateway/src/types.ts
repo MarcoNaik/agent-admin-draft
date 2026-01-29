@@ -7,6 +7,8 @@ export interface Env {
   CONVERSATIONS: KVNamespace
   SESSIONS: KVNamespace
   DEV_SESSIONS: DurableObjectNamespace
+  JOB_SCHEDULER: DurableObjectNamespace
+  JOBS_QUEUE?: Queue
   ENVIRONMENT: string
   JWT_SECRET: string
   CLERK_SECRET_KEY: string

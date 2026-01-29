@@ -1,0 +1,173 @@
+{
+  "$schema": "https://struere.dev/schemas/view/v1.json",
+  "packId": "tutoring",
+  "version": "1.0.0",
+  "id": "my_sessions",
+  "name": "My Sessions",
+  "description": "Teacher view of their own upcoming sessions",
+  "entityType": "session",
+  "access": {
+    "roles": ["teacher"],
+    "requireAuthentication": true
+  },
+  "filters": {
+    "taught_by": {
+      "operator": "eq",
+      "value": "$actor.linkedEntityId"
+    },
+    "scheduledAt": {
+      "operator": "gt",
+      "value": "$now"
+    }
+  },
+  "columns": [
+    {
+      "field": "subject",
+      "label": "Subject",
+      "sortable": true,
+      "width": "auto"
+    },
+    {
+      "field": "scheduledAt",
+      "label": "Scheduled For",
+      "sortable": true,
+      "format": "datetime",
+      "width": "180px"
+    },
+    {
+      "field": "durationMinutes",
+      "label": "Duration",
+      "sortable": true,
+      "format": "duration",
+      "width": "100px"
+    },
+    {
+      "field": "location",
+      "label": "Location",
+      "sortable": false,
+      "width": "200px"
+    },
+    {
+      "field": "status",
+      "label": "Status",
+      "sortable": true,
+      "format": "status_badge",
+      "width": "120px"
+    }
+  ],
+  "relations": [
+    {
+      "relation": "scheduled_for",
+      "alias": "student",
+      "columns": [
+        {
+          "field": "firstName",
+          "label": "Student First Name"
+        },
+        {
+          "field": "lastName",
+          "label": "Student Last Name"
+        },
+        {
+          "field": "phone",
+          "label": "Phone",
+          "masked": true
+        }
+      ],
+      "display": {
+        "format": "combined",
+        "template": "{firstName} {lastName}",
+        "label": "Student"
+      }
+    }
+  ],
+  "sorting": {
+    "default": {
+      "field": "scheduledAt",
+      "direction": "asc"
+    },
+    "allowed": ["scheduledAt", "subject", "status"]
+  },
+  "pagination": {
+    "defaultPageSize": 25,
+    "pageSizeOptions": [10, 25, 50]
+  },
+  "actions": [
+    {
+      "id": "mark_complete",
+      "label": "Mark Complete",
+      "icon": "check-circle",
+      "visibleWhen": {
+        "status": "confirmed"
+      },
+      "handler": {
+        "type": "status_change",
+        "newStatus": "completed",
+        "requireForm": true,
+        "formFields": [
+          {
+            "name": "feedback.teacherNotes",
+            "label": "Session Notes",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "name": "feedback.topicsCovered",
+            "label": "Topics Covered",
+            "type": "tags",
+            "required": false
+          },
+          {
+            "name": "feedback.homework",
+            "label": "Homework Assigned",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "name": "feedback.studentProgress",
+            "label": "Student Progress",
+            "type": "select",
+            "options": ["needs_improvement", "satisfactory", "good", "excellent"],
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "mark_no_show",
+      "label": "No Show",
+      "icon": "user-x",
+      "visibleWhen": {
+        "status": "confirmed"
+      },
+      "handler": {
+        "type": "status_change",
+        "newStatus": "no_show",
+        "requireConfirmation": true,
+        "confirmationMessage": "Mark this session as a no-show?"
+      }
+    }
+  ],
+  "grouping": {
+    "enabled": true,
+    "default": "day",
+    "options": [
+      {
+        "id": "day",
+        "label": "By Day",
+        "field": "scheduledAt",
+        "format": "date"
+      },
+      {
+        "id": "student",
+        "label": "By Student",
+        "field": "scheduled_for",
+        "format": "relation"
+      }
+    ]
+  },
+  "refreshInterval": 60000,
+  "export": {
+    "enabled": false
+  }
+}

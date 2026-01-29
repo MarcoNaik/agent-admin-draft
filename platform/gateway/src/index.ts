@@ -6,11 +6,13 @@ import { devSyncHandler } from './handlers/dev-sync'
 import { apiKeyAuth } from './middleware/auth'
 import { resolveAgent } from './middleware/resolve'
 import { DevSessionDO } from './durable-objects/DevSession'
+import { JobSchedulerDO } from './durable-objects/JobScheduler'
 import { executeAgent, streamAgent } from './executor'
+import { handleJobQueue } from './queues/job-consumer'
 import { api } from './api'
 import type { Env } from './types'
 
-export { DevSessionDO }
+export { DevSessionDO, JobSchedulerDO }
 
 interface GatewayVariables {
   agentSlug: string
@@ -407,4 +409,9 @@ function getChatHtml(agentName: string, slug: string, environment: string): stri
 </html>`
 }
 
-export default app
+export default {
+  fetch: app.fetch,
+  async queue(batch: MessageBatch, env: Env): Promise<void> {
+    await handleJobQueue(batch, env)
+  }
+}

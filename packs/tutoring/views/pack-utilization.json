@@ -1,0 +1,239 @@
+{
+  "$schema": "https://struere.dev/schemas/view/v1.json",
+  "packId": "tutoring",
+  "version": "1.0.0",
+  "id": "pack_utilization",
+  "name": "Pack Utilization",
+  "description": "Admin view of active entitlements and their usage",
+  "entityType": "entitlement",
+  "access": {
+    "roles": ["admin"],
+    "requireAuthentication": true
+  },
+  "filters": {
+    "status": {
+      "operator": "eq",
+      "value": "active"
+    }
+  },
+  "columns": [
+    {
+      "field": "type",
+      "label": "Package Type",
+      "sortable": true,
+      "width": "150px"
+    },
+    {
+      "field": "sessionsRemaining",
+      "label": "Remaining",
+      "sortable": true,
+      "format": "number",
+      "width": "100px"
+    },
+    {
+      "field": "sessionsTotal",
+      "label": "Total",
+      "sortable": true,
+      "format": "number",
+      "width": "80px"
+    },
+    {
+      "computed": "utilizationPercent",
+      "label": "Utilization",
+      "sortable": true,
+      "format": "progress_bar",
+      "width": "150px"
+    },
+    {
+      "field": "expiresAt",
+      "label": "Expires",
+      "sortable": true,
+      "format": "relative_date",
+      "width": "120px"
+    },
+    {
+      "computed": "daysUntilExpiry",
+      "label": "Days Left",
+      "sortable": true,
+      "format": "number",
+      "conditionalStyle": {
+        "danger": { "operator": "lte", "value": 7 },
+        "warning": { "operator": "lte", "value": 14 },
+        "success": { "operator": "gt", "value": 14 }
+      },
+      "width": "100px"
+    },
+    {
+      "field": "purchasedAt",
+      "label": "Purchased",
+      "sortable": true,
+      "format": "date",
+      "width": "120px"
+    },
+    {
+      "field": "status",
+      "label": "Status",
+      "sortable": true,
+      "format": "status_badge",
+      "width": "100px"
+    }
+  ],
+  "relations": [
+    {
+      "relation": "entitles",
+      "alias": "student",
+      "columns": [
+        {
+          "field": "firstName",
+          "label": "Student First Name"
+        },
+        {
+          "field": "lastName",
+          "label": "Student Last Name"
+        }
+      ],
+      "display": {
+        "format": "combined",
+        "template": "{firstName} {lastName}",
+        "label": "Student"
+      }
+    },
+    {
+      "relation": "purchased_by",
+      "alias": "guardian",
+      "columns": [
+        {
+          "field": "firstName",
+          "label": "Guardian First Name"
+        },
+        {
+          "field": "lastName",
+          "label": "Guardian Last Name"
+        }
+      ],
+      "display": {
+        "format": "combined",
+        "template": "{firstName} {lastName}",
+        "label": "Purchased By"
+      }
+    }
+  ],
+  "sorting": {
+    "default": {
+      "field": "expiresAt",
+      "direction": "asc"
+    },
+    "allowed": ["expiresAt", "sessionsRemaining", "type", "purchasedAt"]
+  },
+  "pagination": {
+    "defaultPageSize": 25,
+    "pageSizeOptions": [10, 25, 50, 100]
+  },
+  "aggregations": [
+    {
+      "id": "total_active",
+      "label": "Total Active Packs",
+      "type": "count"
+    },
+    {
+      "id": "expiring_soon",
+      "label": "Expiring in 7 Days",
+      "type": "count",
+      "filter": {
+        "computed.daysUntilExpiry": {
+          "operator": "lte",
+          "value": 7
+        }
+      }
+    },
+    {
+      "id": "low_sessions",
+      "label": "Low Sessions (<=2)",
+      "type": "count",
+      "filter": {
+        "sessionsRemaining": {
+          "operator": "lte",
+          "value": 2
+        }
+      }
+    },
+    {
+      "id": "total_remaining_sessions",
+      "label": "Total Remaining Sessions",
+      "type": "sum",
+      "field": "sessionsRemaining"
+    }
+  ],
+  "actions": [
+    {
+      "id": "extend_expiry",
+      "label": "Extend Expiry",
+      "icon": "calendar-plus",
+      "visibleWhen": {
+        "status": "active"
+      },
+      "handler": {
+        "type": "update_field",
+        "requireForm": true,
+        "formFields": [
+          {
+            "name": "expiresAt",
+            "label": "New Expiry Date",
+            "type": "datetime",
+            "required": true,
+            "validation": {
+              "minDate": "$entity.expiresAt"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "add_sessions",
+      "label": "Add Sessions",
+      "icon": "plus-circle",
+      "visibleWhen": {
+        "status": "active"
+      },
+      "handler": {
+        "type": "update_field",
+        "requireForm": true,
+        "formFields": [
+          {
+            "name": "additionalSessions",
+            "label": "Sessions to Add",
+            "type": "number",
+            "required": true,
+            "validation": {
+              "min": 1,
+              "max": 50
+            }
+          }
+        ],
+        "computeUpdate": {
+          "sessionsRemaining": "$entity.sessionsRemaining + $form.additionalSessions",
+          "sessionsTotal": "$entity.sessionsTotal + $form.additionalSessions"
+        }
+      }
+    },
+    {
+      "id": "cancel_entitlement",
+      "label": "Cancel",
+      "icon": "x-circle",
+      "visibleWhen": {
+        "status": "active"
+      },
+      "handler": {
+        "type": "status_change",
+        "newStatus": "cancelled",
+        "requireConfirmation": true,
+        "confirmationMessage": "Are you sure you want to cancel this entitlement? This action cannot be undone."
+      }
+    }
+  ],
+  "refreshInterval": 120000,
+  "export": {
+    "enabled": true,
+    "formats": ["csv", "json", "xlsx"]
+  }
+}
