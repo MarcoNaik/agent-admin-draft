@@ -9,6 +9,110 @@ Struere is an AI agent platform monorepo with:
 
 **Tech Stack**: Next.js 14, Hono, Cloudflare Workers, D1, R2, Drizzle ORM, Clerk Auth, TypeScript
 
+## Architecture Overview
+
+### Monorepo Structure
+```
+apps/                        packages/                   platform/
+├── dashboard (Next.js)      ├── cli                    ├── api
+└── web (Marketing)          ├── core                   ├── gateway
+                             └── runtime                └── shared
+```
+
+### Platform Services
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SHARED PACKAGE (platform/shared)                      │
+│                                                                              │
+│  db/schema.ts                    routes/                                     │
+│  • organizations                 createAgentRoutes(middleware)               │
+│  • users, agents                 createApiKeyRoutes(middleware)              │
+│  • agent_versions                createUsageRoutes(middleware)               │
+│  • deployments, executions                                                   │
+│  • api_keys, dev_sessions        Factory functions → Hono routers            │
+│                                                                              │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                       ┌───────────────┴───────────────┐
+                       ▼                               ▼
+┌──────────────────────────────────┐   ┌──────────────────────────────────────┐
+│      API (api.struere.dev)       │   │      GATEWAY (*.struere.dev)         │
+│                                  │   │                                      │
+│  Dashboard backend               │   │  Agent execution runtime             │
+│  • /v1/auth/* - Login/signup     │   │  • /chat - Execute agent             │
+│  • /v1/agents/* - CRUD (shared)  │   │  • /v1/dev/sync - WebSocket dev      │
+│  • /v1/agents/:id/config         │   │  • /v1/agents/:slug/chat             │
+│  • /v1/api-keys/* (shared)       │   │  • Shared routes (agents, keys)      │
+│  • /v1/usage/* (shared)          │   │                                      │
+│                                  │   │  Bindings: DB, BUNDLES, KV,          │
+│  Bindings: DB, BUNDLES, KV       │   │  DEV_SESSIONS, ANTHROPIC_API_KEY     │
+└──────────────────────────────────┘   └──────────────────────────────────────┘
+```
+
+### Development Flow (struere dev)
+```
+LOCAL MACHINE                              GATEWAY (DevSessionDO)
+─────────────────                          ────────────────────────
+src/agent.ts ─┐
+src/tools.ts ─┼─ Bun.build() ─► bundle.js ─── WebSocket ──►  1. Verify auth
+src/context.ts┘                                              2. Auto-create agent
+                                                             3. Upload to R2
+CLI watches files (chokidar)                                 4. Update DB records
+Re-bundles on save                                           5. Cache in KV
+
+                                           ◄── { url: 'https://slug-dev.struere.dev' }
+```
+
+### Agent Execution Flow
+```
+POST https://my-agent.struere.dev/chat { message: "Hello" }
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  GATEWAY                                                                     │
+│                                                                              │
+│  1. ROUTE BY SUBDOMAIN                                                       │
+│     • api.struere.dev → API router                                           │
+│     • {slug}-dev.struere.dev → Dev agent (KV cache)                          │
+│     • {slug}.struere.dev → Prod agent (R2)                                   │
+│                                                                              │
+│  2. FETCH BUNDLE from R2 → bundleCode                                        │
+│                                                                              │
+│  3. DYNAMIC IMPORT (the magic)                                               │
+│     const blob = new Blob([bundleCode], { type: 'application/javascript' }) │
+│     const agentModule = await import(URL.createObjectURL(blob))              │
+│     // agentModule.default = { systemPrompt, model, tools }                  │
+│                                                                              │
+│  4. CALL LLM (Anthropic API)                                                 │
+│     • Uses env.ANTHROPIC_API_KEY (platform secret)                           │
+│     • Passes systemPrompt, messages, tools from bundle                       │
+│     • Executes tool handlers from bundle if tool_use                         │
+│                                                                              │
+│  5. STORE & RESPOND                                                          │
+│     • KV: conversation history (24h TTL)                                     │
+│     • D1: execution metrics (tokens, duration)                               │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Storage Summary
+| What | Where | Purpose |
+|------|-------|---------|
+| Agent metadata | D1 `agents` | Name, slug, version IDs |
+| Version info | D1 `agent_versions` | bundleKey, configHash, metadata |
+| Bundle code | R2 `{org}/{slug}/{version}.js` | Executable JS |
+| Dev bundle cache | KV `dev:{org}:{slug}` | Fast dev access |
+| Conversations | KV `conv:{org}:{id}` | Message history (24h TTL) |
+| Execution metrics | D1 `executions` | Tokens, duration, errors |
+| LLM API key | Cloudflare Secret | `ANTHROPIC_API_KEY` |
+
+### Key Design Decisions
+1. **Shared code in `platform/shared`** - DB schema and common routes live once, used by both api and gateway
+2. **Route factory pattern** - `createAgentRoutes(middleware)` lets each service inject its own auth
+3. **Dynamic ES module import** - Bundle runs as real JS module inside Worker, tools execute server-side
+4. **Platform-managed LLM key** - Single `ANTHROPIC_API_KEY` secret for MVP (per-org keys later)
+5. **Regex-based config extraction** - Parse minified bundle to show config in dashboard without executing it
+
 ## CLI Deployment
 
 To deploy a new version of the CLI to npm:
@@ -44,6 +148,7 @@ This command will:
 | `/agents` | List all agents (grid/list view, search) |
 | `/agents/new` | Create new agent |
 | `/agents/[id]` | Agent health & performance dashboard |
+| `/agents/[id]/config` | View deployed agent configuration (model, tools, system prompt) |
 | `/agents/[id]/settings` | Deploy keys, env vars, agent config |
 | `/agents/[id]/logs` | Execution logs with level filtering |
 | `/api-keys` | API key management |
@@ -171,6 +276,7 @@ Hono on Cloudflare Workers with D1 (SQLite) via Drizzle ORM
 - `POST /v1/auth/signup, /login` - Email/password auth
 - `GET /v1/auth/clerk/me` - Clerk auth with CLI token
 - `GET/POST/PATCH/DELETE /v1/agents` - Agent CRUD
+- `GET /v1/agents/:id/config` - Extract config from deployed bundle
 - `POST /v1/agents/:id/deploy` - Deploy agent bundle
 - `GET /v1/usage` - Organization usage stats
 
