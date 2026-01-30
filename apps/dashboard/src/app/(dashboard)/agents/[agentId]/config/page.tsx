@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   Cpu,
   Bot,
@@ -7,16 +8,17 @@ import {
   MessageSquare,
   Thermometer,
   Hash,
-  Database,
-  Clock,
   FileCode,
   AlertCircle,
   Loader2,
+  Code,
+  Play,
 } from "lucide-react"
-import { useAgentWithConfig } from "@/hooks/use-convex-data"
+import { useAgentWithConfig, useCompileSystemPrompt } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Id } from "@convex/_generated/dataModel"
 
 interface AgentConfigPageProps {
@@ -27,6 +29,11 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
   const { agentId } = params
   const agent = useAgentWithConfig(agentId as Id<"agents">)
   const { environment } = useEnvironment()
+  const [showCompiled, setShowCompiled] = useState(false)
+  const compiledPrompt = useCompileSystemPrompt(
+    agentId as Id<"agents">,
+    environment as "development" | "production"
+  )
 
   if (agent === undefined) {
     return (
@@ -185,16 +192,77 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MessageSquare className="h-5 w-5" />
-            System Prompt
-          </CardTitle>
-          <CardDescription>The instructions that define your agent&apos;s behavior</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MessageSquare className="h-5 w-5" />
+                System Prompt
+              </CardTitle>
+              <CardDescription>The instructions that define your agent&apos;s behavior</CardDescription>
+            </div>
+            {config.systemPrompt && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={showCompiled ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => setShowCompiled(false)}
+                  className="gap-2"
+                >
+                  <Code className="h-4 w-4" />
+                  Raw
+                </Button>
+                <Button
+                  variant={showCompiled ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowCompiled(true)}
+                  className="gap-2"
+                >
+                  <Play className="h-4 w-4" />
+                  Compile
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {config.systemPrompt ? (
-            <div className="rounded-lg bg-muted p-4">
-              <pre className="whitespace-pre-wrap font-mono text-sm">{config.systemPrompt}</pre>
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-4">
+                {showCompiled ? (
+                  compiledPrompt === undefined ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-mono text-sm">{compiledPrompt.compiled}</pre>
+                  )
+                ) : (
+                  <pre className="whitespace-pre-wrap font-mono text-sm">{config.systemPrompt}</pre>
+                )}
+              </div>
+              {showCompiled && compiledPrompt && (
+                <div className="rounded-lg border border-dashed p-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Sample Context Used</p>
+                  <div className="grid gap-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">agent.name</span>
+                      <span className="font-mono">{(compiledPrompt.context.agent as { name: string; slug: string })?.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">agent.slug</span>
+                      <span className="font-mono">{(compiledPrompt.context.agent as { name: string; slug: string })?.slug}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">message</span>
+                      <span className="font-mono truncate max-w-[200px]">{String(compiledPrompt.context.message)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">datetime</span>
+                      <span className="font-mono">{String(compiledPrompt.context.datetime)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
