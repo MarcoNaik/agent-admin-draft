@@ -4,7 +4,7 @@ import { Clock, Rocket, CheckCircle, XCircle, Loader2 as Loader2Icon } from "luc
 import { useAgentWithConfig, useRecentExecutions } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Id } from "@convex/_generated/dataModel"
+import { Id, Doc } from "@convex/_generated/dataModel"
 
 interface AgentHistoryPageProps {
   params: { agentId: string }
@@ -45,26 +45,16 @@ function DeploymentStatusBadge({ status }: { status: string }) {
 
 export default function AgentHistoryPage({ params }: AgentHistoryPageProps) {
   const { agentId } = params
-  const agentData = useAgentWithConfig(agentId as Id<"agents">)
+  const agent = useAgentWithConfig(agentId as Id<"agents">)
   const executions = useRecentExecutions(agentId as Id<"agents">, 50)
 
-  if (agentData === undefined || executions === undefined) {
+  if (agent === undefined || executions === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2Icon className="h-8 w-8 animate-spin text-content-secondary" />
       </div>
     )
   }
-
-  if (!agentData) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Agent not found</p>
-      </div>
-    )
-  }
-
-  const { agent, config } = agentData
 
   if (!agent) {
     return (
@@ -73,6 +63,8 @@ export default function AgentHistoryPage({ params }: AgentHistoryPageProps) {
       </div>
     )
   }
+
+  const config = agent.productionConfig || agent.developmentConfig
 
   const historyItems = [
     ...(config ? [{
@@ -83,7 +75,7 @@ export default function AgentHistoryPage({ params }: AgentHistoryPageProps) {
       status: "deployed",
       timestamp: config.createdAt,
     }] : []),
-    ...executions.map((exec) => ({
+    ...executions.map((exec: Doc<"executions">) => ({
       id: exec._id,
       type: "execution" as const,
       version: null,
