@@ -1,9 +1,43 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Entity, EntityType, EntityTypeField, getSchemaFields } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
+
+interface EntityTypeField {
+  name: string
+  type: string
+  required?: boolean
+}
+
+interface EntityType {
+  id: string
+  name: string
+  slug: string
+  schema: unknown
+  displayConfig?: {
+    listFields?: string[]
+    detailFields?: string[]
+  }
+}
+
+interface Entity {
+  id: string
+  status: string
+  data: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+function getSchemaFields(schema: unknown): EntityTypeField[] {
+  if (!schema || typeof schema !== "object") return []
+  const schemaObj = schema as { properties?: Record<string, { type?: string }> }
+  if (!schemaObj.properties) return []
+  return Object.entries(schemaObj.properties).map(([name, prop]) => ({
+    name,
+    type: prop?.type || "string",
+  }))
+}
 
 interface EntityTableProps {
   entityType: EntityType
