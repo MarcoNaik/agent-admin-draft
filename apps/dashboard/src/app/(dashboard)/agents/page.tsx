@@ -1,34 +1,38 @@
-import { api } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+"use client"
+
+import { useAgents } from "@/hooks/use-convex-data"
 import { Card, CardContent } from "@/components/ui/card"
 import { AgentsList } from "@/components/agents-list"
+import { Loader2 } from "lucide-react"
 
-export default async function AgentsPage() {
-  const token = await getAuthToken()
+export default function AgentsPage() {
+  const agents = useAgents()
 
-  let agents: Awaited<ReturnType<typeof api.agents.list>>["agents"] = []
-  let error: string | null = null
-
-  try {
-    const data = await api.agents.list(token!)
-    agents = data.agents
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load agents"
+  if (agents === undefined) {
+    return (
+      <div className="flex w-full flex-col gap-2">
+        <div className="w-full">
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+          </div>
+        </div>
+      </div>
+    )
   }
+
+  const mappedAgents = agents.map((agent) => ({
+    id: agent._id,
+    name: agent.name,
+    slug: agent.slug,
+    description: agent.description,
+    createdAt: new Date(agent.createdAt).toISOString(),
+  }))
 
   return (
     <div className="flex w-full flex-col gap-2">
       <div className="w-full">
         <div className="flex flex-col items-center">
-          {error ? (
-            <Card className="w-full">
-              <CardContent className="py-8 text-center">
-                <p className="text-content-secondary">{error}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <AgentsList agents={agents} />
-          )}
+          <AgentsList agents={mappedAgents} />
         </div>
       </div>
     </div>
