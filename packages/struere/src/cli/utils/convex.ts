@@ -1,6 +1,6 @@
 import { loadCredentials, getApiKey } from './credentials'
 
-const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://struere.convex.cloud'
+const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
 
 interface AgentConfig {
   name: string
@@ -182,6 +182,23 @@ export interface UserInfo {
 }
 
 export async function getUserInfo(token: string): Promise<{ userInfo?: UserInfo; error?: string }> {
+  const ensureResponse = await fetch(`${CONVEX_URL}/api/mutation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'users:ensureUser',
+      args: {},
+    }),
+  })
+
+  if (!ensureResponse.ok) {
+    const error = await ensureResponse.text()
+    return { error }
+  }
+
   const response = await fetch(`${CONVEX_URL}/api/query`, {
     method: 'POST',
     headers: {
@@ -199,7 +216,8 @@ export async function getUserInfo(token: string): Promise<{ userInfo?: UserInfo;
     return { error }
   }
 
-  const user = await response.json() as { _id: string; email: string; name?: string; organizationId: string } | null
+  const userResponse = await response.json() as { status: string; value?: { _id: string; email: string; name?: string; organizationId: string } }
+  const user = userResponse.value
   if (!user) {
     return { error: 'User not found' }
   }
@@ -220,7 +238,12 @@ export async function getUserInfo(token: string): Promise<{ userInfo?: UserInfo;
     return { error: 'Failed to fetch organization' }
   }
 
-  const org = await orgResponse.json() as { _id: string; name: string; slug: string }
+  const orgResult = await orgResponse.json() as { status: string; value?: { _id: string; name: string; slug: string } }
+  const org = orgResult.value
+
+  if (!org) {
+    return { error: 'Organization not found' }
+  }
 
   return {
     userInfo: {
