@@ -1,51 +1,74 @@
-import { Settings, Key, Variable, Trash2, Copy, Plus, Eye, EyeOff } from "lucide-react"
-import { api, Agent, DeployKey, EnvironmentVariable } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+"use client"
+
+import { useState } from "react"
+import { Settings, Key, Trash2, Loader2 } from "lucide-react"
+import { useAgent, useUpdateAgent, useDeleteAgent, useApiKeys } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+import { Id } from "@convex/_generated/dataModel"
+import { useRouter } from "next/navigation"
 
 interface AgentSettingsPageProps {
-  params: Promise<{ agentId: string }>
+  params: { agentId: string }
 }
 
-export default async function AgentSettingsPage({ params }: AgentSettingsPageProps) {
-  const { agentId } = await params
-  const token = await getAuthToken()
+export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
+  const { agentId } = params
+  const router = useRouter()
+  const agent = useAgent(agentId as Id<"agents">)
+  const apiKeys = useApiKeys()
+  const updateAgent = useUpdateAgent()
+  const deleteAgent = useDeleteAgent()
 
-  let agent: Agent | null = null
-  let deployKeys: DeployKey[] = []
-  let envVars: EnvironmentVariable[] = []
-  let error: string | null = null
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  try {
-    const [agentData, deployKeysData, envVarsData] = await Promise.all([
-      api.agents.get(token!, agentId),
-      api.deployKeys.list(token!, agentId).catch(() => ({ deployKeys: [] })),
-      api.envVars.list(token!, agentId).catch(() => ({ envVars: [] })),
-    ])
-    agent = agentData.agent
-    deployKeys = deployKeysData.deployKeys
-    envVars = envVarsData.envVars
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load settings"
-  }
-
-  if (error || !agent) {
+  if (agent === undefined || apiKeys === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">{error || "Agent not found"}</p>
+        <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
       </div>
     )
   }
 
-  const productionKeys = deployKeys.filter((k) => k.environment === "production")
-  const developmentKeys = deployKeys.filter((k) => k.environment === "development")
-  const productionEnvVars = envVars.filter((v) => v.environment === "production")
-  const developmentEnvVars = envVars.filter((v) => v.environment === "development")
+  if (!agent) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-muted-foreground">Agent not found</p>
+      </div>
+    )
+  }
+
+  const handleSave = async () => {
+    setIsUpdating(true)
+    try {
+      await updateAgent({
+        id: agent._id,
+        name: name || agent.name,
+        description: description || agent.description,
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) {
+      return
+    }
+    setIsDeleting(true)
+    try {
+      await deleteAgent({ id: agent._id })
+      router.push("/agents")
+    } catch {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -66,7 +89,11 @@ export default async function AgentSettingsPage({ params }: AgentSettingsPagePro
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" defaultValue={agent.name} />
+              <Input
+                id="name"
+                defaultValue={agent.name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Slug</Label>
@@ -76,40 +103,47 @@ export default async function AgentSettingsPage({ params }: AgentSettingsPagePro
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Input id="description" defaultValue={agent.description || ""} placeholder="Optional description" />
+            <Input
+              id="description"
+              defaultValue={agent.description || ""}
+              placeholder="Optional description"
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div className="flex justify-end">
-            <Button>Save Changes</Button>
+            <Button onClick={handleSave} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card id="deploy-keys-production">
+      <Card id="api-keys">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                Production Deploy Keys
+                API Keys
               </CardTitle>
-              <CardDescription>Keys for deploying to production environment</CardDescription>
+              <CardDescription>Your organization API keys can be used to access this agent</CardDescription>
             </div>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Key
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {productionKeys.length === 0 ? (
+          {apiKeys.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Key className="mb-4 h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No production deploy keys yet</p>
+              <p className="text-sm text-muted-foreground">No API keys yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Create API keys in the API Keys section to use with this agent
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {productionKeys.map((key) => (
-                <div key={key.id} className="flex items-center justify-between rounded-lg border p-3">
+              {apiKeys.slice(0, 5).map((key) => (
+                <div key={key._id} className="flex items-center justify-between rounded-lg border p-3">
                   <div className="flex items-center gap-3">
                     <Key className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -118,142 +152,16 @@ export default async function AgentSettingsPage({ params }: AgentSettingsPagePro
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="success">Production</Badge>
-                    <Button variant="ghost" size="icon">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {key.permissions.map((perm) => (
+                      <Badge key={perm} variant="secondary" className="text-xs">
+                        {perm}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card id="deploy-keys-development">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Development Deploy Keys
-              </CardTitle>
-              <CardDescription>Keys for deploying to development environment</CardDescription>
-            </div>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Key
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {developmentKeys.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Key className="mb-4 h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No development deploy keys yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {developmentKeys.map((key) => (
-                <div key={key.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-3">
-                    <Key className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{key.name}</p>
-                      <p className="font-mono text-xs text-muted-foreground">{key.keyPrefix}...</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Development</Badge>
-                    <Button variant="ghost" size="icon">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card id="env-vars">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Variable className="h-5 w-5" />
-                Environment Variables
-              </CardTitle>
-              <CardDescription>Configure environment-specific variables</CardDescription>
-            </div>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Variable
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <h4 className="mb-3 text-sm font-medium">Production</h4>
-            {productionEnvVars.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-4 text-center">
-                <p className="text-sm text-muted-foreground">No production environment variables</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {productionEnvVars.map((envVar) => (
-                  <div key={envVar.id} className="flex items-center gap-2 rounded-lg border p-3">
-                    <div className="flex-1 grid grid-cols-2 gap-4">
-                      <Input value={envVar.key} className="font-mono" readOnly />
-                      <div className="flex gap-2">
-                        <Input type="password" value={envVar.value} className="font-mono" readOnly />
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <Separator />
-          <div>
-            <h4 className="mb-3 text-sm font-medium">Development</h4>
-            {developmentEnvVars.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-4 text-center">
-                <p className="text-sm text-muted-foreground">No development environment variables</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {developmentEnvVars.map((envVar) => (
-                  <div key={envVar.id} className="flex items-center gap-2 rounded-lg border p-3">
-                    <div className="flex-1 grid grid-cols-2 gap-4">
-                      <Input value={envVar.key} className="font-mono" readOnly />
-                      <div className="flex gap-2">
-                        <Input type="password" value={envVar.value} className="font-mono" readOnly />
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
@@ -268,7 +176,10 @@ export default async function AgentSettingsPage({ params }: AgentSettingsPagePro
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="destructive">Delete Agent</Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Delete Agent
+          </Button>
         </CardContent>
       </Card>
     </div>
