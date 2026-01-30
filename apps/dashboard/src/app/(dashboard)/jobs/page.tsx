@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useState } from "react"
 import {
   Clock,
   Play,
@@ -11,11 +10,10 @@ import {
   AlertCircle,
   RefreshCw,
   XOctagon,
-  ChevronLeft,
-  ChevronRight,
   Filter,
+  Loader2,
 } from "lucide-react"
-import { api, Job, JobStats, JobQueryParams } from "@/lib/api"
+import { useJobs, useJobStats, useRetryJob, useCancelJob } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +26,8 @@ import {
 } from "@/components/ui/select"
 import { formatDate } from "@/lib/utils"
 
+type JobStatus = "pending" | "claimed" | "running" | "completed" | "failed" | "dead"
+
 const STATUS_OPTIONS = [
   { value: "all", label: "All Status", icon: Filter },
   { value: "pending", label: "Pending", icon: Clock },
@@ -37,7 +37,7 @@ const STATUS_OPTIONS = [
   { value: "dead", label: "Dead", icon: Skull },
 ]
 
-function getStatusIcon(status: Job["status"]) {
+function getStatusIcon(status: JobStatus) {
   switch (status) {
     case "pending":
       return <Clock className="h-4 w-4 text-yellow-500" />
@@ -55,7 +55,7 @@ function getStatusIcon(status: Job["status"]) {
   }
 }
 
-function getStatusVariant(status: Job["status"]): "default" | "secondary" | "destructive" | "success" | "warning" {
+function getStatusVariant(status: JobStatus): "default" | "secondary" | "destructive" | "success" | "warning" {
   switch (status) {
     case "pending":
       return "warning"
@@ -74,63 +74,18 @@ function getStatusVariant(status: Job["status"]): "default" | "secondary" | "des
 }
 
 export default function JobsPage() {
-  const { getToken } = useAuth()
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [stats, setStats] = useState<JobStats | null>(null)
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<JobStatus | undefined>(undefined)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const [status, setStatus] = useState("all")
-  const [page, setPage] = useState(1)
-  const pageSize = 25
-
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const token = await getToken()
-
-      if (!token) {
-        throw new Error("Not authenticated")
-      }
-
-      const [jobsRes, statsRes] = await Promise.all([
-        api.jobs.list(token, {
-          status: status !== "all" ? status : undefined,
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-        } as JobQueryParams),
-        api.jobs.stats(token).catch(() => null),
-      ])
-
-      setJobs(jobsRes.jobs)
-      setTotal(jobsRes.total)
-      setStats(statsRes)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load jobs")
-    } finally {
-      setLoading(false)
-    }
-  }, [status, page, getToken])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  const jobs = useJobs(statusFilter)
+  const stats = useJobStats()
+  const retryJob = useRetryJob()
+  const cancelJob = useCancelJob()
 
   const handleCancel = async (jobId: string) => {
     setActionLoading(jobId)
     try {
-      const token = await getToken()
-
-      if (!token) throw new Error("Not authenticated")
-
-      await api.jobs.cancel(token, jobId)
-      fetchData()
-    } catch (e) {
-      console.error("Failed to cancel job:", e)
+      await cancelJob({ id: jobId as any })
     } finally {
       setActionLoading(null)
     }
@@ -139,20 +94,25 @@ export default function JobsPage() {
   const handleRetry = async (jobId: string) => {
     setActionLoading(jobId)
     try {
-      const token = await getToken()
-
-      if (!token) throw new Error("Not authenticated")
-
-      await api.jobs.retry(token, jobId)
-      fetchData()
-    } catch (e) {
-      console.error("Failed to retry job:", e)
+      await retryJob({ id: jobId as any })
     } finally {
       setActionLoading(null)
     }
   }
 
-  const totalPages = Math.ceil(total / pageSize)
+  if (jobs === undefined || stats === undefined) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Job Monitoring</h2>
+          <p className="text-muted-foreground">Monitor and manage background jobs</p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -161,90 +121,85 @@ export default function JobsPage() {
         <p className="text-muted-foreground">Monitor and manage background jobs</p>
       </div>
 
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-yellow-500/10 p-2">
-                  <Clock className="h-5 w-5 text-yellow-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold">{stats.pending}</p>
-                </div>
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-yellow-500/10 p-2">
+                <Clock className="h-5 w-5 text-yellow-500" />
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-blue-500/10 p-2">
-                  <Play className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Running</p>
-                  <p className="text-2xl font-bold">{stats.running}</p>
-                </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold">{stats.pending || 0}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-green-500/10 p-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{stats.completed}</p>
-                </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-blue-500/10 p-2">
+                <Play className="h-5 w-5 text-blue-500" />
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-red-500/10 p-2">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Failed</p>
-                  <p className="text-2xl font-bold">{stats.failed}</p>
-                </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Running</p>
+                <p className="text-2xl font-bold">{stats.running || 0}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-gray-500/10 p-2">
-                  <Skull className="h-5 w-5 text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Dead</p>
-                  <p className="text-2xl font-bold">{stats.dead}</p>
-                </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-green-500/10 p-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <div>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold">{stats.completed || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-red-500/10 p-2">
+                <XCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Failed</p>
+                <p className="text-2xl font-bold">{stats.failed || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-gray-500/10 p-2">
+                <Skull className="h-5 w-5 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Dead</p>
+                <p className="text-2xl font-bold">{stats.dead || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Jobs</CardTitle>
-              <CardDescription>{total} total jobs</CardDescription>
+              <CardDescription>{jobs.length} jobs</CardDescription>
             </div>
             <div className="flex gap-2">
               <Select
-                value={status}
-                onValueChange={(v) => {
-                  setStatus(v)
-                  setPage(1)
-                }}
+                value={statusFilter || "all"}
+                onValueChange={(v) => setStatusFilter(v === "all" ? undefined : v as JobStatus)}
               >
                 <SelectTrigger className="w-[150px]">
                   <Filter className="mr-2 h-4 w-4" />
@@ -258,25 +213,11 @@ export default function JobsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={fetchData}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">{error}</p>
-              <Button variant="outline" className="mt-4" onClick={fetchData}>
-                Retry
-              </Button>
-            </div>
-          ) : loading ? (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-          ) : jobs.length === 0 ? (
+          {jobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Clock className="mb-4 h-12 w-12 text-muted-foreground/50" />
               <h3 className="font-medium">No jobs found</h3>
@@ -285,85 +226,59 @@ export default function JobsPage() {
               </p>
             </div>
           ) : (
-            <>
-              <div className="space-y-3">
-                {jobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      {getStatusIcon(job.status)}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{job.jobType}</span>
-                          <Badge variant={getStatusVariant(job.status)}>{job.status}</Badge>
-                        </div>
-                        <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>ID: {job.id}</span>
-                          {job.entityId && <span>Entity: {job.entityId}</span>}
-                          <span>Attempts: {job.attempts}/{job.maxAttempts}</span>
-                        </div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          Scheduled: {formatDate(job.scheduledFor)}
-                          {job.completedAt && ` | Completed: ${formatDate(job.completedAt)}`}
-                        </div>
-                        {job.errorMessage && (
-                          <p className="mt-2 text-sm text-destructive">{job.errorMessage}</p>
-                        )}
+            <div className="space-y-3">
+              {jobs.map((job) => (
+                <div
+                  key={job._id}
+                  className="flex items-center justify-between rounded-lg border p-4"
+                >
+                  <div className="flex items-center gap-4">
+                    {getStatusIcon(job.status)}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{job.jobType}</span>
+                        <Badge variant={getStatusVariant(job.status)}>{job.status}</Badge>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {job.status === "pending" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancel(job.id)}
-                          disabled={actionLoading === job.id}
-                        >
-                          <XOctagon className="mr-2 h-4 w-4" />
-                          Cancel
-                        </Button>
-                      )}
-                      {(job.status === "failed" || job.status === "dead") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRetry(job.id)}
-                          disabled={actionLoading === job.id}
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Retry
-                        </Button>
+                      <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>ID: {job._id}</span>
+                        <span>Attempts: {job.attempts}/{job.maxAttempts}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        Scheduled: {formatDate(new Date(job.scheduledFor).toISOString())}
+                        {job.completedAt && ` | Completed: ${formatDate(new Date(job.completedAt).toISOString())}`}
+                      </div>
+                      {job.errorMessage && (
+                        <p className="mt-2 text-sm text-destructive">{job.errorMessage}</p>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Page {page} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    {job.status === "pending" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCancel(job._id)}
+                        disabled={actionLoading === job._id}
+                      >
+                        <XOctagon className="mr-2 h-4 w-4" />
+                        Cancel
+                      </Button>
+                    )}
+                    {(job.status === "failed" || job.status === "dead") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRetry(job._id)}
+                        disabled={actionLoading === job._id}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
