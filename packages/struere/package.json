@@ -1,6 +1,6 @@
 {
   "name": "struere",
-  "version": "0.3.0",
+  "version": "0.3.5",
   "description": "Build, test, and deploy AI agents",
   "keywords": ["ai", "agents", "llm", "anthropic", "openai", "framework", "cli"],
   "author": "struere",
