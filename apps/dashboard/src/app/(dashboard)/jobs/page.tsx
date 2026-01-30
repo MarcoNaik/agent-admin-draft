@@ -103,7 +103,7 @@ export default function JobsPage() {
 
   if (jobs === undefined || stats === undefined) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6 p-6">
         <div>
           <h2 className="text-2xl font-bold">Job Monitoring</h2>
           <p className="text-muted-foreground">Monitor and manage background jobs</p>
@@ -116,7 +116,7 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-6">
       <div>
         <h2 className="text-2xl font-bold">Job Monitoring</h2>
         <p className="text-muted-foreground">Monitor and manage background jobs</p>

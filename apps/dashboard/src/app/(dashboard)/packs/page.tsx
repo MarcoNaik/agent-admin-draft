@@ -59,14 +59,14 @@ export default function PacksPage() {
 
   if (packs === undefined) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="mx-auto flex max-w-5xl items-center justify-center p-6 py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold">Solution Packs</h1>
         <p className="text-muted-foreground">Install pre-configured business solutions</p>

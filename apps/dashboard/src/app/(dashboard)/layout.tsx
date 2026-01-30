@@ -12,11 +12,9 @@ export default function DashboardLayout({
     <EnsureUserProvider>
       <div className="flex h-screen flex-col">
         <Header />
-        <div className="scrollbar flex h-screen flex-col overflow-y-auto">
-          <div className="h-full grow bg-background-primary p-4">
-            <div className="mx-auto transition-all max-w-3xl lg:max-w-5xl xl:max-w-7xl">
-              {children}
-            </div>
+        <div className="scrollbar flex flex-1 flex-col overflow-y-auto">
+          <div className="flex-1 bg-background-primary">
+            {children}
           </div>
         </div>
       </div>

@@ -19,7 +19,7 @@ export default function EntityTypesPage() {
 
   if (entityTypes === undefined) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6 p-6">
         <div>
           <h2 className="text-2xl font-bold">Entity Types</h2>
           <p className="text-muted-foreground">Browse and manage your organization&apos;s entity types</p>
@@ -32,7 +32,7 @@ export default function EntityTypesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-6">
       <div>
         <h2 className="text-2xl font-bold">Entity Types</h2>
         <p className="text-muted-foreground">Browse and manage your organization&apos;s entity types</p>

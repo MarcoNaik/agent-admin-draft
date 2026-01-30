@@ -14,7 +14,7 @@ export default function ApiKeysPage() {
 
   if (apiKeys === undefined) {
     return (
-      <div className="space-y-8">
+      <div className="mx-auto max-w-5xl space-y-8 p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-content-primary">API Keys</h1>
@@ -29,7 +29,7 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-content-primary">API Keys</h1>
