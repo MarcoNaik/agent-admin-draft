@@ -1,14 +1,18 @@
-import { ScrollText, AlertCircle, Info, AlertTriangle, Bug } from "lucide-react"
-import { api, AgentLog } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+"use client"
+
+import { ScrollText, AlertCircle, Info, AlertTriangle, Bug, Loader2 } from "lucide-react"
+import { useRecentExecutions } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Id } from "@convex/_generated/dataModel"
 
 interface AgentLogsPageProps {
-  params: Promise<{ agentId: string }>
+  params: { agentId: string }
 }
 
-function LogLevelIcon({ level }: { level: AgentLog["level"] }) {
+type LogLevel = "info" | "warn" | "error" | "debug"
+
+function LogLevelIcon({ level }: { level: LogLevel }) {
   switch (level) {
     case "info":
       return <Info className="h-4 w-4 text-blue-500" />
@@ -23,8 +27,8 @@ function LogLevelIcon({ level }: { level: AgentLog["level"] }) {
   }
 }
 
-function LogLevelBadge({ level }: { level: AgentLog["level"] }) {
-  const variants: Record<AgentLog["level"], "default" | "secondary" | "destructive" | "warning"> = {
+function LogLevelBadge({ level }: { level: LogLevel }) {
+  const variants: Record<LogLevel, "default" | "secondary" | "destructive" | "warning"> = {
     info: "default",
     warn: "warning",
     error: "destructive",
@@ -38,19 +42,31 @@ function LogLevelBadge({ level }: { level: AgentLog["level"] }) {
   )
 }
 
-export default async function AgentLogsPage({ params }: AgentLogsPageProps) {
-  const { agentId } = await params
-  const token = await getAuthToken()
+export default function AgentLogsPage({ params }: AgentLogsPageProps) {
+  const { agentId } = params
+  const executions = useRecentExecutions(agentId as Id<"agents">, 100)
 
-  let logs: AgentLog[] = []
-  let error: string | null = null
-
-  try {
-    const data = await api.logs.list(token!, agentId, { limit: 100 })
-    logs = data.logs
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load logs"
+  if (executions === undefined) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+      </div>
+    )
   }
+
+  const logs = executions.map((exec) => ({
+    id: exec._id,
+    level: (exec.status === "error" ? "error" : "info") as LogLevel,
+    message: exec.status === "error"
+      ? `Execution failed: ${exec.errorMessage || "Unknown error"}`
+      : `Execution completed in ${exec.durationMs}ms (${exec.inputTokens} in / ${exec.outputTokens} out)`,
+    timestamp: exec.createdAt,
+    metadata: {
+      inputTokens: exec.inputTokens,
+      outputTokens: exec.outputTokens,
+      durationMs: exec.durationMs,
+    },
+  }))
 
   return (
     <div className="space-y-6">
@@ -63,16 +79,12 @@ export default async function AgentLogsPage({ params }: AgentLogsPageProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ScrollText className="h-5 w-5" />
-            Recent Logs
+            Recent Executions
           </CardTitle>
-          <CardDescription>Latest log entries from your agent</CardDescription>
+          <CardDescription>Latest execution entries from your agent</CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">{error}</p>
-            </div>
-          ) : logs.length === 0 ? (
+          {logs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ScrollText className="mb-4 h-12 w-12 text-muted-foreground/50" />
               <h3 className="font-medium">No logs yet</h3>
