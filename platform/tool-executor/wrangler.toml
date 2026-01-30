@@ -1,0 +1,10 @@
+name = "struere-tool-executor"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+
+[env.production]
+routes = [
+  { pattern = "tool-executor.struere.dev", custom_domain = true }
+]
