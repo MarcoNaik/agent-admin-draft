@@ -4,13 +4,12 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
-import { api } from "@/lib/api"
+import { useCreateAgent } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@clerk/nextjs"
 
 function slugify(name: string): string {
   return name
@@ -21,7 +20,7 @@ function slugify(name: string): string {
 
 export default function NewAgentPage() {
   const router = useRouter()
-  const { getToken } = useAuth()
+  const createAgent = useCreateAgent()
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [slugTouched, setSlugTouched] = useState(false)
@@ -58,20 +57,13 @@ export default function NewAgentPage() {
     setIsSubmitting(true)
 
     try {
-      const token = await getToken()
-      if (!token) {
-        setError("Not authenticated")
-        setIsSubmitting(false)
-        return
-      }
-
-      const { agent } = await api.agents.create(token, {
+      const agentId = await createAgent({
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
       })
 
-      router.push(`/agents/${agent.id}`)
+      router.push(`/agents/${agentId}`)
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes("already exists") || err.message.includes("duplicate")) {
