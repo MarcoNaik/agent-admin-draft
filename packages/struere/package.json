@@ -1,8 +1,16 @@
 {
   "name": "struere",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Build, test, and deploy AI agents",
-  "keywords": ["ai", "agents", "llm", "anthropic", "openai", "framework", "cli"],
+  "keywords": [
+    "ai",
+    "agents",
+    "llm",
+    "anthropic",
+    "openai",
+    "framework",
+    "cli"
+  ],
   "author": "struere",
   "license": "MIT",
   "publishConfig": {
@@ -29,7 +37,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "bun build ./src/cli/index.ts --outdir ./dist/cli --target bun --external commander --external chalk --external ora --external chokidar --external yaml && bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/bin/struere.ts --outdir ./dist/bin --target bun && tsc --emitDeclarationOnly && chmod +x ./dist/bin/struere.js",
     "dev": "tsc --watch",
