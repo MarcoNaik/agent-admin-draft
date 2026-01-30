@@ -1,46 +1,45 @@
+"use client"
+
 import Link from "next/link"
-import { ChevronLeft, Edit, Trash2, Link2, Clock } from "lucide-react"
-import { api, Entity, EntityType, EntityRelation, EntityEvent } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+import { ChevronLeft, Edit, Trash2, Link2, Clock, Loader2 } from "lucide-react"
+import { useEntityWithType, useRelatedEntities, useEntityEvents, useDeleteEntity } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { EntityDetail } from "@/components/entities/entity-detail"
 import { EntityTimeline } from "@/components/entities/entity-timeline"
+import { Id } from "@convex/_generated/dataModel"
+import { useRouter } from "next/navigation"
 
 interface EntityDetailPageProps {
-  params: Promise<{ type: string; id: string }>
+  params: { type: string; id: string }
 }
 
-export default async function EntityDetailPage({ params }: EntityDetailPageProps) {
-  const { type, id } = await params
-  const token = await getAuthToken()
+export default function EntityDetailPage({ params }: EntityDetailPageProps) {
+  const { type, id } = params
+  const router = useRouter()
 
-  let entity: Entity | null = null
-  let entityType: EntityType | null = null
-  let outgoingRelations: EntityRelation[] = []
-  let incomingRelations: EntityRelation[] = []
-  let events: EntityEvent[] = []
-  let error: string | null = null
+  const entityData = useEntityWithType(id as Id<"entities">)
+  const relatedEntities = useRelatedEntities(id as Id<"entities">)
+  const events = useEntityEvents(id as Id<"entities">)
+  const deleteEntity = useDeleteEntity()
 
-  try {
-    const [entityRes, relationsRes, eventsRes] = await Promise.all([
-      api.entities.get(token!, id),
-      api.entities.relations(token!, id).catch(() => ({ outgoing: [], incoming: [] })),
-      api.entities.events(token!, id).catch(() => ({ events: [] })),
-    ])
-
-    entity = entityRes.entity
-    entityType = entityRes.entityType
-    outgoingRelations = relationsRes.outgoing
-    incomingRelations = relationsRes.incoming
-    events = eventsRes.events
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load entity"
+  if (entityData === undefined || events === undefined) {
+    return (
+      <div className="space-y-6">
+        <Link href={`/entities/${type}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Back to {type}
+        </Link>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        </div>
+      </div>
+    )
   }
 
-  if (error || !entity || !entityType) {
+  if (!entityData) {
     return (
       <div className="space-y-6">
         <Link href={`/entities/${type}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
@@ -49,14 +48,65 @@ export default async function EntityDetailPage({ params }: EntityDetailPageProps
         </Link>
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">{error || "Entity not found"}</p>
+            <p className="text-muted-foreground">Entity not found</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  const totalRelations = outgoingRelations.length + incomingRelations.length
+  const { entity, entityType } = entityData
+
+  if (!entity || !entityType) {
+    return (
+      <div className="space-y-6">
+        <Link href={`/entities/${type}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Back to {type}
+        </Link>
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">Entity or entity type not found</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const mappedEntityType = {
+    id: entityType._id,
+    name: entityType.name,
+    slug: entityType.slug,
+    schema: entityType.schema,
+    displayConfig: entityType.displayConfig,
+  }
+
+  const mappedEntity = {
+    id: entity._id,
+    status: entity.status,
+    data: entity.data,
+    createdAt: new Date(entity.createdAt).toISOString(),
+    updatedAt: new Date(entity.updatedAt).toISOString(),
+  }
+
+  const mappedEvents = events.map((e) => ({
+    id: e._id,
+    eventType: e.eventType,
+    actorType: e.actorType,
+    actorId: e.actorId,
+    payload: e.payload,
+    timestamp: new Date(e.timestamp).toISOString(),
+  }))
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this entity? This action cannot be undone.")) {
+      return
+    }
+    await deleteEntity({ id: entity._id })
+    router.push(`/entities/${type}`)
+  }
+
+  const totalRelations = relatedEntities?.length || 0
 
   return (
     <div className="space-y-6">
@@ -72,7 +122,7 @@ export default async function EntityDetailPage({ params }: EntityDetailPageProps
               Edit
             </Link>
           </Button>
-          <Button variant="destructive">
+          <Button variant="destructive" onClick={handleDelete}>
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
           </Button>
@@ -85,7 +135,7 @@ export default async function EntityDetailPage({ params }: EntityDetailPageProps
           <CardDescription>View and manage this {entityType.name.toLowerCase()}</CardDescription>
         </CardHeader>
         <CardContent>
-          <EntityDetail entityType={entityType} entity={entity} />
+          <EntityDetail entityType={mappedEntityType} entity={mappedEntity} />
         </CardContent>
       </Card>
 
@@ -106,45 +156,21 @@ export default async function EntityDetailPage({ params }: EntityDetailPageProps
               </div>
             ) : (
               <div className="space-y-4">
-                {outgoingRelations.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Outgoing</h4>
-                    <div className="space-y-2">
-                      {outgoingRelations.map((rel) => (
-                        <Link
-                          key={rel.id}
-                          href={`/entities/${rel.toEntity?.entityTypeSlug || type}/${rel.toEntityId}`}
-                          className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{rel.relationType}</Badge>
-                            <span className="text-sm">{rel.toEntityId}</span>
-                          </div>
-                          <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {incomingRelations.length > 0 && (
-                  <div>
-                    {outgoingRelations.length > 0 && <Separator className="my-4" />}
-                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Incoming</h4>
-                    <div className="space-y-2">
-                      {incomingRelations.map((rel) => (
-                        <Link
-                          key={rel.id}
-                          href={`/entities/${rel.fromEntity?.entityTypeSlug || type}/${rel.fromEntityId}`}
-                          className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{rel.relationType}</Badge>
-                            <span className="text-sm">{rel.fromEntityId}</span>
-                          </div>
-                          <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
-                        </Link>
-                      ))}
-                    </div>
+                {relatedEntities && relatedEntities.length > 0 && (
+                  <div className="space-y-2">
+                    {relatedEntities.map((rel) => (
+                      <Link
+                        key={rel._id}
+                        href={`/entities/${type}/${rel.toEntityId}`}
+                        className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{rel.relationType}</Badge>
+                          <span className="text-sm">{rel.toEntityId}</span>
+                        </div>
+                        <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
@@ -161,7 +187,7 @@ export default async function EntityDetailPage({ params }: EntityDetailPageProps
             <CardDescription>Recent events</CardDescription>
           </CardHeader>
           <CardContent>
-            <EntityTimeline events={events} />
+            <EntityTimeline events={mappedEvents} />
           </CardContent>
         </Card>
       </div>
