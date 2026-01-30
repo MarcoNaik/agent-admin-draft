@@ -1,3 +1,5 @@
+"use client"
+
 import {
   Activity,
   AlertCircle,
@@ -5,28 +7,31 @@ import {
   Clock,
   TrendingUp,
   Zap,
+  Loader2,
 } from "lucide-react"
-import { api } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+import { useAgentWithConfig, useExecutionStats } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Id } from "@convex/_generated/dataModel"
 
 interface AgentHealthPageProps {
-  params: Promise<{ agentId: string }>
+  params: { agentId: string }
 }
 
-export default async function AgentHealthPage({ params }: AgentHealthPageProps) {
-  const { agentId } = await params
-  const token = await getAuthToken()
+export default function AgentHealthPage({ params }: AgentHealthPageProps) {
+  const { agentId } = params
+  const agentData = useAgentWithConfig(agentId as Id<"agents">)
+  const stats = useExecutionStats(agentId as Id<"agents">)
 
-  let agent = null
-  let versions: Awaited<ReturnType<typeof api.agents.get>>["versions"] = []
+  if (agentData === undefined) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+      </div>
+    )
+  }
 
-  try {
-    const data = await api.agents.get(token!, agentId)
-    agent = data.agent
-    versions = data.versions
-  } catch {
+  if (!agentData) {
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">Failed to load agent data</p>
@@ -34,7 +39,17 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
     )
   }
 
-  const latestVersion = versions[0]
+  const { agent, config } = agentData
+
+  if (!agent) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-muted-foreground">Agent not found</p>
+      </div>
+    )
+  }
+
+  const status = agent.productionConfigId ? "active" : "inactive"
 
   return (
     <div className="space-y-6">
@@ -50,8 +65,8 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
               <CardTitle>Summary</CardTitle>
               <CardDescription>Current agent status and deployment info</CardDescription>
             </div>
-            <Badge variant={agent?.status === "active" ? "success" : "secondary"}>
-              {agent?.status}
+            <Badge variant={status === "active" ? "success" : "secondary"}>
+              {status}
             </Badge>
           </div>
         </CardHeader>
@@ -63,7 +78,7 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Status</p>
-                <p className="font-medium capitalize">{agent?.status}</p>
+                <p className="font-medium capitalize">{status}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-4">
@@ -72,7 +87,7 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Current Version</p>
-                <p className="font-medium">{latestVersion?.version || "Not deployed"}</p>
+                <p className="font-medium">{config?.version || "Not deployed"}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-4">
@@ -80,8 +95,8 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
                 <Activity className="h-5 w-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Versions</p>
-                <p className="font-medium">{versions.length}</p>
+                <p className="text-sm text-muted-foreground">Total Executions</p>
+                <p className="font-medium">{stats?.executions || 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-4">
@@ -91,7 +106,7 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
               <div>
                 <p className="text-sm text-muted-foreground">Last Updated</p>
                 <p className="font-medium">
-                  {agent?.updatedAt
+                  {agent.updatedAt
                     ? new Date(agent.updatedAt).toLocaleDateString()
                     : "N/A"}
                 </p>
@@ -114,7 +129,9 @@ export default async function AgentHealthPage({ params }: AgentHealthPageProps) 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Failure Rate</span>
-                <span className="text-2xl font-bold text-green-500">0.0%</span>
+                <span className="text-2xl font-bold text-green-500">
+                  {stats?.successRate ? `${((1 - stats.successRate) * 100).toFixed(1)}%` : "0.0%"}
+                </span>
               </div>
               <div className="h-2 rounded-full bg-muted">
                 <div className="h-2 w-0 rounded-full bg-green-500" />
