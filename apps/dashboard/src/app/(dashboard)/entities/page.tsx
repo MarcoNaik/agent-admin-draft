@@ -1,21 +1,33 @@
+"use client"
+
 import Link from "next/link"
-import { Database, Layers, ChevronRight } from "lucide-react"
-import { api, EntityType, getSchemaFields } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Database, Layers, ChevronRight, Loader2 } from "lucide-react"
+import { useEntityTypes } from "@/hooks/use-convex-data"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-export default async function EntityTypesPage() {
-  const token = await getAuthToken()
+function getSchemaFields(schema: unknown): { key: string }[] {
+  if (!schema || typeof schema !== "object") return []
+  const schemaObj = schema as { properties?: Record<string, unknown> }
+  if (!schemaObj.properties) return []
+  return Object.keys(schemaObj.properties).map((key) => ({ key }))
+}
 
-  let entityTypes: EntityType[] = []
-  let error: string | null = null
+export default function EntityTypesPage() {
+  const entityTypes = useEntityTypes()
 
-  try {
-    const data = await api.entityTypes.list(token!)
-    entityTypes = data.entityTypes
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load entity types"
+  if (entityTypes === undefined) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Entity Types</h2>
+          <p className="text-muted-foreground">Browse and manage your organization&apos;s entity types</p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -25,13 +37,7 @@ export default async function EntityTypesPage() {
         <p className="text-muted-foreground">Browse and manage your organization&apos;s entity types</p>
       </div>
 
-      {error ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      ) : entityTypes.length === 0 ? (
+      {entityTypes.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Database className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
@@ -44,7 +50,7 @@ export default async function EntityTypesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {entityTypes.map((entityType) => (
-            <Link key={entityType.id} href={`/entities/${entityType.slug}`}>
+            <Link key={entityType._id} href={`/entities/${entityType.slug}`}>
               <Card className="h-full transition-colors hover:border-primary/50">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -68,9 +74,6 @@ export default async function EntityTypesPage() {
                   </div>
                   <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
                     <span>{getSchemaFields(entityType.schema).length} fields</span>
-                    {entityType.entityCount !== undefined && (
-                      <span>{entityType.entityCount} entities</span>
-                    )}
                   </div>
                 </CardContent>
               </Card>
