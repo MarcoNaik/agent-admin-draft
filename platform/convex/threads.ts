@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation } from "./_generated/server"
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
 export const list = query({
@@ -220,6 +220,13 @@ export const getMessages = query({
     }
 
     return messages
+  },
+})
+
+export const getThreadInternal = internalQuery({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.threadId)
   },
 })
 

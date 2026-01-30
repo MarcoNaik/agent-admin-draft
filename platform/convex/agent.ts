@@ -3,6 +3,7 @@ import { internalAction, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { hashApiKey } from "./lib/utils"
+import { processTemplates, TemplateContext, ToolExecutor } from "./lib/templateEngine"
 
 interface ToolCall {
   id: string
@@ -79,8 +80,45 @@ export const chat = internalAction({
       threadId,
     })
 
+    const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
+
+    const templateContext: TemplateContext = {
+      organizationId: auth.organizationId,
+      userId: thread?.userId,
+      threadId,
+      agentId: args.agentId,
+      agent: { name: agent.name, slug: agent.slug },
+      thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
+      message: args.message,
+      timestamp: Date.now(),
+      datetime: new Date().toISOString(),
+    }
+
+    const toolExecutor: ToolExecutor = {
+      executeBuiltin: (name, toolArgs) =>
+        executeBuiltinTool(ctx, {
+          organizationId: auth.organizationId,
+          actorId: `apikey:${auth.keyPrefix}`,
+          actorType: "agent",
+          toolName: name,
+          args: toolArgs,
+        }),
+      executeCustom: (handlerCode, toolArgs) =>
+        ctx.runAction(internal.agent.executeCustomTool, {
+          handlerCode,
+          args: toolArgs,
+        }),
+    }
+
+    const processedSystemPrompt = await processTemplates(
+      config.systemPrompt,
+      templateContext,
+      config.tools,
+      toolExecutor
+    )
+
     const messages: Message[] = [
-      { role: "system", content: config.systemPrompt },
+      { role: "system", content: processedSystemPrompt },
       ...existingMessages.map((m: { role: string; content: string; toolCalls?: unknown; toolCallId?: string }) => ({
         role: m.role as Message["role"],
         content: m.content,

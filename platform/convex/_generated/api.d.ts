@@ -18,6 +18,7 @@ import type * as executions from "../executions.js";
 import type * as http from "../http.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_templateEngine from "../lib/templateEngine.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as organizations from "../organizations.js";
 import type * as packs from "../packs.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   jobs: typeof jobs;
   "lib/auth": typeof lib_auth;
+  "lib/templateEngine": typeof lib_templateEngine;
   "lib/utils": typeof lib_utils;
   organizations: typeof organizations;
   packs: typeof packs;
