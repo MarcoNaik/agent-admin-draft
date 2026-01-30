@@ -299,3 +299,174 @@ export const getActiveConfig = internalQuery({
     return config
   },
 })
+
+function parseTemplatesSimple(text: string): Array<{
+  fullMatch: string
+  startIndex: number
+  endIndex: number
+  isFunction: boolean
+  name: string
+  argsRaw?: string
+}> {
+  const templates: Array<{
+    fullMatch: string
+    startIndex: number
+    endIndex: number
+    isFunction: boolean
+    name: string
+    argsRaw?: string
+  }> = []
+  let i = 0
+
+  while (i < text.length) {
+    if (text[i] === "{" && text[i + 1] === "{") {
+      const startIndex = i
+      i += 2
+
+      let depth = 1
+      let contentStart = i
+      let contentEnd = -1
+
+      while (i < text.length && depth > 0) {
+        if (text[i] === "{" && text[i + 1] === "{") {
+          depth++
+          i += 2
+        } else if (text[i] === "}" && text[i + 1] === "}") {
+          depth--
+          if (depth === 0) {
+            contentEnd = i
+          }
+          i += 2
+        } else {
+          i++
+        }
+      }
+
+      if (contentEnd !== -1) {
+        const content = text.slice(contentStart, contentEnd).trim()
+        const endIndex = i
+        const fullMatch = text.slice(startIndex, endIndex)
+
+        const funcMatch = content.match(/^([a-zA-Z_][\w.]*)\(([\s\S]*)\)$/)
+        if (funcMatch) {
+          templates.push({
+            fullMatch,
+            startIndex,
+            endIndex,
+            isFunction: true,
+            name: funcMatch[1],
+            argsRaw: funcMatch[2],
+          })
+        } else {
+          templates.push({
+            fullMatch,
+            startIndex,
+            endIndex,
+            isFunction: false,
+            name: content,
+          })
+        }
+      }
+    } else {
+      i++
+    }
+  }
+
+  return templates
+}
+
+function resolveVariableSimple(name: string, context: Record<string, unknown>): string | undefined {
+  const parts = name.split(".")
+  let current: unknown = context
+
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined
+    if (typeof current !== "object") return undefined
+    current = (current as Record<string, unknown>)[part]
+  }
+
+  if (current === undefined || current === null) return undefined
+  if (typeof current === "string") return current
+  return JSON.stringify(current)
+}
+
+function compileTemplatePreview(
+  systemPrompt: string,
+  context: Record<string, unknown>
+): string {
+  const templates = parseTemplatesSimple(systemPrompt)
+  if (templates.length === 0) return systemPrompt
+
+  let result = systemPrompt
+
+  for (let i = templates.length - 1; i >= 0; i--) {
+    const template = templates[i]
+    let replacement: string
+
+    if (template.isFunction) {
+      replacement = `[PREVIEW: ${template.name}(${template.argsRaw || ""})]`
+    } else {
+      const value = resolveVariableSimple(template.name, context)
+      replacement = value !== undefined ? value : `[UNRESOLVED: ${template.name}]`
+    }
+
+    result = result.slice(0, template.startIndex) + replacement + result.slice(template.endIndex)
+  }
+
+  return result
+}
+
+export const compileSystemPrompt = query({
+  args: {
+    agentId: v.id("agents"),
+    environment: v.union(v.literal("development"), v.literal("production")),
+    sampleContext: v.optional(v.object({
+      message: v.optional(v.string()),
+      threadMetadata: v.optional(v.any()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const agent = await ctx.db.get(args.agentId)
+
+    if (!agent || agent.organizationId !== auth.organizationId) {
+      throw new Error("Agent not found")
+    }
+
+    const configId = args.environment === "production"
+      ? agent.productionConfigId
+      : agent.developmentConfigId
+
+    if (!configId) {
+      throw new Error(`No ${args.environment} configuration found`)
+    }
+
+    const config = await ctx.db.get(configId)
+    if (!config) {
+      throw new Error("Configuration not found")
+    }
+
+    const sampleContext = args.sampleContext || {}
+    const now = Date.now()
+
+    const templateContext: Record<string, unknown> = {
+      organizationId: auth.organizationId,
+      userId: auth.userId,
+      threadId: "sample-thread-id",
+      agentId: args.agentId,
+      agent: { name: agent.name, slug: agent.slug },
+      thread: { metadata: sampleContext.threadMetadata || {} },
+      message: sampleContext.message || "Hello, this is a sample message.",
+      timestamp: now,
+      datetime: new Date(now).toISOString(),
+    }
+
+    const compiled = compileTemplatePreview(config.systemPrompt, templateContext)
+
+    return {
+      raw: config.systemPrompt,
+      compiled,
+      context: templateContext,
+    }
+  },
+})
