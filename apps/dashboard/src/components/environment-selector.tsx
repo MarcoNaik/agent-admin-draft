@@ -11,7 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { EnvironmentInfo, Environment } from "@/lib/api"
+type Environment = "development" | "production"
+
+interface EnvironmentInfo {
+  url: string
+  version: string
+  deployedAt: string
+}
 
 interface EnvironmentSelectorProps {
   agentId: string
