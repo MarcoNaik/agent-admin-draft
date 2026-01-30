@@ -5,7 +5,7 @@ import chokidar from 'chokidar'
 import { join, basename } from 'path'
 import { loadConfig } from '../utils/config'
 import { loadAgent } from '../utils/agent'
-import { loadCredentials, getApiKey } from '../utils/credentials'
+import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProject, saveProject } from '../utils/project'
 import { scaffoldAgentFiles, hasAgentFiles } from '../utils/scaffold'
 import { performLogin } from './login'
@@ -51,15 +51,17 @@ export const devCommand = new Command('dev')
     let agent = await loadAgent(cwd)
     spinner.succeed(`Agent "${agent.name}" loaded`)
 
-    const credentials = loadCredentials()
+    let credentials = loadCredentials()
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
-      spinner.fail('Not logged in')
+      console.log(chalk.gray('Authentication required'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
-      console.log()
-      process.exit(1)
+      credentials = await performLogin()
+      if (!credentials) {
+        console.log(chalk.red('Authentication failed'))
+        process.exit(1)
+      }
     }
 
     spinner.start('Syncing to Convex')
@@ -79,13 +81,42 @@ export const devCommand = new Command('dev')
       }
     }
 
+    const isAuthError = (error: unknown): boolean => {
+      const message = error instanceof Error ? error.message : String(error)
+      return message.includes('Unauthenticated') ||
+             message.includes('OIDC') ||
+             message.includes('token') ||
+             message.includes('expired')
+    }
+
     try {
       await performSync()
       spinner.succeed('Synced to development')
     } catch (error) {
-      spinner.fail('Sync failed')
-      console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      process.exit(1)
+      if (isAuthError(error)) {
+        spinner.fail('Session expired')
+        console.log()
+        console.log(chalk.gray('Re-authenticating...'))
+        clearCredentials()
+        credentials = await performLogin()
+        if (!credentials) {
+          console.log(chalk.red('Authentication failed'))
+          process.exit(1)
+        }
+        spinner.start('Syncing to Convex')
+        try {
+          await performSync()
+          spinner.succeed('Synced to development')
+        } catch (retryError) {
+          spinner.fail('Sync failed')
+          console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
+          process.exit(1)
+        }
+      } else {
+        spinner.fail('Sync failed')
+        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+        process.exit(1)
+      }
     }
 
     const devUrl = `https://${project.agent.slug}-dev.struere.dev`
@@ -110,8 +141,28 @@ export const devCommand = new Command('dev')
         await performSync()
         syncSpinner.succeed('Synced')
       } catch (error) {
-        syncSpinner.fail('Sync failed')
-        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+        if (isAuthError(error)) {
+          syncSpinner.fail('Session expired')
+          console.log()
+          console.log(chalk.gray('Re-authenticating...'))
+          clearCredentials()
+          const newCredentials = await performLogin()
+          if (!newCredentials) {
+            console.log(chalk.red('Authentication failed'))
+            return
+          }
+          const retrySyncSpinner = ora('Syncing...').start()
+          try {
+            await performSync()
+            retrySyncSpinner.succeed('Synced')
+          } catch (retryError) {
+            retrySyncSpinner.fail('Sync failed')
+            console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
+          }
+        } else {
+          syncSpinner.fail('Sync failed')
+          console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+        }
       }
     })
 
