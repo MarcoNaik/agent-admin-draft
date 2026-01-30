@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
+import { Doc } from "@convex/_generated/dataModel"
 
 export default function ApiKeysPage() {
   const apiKeys = useApiKeys()
@@ -58,7 +59,7 @@ export default function ApiKeysPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {apiKeys.map((key) => (
+              {apiKeys.map((key: Doc<"apiKeys">) => (
                 <div
                   key={key._id}
                   className="flex items-center justify-between rounded-lg border bg-background-tertiary p-4 hover:border-border-selected"
@@ -77,7 +78,7 @@ export default function ApiKeysPage() {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      {key.permissions.map((perm) => (
+                      {key.permissions.map((perm: string) => (
                         <Badge key={perm} variant="secondary" className="text-xs">
                           {perm}
                         </Badge>
