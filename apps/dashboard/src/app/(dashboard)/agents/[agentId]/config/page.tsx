@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { useAgentWithConfig } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Id } from "@convex/_generated/dataModel"
@@ -25,6 +26,7 @@ interface AgentConfigPageProps {
 export default function AgentConfigPage({ params }: AgentConfigPageProps) {
   const { agentId } = params
   const agent = useAgentWithConfig(agentId as Id<"agents">)
+  const { environment } = useEnvironment()
 
   if (agent === undefined) {
     return (
@@ -34,21 +36,26 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
     )
   }
 
-  const config = agent?.productionConfig || agent?.developmentConfig
+  const config = environment === "production"
+    ? agent?.productionConfig
+    : agent?.developmentConfig
 
   if (!agent || !config) {
+    const envLabel = environment === "production" ? "production" : "development"
     return (
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold">Configuration</h2>
-          <p className="text-muted-foreground">View your agent&apos;s deployed configuration</p>
+          <p className="text-muted-foreground">View your agent&apos;s {envLabel} configuration</p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="font-medium">No configuration available</h3>
+            <h3 className="font-medium">No {envLabel} configuration available</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Deploy your agent to see its configuration
+              {environment === "production"
+                ? "Run 'struere deploy' to deploy your agent to production"
+                : "Run 'struere dev' to sync your development configuration"}
             </p>
           </CardContent>
         </Card>
@@ -61,7 +68,9 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Configuration</h2>
-          <p className="text-muted-foreground">View your agent&apos;s deployed configuration</p>
+          <p className="text-muted-foreground">
+            Viewing {environment === "production" ? "production" : "development"} configuration
+          </p>
         </div>
         <Badge variant="secondary" className="font-mono">
           {config.version}

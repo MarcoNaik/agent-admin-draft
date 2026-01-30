@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { ChevronDown, Globe, Code, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useEnvironment } from "@/contexts/environment-context"
+
 type Environment = "development" | "production"
 
 interface EnvironmentInfo {
@@ -29,7 +30,7 @@ interface EnvironmentSelectorProps {
 }
 
 export function EnvironmentSelector({ agentId, agentSlug, environments }: EnvironmentSelectorProps) {
-  const [selectedEnv, setSelectedEnv] = useState<Environment>("production")
+  const { environment: selectedEnv, setEnvironment: setSelectedEnv } = useEnvironment()
 
   const productionUrl = environments.production?.url || `${agentSlug}.struere.dev`
   const developmentUrl = environments.development?.url || `${agentSlug}-dev.struere.dev`
