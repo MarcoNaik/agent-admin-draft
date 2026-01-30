@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Entity, EntityType, EntityTypeField, getSchemaFields } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,6 +12,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+
+interface EntityTypeField {
+  name: string
+  type: string
+  required?: boolean
+  description?: string
+  enum?: string[]
+}
+
+interface EntityType {
+  id: string
+  name: string
+  slug: string
+  schema: unknown
+  displayConfig?: {
+    listFields?: string[]
+    detailFields?: string[]
+  }
+}
+
+interface Entity {
+  id: string
+  status: string
+  data: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+function getSchemaFields(schema: unknown): EntityTypeField[] {
+  if (!schema || typeof schema !== "object") return []
+  const schemaObj = schema as {
+    properties?: Record<string, {
+      type?: string
+      description?: string
+      enum?: string[]
+    }>
+    required?: string[]
+  }
+  if (!schemaObj.properties) return []
+  const required = schemaObj.required || []
+  return Object.entries(schemaObj.properties).map(([name, prop]) => ({
+    name,
+    type: prop?.type || "string",
+    description: prop?.description,
+    enum: prop?.enum,
+    required: required.includes(name),
+  }))
+}
 
 interface EntityFormProps {
   entityType: EntityType
