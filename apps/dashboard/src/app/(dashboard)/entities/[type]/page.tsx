@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@clerk/nextjs"
-import { Search, Filter, ChevronLeft, ChevronRight, Plus, Layers } from "lucide-react"
-import { api, Entity, EntityType, EntityQueryParams } from "@/lib/api"
+import { Search, Filter, ChevronLeft, ChevronRight, Plus, Layers, Loader2 } from "lucide-react"
+import { useEntityTypeBySlug, useEntities } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +17,7 @@ import {
 import { EntityTable } from "@/components/entities/entity-table"
 
 interface EntityListPageProps {
-  params: Promise<{ type: string }>
+  params: { type: string }
 }
 
 const STATUS_OPTIONS = [
@@ -34,66 +33,82 @@ const STATUS_OPTIONS = [
 ]
 
 export default function EntityListPage({ params }: EntityListPageProps) {
+  const { type: typeSlug } = params
   const router = useRouter()
-  const { getToken } = useAuth()
-  const [typeSlug, setTypeSlug] = useState<string | null>(null)
-  const [entityType, setEntityType] = useState<EntityType | null>(null)
-  const [entities, setEntities] = useState<Entity[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
-  const [page, setPage] = useState(1)
-  const pageSize = 25
 
-  useEffect(() => {
-    params.then((p) => setTypeSlug(p.type))
-  }, [params])
+  const entityType = useEntityTypeBySlug(typeSlug)
+  const entities = useEntities(typeSlug, status !== "all" ? status : undefined)
 
-  const fetchData = useCallback(async () => {
-    if (!typeSlug) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const token = await getToken()
-
-      if (!token) {
-        throw new Error("Not authenticated")
-      }
-
-      const [entityTypeRes, entitiesRes] = await Promise.all([
-        api.entityTypes.get(token, typeSlug),
-        api.entities.list(token, typeSlug, {
-          status: status !== "all" ? status : undefined,
-          searchText: search || undefined,
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-        } as EntityQueryParams),
-      ])
-
-      setEntityType(entityTypeRes.entityType)
-      setEntities(entitiesRes.entities)
-      setTotal(entitiesRes.total)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load data")
-    } finally {
-      setLoading(false)
-    }
-  }, [typeSlug, status, search, page, getToken])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  const totalPages = Math.ceil(total / pageSize)
-
-  if (!typeSlug) {
-    return null
+  if (entityType === undefined || entities === undefined) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Layers className="h-6 w-6" />
+              {typeSlug}
+            </h2>
+            <p className="text-muted-foreground">
+              Loading...
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        </div>
+      </div>
+    )
   }
+
+  if (!entityType) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Layers className="h-6 w-6" />
+              {typeSlug}
+            </h2>
+            <p className="text-muted-foreground">
+              Entity type not found
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Layers className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+            <h3 className="text-lg font-medium">Entity type &quot;{typeSlug}&quot; not found</h3>
+            <p className="mt-1 text-muted-foreground">
+              This entity type does not exist in your organization
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const filteredEntities = search
+    ? entities.filter((e) => JSON.stringify(e.data).toLowerCase().includes(search.toLowerCase()))
+    : entities
+
+  const mappedEntityType = entityType ? {
+    id: entityType._id,
+    name: entityType.name,
+    slug: entityType.slug,
+    schema: entityType.schema,
+    displayConfig: entityType.displayConfig,
+  } : null
+
+  const mappedEntities = filteredEntities.map((e) => ({
+    id: e._id,
+    status: e.status,
+    data: e.data,
+    createdAt: new Date(e.createdAt).toISOString(),
+    updatedAt: new Date(e.updatedAt).toISOString(),
+  }))
 
   return (
     <div className="space-y-6">
@@ -117,7 +132,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">
-              {total} {total === 1 ? "entity" : "entities"}
+              {filteredEntities.length} {filteredEntities.length === 1 ? "entity" : "entities"}
             </CardTitle>
             <div className="flex flex-wrap gap-2">
               <div className="relative">
@@ -126,19 +141,13 @@ export default function EntityListPage({ params }: EntityListPageProps) {
                   type="search"
                   placeholder="Search..."
                   value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value)
-                    setPage(1)
-                  }}
+                  onChange={(e) => setSearch(e.target.value)}
                   className="pl-8 w-[200px]"
                 />
               </div>
               <Select
                 value={status}
-                onValueChange={(v) => {
-                  setStatus(v)
-                  setPage(1)
-                }}
+                onValueChange={setStatus}
               >
                 <SelectTrigger className="w-[150px]">
                   <Filter className="mr-2 h-4 w-4" />
@@ -156,48 +165,12 @@ export default function EntityListPage({ params }: EntityListPageProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">{error}</p>
-              <Button variant="outline" className="mt-4" onClick={fetchData}>
-                Retry
-              </Button>
-            </div>
-          ) : loading ? (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-          ) : entityType ? (
-            <>
-              <EntityTable
-                entityType={entityType}
-                entities={entities}
-                onRowClick={(entity) => router.push(`/entities/${typeSlug}/${entity.id}`)}
-              />
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Page {page} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </>
+          {mappedEntityType ? (
+            <EntityTable
+              entityType={mappedEntityType}
+              entities={mappedEntities}
+              onRowClick={(entity) => router.push(`/entities/${typeSlug}/${entity.id}`)}
+            />
           ) : null}
         </CardContent>
       </Card>
