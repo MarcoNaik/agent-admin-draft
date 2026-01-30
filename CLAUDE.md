@@ -134,6 +134,7 @@ Core backend with real-time subscriptions and scheduled functions.
 - `lib/` - Utility functions
   - `auth.ts` - Auth context helpers
   - `utils.ts` - Common utilities (nanoid, slug generation)
+  - `templateEngine.ts` - System prompt template processing
 
 **Environment Variables**:
 ```env
@@ -175,6 +176,10 @@ Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
 - `src/providers/convex-provider.tsx` - ConvexProviderWithClerk wrapper
 - `src/providers/ensure-user.tsx` - User provisioning on first login
 - `src/hooks/use-convex-data.ts` - All typed Convex hooks (62+ hooks)
+
+### Context Providers
+- `AgentContext` - Current agent info when viewing agent details
+- `EnvironmentContext` - Dev/prod environment selection via URL query param
 
 ### Key Hooks (use-convex-data.ts)
 
@@ -266,7 +271,7 @@ Anthropic claude-sonnet-4-20250514, temperature 0.7, 4096 tokens
 |---------|---------|
 | `init` | Initialize new Struere project |
 | `dev` | Sync agent config to Convex (live reload) |
-| `build` | Validate agent configuration |
+| `build` | Bundle and validate agent configuration |
 | `deploy` | Deploy agent to production |
 | `login/logout` | Browser-based OAuth authentication |
 | `whoami` | Display current logged-in user |
@@ -274,6 +279,99 @@ Anthropic claude-sonnet-4-20250514, temperature 0.7, 4096 tokens
 | `test` | Run YAML-based test conversations |
 | `logs` | View recent execution logs |
 | `state` | Inspect conversation thread state |
+
+### CLI Architecture
+
+**Entry Point**: `src/cli/index.ts`
+- Uses Commander.js for command parsing
+- Version check against npm on startup (2s timeout)
+- Skippable via `STRUERE_SKIP_UPDATE_CHECK`
+
+**Command Files** (`src/cli/commands/`):
+| File | Lines | Purpose |
+|------|-------|---------|
+| `init.ts` | 316 | Project initialization with agent creation |
+| `dev.ts` | 424 | Live sync with chokidar file watching |
+| `deploy.ts` | 140 | Production deployment |
+| `login.ts` | 213 | Browser-based OAuth flow |
+| `logout.ts` | 24 | Clear credentials |
+| `whoami.ts` | 67 | Display current user/org |
+| `build.ts` | 73 | Bundle and validate |
+| `validate.ts` | 84 | Configuration validation |
+| `test.ts` | 276 | YAML-based conversation testing |
+| `logs.ts` | 62 | View execution logs |
+| `state.ts` | 64 | Inspect thread state |
+
+### Authentication Flow
+
+**Login Process** (`login.ts`):
+1. Start local HTTP server on port 9876
+2. Open browser to `https://app.struere.dev/authorize?callback=...`
+3. Receive token via callback redirect
+4. Fetch user info via Convex API
+5. Save credentials with 30-day expiration
+
+**Credentials Storage** (`~/.struere/credentials.json`):
+```typescript
+{
+  token: string
+  apiKey?: string
+  user: { id, email, name, organizationId }
+  organization: { id, name, slug }
+  expiresAt: string (ISO 8601)
+}
+```
+File permissions: `0o600` (owner read/write only)
+
+### CLI-Convex Sync Mechanism
+
+**Dev Command Flow** (`dev.ts`):
+1. Load project from `struere.json`
+2. Load agent definition from `src/agent.ts`
+3. Extract config via `extractConfig(agent)`
+4. Sync to Convex via HTTP POST to `/api/mutation`
+5. Watch files with chokidar (src/, struere.config.ts)
+6. Re-sync on any file change
+
+**Config Extraction** (`utils/convex.ts`):
+- Identifies 11 built-in tools (marked `isBuiltin: true`)
+- Extracts handler code from custom tools via regex
+- Resolves async system prompts
+- Default model: claude-sonnet-4-20250514
+
+**Sync HTTP Request**:
+```
+POST /api/mutation
+Authorization: Bearer {token}
+Body: { path: "agents:syncDevelopment", args: { agentId, config } }
+```
+
+### Scaffolding System
+
+**Files Created by `struere init`**:
+| File | Purpose |
+|------|---------|
+| `struere.json` | Project metadata (agentId, team, agent slug/name) |
+| `.env.local` | STRUERE_DEPLOYMENT_URL |
+| `package.json` | Dependencies, scripts (dev, build, deploy) |
+| `tsconfig.json` | TypeScript config (ES2022, bundler) |
+| `struere.config.ts` | Framework config (port, CORS, logging) |
+| `src/agent.ts` | Agent definition template |
+| `src/tools.ts` | Example tool definitions |
+| `src/workflows/.gitkeep` | Placeholder |
+| `tests/basic.test.yaml` | Sample test conversation |
+| `.env.example` | API key examples |
+| `CLAUDE.md` | Project documentation |
+| `.gitignore` | Standard ignores + .env.local |
+
+**Template Functions** (`templates/index.ts`):
+- `getPackageJson(name)` - NPM package setup
+- `getTsConfig()` - TypeScript configuration
+- `getStruereConfig()` - Framework defaults
+- `getAgentTs(name)` - Agent definition template
+- `getToolsTs()` - Sample tools (get_current_time, calculate)
+- `getBasicTestYaml()` - Test conversation template
+- `getClaudeMD(name)` - Project documentation
 
 ### Key Files
 - `src/index.ts` - SDK exports
@@ -290,9 +388,133 @@ Anthropic claude-sonnet-4-20250514, temperature 0.7, 4096 tokens
 - `~/.struere/credentials.json` - Auth tokens
 
 ### Environment Variables
-- `STRUERE_CONVEX_URL` - Convex deployment URL
+- `STRUERE_CONVEX_URL` - Convex deployment URL (default: rapid-wildebeest-172.convex.cloud)
 - `STRUERE_API_KEY` - For production deployments
-- `STRUERE_AUTH_URL` - Auth callback URL
+- `STRUERE_AUTH_URL` - Auth callback URL (default: app.struere.dev)
+
+## Agent Creation Flow
+
+### Via CLI (`struere init`)
+```
+1. Check existing project (struere.json)
+2. Load/obtain credentials (login if needed)
+3. Derive/confirm project name → slugify
+4. Fetch existing agents (listAgents)
+5. Select: create new OR link existing
+6. Create agent via Convex mutation
+7. Write project config (struere.json, .env.local)
+8. Scaffold agent files (src/agent.ts, etc.)
+9. Run bun install
+10. Sync initial config to Convex
+11. Success → "Run struere dev"
+```
+
+### Via Dashboard (/agents/new)
+```
+1. User fills form (name, slug, description)
+2. Slug auto-generated from name (user can edit)
+3. Click Create Agent
+4. useCreateAgent() mutation
+5. Convex creates agent record (no config yet)
+6. Redirect to /agents/{agentId}
+7. User must sync from CLI to add configuration
+```
+
+### Agent Database Structure
+
+**agents table**:
+- organizationId, name, slug, description
+- developmentConfigId (FK to agentConfigs)
+- productionConfigId (FK to agentConfigs)
+- status: "active" | "paused" | "deleted"
+
+**agentConfigs table**:
+- agentId, version, environment
+- name, systemPrompt
+- model: { provider, name, temperature?, maxTokens? }
+- tools: [{ name, description, parameters, handlerCode?, isBuiltin }]
+- createdAt, deployedBy
+
+## Agent Execution Deep Dive
+
+### Complete Execution Flow
+
+```
+HTTP Request: POST /v1/chat
+    │
+    ▼
+[1] HTTP Router (http.ts)
+    • Extract Bearer token
+    • Validate API key (SHA-256 hash lookup)
+    • Call internal.agent.chat
+    │
+    ▼
+[2] Chat Action (agent.ts)
+    • Load agent and config
+    • Get/create thread
+    • Load message history
+    • Build template context
+    • Process system prompt templates
+    │
+    ▼
+[3] LLM Loop (max 10 iterations)
+    │
+    ├──► Call Anthropic API
+    │    POST https://api.anthropic.com/v1/messages
+    │    • model, max_tokens, system, messages, tools
+    │
+    ├──► Process Tool Calls
+    │    ├─► Built-in: executeBuiltinTool()
+    │    │   └─► Convex mutation (entity.*, event.*, job.*)
+    │    │
+    │    └─► Custom: executeCustomTool()
+    │        └─► POST to Cloudflare Worker /execute
+    │            └─► Sandboxed execution with allowlisted fetch
+    │
+    └──► Add tool results to messages
+         Continue loop or exit
+    │
+    ▼
+[4] Persist & Respond
+    • threads.appendMessages()
+    • executions.record() (tokens, duration, status)
+    • Return { threadId, message, usage }
+```
+
+### Built-in Tool Implementations
+
+| Tool | Convex Mutation | Purpose |
+|------|-----------------|---------|
+| `entity.create` | `tools.entities.entityCreate` | Create entity + emit event |
+| `entity.get` | `tools.entities.entityGet` | Get entity by ID |
+| `entity.query` | `tools.entities.entityQuery` | Query with filters |
+| `entity.update` | `tools.entities.entityUpdate` | Update data + emit event |
+| `entity.delete` | `tools.entities.entityDelete` | Soft delete + emit event |
+| `entity.link` | `tools.entities.entityLink` | Create relation |
+| `entity.unlink` | `tools.entities.entityUnlink` | Remove relation |
+| `event.emit` | `tools.events.eventEmit` | Emit custom event |
+| `event.query` | `tools.events.eventQuery` | Query events |
+| `job.enqueue` | `tools.jobs.jobEnqueue` | Schedule job |
+| `job.status` | `tools.jobs.jobStatus` | Get job status |
+
+### Tool Executor Sandboxing
+
+**Allowed Fetch Domains**:
+- api.openai.com
+- api.anthropic.com
+- api.stripe.com
+- api.sendgrid.com
+- api.twilio.com
+- hooks.slack.com
+- discord.com
+- api.github.com
+
+**Execution Context**:
+```typescript
+handler(args, context, sandboxedFetch)
+// context: { organizationId, actorId, actorType }
+// sandboxedFetch: fetch wrapper with domain allowlist
+```
 
 ## Built-in Tools
 
