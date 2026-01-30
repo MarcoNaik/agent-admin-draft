@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EntityTable } from "@/components/entities/entity-table"
+import { Doc } from "@convex/_generated/dataModel"
 
 interface EntityListPageProps {
   params: { type: string }
@@ -91,7 +92,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   }
 
   const filteredEntities = search
-    ? entities.filter((e) => JSON.stringify(e.data).toLowerCase().includes(search.toLowerCase()))
+    ? entities.filter((e: Doc<"entities">) => JSON.stringify(e.data).toLowerCase().includes(search.toLowerCase()))
     : entities
 
   const mappedEntityType = entityType ? {
@@ -102,7 +103,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     displayConfig: entityType.displayConfig,
   } : null
 
-  const mappedEntities = filteredEntities.map((e) => ({
+  const mappedEntities = filteredEntities.map((e: Doc<"entities">) => ({
     id: e._id,
     status: e.status,
     data: e.data,
