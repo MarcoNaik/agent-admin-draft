@@ -23,7 +23,9 @@ const app = new Hono<{ Bindings: Env; Variables: GatewayVariables }>()
 
 app.use('*', async (c, next) => {
   const host = c.req.header('host') || ''
-  if (host === 'api.struere.dev' || host.startsWith('api.')) {
+  const path = new URL(c.req.url).pathname
+  const isLocalDev = host.startsWith('localhost') || host.startsWith('127.0.0.1')
+  if (host === 'api.struere.dev' || host.startsWith('api.') || (isLocalDev && path.startsWith('/v1'))) {
     return api.fetch(c.req.raw, c.env, c.executionCtx)
   }
   return next()

@@ -4,6 +4,7 @@ import { PlatformError, createAgentRoutes, createApiKeyRoutes, createUsageRoutes
 import { authRoutes } from './routes/auth'
 import { authClerkRoutes } from './routes/auth-clerk'
 import { deploymentRoutes } from './routes/deployments'
+import { configRoutes } from './routes/config'
 import { debugRoutes } from './routes/debug'
 import { createPackRoutes } from './routes/packs'
 import { clerkAuth } from './middleware/clerk'
@@ -133,6 +134,7 @@ api.get('/v1/status', async (c) => {
 
 api.route('/v1/auth', authRoutes)
 api.route('/v1/auth/clerk', authClerkRoutes)
+api.route('/v1/agents/:agentId/config', configRoutes)
 api.route('/v1/agents', agentRoutes)
 api.route('/v1/api-keys', apiKeyRoutes)
 api.route('/v1', deploymentRoutes)

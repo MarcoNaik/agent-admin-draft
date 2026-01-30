@@ -8,10 +8,12 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@struere/platform-gateway --filter=@struere/dashboard",
+    "dev:all": "turbo run dev",
     "dev:cli": "turbo run dev --filter=@struere/cli",
     "dev:platform": "turbo run dev --filter=@struere/platform-*",
     "dev:dashboard": "turbo run dev --filter=@struere/dashboard",
+    "dev:gateway": "turbo run dev --filter=@struere/platform-gateway",
     "dev:web": "turbo run dev --filter=@struere/web",
     "test": "turbo run test",
     "lint": "turbo run lint",

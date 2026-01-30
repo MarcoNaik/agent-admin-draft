@@ -58,6 +58,9 @@ new_sqlite_classes = ["DevSessionDO"]
 tag = "v2"
 new_sqlite_classes = ["JobSchedulerDO"]
 
+[dev]
+port = 8787
+
 [env.staging]
 vars = { ENVIRONMENT = "staging" }
 

@@ -23,6 +23,9 @@ bucket_name = "struere-bundles"
 binding = "SESSIONS"
 id = "c6cfc100f6e54b0182603b2926798d19"
 
+[dev]
+port = 8788
+
 [env.staging]
 vars = { ENVIRONMENT = "staging" }
 
