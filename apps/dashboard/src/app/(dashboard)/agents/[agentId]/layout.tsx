@@ -1,26 +1,27 @@
+"use client"
+
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
-import { api, Agent } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+import { ChevronRight, Loader2 } from "lucide-react"
+import { useAgent } from "@/hooks/use-convex-data"
 import { AgentSidebar } from "@/components/agent-sidebar"
 import { EnvironmentSelector } from "@/components/environment-selector"
+import { Id } from "@convex/_generated/dataModel"
 
 interface AgentLayoutProps {
   children: React.ReactNode
-  params: Promise<{ agentId: string }>
+  params: { agentId: string }
 }
 
-export default async function AgentLayout({ children, params }: AgentLayoutProps) {
-  const { agentId } = await params
-  const token = await getAuthToken()
+export default function AgentLayout({ children, params }: AgentLayoutProps) {
+  const { agentId } = params
+  const agent = useAgent(agentId as Id<"agents">)
 
-  let agent: Agent | null = null
-
-  try {
-    const data = await api.agents.get(token!, agentId)
-    agent = data.agent
-  } catch {
-    agent = null
+  if (agent === undefined) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+      </div>
+    )
   }
 
   if (!agent) {
@@ -29,6 +30,19 @@ export default async function AgentLayout({ children, params }: AgentLayoutProps
         <p className="text-content-secondary">Agent not found</p>
       </div>
     )
+  }
+
+  const environments = {
+    development: agent.developmentConfigId ? {
+      url: `https://${agent.slug}-dev.struere.dev`,
+      version: "dev",
+      deployedAt: new Date(agent.updatedAt).toISOString(),
+    } : null,
+    production: agent.productionConfigId ? {
+      url: `https://${agent.slug}.struere.dev`,
+      version: "prod",
+      deployedAt: new Date(agent.updatedAt).toISOString(),
+    } : null,
   }
 
   return (
@@ -41,7 +55,7 @@ export default async function AgentLayout({ children, params }: AgentLayoutProps
           <ChevronRight className="h-4 w-4 text-content-tertiary" />
           <span className="font-medium text-content-primary">{agent.name}</span>
         </div>
-        <EnvironmentSelector agentId={agent.id} agentSlug={agent.slug} environments={agent.environments} />
+        <EnvironmentSelector agentId={agent._id} agentSlug={agent.slug} environments={environments} />
       </div>
       <div className="flex flex-1 overflow-hidden">
         <AgentSidebar agentId={agentId} />
