@@ -1,0 +1,51 @@
+{
+  "name": "struere",
+  "version": "0.3.0",
+  "description": "Build, test, and deploy AI agents",
+  "keywords": ["ai", "agents", "llm", "anthropic", "openai", "framework", "cli"],
+  "author": "struere",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/struere/struere.git",
+    "directory": "packages/struere"
+  },
+  "homepage": "https://struere.dev",
+  "bugs": {
+    "url": "https://github.com/struere/struere/issues"
+  },
+  "type": "module",
+  "bin": {
+    "struere": "./dist/bin/struere.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "bun build ./src/cli/index.ts --outdir ./dist/cli --target bun --external commander --external chalk --external ora --external chokidar --external yaml && bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/bin/struere.ts --outdir ./dist/bin --target bun && tsc --emitDeclarationOnly && chmod +x ./dist/bin/struere.js",
+    "dev": "tsc --watch",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "chokidar": "^3.5.3",
+    "commander": "^12.0.0",
+    "convex": "^1.17.4",
+    "ora": "^8.0.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "bun-types": "^1.0.0",
+    "typescript": "^5.3.0"
+  }
+}
