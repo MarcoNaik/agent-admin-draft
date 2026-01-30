@@ -72,7 +72,6 @@ export function getAgentTs(name: string): string {
     .join(' ')
 
   return `import { defineAgent } from 'struere'
-import { context } from './context'
 import { tools } from './tools'
 
 export default defineAgent({
@@ -87,6 +86,8 @@ export default defineAgent({
   },
   systemPrompt: \`You are ${displayName}, a helpful AI assistant.
 
+Current time: {{datetime}}
+
 Your capabilities:
 - Answer questions accurately and helpfully
 - Use available tools when appropriate
@@ -94,31 +95,6 @@ Your capabilities:
 
 Always be concise, accurate, and helpful.\`,
   tools,
-  context,
-  state: {
-    storage: 'memory',
-    ttl: 3600,
-  },
-})
-`
-}
-
-export function getContextTs(): string {
-  return `import { defineContext } from 'struere'
-
-export const context = defineContext(async (request) => {
-  const { conversationId, userId, channel, state } = request
-
-  return {
-    additionalContext: \`
-Current conversation: \${conversationId}
-Channel: \${channel}
-\`,
-    variables: {
-      userId,
-      timestamp: new Date().toISOString(),
-    },
-  }
 })
 `
 }
@@ -251,7 +227,7 @@ export function getEnvLocal(deploymentUrl: string): string {
 `
 }
 
-export function getClaudeMd(name: string): string {
+export function getClaudeMD(name: string): string {
   const displayName = name
     .split('-')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -266,7 +242,6 @@ This is a Struere AI agent project. Struere is a framework for building producti
 \`\`\`
 src/
 ├── agent.ts      # Agent definition (system prompt, model, tools)
-├── context.ts    # Dynamic context injection per request
 ├── tools.ts      # Custom tool definitions
 └── workflows/    # Multi-step workflow definitions
 tests/
@@ -282,7 +257,6 @@ Define your agent in \`src/agent.ts\`:
 \`\`\`typescript
 import { defineAgent } from 'struere'
 import { tools } from './tools'
-import { context } from './context'
 
 export default defineAgent({
   name: 'my-agent',
@@ -299,11 +273,6 @@ export default defineAgent({
 Current time: {{datetime}}
 Customer: {{entity.get({"id": "{{thread.metadata.customerId}}"})}}\\\`,
   tools,
-  context,
-  state: {
-    storage: 'memory',
-    ttl: 3600,
-  },
 })
 \`\`\`
 
@@ -444,33 +413,6 @@ Example job operations:
 { "id": "job_abc123" }
 \`\`\`
 
-## Context Function
-
-Inject dynamic context per request in \`src/context.ts\`:
-
-\`\`\`typescript
-import { defineContext } from 'struere'
-
-export const context = defineContext(async (request) => {
-  const { conversationId, userId, channel, state } = request
-
-  const userProfile = await fetchUserProfile(userId)
-
-  return {
-    additionalContext: \\\`
-User: \${userProfile.name} (\${userProfile.tier} tier)
-Conversation: \${conversationId}
-Channel: \${channel}
-\\\`,
-    variables: {
-      userId,
-      userTier: userProfile.tier,
-      timestamp: new Date().toISOString(),
-    },
-  }
-})
-\`\`\`
-
 ## Testing
 
 Write YAML-based conversation tests in \`tests/\`:
@@ -578,6 +520,6 @@ curl -X POST https://your-deployment.convex.cloud/v1/chat \\
 4. **Events**: Emit events for audit trails and analytics
 5. **Jobs**: Use jobs for async operations (emails, notifications)
 6. **Testing**: Write tests for critical conversation flows
-7. **Context**: Use context for user-specific personalization
+7. **Thread Metadata**: Use metadata for user-specific personalization
 `
 }

@@ -7,7 +7,6 @@ export interface AgentConfig {
   tools?: ToolReference[]
   workflows?: WorkflowReference[]
   state?: StateConfig
-  context?: ContextFunction
 }
 
 export interface ModelConfig {
@@ -62,21 +61,6 @@ export interface StateConfig {
   storage: 'memory' | 'redis' | 'postgres' | 'custom'
   ttl?: number
   prefix?: string
-}
-
-export type ContextFunction = (request: ContextRequest) => Promise<ContextResult>
-
-export interface ContextRequest {
-  conversationId: string
-  userId?: string
-  channel: string
-  message: string
-  state: StateAccessor
-}
-
-export interface ContextResult {
-  additionalContext?: string
-  variables?: Record<string, unknown>
 }
 
 export interface FrameworkConfig {

@@ -1,5 +1,4 @@
 export { defineAgent } from './define/agent'
-export { defineContext } from './define/context'
 export { defineTools } from './define/tools'
 export { defineConfig } from './define/config'
 
@@ -14,9 +13,6 @@ export type {
   StateAccessor,
   WorkflowReference,
   StateConfig,
-  ContextFunction,
-  ContextRequest,
-  ContextResult,
   FrameworkConfig,
   CorsConfig,
   LoggingConfig,

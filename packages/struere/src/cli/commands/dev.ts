@@ -11,7 +11,7 @@ import { hasProject, loadProject, saveProject } from '../utils/project'
 import { scaffoldAgentFiles, hasAgentFiles } from '../utils/scaffold'
 import { performLogin } from './login'
 import { syncToConvex, extractConfig, listAgents, createAgent } from '../utils/convex'
-import { getClaudeMd } from '../templates'
+import { getClaudeMD } from '../templates'
 
 export const devCommand = new Command('dev')
   .description('Sync agent to development environment')
@@ -53,10 +53,10 @@ export const devCommand = new Command('dev')
     let agent = await loadAgent(cwd)
     spinner.succeed(`Agent "${agent.name}" loaded`)
 
-    const claudeMdPath = join(cwd, '.claude.md')
+    const claudeMdPath = join(cwd, 'CLAUDE.md')
     if (!existsSync(claudeMdPath)) {
-      writeFileSync(claudeMdPath, getClaudeMd(project.agent.slug))
-      console.log(chalk.green('✓'), 'Created .claude.md')
+      writeFileSync(claudeMdPath, getClaudeMD(project.agent.slug))
+      console.log(chalk.green('✓'), 'Created CLAUDE.md')
     }
 
     let credentials = loadCredentials()

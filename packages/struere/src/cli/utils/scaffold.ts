@@ -5,14 +5,13 @@ import {
   getTsConfig,
   getStruereConfig,
   getAgentTs,
-  getContextTs,
   getToolsTs,
   getBasicTestYaml,
   getEnvExample,
   getGitignore,
   getStruereJson,
   getEnvLocal,
-  getClaudeMd,
+  getClaudeMD,
 } from '../templates'
 
 export interface ScaffoldOptions {
@@ -70,7 +69,6 @@ export function scaffoldProject(cwd: string, options: ScaffoldOptions): Scaffold
     'tsconfig.json': getTsConfig(),
     'struere.config.ts': getStruereConfig(),
     'src/agent.ts': getAgentTs(options.projectName),
-    'src/context.ts': getContextTs(),
     'src/tools.ts': getToolsTs(),
     'src/workflows/.gitkeep': '',
     'tests/basic.test.yaml': getBasicTestYaml(),
@@ -78,7 +76,7 @@ export function scaffoldProject(cwd: string, options: ScaffoldOptions): Scaffold
     '.gitignore': getGitignore(),
     'struere.json': getStruereJson(options.agentId, options.team, options.agentSlug, options.agentName),
     '.env.local': getEnvLocal(options.deploymentUrl),
-    '.claude.md': getClaudeMd(options.projectName),
+    'CLAUDE.md': getClaudeMD(options.projectName),
   }
 
   for (const [relativePath, content] of Object.entries(files)) {
@@ -104,12 +102,11 @@ export function scaffoldAgentFiles(cwd: string, projectName: string): ScaffoldRe
     'tsconfig.json': getTsConfig(),
     'struere.config.ts': getStruereConfig(),
     'src/agent.ts': getAgentTs(projectName),
-    'src/context.ts': getContextTs(),
     'src/tools.ts': getToolsTs(),
     'src/workflows/.gitkeep': '',
     'tests/basic.test.yaml': getBasicTestYaml(),
     '.env.example': getEnvExample(),
-    '.claude.md': getClaudeMd(projectName),
+    'CLAUDE.md': getClaudeMD(projectName),
   }
 
   for (const [relativePath, content] of Object.entries(files)) {
