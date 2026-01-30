@@ -20,26 +20,16 @@ interface AgentHealthPageProps {
 
 export default function AgentHealthPage({ params }: AgentHealthPageProps) {
   const { agentId } = params
-  const agentData = useAgentWithConfig(agentId as Id<"agents">)
+  const agent = useAgentWithConfig(agentId as Id<"agents">)
   const stats = useExecutionStats(agentId as Id<"agents">)
 
-  if (agentData === undefined) {
+  if (agent === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
       </div>
     )
   }
-
-  if (!agentData) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Failed to load agent data</p>
-      </div>
-    )
-  }
-
-  const { agent, config } = agentData
 
   if (!agent) {
     return (
@@ -49,6 +39,7 @@ export default function AgentHealthPage({ params }: AgentHealthPageProps) {
     )
   }
 
+  const config = agent.productionConfig || agent.developmentConfig
   const status = agent.productionConfigId ? "active" : "inactive"
 
   return (
