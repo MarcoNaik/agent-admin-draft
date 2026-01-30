@@ -5,7 +5,7 @@ export async function loadAgent(cwd: string): Promise<AgentConfig> {
   const agentPath = join(cwd, 'src/agent.ts')
 
   try {
-    const module = await import(agentPath)
+    const module = await import(`${agentPath}?t=${Date.now()}`)
     const agent = module.default || module
 
     if (!agent.name) {
