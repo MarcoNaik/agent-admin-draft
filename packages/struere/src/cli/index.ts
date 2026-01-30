@@ -11,8 +11,9 @@ import { stateCommand } from './commands/state'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { whoamiCommand } from './commands/whoami'
+import pkg from '../../package.json'
 
-const CURRENT_VERSION = '0.3.0'
+const CURRENT_VERSION = pkg.version
 
 async function checkForUpdates() {
   if (process.env.STRUERE_SKIP_UPDATE_CHECK) return
