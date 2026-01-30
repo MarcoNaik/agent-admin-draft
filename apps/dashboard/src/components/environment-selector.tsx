@@ -39,7 +39,7 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2 bg-background-secondary hover:bg-background-tertiary">
+        <Button variant="outline" className="gap-2 border-border/50 focus-visible:ring-0">
           <span
             className={`h-2 w-2 rounded-full ${
               selectedEnv === "production"
@@ -55,10 +55,10 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-80 bg-background-secondary">
+      <DropdownMenuContent align="start" className="w-80">
         <DropdownMenuItem
-          className="flex items-center gap-3 py-3 hover:bg-background-tertiary"
-          onClick={() => setSelectedEnv("production")}
+          className="flex items-center gap-3 py-3 cursor-pointer"
+          onSelect={() => setSelectedEnv("production")}
         >
           <Globe className={`h-4 w-4 ${environments.production ? "text-green-500" : "text-gray-400"}`} />
           <div className="flex flex-col">
@@ -80,8 +80,8 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
           )}
         </DropdownMenuItem>
         <DropdownMenuItem
-          className="flex items-center gap-3 py-3 hover:bg-background-tertiary"
-          onClick={() => setSelectedEnv("development")}
+          className="flex items-center gap-3 py-3 cursor-pointer"
+          onSelect={() => setSelectedEnv("development")}
         >
           <Code className={`h-4 w-4 ${environments.development ? "text-yellow-500" : "text-gray-400"}`} />
           <div className="flex flex-col">
@@ -103,7 +103,7 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
           )}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="hover:bg-background-tertiary">
+        <DropdownMenuItem asChild>
           <Link href={`/agents/${agentId}/settings`} className="flex items-center gap-3 py-3">
             <Settings className="h-4 w-4" />
             <span className="font-medium text-content-primary">Agent Settings</span>
