@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Id } from "@convex/_generated/dataModel"
+import { Id, Doc } from "@convex/_generated/dataModel"
 import { useRouter } from "next/navigation"
 
 interface AgentSettingsPageProps {
@@ -142,7 +142,7 @@ export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              {apiKeys.slice(0, 5).map((key) => (
+              {apiKeys.slice(0, 5).map((key: Doc<"apiKeys">) => (
                 <div key={key._id} className="flex items-center justify-between rounded-lg border p-3">
                   <div className="flex items-center gap-3">
                     <Key className="h-4 w-4 text-muted-foreground" />
@@ -152,7 +152,7 @@ export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {key.permissions.map((perm) => (
+                    {key.permissions.map((perm: string) => (
                       <Badge key={perm} variant="secondary" className="text-xs">
                         {perm}
                       </Badge>
