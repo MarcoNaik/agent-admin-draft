@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { EntityDetail } from "@/components/entities/entity-detail"
 import { EntityTimeline } from "@/components/entities/entity-timeline"
-import { Id } from "@convex/_generated/dataModel"
+import { Id, Doc } from "@convex/_generated/dataModel"
 import { useRouter } from "next/navigation"
 
 interface EntityDetailPageProps {
@@ -89,7 +89,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
     updatedAt: new Date(entity.updatedAt).toISOString(),
   }
 
-  const mappedEvents = events.map((e) => ({
+  const mappedEvents = events.map((e: Doc<"events">) => ({
     id: e._id,
     eventType: e.eventType,
     actorType: e.actorType,
@@ -158,7 +158,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
               <div className="space-y-4">
                 {relatedEntities && relatedEntities.length > 0 && (
                   <div className="space-y-2">
-                    {relatedEntities.map((rel) => (
+                    {relatedEntities.map((rel: Doc<"entityRelations">) => (
                       <Link
                         key={rel._id}
                         href={`/entities/${type}/${rel.toEntityId}`}
