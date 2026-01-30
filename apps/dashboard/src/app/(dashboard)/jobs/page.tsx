@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { formatDate } from "@/lib/utils"
+import { Doc } from "@convex/_generated/dataModel"
 
 type JobStatus = "pending" | "claimed" | "running" | "completed" | "failed" | "dead"
 
@@ -227,7 +228,7 @@ export default function JobsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {jobs.map((job) => (
+              {jobs.map((job: Doc<"jobs">) => (
                 <div
                   key={job._id}
                   className="flex items-center justify-between rounded-lg border p-4"
