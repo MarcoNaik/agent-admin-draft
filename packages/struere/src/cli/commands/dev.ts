@@ -3,6 +3,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import chokidar from 'chokidar'
 import { join, basename } from 'path'
+import { existsSync, writeFileSync } from 'fs'
 import { loadConfig } from '../utils/config'
 import { loadAgent } from '../utils/agent'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
@@ -10,6 +11,7 @@ import { hasProject, loadProject, saveProject } from '../utils/project'
 import { scaffoldAgentFiles, hasAgentFiles } from '../utils/scaffold'
 import { performLogin } from './login'
 import { syncToConvex, extractConfig, listAgents, createAgent } from '../utils/convex'
+import { getClaudeMd } from '../templates'
 
 export const devCommand = new Command('dev')
   .description('Sync agent to development environment')
@@ -50,6 +52,12 @@ export const devCommand = new Command('dev')
     spinner.start('Loading agent')
     let agent = await loadAgent(cwd)
     spinner.succeed(`Agent "${agent.name}" loaded`)
+
+    const claudeMdPath = join(cwd, '.claude.md')
+    if (!existsSync(claudeMdPath)) {
+      writeFileSync(claudeMdPath, getClaudeMd(project.agent.slug))
+      console.log(chalk.green('✓'), 'Created .claude.md')
+    }
 
     let credentials = loadCredentials()
     const apiKey = getApiKey()
