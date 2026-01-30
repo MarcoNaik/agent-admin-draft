@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join, basename } from 'path'
 import { loadCredentials, isLoggedIn } from '../utils/credentials'
 import { performLogin } from './login'
-import { listAgents, createAgent } from '../utils/convex'
+import { listAgents, createAgent, syncToConvex } from '../utils/convex'
 import { hasProject, saveProject, loadProject } from '../utils/project'
 import { writeProjectConfig, scaffoldAgentFiles, hasAgentFiles } from '../utils/scaffold'
 
@@ -173,10 +173,60 @@ export const initCommand = new Command('init')
     }
 
     console.log()
+    spinner.start('Installing dependencies')
+
+    const installResult = Bun.spawnSync(['bun', 'install'], {
+      cwd,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+
+    if (installResult.exitCode === 0) {
+      spinner.succeed('Dependencies installed')
+    } else {
+      spinner.warn('Could not install dependencies automatically')
+      console.log(chalk.gray('  Run'), chalk.cyan('bun install'), chalk.gray('manually'))
+    }
+
+    spinner.start('Syncing initial config to Convex')
+
+    const displayName = projectName
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+
+    const defaultConfig = {
+      name: displayName,
+      version: '0.1.0',
+      systemPrompt: `You are ${displayName}, a helpful AI assistant. You help users with their questions and tasks.`,
+      model: {
+        provider: 'anthropic',
+        name: 'claude-sonnet-4-20250514',
+        temperature: 0.7,
+        maxTokens: 4096,
+      },
+      tools: [] as Array<{
+        name: string
+        description: string
+        parameters: unknown
+        handlerCode?: string
+        isBuiltin: boolean
+      }>,
+    }
+
+    const syncResult = await syncToConvex(selectedAgent.id, defaultConfig)
+
+    if (syncResult.success) {
+      spinner.succeed('Initial config synced')
+    } else {
+      spinner.warn('Could not sync initial config')
+      console.log(chalk.gray('  Run'), chalk.cyan('struere dev'), chalk.gray('to sync manually'))
+    }
+
+    console.log()
     console.log(chalk.green('Success!'), 'Project initialized')
     console.log()
     console.log(chalk.gray('Next steps:'))
-    console.log(chalk.gray('  $'), chalk.cyan('bun install'))
     console.log(chalk.gray('  $'), chalk.cyan('struere dev'))
     console.log()
   })
