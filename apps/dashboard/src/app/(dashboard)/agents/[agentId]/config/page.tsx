@@ -24,9 +24,9 @@ interface AgentConfigPageProps {
 
 export default function AgentConfigPage({ params }: AgentConfigPageProps) {
   const { agentId } = params
-  const agentData = useAgentWithConfig(agentId as Id<"agents">)
+  const agent = useAgentWithConfig(agentId as Id<"agents">)
 
-  if (agentData === undefined) {
+  if (agent === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
@@ -34,7 +34,9 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
     )
   }
 
-  if (!agentData || !agentData.config) {
+  const config = agent?.productionConfig || agent?.developmentConfig
+
+  if (!agent || !config) {
     return (
       <div className="space-y-6">
         <div>
@@ -53,8 +55,6 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
       </div>
     )
   }
-
-  const { config } = agentData
 
   return (
     <div className="space-y-6">
@@ -149,7 +149,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
           <CardContent>
             {config.tools && config.tools.length > 0 ? (
               <div className="space-y-3">
-                {config.tools.map((tool, index) => (
+                {config.tools.map((tool: { name: string; description: string; isBuiltin: boolean }, index: number) => (
                   <div key={index} className="rounded-lg border p-3">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-4 w-4 text-muted-foreground" />
