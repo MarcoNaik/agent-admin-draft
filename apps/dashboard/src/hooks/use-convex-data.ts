@@ -32,6 +32,18 @@ export function useDeployAgent() {
   return useMutation(api.agents.deploy)
 }
 
+export function useCompileSystemPrompt(
+  agentId: Id<"agents">,
+  environment: "development" | "production",
+  sampleContext?: { message?: string; threadMetadata?: Record<string, unknown> }
+) {
+  return useQuery(api.agents.compileSystemPrompt, {
+    agentId,
+    environment,
+    sampleContext,
+  })
+}
+
 export function useEntityTypes() {
   return useQuery(api.entityTypes.list, {})
 }
