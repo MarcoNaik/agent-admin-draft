@@ -5,6 +5,7 @@ import { Database, Layers, ChevronRight, Loader2 } from "lucide-react"
 import { useEntityTypes } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Doc } from "@convex/_generated/dataModel"
 
 function getSchemaFields(schema: unknown): { key: string }[] {
   if (!schema || typeof schema !== "object") return []
@@ -49,7 +50,7 @@ export default function EntityTypesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {entityTypes.map((entityType) => (
+          {entityTypes.map((entityType: Doc<"entityTypes">) => (
             <Link key={entityType._id} href={`/entities/${entityType.slug}`}>
               <Card className="h-full transition-colors hover:border-primary/50">
                 <CardHeader className="pb-3">
