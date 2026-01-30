@@ -75,16 +75,16 @@ export function AgentsList({ agents }: AgentsListProps) {
   )
 
   return (
-    <div className="w-full">
+    <div className="w-full p-6">
       <div className="mb-4 flex w-full flex-col flex-wrap gap-4 sm:flex-row sm:items-center">
         <h3 className="text-xl font-semibold">Agents</h3>
         <div className="flex flex-wrap gap-2 sm:ml-auto sm:flex-nowrap">
-          <div className="hidden gap-1 rounded-md border bg-background-secondary p-1 lg:flex">
+          <div className="hidden gap-0.5 rounded-md border border-border/50 p-0.5 lg:flex">
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`inline-flex items-center rounded-md text-sm font-medium p-1 hover:bg-background-primary cursor-pointer ${
-                viewMode === "grid" ? "bg-background-tertiary" : ""
+              className={`inline-flex items-center rounded text-sm p-1.5 cursor-pointer transition-colors ${
+                viewMode === "grid" ? "bg-background-tertiary" : "hover:bg-background-tertiary/50"
               }`}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -92,8 +92,8 @@ export function AgentsList({ agents }: AgentsListProps) {
             <button
               type="button"
               onClick={() => setViewMode("list")}
-              className={`inline-flex items-center rounded-md text-sm font-medium p-1 hover:bg-background-primary cursor-pointer ${
-                viewMode === "list" ? "bg-background-tertiary" : ""
+              className={`inline-flex items-center rounded text-sm p-1.5 cursor-pointer transition-colors ${
+                viewMode === "list" ? "bg-background-tertiary" : "hover:bg-background-tertiary/50"
               }`}
             >
               <List className="h-4 w-4" />
@@ -102,21 +102,21 @@ export function AgentsList({ agents }: AgentsListProps) {
 
           <div className="flex w-full flex-col gap-1 sm:w-auto">
             <div className="relative flex items-center min-w-[13rem] max-w-xs">
-              <div className="pointer-events-none absolute inset-y-0 left-1.5 flex items-center gap-1">
-                <Search className="h-4 w-4 text-content-secondary" />
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                <Search className="h-4 w-4 text-content-tertiary" />
               </div>
               <Input
                 type="search"
                 placeholder="Search agents"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-7 bg-background-secondary text-sm"
+                className="pl-9 h-9 text-sm border-border/50"
               />
             </div>
           </div>
 
           <Link href="/agents/new">
-            <Button variant="outline" className="bg-background-secondary hover:bg-background-primary">
+            <Button variant="outline" className="h-9 border-border/50">
               <Plus className="h-4 w-4" />
               Create Agent
             </Button>
@@ -126,7 +126,7 @@ export function AgentsList({ agents }: AgentsListProps) {
             href="https://docs.struere.dev"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center rounded-md text-sm font-medium whitespace-nowrap bg-util-accent text-white gap-1.5 border border-white/30 cursor-pointer p-1.5 px-3 hover:bg-util-accent/80"
+            className="inline-flex items-center rounded-md text-sm whitespace-nowrap border border-border/50 gap-1.5 cursor-pointer h-9 px-3 hover:bg-background-tertiary/50 transition-colors"
           >
             <ExternalLink className="h-4 w-4" />
             Start Tutorial
@@ -135,19 +135,19 @@ export function AgentsList({ agents }: AgentsListProps) {
       </div>
 
       {filteredAgents.length === 0 ? (
-        <Card className="bg-background-secondary">
+        <Card className="bg-background-secondary border-border/50">
           <CardContent className="py-12 text-center">
             {search ? (
               <>
                 <h3 className="text-lg font-medium text-content-primary">No agents found</h3>
-                <p className="mt-1 text-content-secondary">
+                <p className="mt-1 text-sm text-content-secondary">
                   Try adjusting your search query
                 </p>
               </>
             ) : (
               <>
                 <h3 className="text-lg font-medium text-content-primary">No agents yet</h3>
-                <p className="mt-1 text-content-secondary">
+                <p className="mt-1 text-sm text-content-secondary">
                   Create your first agent to get started
                 </p>
                 <Link href="/agents/new">
@@ -161,136 +161,46 @@ export function AgentsList({ agents }: AgentsListProps) {
           </CardContent>
         </Card>
       ) : viewMode === "grid" ? (
-        <div className="mb-4 grid w-full grow grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="mb-4 grid w-full grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
           {paginatedAgents.map((agent) => (
-            <div
+            <Link
               key={agent.id}
-              className="relative border rounded-xl bg-background-secondary flex items-center gap-4 px-4 hover:border-border-selected group"
+              href={`/agents/${agent.id}`}
+              className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors"
             >
-              <Link
-                href={`/agents/${agent.id}`}
-                className="grow cursor-pointer min-w-0 py-4"
-              >
-                <div>
-                  <div className="truncate">
-                    <span className="flex items-center gap-2 text-content-primary">
-                      <span className="shrink truncate font-medium">{agent.name}</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-content-primary">{agent.name}</div>
+                <div className="text-sm text-content-secondary">{agent.slug}</div>
+              </div>
+              <div className="flex items-center gap-3 ml-4">
+                <div className="flex flex-col items-end text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=production` }}
+                      className="hover:underline text-content-primary cursor-pointer"
+                    >
+                      Production
+                    </span>
+                    <span className="text-content-tertiary">•</span>
+                    <span
+                      onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=development` }}
+                      className="hover:underline text-content-primary cursor-pointer"
+                    >
+                      Development
                     </span>
                   </div>
-                  <div className="mb-1 h-4 truncate text-xs text-content-secondary">
-                    {agent.slug}
-                  </div>
-                </div>
-              </Link>
-              <div className="flex gap-1">
-                <div className="flex flex-col items-end">
-                  <div className="flex gap-1">
-                    <div className="flex h-6 items-center justify-end gap-1 truncate text-xs">
-                      <Link
-                        href={`/agents/${agent.id}?env=production`}
-                        className="peer hover:underline text-content-primary"
-                      >
-                        Production
-                      </Link>
-                      <div className="text-content-tertiary">•</div>
-                      <Link
-                        href={`/agents/${agent.id}?env=development`}
-                        className="group-hover:underline peer-hover:no-underline hover:underline text-content-primary"
-                      >
-                        Development
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="text-xs text-content-secondary truncate">
+                  <div className="text-content-tertiary">
                     Created {getTimeAgo(agent.createdAt)}
                   </div>
                 </div>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded-md text-sm font-medium p-1.5 hover:bg-background-primary cursor-pointer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreVertical className="h-4 w-4 text-content-secondary" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link href={`/agents/${agent.id}/logs`}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      View Logs
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href={`/agents/${agent.id}/settings`}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="mb-4 space-y-2">
-          {paginatedAgents.map((agent) => (
-            <div
-              key={agent.id}
-              className="relative border rounded-xl bg-background-secondary flex items-center gap-4 px-4 hover:border-border-selected group"
-            >
-              <Link
-                href={`/agents/${agent.id}`}
-                className="grow cursor-pointer min-w-0 py-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-content-primary">{agent.name}</span>
-                      <span className="text-xs text-content-secondary">{agent.slug}</span>
-                    </div>
-                    {agent.description && (
-                      <p className="mt-1 text-sm text-content-secondary line-clamp-1">
-                        {agent.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Link>
-              <div className="flex items-center gap-4">
-                <div className="flex h-6 items-center gap-1 text-xs">
-                  <Link
-                    href={`/agents/${agent.id}?env=production`}
-                    className="hover:underline text-content-primary"
-                  >
-                    Production
-                  </Link>
-                  <span className="text-content-tertiary">•</span>
-                  <Link
-                    href={`/agents/${agent.id}?env=development`}
-                    className="hover:underline text-content-primary"
-                  >
-                    Development
-                  </Link>
-                </div>
-                <span className="text-xs text-content-secondary">
-                  Created {getTimeAgo(agent.createdAt)}
-                </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="inline-flex items-center rounded-md text-sm font-medium p-1.5 hover:bg-background-primary cursor-pointer"
-                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center rounded p-1 hover:bg-background-primary cursor-pointer transition-colors"
+                      onClick={(e) => e.preventDefault()}
                     >
-                      <MoreVertical className="h-4 w-4 text-content-secondary" />
+                      <MoreVertical className="h-4 w-4 text-content-tertiary" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -314,83 +224,145 @@ export function AgentsList({ agents }: AgentsListProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="mb-4 space-y-1">
+          {paginatedAgents.map((agent) => (
+            <Link
+              key={agent.id}
+              href={`/agents/${agent.id}`}
+              className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-content-primary">{agent.name}</span>
+                  <span className="text-sm text-content-secondary">{agent.slug}</span>
+                </div>
+                {agent.description && (
+                  <p className="mt-0.5 text-sm text-content-secondary line-clamp-1">
+                    {agent.description}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-4 ml-4">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span
+                    onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=production` }}
+                    className="hover:underline text-content-primary cursor-pointer"
+                  >
+                    Production
+                  </span>
+                  <span className="text-content-tertiary">•</span>
+                  <span
+                    onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=development` }}
+                    className="hover:underline text-content-primary cursor-pointer"
+                  >
+                    Development
+                  </span>
+                </div>
+                <span className="text-xs text-content-tertiary whitespace-nowrap">
+                  Created {getTimeAgo(agent.createdAt)}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center rounded p-1 hover:bg-background-primary cursor-pointer transition-colors"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <MoreVertical className="h-4 w-4 text-content-tertiary" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/agents/${agent.id}/logs`}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        View Logs
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/agents/${agent.id}/settings`}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </Link>
           ))}
         </div>
       )}
 
       <div className="mb-4 flex w-full justify-end">
-        <div className="flex items-center justify-center gap-2">
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-content-secondary tabular-nums">Showing </span>
-            <span className="text-sm text-content-primary">{pageSize}</span>
-            <span className="text-sm text-content-secondary tabular-nums">agents per page</span>
-          </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-content-secondary">Showing</span>
+          <span className="text-content-primary">{pageSize}</span>
+          <span className="text-content-secondary">projects per page</span>
           <button
             type="button"
             disabled={currentPage === 1}
-            className="inline-flex items-center rounded-md text-sm font-medium p-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="p-1 disabled:opacity-30"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm text-content-secondary tabular-nums">Page {currentPage}</span>
+          <span className="text-content-secondary">Page {currentPage}</span>
           <button
             type="button"
             disabled={currentPage >= totalPages}
-            className="inline-flex items-center rounded-md text-sm font-medium p-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="p-1 disabled:opacity-30"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="my-12">
+      <div className="mt-8">
         <h4 className="text-lg font-semibold">Learn about Struere</h4>
-        <ul className="flex flex-wrap justify-between gap-6 py-6">
+        <ul className="flex flex-wrap gap-4 py-4">
           <li className="grow">
-            <div className="relative -m-2 flex items-center space-x-4 rounded-xl p-2 hover:bg-background-tertiary">
-              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500">
-                <Zap className="h-6 w-6 text-white" />
+            <div className="relative flex items-center gap-3 rounded-lg p-3 hover:bg-background-tertiary transition-colors">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                <Zap className="h-5 w-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-sm font-medium text-content-primary">
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="focus:outline-none"
-                    href="https://docs.struere.dev"
-                  >
-                    <span className="absolute inset-0" aria-hidden="true" />
-                    <span>Docs</span>
-                    <span aria-hidden="true"> →</span>
-                  </a>
-                </p>
-                <p className="mt-1 text-sm text-content-secondary">
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-content-primary hover:underline"
+                  href="https://docs.struere.dev"
+                >
+                  Docs →
+                </a>
+                <p className="text-sm text-content-secondary">
                   Learn more about Struere
                 </p>
               </div>
             </div>
           </li>
           <li className="grow">
-            <div className="relative -m-2 flex items-center space-x-4 rounded-xl p-2 hover:bg-background-tertiary">
-              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-util-accent">
-                <Layers className="h-6 w-6 text-white" />
+            <div className="relative flex items-center gap-3 rounded-lg p-3 hover:bg-background-tertiary transition-colors">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Layers className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium text-content-primary">
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="focus:outline-none"
-                    href="https://blog.struere.dev"
-                  >
-                    <span className="absolute inset-0" aria-hidden="true" />
-                    <span>Blog</span>
-                    <span aria-hidden="true"> →</span>
-                  </a>
-                </p>
-                <p className="mt-1 text-sm text-content-secondary">
-                  Get tips and tricks on using Struere
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-content-primary hover:underline"
+                  href="https://blog.struere.dev"
+                >
+                  Blog →
+                </a>
+                <p className="text-sm text-content-secondary">
+                  Get tips and tricks
                 </p>
               </div>
             </div>

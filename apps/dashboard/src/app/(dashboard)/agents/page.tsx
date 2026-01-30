@@ -11,7 +11,7 @@ export default function AgentsPage() {
 
   if (agents === undefined) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center p-6 py-12">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-center p-6 py-12">
         <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
       </div>
     )
@@ -26,7 +26,7 @@ export default function AgentsPage() {
   }))
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 p-6">
+    <div className="mx-auto w-full max-w-7xl">
       <AgentsList agents={mappedAgents} />
     </div>
   )

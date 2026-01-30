@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, ReactNode } from "react"
+import { createContext, useContext, useCallback, ReactNode } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 type Environment = "development" | "production"
 
@@ -12,7 +13,23 @@ interface EnvironmentContextValue {
 const EnvironmentContext = createContext<EnvironmentContextValue | null>(null)
 
 export function EnvironmentProvider({ children }: { children: ReactNode }) {
-  const [environment, setEnvironment] = useState<Environment>("development")
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const envParam = searchParams.get("env")
+  const environment: Environment = envParam === "production" ? "production" : "development"
+
+  const setEnvironment = useCallback((env: Environment) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (env === "development") {
+      params.delete("env")
+    } else {
+      params.set("env", env)
+    }
+    const queryString = params.toString()
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname)
+  }, [searchParams, router, pathname])
 
   return (
     <EnvironmentContext.Provider value={{ environment, setEnvironment }}>

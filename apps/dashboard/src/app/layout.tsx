@@ -1,10 +1,23 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Space_Grotesk, JetBrains_Mono, Playfair_Display } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import { ConvexClientProvider } from "@/providers/convex-provider"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+})
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-display",
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://app.struere.dev"),
@@ -20,7 +33,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark">
-        <body className={inter.className}>
+        <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable} font-sans`}>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </body>
       </html>

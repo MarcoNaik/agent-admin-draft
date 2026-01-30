@@ -81,7 +81,7 @@ function OrgAvatar({ name }: { name: string }) {
       className="inline-flex h-7 w-7 items-center justify-center rounded-full relative overflow-hidden shrink-0"
       style={{
         backgroundImage:
-          "radial-gradient(circle at 21% 59%, rgb(99, 109, 131) 0%, rgb(173, 131, 246) 80%, rgb(32, 32, 182) 100%)",
+          "radial-gradient(circle at 21% 59%, hsl(var(--primary) / 0.6) 0%, hsl(var(--primary)) 80%, hsl(var(--primary) / 0.8) 100%)",
       }}
     >
       <span className="pointer-events-none absolute inset-0 z-10 h-full w-full rounded-full bg-black/30 dark:bg-black/15" />
@@ -121,28 +121,28 @@ export function Header() {
   return (
     <div className="sticky top-0 z-40">
       <header className="flex justify-between min-h-[56px] overflow-x-auto scrollbar-none bg-background-secondary border-b">
-        <div className="flex items-center bg-background-secondary px-2">
-          <div className="rounded-full p-2 transition-colors hover:bg-background-tertiary">
-            <Link href="/" className="flex min-h-[28px] min-w-[28px] items-center justify-center rounded-full">
-              <Zap className="h-7 w-7 text-util-accent" />
+        <div className="flex items-center px-2">
+          <div className="rounded-md p-2 transition-colors hover:bg-background-tertiary">
+            <Link href="/" className="flex min-h-[28px] min-w-[28px] items-center justify-center">
+              <Zap className="h-6 w-6 text-primary" />
             </Link>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center h-10 px-3 py-2 gap-2 select-none text-content-primary hover:bg-background-tertiary rounded-full cursor-pointer"
+                  className="flex items-center h-9 px-2 gap-2 select-none text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <OrgAvatar name={orgName} />
-                    <span className="text-content-secondary">/</span>
-                    <div className="truncate font-semibold max-w-[14rem]">
+                    <span className="text-content-tertiary">/</span>
+                    <div className="truncate font-medium max-w-[14rem]">
                       {isLoaded ? orgName : "Loading..."}
                     </div>
                   </div>
-                  <ChevronsUpDown className="h-5 w-5 text-content-secondary" />
+                  <ChevronsUpDown className="h-4 w-4 text-content-tertiary" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
@@ -153,23 +153,22 @@ export function Header() {
             </DropdownMenu>
 
             <div className="relative">
-              <div className="flex gap-1 truncate select-none">
+              <div className="flex gap-0.5 truncate select-none">
                 {builderNavigation.map((item) => {
                   const isActive = item.href === "/agents"
                     ? pathname === "/agents" || pathname.startsWith("/agents/")
                     : pathname.startsWith(item.href)
                   return (
-                    <div key={item.name} className="flex flex-col">
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          "p-2 my-2 mx-1 text-sm text-content-primary hover:bg-background-tertiary rounded-full",
-                          isActive && "font-medium"
-                        )}
-                      >
-                        {item.name}
-                      </Link>
-                    </div>
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={cn(
+                        "px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors",
+                        isActive && "text-content-primary font-medium"
+                      )}
+                    >
+                      {item.name}
+                    </Link>
                   )
                 })}
 
@@ -179,8 +178,8 @@ export function Header() {
                       <button
                         type="button"
                         className={cn(
-                          "flex items-center gap-1 p-2 my-2 mx-1 text-sm text-content-primary hover:bg-background-tertiary rounded-full cursor-pointer",
-                          (pathname.startsWith("/entities") || pathname.startsWith("/jobs")) && "font-medium"
+                          "flex items-center gap-1 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors",
+                          (pathname.startsWith("/entities") || pathname.startsWith("/jobs")) && "text-content-primary font-medium"
                         )}
                       >
                         Business
@@ -210,24 +209,24 @@ export function Header() {
           </div>
         </div>
 
-        <div className="flex items-center bg-background-secondary px-2">
+        <div className="flex items-center px-2">
           <div className="flex items-center">
             <button
               type="button"
-              className="flex items-center gap-1 rounded-full px-2.5 p-1.5 text-sm text-content-primary hover:bg-background-tertiary cursor-pointer"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary cursor-pointer transition-colors"
             >
               <Sparkles className="h-4 w-4" />
               <span className="hidden md:block">Ask AI</span>
             </button>
             <button
               type="button"
-              className="flex items-center gap-1 rounded-full px-2.5 p-1.5 text-sm text-content-primary hover:bg-background-tertiary cursor-pointer"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary cursor-pointer transition-colors"
             >
               <HelpCircle className="h-4 w-4" />
               <span className="hidden md:block">Support</span>
             </button>
           </div>
-          <div className="rounded-full p-2 transition-colors hover:bg-background-tertiary">
+          <div className="rounded-md p-2 transition-colors hover:bg-background-tertiary">
             <UserButton />
           </div>
         </div>
