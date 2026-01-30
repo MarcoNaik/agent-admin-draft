@@ -8,21 +8,20 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --filter=@struere/platform-gateway --filter=@struere/dashboard",
+    "dev": "turbo run dev --filter=@struere/convex --filter=@struere/dashboard",
     "dev:all": "turbo run dev",
-    "dev:cli": "turbo run dev --filter=@struere/cli",
-    "dev:platform": "turbo run dev --filter=@struere/platform-*",
+    "dev:cli": "turbo run dev --filter=struere",
+    "dev:convex": "cd platform/convex && npx convex dev",
     "dev:dashboard": "turbo run dev --filter=@struere/dashboard",
-    "dev:gateway": "turbo run dev --filter=@struere/platform-gateway",
+    "dev:tool-executor": "turbo run dev --filter=@struere/tool-executor",
     "dev:web": "turbo run dev --filter=@struere/web",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules/.cache",
-    "deploy": "turbo run deploy --filter=@struere/platform-*",
-    "deploy:api": "turbo run deploy --filter=@struere/platform-api",
-    "db:migrate": "cd platform/api && wrangler d1 execute struere-db --remote --file=migrations/0000_init.sql && wrangler d1 execute struere-db --remote --file=migrations/0001_add_clerk_id.sql && wrangler d1 execute struere-db --remote --file=migrations/0002_make_password_nullable.sql",
-    "db:migrate:local": "cd platform/api && wrangler d1 execute struere-db --local --file=migrations/0000_init.sql && wrangler d1 execute struere-db --local --file=migrations/0001_add_clerk_id.sql && wrangler d1 execute struere-db --local --file=migrations/0002_make_password_nullable.sql"
+    "deploy": "turbo run deploy",
+    "deploy:convex": "cd platform/convex && npx convex deploy",
+    "deploy:tool-executor": "cd platform/tool-executor && wrangler deploy"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
