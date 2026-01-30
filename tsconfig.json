@@ -11,11 +11,9 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "dist",
-    "rootDir": "src",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": false
+    "isolatedModules": true
   },
+  "include": [],
   "exclude": ["node_modules", "dist"]
 }
