@@ -1,6 +1,7 @@
 "use client"
 
 import { useAgents } from "@/hooks/use-convex-data"
+import { Doc } from "@convex/_generated/dataModel"
 import { Card, CardContent } from "@/components/ui/card"
 import { AgentsList } from "@/components/agents-list"
 import { Loader2 } from "lucide-react"
@@ -20,7 +21,7 @@ export default function AgentsPage() {
     )
   }
 
-  const mappedAgents = agents.map((agent) => ({
+  const mappedAgents = agents.map((agent: Doc<"agents">) => ({
     id: agent._id,
     name: agent.name,
     slug: agent.slug,
