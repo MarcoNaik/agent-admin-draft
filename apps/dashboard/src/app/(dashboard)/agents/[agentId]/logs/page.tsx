@@ -4,13 +4,25 @@ import { ScrollText, AlertCircle, Info, AlertTriangle, Bug, Loader2 } from "luci
 import { useRecentExecutions } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Id } from "@convex/_generated/dataModel"
+import { Id, Doc } from "@convex/_generated/dataModel"
 
 interface AgentLogsPageProps {
   params: { agentId: string }
 }
 
 type LogLevel = "info" | "warn" | "error" | "debug"
+
+interface LogEntry {
+  id: string
+  level: LogLevel
+  message: string
+  timestamp: number
+  metadata: {
+    inputTokens: number
+    outputTokens: number
+    durationMs: number
+  }
+}
 
 function LogLevelIcon({ level }: { level: LogLevel }) {
   switch (level) {
@@ -54,7 +66,7 @@ export default function AgentLogsPage({ params }: AgentLogsPageProps) {
     )
   }
 
-  const logs = executions.map((exec) => ({
+  const logs = executions.map((exec: Doc<"executions">) => ({
     id: exec._id,
     level: (exec.status === "error" ? "error" : "info") as LogLevel,
     message: exec.status === "error"
@@ -94,7 +106,7 @@ export default function AgentLogsPage({ params }: AgentLogsPageProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {logs.map((log) => (
+              {logs.map((log: LogEntry) => (
                 <div
                   key={log.id}
                   className="flex items-start gap-3 rounded-lg border p-3 font-mono text-sm"
