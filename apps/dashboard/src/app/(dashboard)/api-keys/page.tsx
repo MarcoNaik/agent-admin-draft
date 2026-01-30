@@ -1,22 +1,30 @@
-import { Plus, Copy, Trash2, Key } from "lucide-react"
-import { api } from "@/lib/api"
-import { getAuthToken } from "@/lib/auth"
+"use client"
+
+import { Plus, Copy, Trash2, Key, Loader2 } from "lucide-react"
+import { useApiKeys, useDeleteApiKey } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 
-export default async function ApiKeysPage() {
-  const token = await getAuthToken()
+export default function ApiKeysPage() {
+  const apiKeys = useApiKeys()
+  const deleteApiKey = useDeleteApiKey()
 
-  let apiKeys: Awaited<ReturnType<typeof api.apiKeys.list>>["apiKeys"] = []
-  let error: string | null = null
-
-  try {
-    const data = await api.apiKeys.list(token!)
-    apiKeys = data.apiKeys
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load API keys"
+  if (apiKeys === undefined) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-content-primary">API Keys</h1>
+            <p className="text-content-secondary">Manage access to your agents</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -40,9 +48,7 @@ export default async function ApiKeysPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <p className="text-content-secondary">{error}</p>
-          ) : apiKeys.length === 0 ? (
+          {apiKeys.length === 0 ? (
             <div className="py-8 text-center">
               <Key className="mx-auto h-12 w-12 text-content-tertiary" />
               <h3 className="mt-4 text-lg font-medium text-content-primary">No API keys</h3>
@@ -54,7 +60,7 @@ export default async function ApiKeysPage() {
             <div className="space-y-4">
               {apiKeys.map((key) => (
                 <div
-                  key={key.id}
+                  key={key._id}
                   className="flex items-center justify-between rounded-lg border bg-background-tertiary p-4 hover:border-border-selected"
                 >
                   <div className="space-y-1">
@@ -65,9 +71,9 @@ export default async function ApiKeysPage() {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-content-secondary">
-                      <span>Created {formatDate(key.createdAt)}</span>
+                      <span>Created {formatDate(new Date(key.createdAt).toISOString())}</span>
                       {key.lastUsedAt && (
-                        <span>Last used {formatDate(key.lastUsedAt)}</span>
+                        <span>Last used {formatDate(new Date(key.lastUsedAt).toISOString())}</span>
                       )}
                     </div>
                     <div className="flex gap-1">
@@ -82,7 +88,12 @@ export default async function ApiKeysPage() {
                     <Button variant="ghost" size="icon" className="hover:bg-background-primary">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-background-primary">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-background-primary"
+                      onClick={() => deleteApiKey({ id: key._id })}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
