@@ -12,6 +12,7 @@ import {
   getGitignore,
   getStruereJson,
   getEnvLocal,
+  getClaudeMd,
 } from '../templates'
 
 export interface ScaffoldOptions {
@@ -77,6 +78,7 @@ export function scaffoldProject(cwd: string, options: ScaffoldOptions): Scaffold
     '.gitignore': getGitignore(),
     'struere.json': getStruereJson(options.agentId, options.team, options.agentSlug, options.agentName),
     '.env.local': getEnvLocal(options.deploymentUrl),
+    '.claude.md': getClaudeMd(options.projectName),
   }
 
   for (const [relativePath, content] of Object.entries(files)) {
@@ -107,6 +109,7 @@ export function scaffoldAgentFiles(cwd: string, projectName: string): ScaffoldRe
     'src/workflows/.gitkeep': '',
     'tests/basic.test.yaml': getBasicTestYaml(),
     '.env.example': getEnvExample(),
+    '.claude.md': getClaudeMd(projectName),
   }
 
   for (const [relativePath, content] of Object.entries(files)) {
