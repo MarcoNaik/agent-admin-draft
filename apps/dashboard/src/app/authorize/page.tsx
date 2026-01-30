@@ -46,7 +46,7 @@ export default function AuthorizePage() {
     setState("authorizing")
 
     try {
-      const token = await getToken({ template: "struere-api" })
+      const token = await getToken({ template: "convex" })
       if (!token) {
         setState("error")
         setError("Failed to get authentication token")
