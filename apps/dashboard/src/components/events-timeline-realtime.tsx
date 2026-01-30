@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Activity, Filter } from "lucide-react"
 import { useState } from "react"
+import { Doc } from "@convex/_generated/dataModel"
 
 export function EventsTimelineRealtime() {
   const [selectedEventType, setSelectedEventType] = useState<string | undefined>(undefined)
@@ -29,7 +30,7 @@ export function EventsTimelineRealtime() {
         >
           All Events
         </Button>
-        {eventTypes.map((type) => (
+        {eventTypes.map((type: string) => (
           <Button
             key={type}
             variant={selectedEventType === type ? "default" : "outline"}
@@ -53,7 +54,7 @@ export function EventsTimelineRealtime() {
           <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
 
           <div className="space-y-4">
-            {events.map((event) => (
+            {events.map((event: Doc<"events">) => (
               <div key={event._id} className="relative flex gap-4">
                 <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background border">
                   <Activity className="h-4 w-4 text-muted-foreground" />

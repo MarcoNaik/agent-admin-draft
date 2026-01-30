@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw, XCircle, Clock, CheckCircle, AlertTriangle, Skull } from "lucide-react"
 import { useState } from "react"
+import { Doc } from "@convex/_generated/dataModel"
 
 type JobStatus = "pending" | "claimed" | "running" | "completed" | "failed" | "dead"
 
@@ -115,7 +116,7 @@ export function JobsDashboardRealtime() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {jobs.map((job) => {
+              {jobs.map((job: Doc<"jobs">) => {
                 const config = statusConfig[job.status as JobStatus]
                 const Icon = config.icon
 

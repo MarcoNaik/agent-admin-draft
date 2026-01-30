@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Loader2, Plus, Trash2, Search, FileText } from "lucide-react"
 import Link from "next/link"
 import { useState, useMemo } from "react"
+import { Doc } from "@convex/_generated/dataModel"
 
 interface EntitiesListRealtimeProps {
   entityTypeSlug: string
@@ -132,7 +133,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
               </tr>
             </thead>
             <tbody className="divide-y">
-              {displayedEntities.map((entity) => (
+              {displayedEntities.map((entity: Doc<"entities">) => (
                 <tr key={entity._id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <div>

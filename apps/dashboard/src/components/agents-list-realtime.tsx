@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Loader2, Plus, Trash2, Bot, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
+import { Doc } from "@convex/_generated/dataModel"
 
 export function AgentsListRealtime() {
   const agents = useAgents()
@@ -68,7 +69,7 @@ export function AgentsListRealtime() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => (
+          {agents.map((agent: Doc<"agents">) => (
             <Card key={agent._id} className="relative group">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center justify-between">
