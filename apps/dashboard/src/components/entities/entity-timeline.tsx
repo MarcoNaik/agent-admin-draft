@@ -2,9 +2,19 @@
 
 import { useState } from "react"
 import { ChevronDown, ChevronRight, User, Bot, Server, Webhook } from "lucide-react"
-import { EntityEvent } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+
+type ActorType = "user" | "agent" | "system" | "webhook"
+
+interface EntityEvent {
+  id: string
+  eventType: string
+  actorType: ActorType
+  actorId?: string | null
+  payload: Record<string, unknown>
+  timestamp: string
+}
 
 interface EntityTimelineProps {
   events: EntityEvent[]
@@ -38,7 +48,7 @@ function getEventTypeColor(eventType: string): string {
   return "bg-gray-500"
 }
 
-function ActorIcon({ actorType }: { actorType: EntityEvent["actorType"] }) {
+function ActorIcon({ actorType }: { actorType: ActorType }) {
   switch (actorType) {
     case "user":
       return <User className="h-3 w-3" />
