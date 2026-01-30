@@ -295,7 +295,25 @@ async function interactiveSetup(cwd: string): Promise<{
       console.log(chalk.green('✓'), `Created ${file}`)
     }
     console.log()
-    console.log(chalk.yellow('Run'), chalk.cyan('bun install'), chalk.yellow('to install dependencies'))
+
+    spinner.start('Installing dependencies')
+    try {
+      const proc = Bun.spawn(['bun', 'install'], {
+        cwd,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      await proc.exited
+      if (proc.exitCode === 0) {
+        spinner.succeed('Dependencies installed')
+      } else {
+        spinner.fail('Failed to install dependencies')
+        console.log(chalk.yellow('Run'), chalk.cyan('bun install'), chalk.yellow('manually'))
+      }
+    } catch {
+      spinner.fail('Failed to install dependencies')
+      console.log(chalk.yellow('Run'), chalk.cyan('bun install'), chalk.yellow('manually'))
+    }
   }
 
   console.log()
