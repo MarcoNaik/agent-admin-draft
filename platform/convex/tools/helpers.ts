@@ -1,6 +1,6 @@
 import { v, Validator } from "convex/values"
 import { mutation, MutationCtx } from "../_generated/server"
-import { AuthContext } from "../lib/auth"
+import { AuthContext, getAuthContext } from "../lib/auth"
 
 export interface ToolContext extends Omit<MutationCtx, "auth"> {
   auth: AuthContext
@@ -25,30 +25,8 @@ export function createTool<Args extends Record<string, unknown>>(
       mutation({
         args: definition.args as Record<string, Validator<unknown, "required", string>>,
         handler: async (ctx, args) => {
-          const identity = await ctx.auth.getUserIdentity()
-          if (!identity) {
-            throw new Error("Not authenticated")
-          }
-
-          const user = await ctx.db
-            .query("users")
-            .withIndex("by_clerk_user", (q) =>
-              q.eq("clerkUserId", identity.subject)
-            )
-            .first()
-
-          if (!user) {
-            throw new Error("User not found")
-          }
-
-          const auth: AuthContext = {
-            userId: user._id,
-            organizationId: user.organizationId,
-            clerkUserId: identity.subject,
-            actorType: "agent",
-          }
-
-          const toolCtx: ToolContext = { ...ctx, auth }
+          const auth = await getAuthContext(ctx)
+          const toolCtx: ToolContext = { ...ctx, auth: { ...auth, actorType: "agent" } }
           return await definition.handler(
             toolCtx,
             args as Args
