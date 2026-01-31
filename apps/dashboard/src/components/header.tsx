@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UserButton, useUser, useOrganization } from "@clerk/nextjs"
@@ -20,6 +19,7 @@ import {
   Globe,
   Code,
   Settings,
+  User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAgentContext } from "@/contexts/agent-context"
 import { useEnvironment } from "@/contexts/environment-context"
+import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
 
 type NavItem = {
   name: string
@@ -47,19 +48,28 @@ type NavSeparator = {
 
 type NavEntry = NavItem | NavSeparator
 
-const builderNavigation: NavItem[] = [
+const adminNavigation: NavItem[] = [
   { name: "Agents", href: "/agents" },
   { name: "Packs", href: "/packs" },
   { name: "Settings", href: "/settings" },
 ]
 
-const businessNavigation: NavEntry[] = [
-  { type: "separator", label: "Business", roles: ["admin", "teacher", "guardian"] },
-  { name: "Entities", href: "/entities", icon: Database, roles: ["admin"] },
-  { name: "Sessions", href: "/entities/session", icon: Calendar, roles: ["admin", "teacher", "guardian"] },
-  { name: "Students", href: "/entities/student", icon: GraduationCap, roles: ["admin", "teacher"] },
-  { name: "Teachers", href: "/entities/teacher", icon: UserCheck, roles: ["admin"] },
-  { name: "Payments", href: "/entities/payment", icon: CreditCard, roles: ["admin"] },
+const teacherNavigation: NavItem[] = [
+  { name: "My Sessions", href: "/teacher/sessions", icon: Calendar },
+  { name: "My Students", href: "/teacher/students", icon: GraduationCap },
+  { name: "My Profile", href: "/teacher/profile", icon: User },
+]
+
+const guardianNavigation: NavItem[] = [
+  { name: "Sessions", href: "/guardian/sessions", icon: Calendar },
+  { name: "My Children", href: "/guardian/students", icon: GraduationCap },
+  { name: "Payments", href: "/guardian/payments", icon: CreditCard },
+  { name: "My Profile", href: "/guardian/profile", icon: User },
+]
+
+const entitiesNavigation: NavEntry[] = [
+  { type: "separator", label: "Entities", roles: ["admin"] },
+  { name: "Entity Browser", href: "/entities", icon: Database, roles: ["admin"] },
   { name: "Jobs", href: "/jobs", icon: Clock, roles: ["admin"] },
 ]
 
@@ -71,6 +81,19 @@ function hasAccess(roles?: string[], userRole?: string): boolean {
   if (!roles || roles.length === 0) return true
   if (!userRole) return roles.includes("admin")
   return roles.includes(userRole)
+}
+
+function getNavigationForRole(role: UserRole): NavItem[] {
+  switch (role) {
+    case "teacher":
+      return teacherNavigation
+    case "guardian":
+      return guardianNavigation
+    case "admin":
+    case "member":
+    default:
+      return adminNavigation
+  }
 }
 
 function OrgAvatar({ name }: { name: string }) {
@@ -188,28 +211,21 @@ export function Header() {
   const pathname = usePathname()
   const { user, isLoaded: userLoaded } = useUser()
   const { organization, isLoaded: orgLoaded } = useOrganization()
-  const [userRole, setUserRole] = useState<string>("admin")
+  const { role: userRole } = useCurrentRole()
   const { agent } = useAgentContext()
+  const roleNavigation = getNavigationForRole(userRole)
 
   const isLoaded = userLoaded && orgLoaded
   const orgName = organization?.name || user?.firstName || "Personal"
 
-  useEffect(() => {
-    if (user?.publicMetadata?.role) {
-      setUserRole(user.publicMetadata.role as string)
-    } else if (organization?.publicMetadata?.role) {
-      setUserRole(organization.publicMetadata.role as string)
-    }
-  }, [user, organization])
-
-  const filteredBusinessNav = businessNavigation.filter((entry) => {
+  const filteredEntitiesNav = entitiesNavigation.filter((entry) => {
     if (isSeparator(entry)) {
       return hasAccess(entry.roles, userRole)
     }
     return hasAccess(entry.roles, userRole)
   })
 
-  const hasBusinessItems = filteredBusinessNav.some((entry) => !isSeparator(entry))
+  const hasEntitiesItems = filteredEntitiesNav.some((entry) => !isSeparator(entry))
 
   return (
     <div className="sticky top-0 z-40">
@@ -255,7 +271,7 @@ export function Header() {
 
             {!agent && (
               <div className="flex items-center gap-0.5 ml-4">
-                {builderNavigation.map((item) => {
+                {roleNavigation.map((item) => {
                   const isActive = item.href === "/agents"
                     ? pathname === "/agents" || pathname.startsWith("/agents/")
                     : pathname.startsWith(item.href)
@@ -264,16 +280,17 @@ export function Header() {
                       key={item.name}
                       href={item.href}
                       className={cn(
-                        "px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors",
+                        "flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors",
                         isActive && "text-content-primary font-medium"
                       )}
                     >
+                      {item.icon && <item.icon className="h-4 w-4" />}
                       {item.name}
                     </Link>
                   )
                 })}
 
-                {hasBusinessItems && (
+                {hasEntitiesItems && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -283,12 +300,12 @@ export function Header() {
                           (pathname.startsWith("/entities") || pathname.startsWith("/jobs")) && "text-content-primary font-medium"
                         )}
                       >
-                        Business
+                        Entities
                         <ChevronDown className="h-3 w-3" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-48">
-                      {filteredBusinessNav.map((entry, index) => {
+                      {filteredEntitiesNav.map((entry, index) => {
                         if (isSeparator(entry)) {
                           return index > 0 ? <DropdownMenuSeparator key={`sep-${index}`} /> : null
                         }

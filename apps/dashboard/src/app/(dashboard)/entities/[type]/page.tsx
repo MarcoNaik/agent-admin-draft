@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Filter, ChevronLeft, ChevronRight, Plus, Layers, Loader2 } from "lucide-react"
+import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEntityTypeBySlug, useEntities } from "@/hooks/use-convex-data"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -45,20 +44,12 @@ export default function EntityListPage({ params }: EntityListPageProps) {
 
   if (entityType === undefined || entities === undefined) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Layers className="h-6 w-6" />
-              {typeSlug}
-            </h2>
-            <p className="text-muted-foreground">
-              Loading...
-            </p>
-          </div>
+          <h1 className="text-xl font-semibold">{typeSlug}</h1>
         </div>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     )
@@ -66,27 +57,17 @@ export default function EntityListPage({ params }: EntityListPageProps) {
 
   if (!entityType) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Layers className="h-6 w-6" />
-              {typeSlug}
-            </h2>
-            <p className="text-muted-foreground">
-              Entity type not found
-            </p>
-          </div>
+          <h1 className="text-xl font-semibold">{typeSlug}</h1>
         </div>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Layers className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="text-lg font-medium">Entity type &quot;{typeSlug}&quot; not found</h3>
-            <p className="mt-1 text-muted-foreground">
-              This entity type does not exist in your organization
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Layers className="mb-4 h-10 w-10 text-muted-foreground/50" />
+          <h3 className="text-lg font-medium">Entity type not found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            &quot;{typeSlug}&quot; does not exist in your organization
+          </p>
+        </div>
       </div>
     )
   }
@@ -95,13 +76,13 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     ? entities.filter((e: Doc<"entities">) => JSON.stringify(e.data).toLowerCase().includes(search.toLowerCase()))
     : entities
 
-  const mappedEntityType = entityType ? {
+  const mappedEntityType = {
     id: entityType._id,
     name: entityType.name,
     slug: entityType.slug,
     schema: entityType.schema,
     displayConfig: entityType.displayConfig,
-  } : null
+  }
 
   const mappedEntities = filteredEntities.map((e: Doc<"entities">) => ({
     id: e._id,
@@ -112,69 +93,66 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   }))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Layers className="h-6 w-6" />
-            {entityType?.name || typeSlug}
-          </h2>
-          <p className="text-muted-foreground">
-            Manage {entityType?.name?.toLowerCase() || typeSlug} entities
-          </p>
+        <h1 className="text-xl font-semibold">{entityType.name}</h1>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border rounded-md">
+            <Button variant="ghost" size="sm" className="h-8 px-2 rounded-r-none border-r">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 px-2 rounded-l-none">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="h-8 w-[130px] text-sm">
+              <Filter className="mr-1.5 h-3.5 w-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={() => router.push(`/entities/${typeSlug}/new`)}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add
+          </Button>
         </div>
-        <Button onClick={() => router.push(`/entities/${typeSlug}/new`)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create {entityType?.name || "Entity"}
-        </Button>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-lg">
-              {filteredEntities.length} {filteredEntities.length === 1 ? "entity" : "entities"}
-            </CardTitle>
-            <div className="flex flex-wrap gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 w-[200px]"
-                />
-              </div>
-              <Select
-                value={status}
-                onValueChange={setStatus}
-              >
-                <SelectTrigger className="w-[150px]">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-muted/30 border-b px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {filteredEntities.length} {filteredEntities.length === 1 ? "document" : "documents"}
+            </span>
           </div>
-        </CardHeader>
-        <CardContent>
-          {mappedEntityType ? (
-            <EntityTable
-              entityType={mappedEntityType}
-              entities={mappedEntities}
-              onRowClick={(entity) => router.push(`/entities/${typeSlug}/${entity.id}`)}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Filter..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-7 pl-8 w-[180px] text-sm"
             />
-          ) : null}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+        <EntityTable
+          entityType={mappedEntityType}
+          entities={mappedEntities}
+          onRowClick={(entity) => router.push(`/entities/${typeSlug}/${entity.id}`)}
+        />
+      </div>
     </div>
   )
 }
