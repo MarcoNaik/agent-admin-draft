@@ -4,6 +4,7 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { hashApiKey } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor } from "./lib/templateEngine"
+import { ActorContext, ActorType } from "./lib/permissions/types"
 
 interface ToolCall {
   id: string
@@ -34,6 +35,14 @@ interface ChatResponse {
   }
 }
 
+interface ToolConfig {
+  name: string
+  description: string
+  parameters: unknown
+  handlerCode?: string
+  isBuiltin: boolean
+}
+
 export const chat = internalAction({
   args: {
     apiKey: v.string(),
@@ -42,6 +51,15 @@ export const chat = internalAction({
     threadId: v.optional(v.id("threads")),
     externalThreadId: v.optional(v.string()),
   },
+  returns: v.object({
+    message: v.string(),
+    threadId: v.id("threads"),
+    usage: v.object({
+      inputTokens: v.number(),
+      outputTokens: v.number(),
+      totalTokens: v.number(),
+    }),
+  }),
   handler: async (ctx, args): Promise<ChatResponse> => {
     const startTime = Date.now()
 
@@ -82,11 +100,18 @@ export const chat = internalAction({
 
     const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
 
+    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+      organizationId: auth.organizationId,
+      actorType: "agent",
+      actorId: `apikey:${auth.keyPrefix}`,
+    })
+
     const templateContext: TemplateContext = {
       organizationId: auth.organizationId,
       userId: thread?.userId,
       threadId,
       agentId: args.agentId,
+      actor,
       agent: { name: agent.name, slug: agent.slug },
       thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
       message: args.message,
@@ -95,18 +120,37 @@ export const chat = internalAction({
     }
 
     const toolExecutor: ToolExecutor = {
-      executeBuiltin: (name, toolArgs) =>
-        executeBuiltinTool(ctx, {
-          organizationId: auth.organizationId,
-          actorId: `apikey:${auth.keyPrefix}`,
-          actorType: "agent",
+      executeBuiltin: async (name, toolArgs) => {
+        const toolIdentity = await ctx.runQuery(
+          internal.permissions.getToolIdentityQuery,
+          {
+            actor: {
+              organizationId: actor.organizationId,
+              actorType: actor.actorType,
+              actorId: actor.actorId,
+              roleIds: actor.roleIds,
+            },
+            agentId: args.agentId,
+            toolName: name,
+          }
+        )
+        return executeBuiltinTool(ctx, {
+          organizationId: toolIdentity.organizationId,
+          actorId: toolIdentity.actorId,
+          actorType: toolIdentity.actorType,
           toolName: name,
           args: toolArgs,
-        }),
+        })
+      },
       executeCustom: (handlerCode, toolArgs) =>
         ctx.runAction(internal.agent.executeCustomTool, {
           handlerCode,
           args: toolArgs,
+          context: {
+            organizationId: actor.organizationId,
+            actorId: actor.actorId,
+            actorType: actor.actorType,
+          },
         }),
     }
 
@@ -114,7 +158,8 @@ export const chat = internalAction({
       config.systemPrompt,
       templateContext,
       config.tools,
-      toolExecutor
+      toolExecutor,
+      ctx.runQuery
     )
 
     const messages: Message[] = [
@@ -153,7 +198,7 @@ export const chat = internalAction({
       return { role: m.role, content: m.content }
     })
 
-    const tools = config.tools.map((t: { name: string; description: string; parameters: unknown }) => ({
+    const tools = config.tools.map((t: ToolConfig) => ({
       type: "function" as const,
       function: {
         name: t.name,
@@ -193,7 +238,7 @@ export const chat = internalAction({
       })
 
       for (const tc of toolCalls) {
-        const toolConfig = config.tools.find((t: { name: string }) => t.name === tc.name)
+        const toolConfig = config.tools.find((t: ToolConfig) => t.name === tc.name)
         if (!toolConfig) {
           newMessages.push({
             role: "tool",
@@ -203,14 +248,51 @@ export const chat = internalAction({
           continue
         }
 
+        const permissionResult = await ctx.runQuery(
+          internal.permissions.canUseToolQuery,
+          {
+            actor: {
+              organizationId: actor.organizationId,
+              actorType: actor.actorType,
+              actorId: actor.actorId,
+              roleIds: actor.roleIds,
+            },
+            agentId: args.agentId,
+            toolName: tc.name,
+          }
+        )
+
+        if (!permissionResult.allowed) {
+          newMessages.push({
+            role: "tool",
+            content: JSON.stringify({ error: `Permission denied: ${permissionResult.reason}` }),
+            toolCallId: tc.id,
+          })
+          continue
+        }
+
         try {
+          const toolIdentity = await ctx.runQuery(
+            internal.permissions.getToolIdentityQuery,
+            {
+              actor: {
+                organizationId: actor.organizationId,
+                actorType: actor.actorType,
+                actorId: actor.actorId,
+                roleIds: actor.roleIds,
+              },
+              agentId: args.agentId,
+              toolName: tc.name,
+            }
+          )
+
           let result: unknown
 
           if (toolConfig.isBuiltin) {
             result = await executeBuiltinTool(ctx, {
-              organizationId: auth.organizationId,
-              actorId: `apikey:${auth.keyPrefix}`,
-              actorType: "agent",
+              organizationId: toolIdentity.organizationId,
+              actorId: toolIdentity.actorId,
+              actorType: toolIdentity.actorType,
               toolName: tc.name,
               args: tc.arguments,
             })
@@ -218,6 +300,11 @@ export const chat = internalAction({
             result = await ctx.runAction(internal.agent.executeCustomTool, {
               handlerCode: toolConfig.handlerCode,
               args: tc.arguments,
+              context: {
+                organizationId: toolIdentity.organizationId,
+                actorId: toolIdentity.actorId,
+                actorType: toolIdentity.actorType,
+              },
             })
           } else {
             result = { error: "Tool has no handler" }
@@ -317,6 +404,15 @@ export const chatBySlug = internalAction({
     threadId: v.optional(v.id("threads")),
     externalThreadId: v.optional(v.string()),
   },
+  returns: v.object({
+    message: v.string(),
+    threadId: v.id("threads"),
+    usage: v.object({
+      inputTokens: v.number(),
+      outputTokens: v.number(),
+      totalTokens: v.number(),
+    }),
+  }),
   handler: async (ctx, args): Promise<ChatResponse> => {
     const keyHash = await hashApiKey(args.apiKey)
     const auth: ApiKeyAuth | null = await ctx.runQuery(internal.agent.validateApiKey, { keyHash })
@@ -344,8 +440,91 @@ export const chatBySlug = internalAction({
   },
 })
 
+export const buildActorContextForAgent = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    actorType: v.string(),
+    actorId: v.string(),
+  },
+  returns: v.object({
+    organizationId: v.id("organizations"),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("webhook")
+    ),
+    actorId: v.string(),
+    roleIds: v.array(v.id("roles")),
+  }),
+  handler: async (ctx, args): Promise<ActorContext> => {
+    const { organizationId, actorType, actorId } = args
+
+    let roleIds: Id<"roles">[] = []
+
+    if (actorType === "user") {
+      const userRoles = await ctx.db
+        .query("userRoles")
+        .withIndex("by_user", (q) => q.eq("userId", actorId as Id<"users">))
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("expiresAt"), undefined),
+            q.gt(q.field("expiresAt"), Date.now())
+          )
+        )
+        .collect()
+
+      const validRoleIds: Id<"roles">[] = []
+      for (const ur of userRoles) {
+        const role = await ctx.db.get(ur.roleId)
+        if (role && role.organizationId === organizationId) {
+          validRoleIds.push(ur.roleId)
+        }
+      }
+      roleIds = validRoleIds
+    } else if (actorType === "system") {
+      const systemRole = await ctx.db
+        .query("roles")
+        .withIndex("by_org_isSystem", (q) =>
+          q.eq("organizationId", organizationId).eq("isSystem", true)
+        )
+        .first()
+
+      if (systemRole) {
+        roleIds = [systemRole._id]
+      }
+    } else if (actorType === "agent") {
+      const agentRole = await ctx.db
+        .query("roles")
+        .withIndex("by_org_name", (q) =>
+          q.eq("organizationId", organizationId).eq("name", "agent")
+        )
+        .first()
+
+      if (agentRole) {
+        roleIds = [agentRole._id]
+      }
+    }
+
+    return {
+      organizationId,
+      actorType: actorType as ActorType,
+      actorId,
+      roleIds,
+    }
+  },
+})
+
 export const validateApiKey = internalQuery({
   args: { keyHash: v.string() },
+  returns: v.union(
+    v.object({
+      organizationId: v.id("organizations"),
+      keyPrefix: v.string(),
+      permissions: v.array(v.string()),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const apiKey = await ctx.db
       .query("apiKeys")
@@ -373,6 +552,7 @@ export const getAgentInternal = internalQuery({
     agentId: v.id("agents"),
     organizationId: v.id("organizations"),
   },
+  returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const agent = await ctx.db.get(args.agentId)
 
@@ -389,6 +569,7 @@ export const getAgentBySlugInternal = internalQuery({
     slug: v.string(),
     organizationId: v.id("organizations"),
   },
+  returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("agents")
@@ -401,6 +582,7 @@ export const getAgentBySlugInternal = internalQuery({
 
 export const getThreadMessages = internalQuery({
   args: { threadId: v.id("threads") },
+  returns: v.array(v.any()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("messages")
@@ -414,7 +596,15 @@ export const executeCustomTool = internalAction({
   args: {
     handlerCode: v.string(),
     args: v.any(),
+    context: v.optional(
+      v.object({
+        organizationId: v.id("organizations"),
+        actorId: v.string(),
+        actorType: v.string(),
+      })
+    ),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const toolExecutorUrl = process.env.TOOL_EXECUTOR_URL
     const toolExecutorSecret = process.env.TOOL_EXECUTOR_SECRET
@@ -432,6 +622,7 @@ export const executeCustomTool = internalAction({
       body: JSON.stringify({
         handlerCode: args.handlerCode,
         args: args.args,
+        context: args.context ?? {},
       }),
     })
 
@@ -449,7 +640,7 @@ async function executeBuiltinTool(
   params: {
     organizationId: Id<"organizations">
     actorId: string
-    actorType: "user" | "agent" | "system" | "webhook"
+    actorType: ActorType
     toolName: string
     args: Record<string, unknown>
   }
@@ -540,6 +731,8 @@ async function executeBuiltinTool(
     case "job.enqueue":
       return await ctx.runMutation(internal.tools.jobs.jobEnqueue, {
         organizationId,
+        actorId,
+        actorType,
         jobType: args.jobType as string,
         payload: args.payload,
         scheduledFor: args.scheduledFor as number | undefined,
