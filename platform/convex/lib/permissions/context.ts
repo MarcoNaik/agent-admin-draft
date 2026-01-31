@@ -16,8 +16,14 @@ export async function buildActorContext(
   let isOrgAdmin = false
 
   if (actorType === "user") {
-    const user = await ctx.db.get(actorId as Id<"users">)
-    if (user && (user.role === "owner" || user.role === "admin")) {
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", actorId as Id<"users">).eq("organizationId", organizationId)
+      )
+      .first()
+
+    if (membership && (membership.role === "owner" || membership.role === "admin")) {
       isOrgAdmin = true
     }
 
