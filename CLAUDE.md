@@ -611,6 +611,187 @@ export default defineRole({
 })
 ```
 
+### Built-in Tools Reference
+
+Agents can enable any combination of these 11 built-in tools:
+
+| Tool | Category | Description |
+|------|----------|-------------|
+| `entity.create` | Entity | Create a new entity of a specified type |
+| `entity.get` | Entity | Retrieve a single entity by ID |
+| `entity.query` | Entity | Query entities by type with filters |
+| `entity.update` | Entity | Update an existing entity's data |
+| `entity.delete` | Entity | Soft-delete an entity |
+| `entity.link` | Entity | Create a relation between two entities |
+| `entity.unlink` | Entity | Remove a relation between entities |
+| `event.emit` | Event | Emit a custom event for audit logging |
+| `event.query` | Event | Query historical events with filters |
+| `job.enqueue` | Job | Schedule a background job |
+| `job.status` | Job | Check the status of a scheduled job |
+
+**Tool Parameters:**
+
+```typescript
+"entity.create": { type: string, data: object, status?: string }
+"entity.get": { id: string }
+"entity.query": { type: string, filters?: object, status?: string, limit?: number }
+"entity.update": { id: string, data: object, status?: string }
+"entity.delete": { id: string }
+"entity.link": { fromEntityId: string, toEntityId: string, relationType: string }
+"entity.unlink": { fromEntityId: string, toEntityId: string, relationType: string }
+"event.emit": { eventType: string, entityId?: string, payload?: object }
+"event.query": { eventType?: string, entityId?: string, since?: number, limit?: number }
+"job.enqueue": { jobType: string, payload?: object, runAt?: number }
+"job.status": { jobId: string }
+```
+
+### Model Configuration
+
+**Available Providers:**
+| Provider | Model Names | Notes |
+|----------|-------------|-------|
+| `anthropic` | `claude-sonnet-4-20250514`, `claude-opus-4-20250514`, `claude-3-5-haiku-20241022` | Default provider |
+| `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Requires OPENAI_API_KEY |
+| `google` | `gemini-1.5-pro`, `gemini-1.5-flash` | Requires GOOGLE_API_KEY |
+
+**Model Config Options:**
+```typescript
+model: {
+  provider: "anthropic",
+  name: "claude-sonnet-4-20250514",
+  temperature?: 0.7,
+  maxTokens?: 4096,
+}
+```
+
+**Default Model:** `anthropic/claude-sonnet-4-20250514` with temperature 0.7, maxTokens 4096
+
+### System Prompt Templates
+
+System prompts support Handlebars-style templates with these variables:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `{{currentTime}}` | string | Current ISO 8601 timestamp |
+| `{{organizationName}}` | string | Current organization name |
+| `{{agentName}}` | string | Agent's display name |
+| `{{entityTypes}}` | array | All entity types with schemas |
+| `{{roles}}` | array | All roles with policies |
+
+**Example System Prompt:**
+```typescript
+systemPrompt: `You are {{agentName}}, an assistant for {{organizationName}}.
+Current time: {{currentTime}}
+
+Available entity types:
+{{#each entityTypes}}
+- {{this.name}} ({{this.slug}}): {{this.description}}
+{{/each}}
+
+You can create, query, update, and delete entities using the tools provided.`
+```
+
+**Entity Type Context Structure:**
+```typescript
+{
+  name: "Teacher",
+  slug: "teacher",
+  description: "Tutors who conduct sessions",
+  schema: { type: "object", properties: {...} },
+  searchFields: ["name", "email"]
+}
+```
+
+### Custom Tools Definition
+
+Custom tools are defined in `tools/index.ts` and can be used by any agent:
+
+```typescript
+import { defineTools } from 'struere'
+
+export default defineTools([
+  {
+    name: "send_email",
+    description: "Send an email to a recipient",
+    parameters: {
+      type: "object",
+      properties: {
+        to: { type: "string", description: "Recipient email address" },
+        subject: { type: "string", description: "Email subject line" },
+        body: { type: "string", description: "Email body content" },
+      },
+      required: ["to", "subject", "body"],
+    },
+    handler: async (args, context, fetch) => {
+      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.SENDGRID_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: args.to }] }],
+          from: { email: "noreply@example.com" },
+          subject: args.subject,
+          content: [{ type: "text/plain", value: args.body }],
+        }),
+      })
+      return { success: response.ok }
+    },
+  },
+  {
+    name: "get_weather",
+    description: "Get current weather for a location",
+    parameters: {
+      type: "object",
+      properties: {
+        city: { type: "string", description: "City name" },
+      },
+      required: ["city"],
+    },
+    handler: async (args, context, fetch) => {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${args.city}&appid=${process.env.WEATHER_API_KEY}`)
+      return await res.json()
+    },
+  },
+])
+```
+
+**Handler Function Signature:**
+```typescript
+handler: (args: object, context: ExecutionContext, fetch: SandboxedFetch) => Promise<any>
+```
+
+**ExecutionContext:**
+```typescript
+{
+  organizationId: string,
+  actorId: string,
+  actorType: "user" | "agent" | "system",
+}
+```
+
+**Sandboxed Fetch Allowlist:**
+Custom tool handlers execute on Cloudflare Workers with fetch restricted to:
+- api.openai.com, api.anthropic.com, api.stripe.com
+- api.sendgrid.com, api.twilio.com, hooks.slack.com
+- discord.com, api.github.com
+
+**Using Custom Tools in Agents:**
+```typescript
+export default defineAgent({
+  name: "Support Agent",
+  slug: "support",
+  tools: [
+    "entity.query",
+    "entity.update",
+    "event.emit",
+    "send_email",
+    "get_weather",
+  ],
+})
+```
+
 ### CLI Commands
 | Command | Purpose |
 |---------|---------|
