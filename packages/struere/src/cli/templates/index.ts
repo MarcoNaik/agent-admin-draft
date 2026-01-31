@@ -420,7 +420,9 @@ export function getPackageJsonV2(name: string): string {
 }
 
 export function getClaudeMDV2(orgName: string): string {
-  return `# ${orgName} - Struere Project
+  return `# ${orgName} - Struere Workspace
+
+> **This is a workspace project**, not the Struere framework source code. You define agents, entity types, roles, and custom tools here. The CLI syncs them to Convex. Framework source: github.com/struere/struere
 
 Struere is a framework for building production AI agents with Convex as the real-time backend. Agents can manage entities (business data), emit events, and schedule background jobs—all with built-in RBAC permissions.
 
