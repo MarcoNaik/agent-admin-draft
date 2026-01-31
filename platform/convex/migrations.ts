@@ -20,6 +20,47 @@ export const debugIdentity = query({
   },
 })
 
+export const debugTest = query({
+  args: {},
+  handler: async () => {
+    return { test: "works", timestamp: Date.now() }
+  },
+})
+
+export const debugAllOrgs = query({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").collect()
+    return orgs
+  },
+})
+
+export const debugListOrgs = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return { error: "Not authenticated", identity: null }
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", identity.subject))
+      .first()
+
+    if (!user) {
+      return { error: "User not found", identity, subject: identity.subject }
+    }
+
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect()
+
+    return { identity, user, memberships }
+  },
+})
+
 import { v } from "convex/values"
 
 export const manualSyncClerkOrg = internalMutation({
@@ -29,6 +70,8 @@ export const manualSyncClerkOrg = internalMutation({
     slug: v.string(),
     clerkUserId: v.string(),
     userRole: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    userEmail: v.optional(v.string()),
+    userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     let org = await ctx.db
@@ -52,12 +95,23 @@ export const manualSyncClerkOrg = internalMutation({
 
     if (!org) throw new Error("Failed to create org")
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", args.clerkUserId))
       .first()
 
-    if (!user) throw new Error("User not found")
+    if (!user) {
+      const userId = await ctx.db.insert("users", {
+        email: args.userEmail || `${args.clerkUserId}@unknown.com`,
+        name: args.userName,
+        clerkUserId: args.clerkUserId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      user = await ctx.db.get(userId)
+    }
+
+    if (!user) throw new Error("Failed to create user")
 
     const existingMembership = await ctx.db
       .query("userOrganizations")

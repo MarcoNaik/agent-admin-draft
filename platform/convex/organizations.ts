@@ -46,7 +46,7 @@ export const listMyOrganizations = query({
       .first()
 
     if (!user) {
-      throw new Error("User not found")
+      throw new Error(`User not found for subject: ${identity.subject}`)
     }
 
     const memberships = await ctx.db
@@ -69,6 +69,38 @@ export const listMyOrganizations = query({
     )
 
     return orgs.filter((o): o is NonNullable<typeof o> => o !== null)
+  },
+})
+
+export const debugListOrgsForUser = query({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first()
+
+    if (!user) {
+      return { error: "User not found", clerkUserId: args.clerkUserId }
+    }
+
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect()
+
+    const orgs = await Promise.all(
+      memberships.map(async (m) => {
+        const org = await ctx.db.get(m.organizationId)
+        return org ? { id: org._id, name: org.name, slug: org.slug, role: m.role } : null
+      })
+    )
+
+    return {
+      user: { id: user._id, email: user.email, name: user.name, clerkUserId: user.clerkUserId },
+      memberships: memberships.length,
+      orgs: orgs.filter(Boolean),
+    }
   },
 })
 
