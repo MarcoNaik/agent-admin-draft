@@ -31,6 +31,11 @@ export const list = query({
     hasUpgrade: v.boolean(),
     upgradeType: v.optional(v.string()),
     status: v.optional(v.string()),
+    hasDrift: v.optional(v.boolean()),
+    driftDetails: v.optional(v.object({
+      missingEntityTypes: v.array(v.string()),
+      missingRoles: v.array(v.string()),
+    })),
   })),
   handler: async (ctx) => {
     const auth = await requireAuth(ctx)
@@ -42,9 +47,39 @@ export const list = query({
 
     const installedMap = new Map(installedPacks.map((p) => [p.packId, p]))
 
-    return AVAILABLE_PACKS.map((pack) => {
+    const results = await Promise.all(AVAILABLE_PACKS.map(async (pack) => {
       const installed = installedMap.get(pack.id)
       const hasUpgrade = installed ? isUpgrade(installed.version, pack.version) : false
+
+      let hasDrift = false
+      let driftDetails: { missingEntityTypes: string[]; missingRoles: string[] } | undefined
+
+      if (installed) {
+        const missingEntityTypes: string[] = []
+        const missingRoles: string[] = []
+
+        for (const etId of installed.entityTypeIds) {
+          const et = await ctx.db.get(etId)
+          if (!et) {
+            const packEt = pack.entityTypes.find((_, i) => i < installed.entityTypeIds.length)
+            missingEntityTypes.push(packEt?.slug || etId.toString())
+          }
+        }
+
+        for (const roleId of installed.roleIds) {
+          const role = await ctx.db.get(roleId)
+          if (!role) {
+            const packRole = pack.roles.find((_, i) => i < installed.roleIds.length)
+            missingRoles.push(packRole?.name || roleId.toString())
+          }
+        }
+
+        if (missingEntityTypes.length > 0 || missingRoles.length > 0) {
+          hasDrift = true
+          driftDetails = { missingEntityTypes, missingRoles }
+        }
+      }
+
       return {
         ...pack,
         isInstalled: !!installed,
@@ -53,8 +88,12 @@ export const list = query({
         hasUpgrade,
         upgradeType: hasUpgrade && installed ? formatVersionDiff(installed.version, pack.version) : undefined,
         status: installed?.status || undefined,
+        hasDrift: hasDrift || undefined,
+        driftDetails,
       }
-    })
+    }))
+
+    return results
   },
 })
 
@@ -90,6 +129,11 @@ export const get = query({
         upgradedAt: v.number(),
         upgradedBy: v.optional(v.id("users")),
       }))),
+      hasDrift: v.optional(v.boolean()),
+      driftDetails: v.optional(v.object({
+        missingEntityTypes: v.array(v.string()),
+        missingRoles: v.array(v.string()),
+      })),
     }),
     v.null()
   ),
@@ -107,6 +151,35 @@ export const get = query({
 
     const hasUpgrade = installed ? isUpgrade(installed.version, pack.version) : false
 
+    let hasDrift = false
+    let driftDetails: { missingEntityTypes: string[]; missingRoles: string[] } | undefined
+
+    if (installed) {
+      const missingEntityTypes: string[] = []
+      const missingRoles: string[] = []
+
+      for (const etId of installed.entityTypeIds) {
+        const et = await ctx.db.get(etId)
+        if (!et) {
+          const packEt = pack.entityTypes.find((_, i) => i < installed.entityTypeIds.length)
+          missingEntityTypes.push(packEt?.slug || etId.toString())
+        }
+      }
+
+      for (const roleId of installed.roleIds) {
+        const role = await ctx.db.get(roleId)
+        if (!role) {
+          const packRole = pack.roles.find((_, i) => i < installed.roleIds.length)
+          missingRoles.push(packRole?.name || roleId.toString())
+        }
+      }
+
+      if (missingEntityTypes.length > 0 || missingRoles.length > 0) {
+        hasDrift = true
+        driftDetails = { missingEntityTypes, missingRoles }
+      }
+    }
+
     return {
       ...pack,
       isInstalled: !!installed,
@@ -117,6 +190,8 @@ export const get = query({
       status: installed?.status || undefined,
       customizations: installed?.customizations || undefined,
       upgradeHistory: installed?.upgradeHistory || undefined,
+      hasDrift: hasDrift || undefined,
+      driftDetails,
     }
   },
 })
