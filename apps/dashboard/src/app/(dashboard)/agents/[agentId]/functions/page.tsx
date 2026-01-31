@@ -13,20 +13,10 @@ import {
   Code,
   Shield,
   Check,
-  Minus,
-  Link2,
-  Unlink,
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-  Eye,
 } from "lucide-react"
 import { useAgentWithConfig, useEntityTypes } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Id } from "@convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 
@@ -48,7 +38,6 @@ interface Tool {
 const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   category: "entity" | "event" | "job"
   description: string
-  icon: typeof Database
   parameters: {
     type: string
     properties: Record<string, { type: string; description: string }>
@@ -58,7 +47,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.create": {
     category: "entity",
     description: "Create a new entity of a specified type",
-    icon: Plus,
     parameters: {
       type: "object",
       properties: {
@@ -72,7 +60,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.get": {
     category: "entity",
     description: "Retrieve a single entity by its ID",
-    icon: Eye,
     parameters: {
       type: "object",
       properties: {
@@ -84,7 +71,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.query": {
     category: "entity",
     description: "Query entities by type with optional filters",
-    icon: Search,
     parameters: {
       type: "object",
       properties: {
@@ -99,7 +85,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.update": {
     category: "entity",
     description: "Update an existing entity's data",
-    icon: Pencil,
     parameters: {
       type: "object",
       properties: {
@@ -113,7 +98,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.delete": {
     category: "entity",
     description: "Soft-delete an entity (sets deletedAt timestamp)",
-    icon: Trash2,
     parameters: {
       type: "object",
       properties: {
@@ -125,7 +109,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.link": {
     category: "entity",
     description: "Create a relation between two entities",
-    icon: Link2,
     parameters: {
       type: "object",
       properties: {
@@ -139,7 +122,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "entity.unlink": {
     category: "entity",
     description: "Remove a relation between two entities",
-    icon: Unlink,
     parameters: {
       type: "object",
       properties: {
@@ -153,7 +135,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "event.emit": {
     category: "event",
     description: "Emit a custom event for audit logging",
-    icon: Bell,
     parameters: {
       type: "object",
       properties: {
@@ -167,7 +148,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "event.query": {
     category: "event",
     description: "Query historical events with filters",
-    icon: Search,
     parameters: {
       type: "object",
       properties: {
@@ -182,7 +162,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "job.enqueue": {
     category: "job",
     description: "Schedule a background job for async processing",
-    icon: Clock,
     parameters: {
       type: "object",
       properties: {
@@ -196,7 +175,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
   "job.status": {
     category: "job",
     description: "Check the status of a scheduled job",
-    icon: Eye,
     parameters: {
       type: "object",
       properties: {
@@ -210,138 +188,106 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
 const CATEGORY_INFO = {
   entity: {
     label: "Entity Tools",
-    description: "CRUD operations on your business data with RBAC enforcement",
+    description: "CRUD operations on business data",
     icon: Database,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
   },
   event: {
     label: "Event Tools",
-    description: "Audit logging and event history queries",
+    description: "Audit logging and queries",
     icon: Bell,
-    color: "text-amber-500",
-    bgColor: "bg-amber-500/10",
   },
   job: {
     label: "Job Tools",
-    description: "Background job scheduling and status checks",
+    description: "Background job scheduling",
     icon: Clock,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
   },
   custom: {
     label: "Custom Tools",
-    description: "User-defined tools executed in sandboxed environment",
+    description: "User-defined tools",
     icon: Code,
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10",
   },
 }
 
-function ToolCard({
-  tool,
+function ToolName({ name }: { name: string }) {
+  const dotIndex = name.indexOf(".")
+  if (dotIndex === -1) {
+    return <code className="text-sm font-mono text-content-primary">{name}</code>
+  }
+  const prefix = name.slice(0, dotIndex + 1)
+  const suffix = name.slice(dotIndex + 1)
+  return (
+    <code className="text-sm font-mono">
+      <span className="text-content-primary/30 group-hover/row:text-content-primary transition-colors">{prefix}</span>
+      <span className="text-content-primary">{suffix}</span>
+    </code>
+  )
+}
+
+function ToolRow({
+  name,
+  description,
   isEnabled,
-  builtinDef,
-  category,
+  parameters,
 }: {
-  tool?: Tool
+  name: string
+  description: string
   isEnabled: boolean
-  builtinDef?: typeof BUILTIN_TOOL_DEFINITIONS[string]
-  category?: "entity" | "event" | "job" | "custom"
+  parameters?: {
+    type: string
+    properties?: Record<string, { type: string; description?: string }>
+    required?: string[]
+  }
 }) {
   const [expanded, setExpanded] = useState(false)
-  const name = tool?.name || ""
-  const description = tool?.description || builtinDef?.description || ""
-  const parameters = tool?.parameters || builtinDef?.parameters
   const hasParams = parameters?.properties && Object.keys(parameters.properties).length > 0
-  const Icon = builtinDef?.icon || Code
-  const categoryInfo = category ? CATEGORY_INFO[category] : CATEGORY_INFO.custom
 
   return (
-    <div
-      className={cn(
-        "rounded-lg border transition-colors",
-        isEnabled ? "bg-card border-border" : "bg-background-secondary/50 border-border/50"
-      )}
-    >
+    <div className="border-b border-border last:border-b-0">
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-start gap-3 p-4 text-left hover:bg-background-secondary/50 transition-colors cursor-pointer"
+        onClick={() => hasParams && setExpanded(!expanded)}
+        className={cn(
+          "group/row w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+          hasParams && "hover:bg-background-secondary cursor-pointer"
+        )}
       >
-        <div
-          className={cn(
-            "mt-0.5 p-1.5 rounded-md",
-            isEnabled ? categoryInfo.bgColor : "bg-background-tertiary"
-          )}
-        >
-          <Icon
-            className={cn(
-              "h-4 w-4",
-              isEnabled ? categoryInfo.color : "text-content-tertiary"
-            )}
-          />
+        <div className="w-36 shrink-0">
+          <ToolName name={name} />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={cn(
-                "font-mono text-sm font-medium",
-                isEnabled ? "text-content-primary" : "text-content-tertiary"
-              )}
-            >
-              {name}
-            </span>
-            {isEnabled ? (
-              <Badge variant="success" className="text-xs gap-1">
-                <Check className="h-3 w-3" />
-                Enabled
-              </Badge>
+        <p className="flex-1 text-sm text-content-tertiary truncate">{description}</p>
+        {isEnabled && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-success/10 text-success shrink-0">
+            <Check className="h-3 w-3" />
+            enabled
+          </span>
+        )}
+        {hasParams && (
+          <div className="shrink-0">
+            {expanded ? (
+              <ChevronDown className="h-4 w-4 text-content-tertiary" />
             ) : (
-              <Badge variant="outline" className="text-xs text-content-tertiary gap-1">
-                <Minus className="h-3 w-3" />
-                Available
-              </Badge>
+              <ChevronRight className="h-4 w-4 text-content-tertiary" />
             )}
           </div>
-          <p
-            className={cn(
-              "mt-1 text-sm",
-              isEnabled ? "text-content-secondary" : "text-content-tertiary"
-            )}
-          >
-            {description}
-          </p>
-        </div>
-        <div className="mt-1">
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-content-tertiary" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-content-tertiary" />
-          )}
-        </div>
+        )}
       </button>
       {expanded && hasParams && (
-        <div className="px-4 pb-4 pl-14 border-t border-border/50">
-          <div className="pt-4 space-y-3">
-            <div className="text-xs font-medium text-content-tertiary uppercase tracking-wider">
-              Parameters
-            </div>
-            <div className="space-y-2">
-              {Object.entries(parameters?.properties || {}).map(([paramName, prop]) => (
-                <div key={paramName} className="flex items-start gap-2 text-sm">
-                  <code className="font-mono text-content-primary bg-background-tertiary px-1.5 py-0.5 rounded text-xs shrink-0">
-                    {paramName}
-                  </code>
-                  <span className="text-content-tertiary text-xs shrink-0">{prop.type}</span>
-                  {parameters?.required?.includes(paramName) && (
-                    <span className="text-xs text-destructive shrink-0">required</span>
-                  )}
-                  {prop.description && (
-                    <span className="text-xs text-content-secondary">{prop.description}</span>
-                  )}
-                </div>
-              ))}
-            </div>
+        <div className="px-4 pb-3">
+          <div className="text-xs text-content-tertiary mb-2">Parameters</div>
+          <div className="space-y-1.5">
+            {Object.entries(parameters?.properties || {}).map(([paramName, prop]) => (
+              <div key={paramName} className="flex items-baseline gap-2 text-sm">
+                <code className="font-mono text-content-primary text-xs bg-background-tertiary px-1.5 py-0.5 rounded">
+                  {paramName}
+                </code>
+                <span className="text-xs text-content-tertiary">{prop.type}</span>
+                {parameters?.required?.includes(paramName) && (
+                  <span className="text-xs text-warning">required</span>
+                )}
+                {prop.description && (
+                  <span className="text-xs text-content-secondary">— {prop.description}</span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -353,42 +299,50 @@ function CategorySection({
   category,
   tools,
   enabledToolNames,
+  defaultExpanded = true,
 }: {
   category: "entity" | "event" | "job" | "custom"
   tools: Array<{ name: string; def?: typeof BUILTIN_TOOL_DEFINITIONS[string]; tool?: Tool }>
   enabledToolNames: Set<string>
+  defaultExpanded?: boolean
 }) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const info = CATEGORY_INFO[category]
   const Icon = info.icon
   const enabledCount = tools.filter((t) => enabledToolNames.has(t.name)).length
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <div className={cn("p-2 rounded-lg", info.bgColor)}>
-          <Icon className={cn("h-5 w-5", info.color)} />
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-3 bg-background-secondary/50 hover:bg-background-secondary transition-colors cursor-pointer"
+      >
+        <Icon className="h-4 w-4 text-content-secondary" />
+        <div className="flex-1 text-left">
+          <span className="text-sm font-medium text-content-primary">{info.label}</span>
+          <span className="text-xs text-content-tertiary ml-2">
+            {enabledCount}/{tools.length} enabled
+          </span>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-content-primary">{info.label}</h3>
-            <span className="text-xs text-content-tertiary">
-              {enabledCount}/{tools.length} enabled
-            </span>
-          </div>
-          <p className="text-xs text-content-secondary">{info.description}</p>
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 text-content-tertiary" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-content-tertiary" />
+        )}
+      </button>
+      {expanded && (
+        <div className="border-t">
+          {tools.map((item) => (
+            <ToolRow
+              key={item.name}
+              name={item.name}
+              description={item.def?.description || item.tool?.description || ""}
+              isEnabled={enabledToolNames.has(item.name)}
+              parameters={item.def?.parameters || item.tool?.parameters}
+            />
+          ))}
         </div>
-      </div>
-      <div className="space-y-2 pl-12">
-        {tools.map((item) => (
-          <ToolCard
-            key={item.name}
-            tool={item.tool || { name: item.name, description: item.def?.description || "", isBuiltin: true, parameters: item.def?.parameters }}
-            isEnabled={enabledToolNames.has(item.name)}
-            builtinDef={item.def}
-            category={category}
-          />
-        ))}
-      </div>
+      )}
     </div>
   )
 }
@@ -397,14 +351,14 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
   if (entityTypes.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-center">
-        <Database className="h-8 w-8 mx-auto text-content-tertiary mb-2" />
-        <p className="text-sm text-content-secondary mb-2">No entity types defined</p>
-        <p className="text-xs text-content-tertiary">
+        <Database className="h-6 w-6 mx-auto text-content-tertiary mb-2" />
+        <p className="text-sm text-content-secondary mb-1">No entity types defined</p>
+        <p className="text-xs text-content-tertiary mb-3">
           Entity types define the data structures your agent can interact with.
         </p>
         <Link
           href="/entities"
-          className="inline-flex items-center gap-1.5 mt-3 text-xs text-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline cursor-pointer"
         >
           Create Entity Type
           <ExternalLink className="h-3 w-3" />
@@ -421,29 +375,27 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
         </p>
         <Link
           href="/entities"
-          className="inline-flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition-colors"
+          className="text-xs text-content-secondary hover:text-content-primary transition-colors cursor-pointer"
         >
           Manage Types
-          <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {entityTypes.map((type) => (
+      <div className="rounded-lg border bg-card overflow-hidden">
+        {entityTypes.map((type, i) => (
           <Link
             key={type._id}
             href={`/entities/${type.slug}`}
-            className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-background-secondary transition-colors cursor-pointer group"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 hover:bg-background-secondary transition-colors cursor-pointer",
+              i !== entityTypes.length - 1 && "border-b"
+            )}
           >
-            <div className="p-2 rounded-md bg-blue-500/10">
-              <Database className="h-4 w-4 text-blue-500" />
-            </div>
+            <Database className="h-4 w-4 text-content-tertiary" />
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm text-content-primary truncate group-hover:text-primary transition-colors">
-                {type.name}
-              </div>
-              <div className="font-mono text-xs text-content-tertiary truncate">{type.slug}</div>
+              <div className="text-sm font-medium text-content-primary">{type.name}</div>
+              <div className="text-xs text-content-tertiary font-mono">{type.slug}</div>
             </div>
-            <ChevronRight className="h-4 w-4 text-content-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ChevronRight className="h-4 w-4 text-content-tertiary" />
           </Link>
         ))}
       </div>
@@ -451,70 +403,47 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
   )
 }
 
-function PermissionsInfo() {
+function PermissionsPanel() {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-start gap-3">
-        <div className="p-2 rounded-lg bg-amber-500/10">
-          <Shield className="h-5 w-5 text-amber-500" />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-sm font-medium text-content-primary">Permission-Aware Execution</h4>
-          <p className="mt-1 text-xs text-content-secondary">
-            All tool executions respect your RBAC configuration. Agents execute with their assigned
-            role, and scope rules + field masks are automatically applied.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="text-xs cursor-help">
-                    Scope Rules
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-xs">
-                    Row-level security that filters which records the agent can access
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="text-xs cursor-help">
-                    Field Masks
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-xs">
-                    Column-level security that hides sensitive fields from agent responses
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="text-xs cursor-help">
-                    Audit Trail
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-xs">
-                    All entity operations emit events with actor context for compliance
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+    <div className="space-y-4">
+      <div className="rounded-lg border bg-card p-4">
+        <div className="flex items-start gap-3">
+          <Shield className="h-5 w-5 text-content-secondary mt-0.5" />
+          <div>
+            <h4 className="text-sm font-medium text-content-primary">Permission-Aware Execution</h4>
+            <p className="mt-1 text-sm text-content-secondary">
+              All tool executions respect your RBAC configuration. Scope rules filter rows,
+              field masks hide sensitive columns, and all operations are logged.
+            </p>
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary hover:underline cursor-pointer"
+            >
+              Configure Roles & Permissions
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
-          <Link
-            href="/settings"
-            className="inline-flex items-center gap-1.5 mt-3 text-xs text-primary hover:underline"
-          >
-            Configure Roles & Permissions
-            <ExternalLink className="h-3 w-3" />
-          </Link>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-sm font-medium text-content-primary">Scope Rules</div>
+          <p className="text-xs text-content-secondary mt-1">
+            Row-level security filtering
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-sm font-medium text-content-primary">Field Masks</div>
+          <p className="text-xs text-content-secondary mt-1">
+            Column-level data hiding
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-sm font-medium text-content-primary">Audit Trail</div>
+          <p className="text-xs text-content-secondary mt-1">
+            Actor context logging
+          </p>
         </div>
       </div>
     </div>
@@ -572,7 +501,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
   }))
 
   const totalEnabled = enabledToolNames.size
-  const totalBuiltinEnabled = configuredTools.filter((t: Tool) => t.isBuiltin).length
+  const totalBuiltin = Object.keys(BUILTIN_TOOL_DEFINITIONS).length
 
   if (!config) {
     return (
@@ -583,7 +512,8 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
             Functions available to your agent
           </p>
         </div>
-        <div className="rounded-md border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <Code className="h-6 w-6 mx-auto text-content-tertiary mb-2" />
           <p className="text-sm text-content-secondary mb-3">
             No configuration available for {environment}.
           </p>
@@ -597,21 +527,20 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-content-primary">Tools</h2>
           <p className="text-sm text-content-secondary mt-0.5">
-            {totalEnabled} enabled ({totalBuiltinEnabled} built-in, {customTools.length} custom)
+            {totalEnabled} of {totalBuiltin + customTools.length} tools enabled
           </p>
         </div>
         <a
           href="https://docs.struere.dev/tools"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition-colors"
+          className="text-xs text-content-secondary hover:text-content-primary transition-colors cursor-pointer"
         >
-          Documentation
-          <ExternalLink className="h-3 w-3" />
+          Docs
         </a>
       </div>
 
@@ -622,7 +551,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-8">
+        <TabsContent value="all" className="space-y-4">
           <CategorySection
             category="entity"
             tools={entityTools}
@@ -652,7 +581,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
         </TabsContent>
 
         <TabsContent value="permissions">
-          <PermissionsInfo />
+          <PermissionsPanel />
         </TabsContent>
       </Tabs>
     </div>
