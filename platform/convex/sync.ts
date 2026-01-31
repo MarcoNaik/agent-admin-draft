@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
-import { requireAuth, getAuthContext } from "./lib/auth"
+import { requireAuth, getAuthContext, getAuthContextForOrg } from "./lib/auth"
 import {
   syncEntityTypes,
   syncRoles,
@@ -10,6 +10,7 @@ import {
 
 export const syncOrganization = mutation({
   args: {
+    organizationId: v.optional(v.string()),
     agents: v.array(
       v.object({
         name: v.string(),
@@ -81,7 +82,7 @@ export const syncOrganization = mutation({
     preserveUnmanagedAgents: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
 
     const installedPacks = await ctx.db
       .query("installedPacks")
@@ -128,9 +129,11 @@ export const syncOrganization = mutation({
 })
 
 export const getSyncState = query({
-  args: {},
-  handler: async (ctx) => {
-    const auth = await getAuthContext(ctx)
+  args: {
+    organizationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
 
     const entityTypes = await ctx.db
       .query("entityTypes")
@@ -229,9 +232,11 @@ export const getSyncState = query({
 })
 
 export const deployAllAgents = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const auth = await requireAuth(ctx)
+  args: {
+    organizationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
 
     const result = await deployAllAgentsToProd(
       ctx,

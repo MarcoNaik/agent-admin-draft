@@ -32,6 +32,46 @@ export const getCurrent = query({
   },
 })
 
+export const listMyOrganizations = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Not authenticated")
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", identity.subject))
+      .first()
+
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect()
+
+    const orgs = await Promise.all(
+      memberships.map(async (m) => {
+        const org = await ctx.db.get(m.organizationId)
+        return org
+          ? {
+              id: org._id,
+              name: org.name,
+              slug: org.slug,
+              role: m.role,
+            }
+          : null
+      })
+    )
+
+    return orgs.filter((o): o is NonNullable<typeof o> => o !== null)
+  },
+})
+
 export const create = mutation({
   args: {
     name: v.string(),

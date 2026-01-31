@@ -1,13 +1,28 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
-import { loadCredentials, getApiKey } from '../utils/credentials'
+import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
 import { syncOrganization, deployAllAgents } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { performLogin } from './login'
 import { runInit } from './init'
+
+const isAuthError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('Unauthenticated') ||
+         message.includes('OIDC') ||
+         message.includes('token') ||
+         message.includes('expired')
+}
+
+const isOrgAccessError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('Access denied') ||
+         message.includes('not a member') ||
+         message.includes('Organization not found')
+}
 
 export const deployCommand = new Command('deploy')
   .description('Deploy all agents to production')
@@ -108,21 +123,60 @@ export const deployCommand = new Command('deploy')
 
     try {
       const payload = extractSyncPayload(resources)
-      const syncResult = await syncOrganization(payload)
+      const syncResult = await syncOrganization({
+        ...payload,
+        organizationId: project.organization.id,
+      })
       if (!syncResult.success) {
         throw new Error(syncResult.error || 'Sync failed')
       }
       spinner.succeed('Synced to development')
     } catch (error) {
-      spinner.fail('Sync failed')
-      console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      process.exit(1)
+      if (isAuthError(error)) {
+        spinner.fail('Session expired - re-authenticating...')
+        clearCredentials()
+        credentials = await performLogin()
+        if (!credentials) {
+          console.log(chalk.red('Authentication failed'))
+          process.exit(1)
+        }
+        spinner.start('Syncing to development')
+        try {
+          const payload = extractSyncPayload(resources)
+          const syncResult = await syncOrganization({
+            ...payload,
+            organizationId: project.organization.id,
+          })
+          if (!syncResult.success) {
+            throw new Error(syncResult.error || 'Sync failed')
+          }
+          spinner.succeed('Synced to development')
+        } catch (retryError) {
+          spinner.fail('Sync failed')
+          console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
+          process.exit(1)
+        }
+      } else if (isOrgAccessError(error)) {
+        spinner.fail('Organization access denied')
+        console.log()
+        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
+        console.log()
+        console.log(chalk.gray('To fix this:'))
+        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
+        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
+        console.log()
+        process.exit(1)
+      } else {
+        spinner.fail('Sync failed')
+        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+        process.exit(1)
+      }
     }
 
     spinner.start('Deploying to production')
 
     try {
-      const deployResult = await deployAllAgents()
+      const deployResult = await deployAllAgents(project.organization.id)
 
       if (!deployResult.success) {
         throw new Error(deployResult.error || 'Deployment failed')
@@ -156,10 +210,45 @@ export const deployCommand = new Command('deploy')
       console.log(chalk.gray('  $'), chalk.cyan(`curl -X POST https://<agent-slug>.struere.dev/chat -H "Authorization: Bearer YOUR_API_KEY" -d '{"message": "Hello"}'`))
       console.log()
     } catch (error) {
-      spinner.fail('Deployment failed')
-      console.log()
-      console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      console.log()
-      process.exit(1)
+      if (isAuthError(error)) {
+        spinner.fail('Session expired - re-authenticating...')
+        clearCredentials()
+        credentials = await performLogin()
+        if (!credentials) {
+          console.log(chalk.red('Authentication failed'))
+          process.exit(1)
+        }
+        spinner.start('Deploying to production')
+        try {
+          const deployResult = await deployAllAgents(project.organization.id)
+          if (!deployResult.success) {
+            throw new Error(deployResult.error || 'Deployment failed')
+          }
+          spinner.succeed('Deployed to production')
+          console.log()
+          console.log(chalk.green('Success!'), 'All agents deployed')
+          console.log()
+        } catch (retryError) {
+          spinner.fail('Deployment failed')
+          console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
+          process.exit(1)
+        }
+      } else if (isOrgAccessError(error)) {
+        spinner.fail('Organization access denied')
+        console.log()
+        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
+        console.log()
+        console.log(chalk.gray('To fix this:'))
+        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
+        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
+        console.log()
+        process.exit(1)
+      } else {
+        spinner.fail('Deployment failed')
+        console.log()
+        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+        console.log()
+        process.exit(1)
+      }
     }
   })

@@ -75,9 +75,16 @@ export const devCommand = new Command('dev')
              message.includes('expired')
     }
 
+    const isOrgAccessError = (error: unknown): boolean => {
+      const message = error instanceof Error ? error.message : String(error)
+      return message.includes('Access denied') ||
+             message.includes('not a member') ||
+             message.includes('Organization not found')
+    }
+
     spinner.start('Checking remote state')
 
-    const { state: remoteState, error: stateError } = await getSyncState()
+    const { state: remoteState, error: stateError } = await getSyncState(project.organization.id)
 
     if (stateError) {
       if (isAuthError(new Error(stateError))) {
@@ -88,6 +95,16 @@ export const devCommand = new Command('dev')
           console.log(chalk.red('Authentication failed'))
           process.exit(1)
         }
+      } else if (isOrgAccessError(new Error(stateError))) {
+        spinner.fail('Organization access denied')
+        console.log()
+        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
+        console.log()
+        console.log(chalk.gray('To fix this:'))
+        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
+        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
+        console.log()
+        process.exit(1)
       } else {
         spinner.fail('Failed to fetch remote state')
         console.log(chalk.red('Error:'), stateError)
@@ -127,6 +144,7 @@ export const devCommand = new Command('dev')
       const payload = extractSyncPayload(resources)
       const result = await syncOrganization({
         ...payload,
+        organizationId: project.organization.id,
         preservePackResources: true,
         preserveUnmanagedAgents: true,
       })
@@ -170,6 +188,16 @@ export const devCommand = new Command('dev')
           console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
           process.exit(1)
         }
+      } else if (isOrgAccessError(error)) {
+        spinner.fail('Organization access denied')
+        console.log()
+        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
+        console.log()
+        console.log(chalk.gray('To fix this:'))
+        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
+        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
+        console.log()
+        process.exit(1)
       } else {
         spinner.fail('Sync failed')
         console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))

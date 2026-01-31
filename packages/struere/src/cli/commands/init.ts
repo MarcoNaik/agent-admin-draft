@@ -1,13 +1,15 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
+import { select } from '@inquirer/prompts'
 import { basename } from 'path'
 import { loadCredentials } from '../utils/credentials'
 import { performLogin } from './login'
 import { hasProject, getProjectVersion } from '../utils/project'
 import { scaffoldProjectV2 } from '../utils/scaffold'
+import { listMyOrganizations, OrgInfo } from '../utils/convex'
 
-export async function runInit(cwd: string): Promise<boolean> {
+export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boolean> {
   const spinner = ora()
 
   let credentials = loadCredentials()
@@ -23,7 +25,34 @@ export async function runInit(cwd: string): Promise<boolean> {
   }
 
   console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
-  console.log(chalk.gray('  Organization:'), chalk.cyan(credentials.organization.name))
+
+  let org = selectedOrg
+  if (!org) {
+    const { organizations, error } = await listMyOrganizations(credentials.token)
+    if (error) {
+      console.log(chalk.red('Failed to fetch organizations:'), error)
+      return false
+    }
+
+    if (organizations.length === 0) {
+      console.log(chalk.red('No organizations found. Please create one in the dashboard first.'))
+      return false
+    }
+
+    if (organizations.length === 1) {
+      org = organizations[0]
+    } else {
+      org = await select({
+        message: 'Select organization:',
+        choices: organizations.map((o) => ({
+          name: `${o.name} (${o.slug})`,
+          value: o,
+        })),
+      })
+    }
+  }
+
+  console.log(chalk.gray('  Organization:'), chalk.cyan(org.name))
   console.log()
 
   const projectName = slugify(basename(cwd))
@@ -32,9 +61,9 @@ export async function runInit(cwd: string): Promise<boolean> {
 
   const scaffoldResult = scaffoldProjectV2(cwd, {
     projectName,
-    orgId: credentials.organization.id,
-    orgSlug: credentials.organization.slug,
-    orgName: credentials.organization.name,
+    orgId: org.id,
+    orgSlug: org.slug,
+    orgName: org.name,
   })
 
   spinner.succeed('Project structure created')
@@ -69,7 +98,8 @@ export const initCommand = new Command('init')
   .description('Initialize a new Struere organization project')
   .argument('[project-name]', 'Project name')
   .option('-y, --yes', 'Skip prompts and use defaults')
-  .action(async (projectNameArg: string | undefined, options: { yes?: boolean }) => {
+  .option('--org <slug>', 'Organization slug')
+  .action(async (projectNameArg: string | undefined, options: { yes?: boolean; org?: string }) => {
     const cwd = process.cwd()
     const spinner = ora()
 
@@ -108,7 +138,40 @@ export const initCommand = new Command('init')
     }
 
     console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
-    console.log(chalk.gray('  Organization:'), chalk.cyan(credentials.organization.name))
+
+    const { organizations, error } = await listMyOrganizations(credentials.token)
+    if (error) {
+      console.log(chalk.red('Failed to fetch organizations:'), error)
+      process.exit(1)
+    }
+
+    if (organizations.length === 0) {
+      console.log(chalk.red('No organizations found. Please create one in the dashboard first.'))
+      process.exit(1)
+    }
+
+    let selectedOrg: OrgInfo
+    if (options.org) {
+      const found = organizations.find((o) => o.slug === options.org)
+      if (!found) {
+        console.log(chalk.red(`Organization "${options.org}" not found.`))
+        console.log(chalk.gray('Available:'), organizations.map((o) => o.slug).join(', '))
+        process.exit(1)
+      }
+      selectedOrg = found
+    } else if (organizations.length === 1) {
+      selectedOrg = organizations[0]
+    } else {
+      selectedOrg = await select({
+        message: 'Select organization:',
+        choices: organizations.map((o) => ({
+          name: `${o.name} (${o.slug})`,
+          value: o,
+        })),
+      })
+    }
+
+    console.log(chalk.gray('  Organization:'), chalk.cyan(selectedOrg.name))
     console.log()
 
     let projectName = projectNameArg
@@ -122,9 +185,9 @@ export const initCommand = new Command('init')
 
     const scaffoldResult = scaffoldProjectV2(cwd, {
       projectName,
-      orgId: credentials.organization.id,
-      orgSlug: credentials.organization.slug,
-      orgName: credentials.organization.name,
+      orgId: selectedOrg.id,
+      orgSlug: selectedOrg.slug,
+      orgName: selectedOrg.name,
     })
 
     spinner.succeed('Project structure created')

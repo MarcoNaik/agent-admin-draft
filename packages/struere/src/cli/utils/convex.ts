@@ -181,6 +181,35 @@ export interface UserInfo {
   }
 }
 
+export interface OrgInfo {
+  id: string
+  name: string
+  slug: string
+  role: string
+}
+
+export async function listMyOrganizations(token: string): Promise<{ organizations: OrgInfo[]; error?: string }> {
+  const response = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'organizations:listMyOrganizations',
+      args: {},
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { organizations: [], error }
+  }
+
+  const result = await response.json() as { status: string; value?: OrgInfo[] }
+  return { organizations: result.value || [] }
+}
+
 export async function getUserInfo(token: string): Promise<{ userInfo?: UserInfo; error?: string }> {
   const ensureResponse = await fetch(`${CONVEX_URL}/api/mutation`, {
     method: 'POST',
@@ -565,6 +594,7 @@ export interface SyncResult {
 }
 
 export interface SyncOptions extends SyncPayload {
+  organizationId?: string
   preservePackResources?: boolean
   preserveUnmanagedAgents?: boolean
 }
@@ -611,7 +641,7 @@ export interface SyncState {
   installedPacks?: Array<{ packId: string; version: string; entityTypeCount: number; roleCount: number }>
 }
 
-export async function getSyncState(): Promise<{ state?: SyncState; error?: string }> {
+export async function getSyncState(organizationId?: string): Promise<{ state?: SyncState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   const token = apiKey || credentials?.token
@@ -628,7 +658,7 @@ export async function getSyncState(): Promise<{ state?: SyncState; error?: strin
     },
     body: JSON.stringify({
       path: 'sync:getSyncState',
-      args: {},
+      args: { organizationId },
     }),
   })
 
@@ -648,7 +678,7 @@ export interface DeployAllResult {
   error?: string
 }
 
-export async function deployAllAgents(): Promise<DeployAllResult> {
+export async function deployAllAgents(organizationId?: string): Promise<DeployAllResult> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   const token = apiKey || credentials?.token
@@ -665,7 +695,7 @@ export async function deployAllAgents(): Promise<DeployAllResult> {
     },
     body: JSON.stringify({
       path: 'sync:deployAllAgents',
-      args: {},
+      args: { organizationId },
     }),
   })
 

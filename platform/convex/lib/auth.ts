@@ -140,3 +140,51 @@ export async function requireOrgAccess(
   }
   return auth
 }
+
+export async function getAuthContextForOrg(
+  ctx: QueryCtx | MutationCtx,
+  requestedOrgId?: string
+): Promise<AuthContext> {
+  const identity = await ctx.auth.getUserIdentity() as ClerkIdentity | null
+  if (!identity) {
+    throw new Error("Not authenticated")
+  }
+
+  const clerkUserId = identity.subject
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", clerkUserId))
+    .first()
+
+  if (!user) {
+    throw new Error("User not found. Please ensure your account is provisioned.")
+  }
+
+  if (requestedOrgId) {
+    const requestedOrg = await ctx.db.get(requestedOrgId as Id<"organizations">)
+    if (!requestedOrg) {
+      throw new Error("Organization not found")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", requestedOrg._id)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("Access denied: you are not a member of this organization")
+    }
+
+    return {
+      userId: user._id,
+      organizationId: requestedOrg._id,
+      clerkUserId,
+      actorType: "user",
+    }
+  }
+
+  return getAuthContext(ctx)
+}
