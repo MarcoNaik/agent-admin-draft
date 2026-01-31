@@ -79,6 +79,16 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        cream: {
+          DEFAULT: "#F5F1E8",
+          light: "#FAF8F3",
+          card: "#E8E4D4",
+        },
+        forest: {
+          DEFAULT: "#1B4332",
+          light: "#2D5A45",
+          dark: "#143326",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
