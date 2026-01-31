@@ -40,6 +40,7 @@ import type * as lib_sync_roles from "../lib/sync/roles.js";
 import type * as lib_templateEngine from "../lib/templateEngine.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as lib_workflows_session from "../lib/workflows/session.js";
+import type * as migrations from "../migrations.js";
 import type * as organizations from "../organizations.js";
 import type * as packs from "../packs.js";
 import type * as packs_index from "../packs/index.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   "lib/templateEngine": typeof lib_templateEngine;
   "lib/utils": typeof lib_utils;
   "lib/workflows/session": typeof lib_workflows_session;
+  migrations: typeof migrations;
   organizations: typeof organizations;
   packs: typeof packs;
   "packs/index": typeof packs_index;
