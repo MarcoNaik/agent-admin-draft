@@ -2,12 +2,14 @@
 
 ## Overview
 
-Struere is an AI agent platform monorepo with:
+Struere is a **permission-aware AI agent platform** monorepo with:
 - **apps/** - Frontend applications (dashboard, web)
 - **packages/** - Shared libraries (struere SDK + CLI)
 - **platform/** - Backend services (convex, tool-executor)
 
 **Tech Stack**: Next.js 14, Convex, Cloudflare Workers, Clerk Auth, TypeScript, Bun
+
+**Core Capability**: Role-based access control (RBAC) with row-level security (scope rules) and column-level security (field masks) enforced across all operations.
 
 ## Architecture Overview
 
@@ -21,29 +23,45 @@ apps/                        packages/                   platform/
 ### System Architecture
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CONVEX ARCHITECTURE                                │
+│                         PERMISSION-AWARE PLATFORM                            │
 │                                                                              │
 │  ┌─────────────────┐    ┌─────────────────────────────────────────────────┐ │
 │  │   Dashboard     │    │                    CONVEX                        │ │
-│  │   (Next.js)     │◄──►│  • Real-time subscriptions (useQuery)           │ │
-│  │                 │    │  • Mutations for all writes                      │ │
-│  │  useQuery()     │    │  • Agent execution with LLM calls                │ │
-│  │  useMutation()  │    │  • Scheduled functions for jobs                  │ │
-│  └─────────────────┘    │  • Built-in tools as mutations                   │ │
-│                         │  • HTTP endpoints for external access            │ │
-│  ┌─────────────────┐    └──────────────────────┬──────────────────────────┘ │
-│  │   CLI           │                           │                            │
-│  │   (struere dev) │───────────────────────────┤ httpAction()               │
-│  │                 │    Sync config to Convex  │                            │
-│  │  No bundling    │    (JSON, not JS)         ▼                            │
-│  └─────────────────┘    ┌─────────────────────────────────────────────────┐ │
+│  │   (Next.js)     │◄──►│                                                  │ │
+│  │                 │    │  ┌─────────────────────────────────────────┐    │ │
+│  │  Role-Based UI  │    │  │         PERMISSION ENGINE                │    │ │
+│  │  - Admin View   │    │  │  • ActorContext (eager resolution)       │    │ │
+│  │  - Teacher View │    │  │  • Policy evaluation (deny overrides)    │    │ │
+│  │  - Guardian View│    │  │  • Scope rules (row-level security)      │    │ │
+│  └─────────────────┘    │  │  • Field masks (column-level security)   │    │ │
+│                         │  └─────────────────────────────────────────┘    │ │
+│  ┌─────────────────┐    │                      │                           │ │
+│  │   CLI           │    │  ┌───────────────────┴───────────────────┐      │ │
+│  │   (struere)     │────┤  │           SECURED OPERATIONS           │      │ │
+│  └─────────────────┘    │  │  • Entities (CRUD + relations)         │      │ │
+│                         │  │  • Events (visibility filtered)        │      │ │
+│  ┌─────────────────┐    │  │  • Tools (permission checked)          │      │ │
+│  │   Webhooks      │    │  │  • Templates (permission-aware)        │      │ │
+│  │   - WhatsApp    │────┤  │  • Jobs (actor context preserved)      │      │ │
+│  │   - Flow        │    │  └────────────────────────────────────────┘      │ │
+│  └─────────────────┘    │                      │                           │ │
+│                         │  ┌───────────────────┴───────────────────┐      │ │
+│                         │  │           TUTORING DOMAIN              │      │ │
+│                         │  │  • 6 Entity Types                      │      │ │
+│                         │  │  • 3 Roles with policies               │      │ │
+│                         │  │  • Scheduling constraints              │      │ │
+│                         │  │  • Credit consumption                  │      │ │
+│                         │  │  • Reminder/followup jobs              │      │ │
+│                         │  └────────────────────────────────────────┘      │ │
+│                         └─────────────────────────────────────────────────┘ │
+│                                        │                                    │
+│                                        ▼                                    │
+│                         ┌─────────────────────────────────────────────────┐ │
 │                         │           CLOUDFLARE WORKER                      │ │
 │                         │           (tool-executor.struere.dev)            │ │
-│                         │                                                  │ │
-│                         │  • POST /execute - Run custom tool handlers      │ │
-│                         │  • POST /validate - Validate handler code        │ │
-│                         │  • GET /health - Health check                    │ │
+│                         │  • Custom tool execution                         │ │
 │                         │  • Sandboxed fetch (allowlist domains)           │ │
+│                         │  • Actor context passed                          │ │
 │                         └─────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -52,11 +70,20 @@ apps/                        packages/                   platform/
 
 | Aspect | Decision |
 |--------|----------|
+| **ActorContext** | Eager resolution (resolve roles once per request) |
+| **Field Masks** | Allowlist strategy (fail-safe, new fields hidden by default) |
+| **Permission Check API** | `canPerform()` returns result, `assertCanPerform()` throws |
+| **Action Granularity** | CRUD + List (5 actions: create, read, update, delete, list) |
+| **Scope Rule Types** | Field match + limited relations |
+| **Tool Identity Modes** | Configurable (inherit, system, configured) |
+| **Template Compilation** | Permission-aware (no privileged data paths) |
+| **Policy Evaluation** | Deny overrides allow (deny-safe model) |
+| **Organization Boundary** | Defense in depth (multiple protective layers) |
 | **Agent Config** | Stored in Convex DB as JSON (not JS bundles) |
 | **Custom Tools** | Handler code stored in Convex, executed on CF Worker |
 | **Built-in Tools** | Convex mutations (`entity.create`, `event.emit`, `job.enqueue`) |
 | **LLM Calls** | Convex actions calling Anthropic API directly |
-| **Jobs** | Convex scheduled functions with retry logic |
+| **Jobs** | Convex scheduled functions with actor context preservation |
 | **Real-time** | Native Convex subscriptions (no polling) |
 | **CLI Workflow** | `struere dev` syncs config to Convex via HTTP |
 | **Auth** | Clerk with Convex integration |
@@ -70,27 +97,11 @@ apps/                        packages/                   platform/
 | `/v1/chat` | POST | Chat by agent ID (Bearer token) |
 | `/v1/agents/:slug/chat` | POST | Chat by agent slug (Bearer token) |
 | `/webhook/clerk` | POST | Clerk webhook for user/org sync |
+| `/webhook/whatsapp` | GET | WhatsApp hub challenge verification |
+| `/webhook/whatsapp` | POST | WhatsApp inbound messages |
+| `/webhook/flow` | POST | Flow payment status updates |
 
-### Agent Execution Flow
-```
-POST /v1/chat { agentId, message }
-                    │
-                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  CONVEX                                                                      │
-│                                                                              │
-│  1. VALIDATE API KEY (SHA-256 hash lookup)                                   │
-│  2. GET AGENT CONFIG (dev or prod environment)                               │
-│  3. GET/CREATE THREAD (load or create conversation)                          │
-│  4. CALL LLM (Anthropic API, max 10 tool iterations)                         │
-│  5. EXECUTE TOOLS                                                            │
-│     • Built-in: Run Convex mutations                                         │
-│     • Custom: Call tool-executor Worker                                      │
-│  6. STORE & RESPOND (append messages, record metrics)                        │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Database Schema (23 Tables)
+### Database Schema
 
 | Category | Tables |
 |----------|--------|
@@ -99,9 +110,187 @@ POST /v1/chat { agentId, message }
 | **Conversation** | threads, messages |
 | **Business Data** | entityTypes, entities, entityRelations |
 | **Events & Audit** | events, executions |
-| **Jobs** | jobs |
+| **Jobs** | jobs (with actorContext) |
 | **RBAC** | roles, policies, scopeRules, fieldMasks, toolPermissions |
-| **Packs** | installedPacks |
+| **Packs** | installedPacks (with customizations, upgradeHistory) |
+| **Integrations** | integrationConfigs, whatsappConversations, whatsappTemplates, whatsappMessages |
+
+## Permission Engine
+
+### Core Files (`platform/convex/lib/permissions/`)
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | Action, ActorContext, PermissionResult, PermissionError, ScopeFilter, FieldMaskResult |
+| `context.ts` | `buildActorContext()`, `buildSystemActorContext()` |
+| `evaluate.ts` | `canPerform()`, `assertCanPerform()`, `logPermissionDenied()` |
+| `scope.ts` | `getScopeFilters()`, `applyScopeFiltersToQuery()` |
+| `mask.ts` | `getFieldMask()`, `applyFieldMask()` |
+| `tools.ts` | `canUseTool()`, `getToolIdentity()` |
+| `index.ts` | Exports + `queryEntitiesAsActor()`, `getEntityAsActor()` |
+
+### Permission Flow
+
+```
+Request
+    │
+    ▼
+┌─────────────────────────────────┐
+│ 1. Build ActorContext           │
+│    - organizationId             │
+│    - actorType (user/agent/job) │
+│    - actorId                    │
+│    - roleIds (eager resolved)   │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│ 2. Check Permission             │
+│    - Find matching policies     │
+│    - Deny overrides allow       │
+│    - No roles = denied          │
+│    - System actor = allowed     │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│ 3. Apply Scope Rules            │
+│    - Filter by field match      │
+│    - Teacher sees own sessions  │
+│    - Guardian sees own children │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│ 4. Apply Field Masks            │
+│    - Allowlist (whitelist)      │
+│    - Teachers: no payment info  │
+│    - Guardians: no teacher notes│
+└─────────────┬───────────────────┘
+              │
+              ▼
+           Response
+```
+
+### Security Properties
+
+1. **No privileged data paths** - Templates, tools, jobs all go through permissions
+2. **Defense in depth** - Organization boundary checked at multiple layers
+3. **Deny overrides allow** - Any deny policy blocks access
+4. **Fail safe** - New fields hidden by default (allowlist)
+5. **Audit trail** - Events capture actor for all mutations
+
+## Tutoring Domain
+
+### Entity Types
+
+| Type | Key Fields | Notes |
+|------|------------|-------|
+| `teacher` | name, email, subjects, availability, hourlyRate, userId | Linked to Clerk user |
+| `student` | name, grade, subjects, notes, guardianId, preferredTeacherId | Linked to guardian |
+| `guardian` | name, email, phone, whatsappNumber, billingAddress, userId | Primary contact |
+| `session` | teacherId, studentId, guardianId, startTime, duration, status | Full lifecycle |
+| `payment` | guardianId, amount, status, providerReference, sessionId | Flow integration |
+| `entitlement` | guardianId, studentId, totalCredits, remainingCredits, expiresAt | Pack credits |
+
+### Roles & Permissions
+
+| Role | Can See | Can Do |
+|------|---------|--------|
+| Admin | Everything | Everything |
+| Teacher | Own sessions, assigned students (limited fields) | Update sessions, submit reports |
+| Guardian | Children's sessions, own payments | Update student info |
+
+### Session Lifecycle
+
+```
+pending_payment ──[payment.success]──► scheduled
+                                          │
+                    ┌─────────────────────┼─────────────────────┐
+                    │                     │                     │
+                    ▼                     ▼                     ▼
+               cancelled            in_progress              no_show
+                                          │
+                                          ▼
+                                      completed
+```
+
+### Scheduling Constraints
+
+- 24-hour minimum booking lead time
+- 2-hour reschedule cutoff
+- Teacher availability validation
+- No double booking
+- Credit consumption on completion
+
+### Scheduling & Workflow Files (`platform/convex/lib/`)
+
+| File | Purpose |
+|------|---------|
+| `scheduling.ts` | Booking validation, availability, overlap detection |
+| `workflows/session.ts` | Session lifecycle, credit consumption |
+
+### Job Handlers (`platform/convex/jobs/`)
+
+| File | Purpose |
+|------|---------|
+| `sessionReminder.ts` | 20-hour pre-session reminder |
+| `sessionFollowup.ts` | Post-session follow-up (trial/pack) |
+
+## Integrations
+
+### WhatsApp Integration (`platform/convex/lib/integrations/whatsapp.ts`)
+
+- Template message sending (approved templates only)
+- 24-hour window tracking for freeform messages
+- Inbound message processing via webhook
+- Conversation state management
+
+### Flow Payments (`platform/convex/lib/integrations/flow.ts`)
+
+- Payment link generation
+- HMAC-SHA256 request signing
+- Webhook processing for status updates
+- Reconciliation job for missed webhooks
+
+### Integration Functions (`platform/convex/`)
+
+| File | Purpose |
+|------|---------|
+| `whatsapp.ts` | WhatsApp mutations (send, receive, conversations) |
+| `payments.ts` | Payment mutations (create, mark paid/failed, reconcile) |
+| `integrations.ts` | Integration config management |
+| `sessions.ts` | Session CRUD with scheduling constraints |
+
+## Pack System
+
+### Core Files (`platform/convex/lib/packs/`)
+
+| File | Purpose |
+|------|---------|
+| `version.ts` | `compareVersions()`, `isUpgrade()`, `isMajorUpgrade()` |
+| `migrate.ts` | Migration execution, field operations |
+
+### Pack Functions (`platform/convex/packs/`)
+
+| File | Purpose |
+|------|---------|
+| `tutoring.ts` | Complete pack definition with 6 types, 3 roles |
+| `index.ts` | Pack types with migrations, scope rules, field masks |
+
+### Current Packs
+
+| Pack | Version | Entity Types | Roles |
+|------|---------|--------------|-------|
+| Tutoring | 1.0.0 | 6 | 3 |
+
+### Migration Support
+
+- Add/remove/rename fields
+- Add entity types
+- Modify schemas
+- Run custom scripts
+- Customization preservation
 
 ## Platform Services
 
@@ -110,31 +299,37 @@ POST /v1/chat { agentId, message }
 Core backend with real-time subscriptions and scheduled functions.
 
 **Key Files**:
-- `schema.ts` - Database schema (23 tables)
+- `schema.ts` - Database schema
 - `agents.ts` - Agent CRUD, syncDevelopment, deploy
-- `agent.ts` - LLM execution action (chat)
-- `entities.ts` - Entity CRUD, search, relations
-- `entityTypes.ts` - Entity type definitions
-- `events.ts` - Event logging and queries
-- `jobs.ts` - Job scheduling with Convex scheduler
+- `agent.ts` - LLM execution action (chat) with actor context
+- `entities.ts` - Permission-aware entity CRUD, search, relations
+- `entityTypes.ts` - Admin-only entity type definitions
+- `events.ts` - Visibility-filtered event logging and queries
+- `jobs.ts` - Job scheduling with actor context preservation
 - `threads.ts` - Conversation management
 - `roles.ts` - RBAC roles and policies
 - `apiKeys.ts` - API key management
 - `executions.ts` - Usage tracking
 - `users.ts` - User queries + Clerk integration
 - `organizations.ts` - Organization queries
-- `packs.ts` - Pack installation/management
-- `http.ts` - HTTP endpoints for external access
+- `packs.ts` - Pack installation/management with migrations
+- `permissions.ts` - Internal query wrappers for permissions
+- `http.ts` - HTTP endpoints including webhooks
 - `auth.config.ts` - Clerk authentication config
-- `tools/` - Built-in tool implementations
+- `tools/` - Permission-aware built-in tool implementations
   - `entities.ts` - entity.create, entity.get, entity.query, etc.
   - `events.ts` - event.emit, event.query
   - `jobs.ts` - job.enqueue, job.status
   - `helpers.ts` - Tool helper utilities
-- `lib/` - Utility functions
-  - `auth.ts` - Auth context helpers
-  - `utils.ts` - Common utilities (nanoid, slug generation)
-  - `templateEngine.ts` - System prompt template processing
+- `lib/permissions/` - Permission engine
+- `lib/integrations/` - WhatsApp, Flow integrations
+- `lib/scheduling.ts` - Booking validation
+- `lib/workflows/` - Session lifecycle
+- `lib/packs/` - Pack versioning and migrations
+- `lib/auth.ts` - Auth context helpers
+- `lib/utils.ts` - Common utilities (nanoid, slug generation)
+- `lib/templateEngine.ts` - System prompt template processing
+- `jobs/` - Job handlers (reminders, followups)
 
 **Environment Variables**:
 ```env
@@ -142,6 +337,10 @@ ANTHROPIC_API_KEY=sk-ant-...
 TOOL_EXECUTOR_URL=https://tool-executor.struere.dev
 TOOL_EXECUTOR_SECRET=...
 CLERK_JWT_ISSUER_DOMAIN=...
+WHATSAPP_API_URL=...
+WHATSAPP_ACCESS_TOKEN=...
+FLOW_API_KEY=...
+FLOW_SECRET_KEY=...
 ```
 
 ### Tool Executor (platform/tool-executor)
@@ -154,13 +353,20 @@ Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
 
 **Endpoints**:
 - `GET /health` - Health check
-- `POST /execute` - Execute custom tool handler
+- `POST /execute` - Execute custom tool handler (receives actor context)
 - `POST /validate` - Validate handler code syntax
 
 **Sandboxed Fetch Allowlist**:
 - api.openai.com, api.anthropic.com, api.stripe.com
 - api.sendgrid.com, api.twilio.com, hooks.slack.com
 - discord.com, api.github.com
+
+**Execution Context**:
+```typescript
+handler(args, context, sandboxedFetch)
+// context: { organizationId, actorId, actorType }
+// sandboxedFetch: fetch wrapper with domain allowlist
+```
 
 ## Dashboard App (apps/dashboard)
 
@@ -170,6 +376,7 @@ Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
 - **Clerk** for authentication
 - Client Components for all data-fetching (real-time)
 - Dark theme only
+- Role-based navigation and views
 
 ### Convex Integration
 - `convex.json` - Points to `../../platform/convex`
@@ -180,6 +387,78 @@ Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
 ### Context Providers
 - `AgentContext` - Current agent info when viewing agent details
 - `EnvironmentContext` - Dev/prod environment selection via URL query param
+- `RoleContext` - Current user role for permission-based UI
+
+### Role Detection & Context
+
+| File | Purpose |
+|------|---------|
+| `hooks/use-current-role.ts` | Role detection hook |
+| `contexts/role-context.tsx` | Role context provider |
+| `components/role-redirect.tsx` | Access control components |
+
+### Dashboard Modules
+
+#### Admin Module (default)
+
+- Full dashboard access
+- Agent management
+- Pack management
+- Integration settings
+- User/role management
+
+#### Teacher Module (`/teacher/*`)
+
+| Route | Feature |
+|-------|---------|
+| `/teacher/sessions` | Session list with filters |
+| `/teacher/sessions/[id]` | Detail + report form |
+| `/teacher/students` | Assigned students |
+| `/teacher/profile` | Own profile |
+
+**Teacher Components**:
+- `components/teacher/report-form.tsx` - Session report submission
+- `components/teacher/session-actions.tsx` - Role-aware action buttons
+
+#### Guardian Module (`/guardian/*`)
+
+| Route | Feature |
+|-------|---------|
+| `/guardian/sessions` | Children's sessions |
+| `/guardian/students` | Children's profiles |
+| `/guardian/payments` | Payment history |
+| `/guardian/profile` | Own profile |
+
+### Key Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/agents` | List all agents (real-time) |
+| `/agents/new` | Create new agent |
+| `/agents/[id]` | Agent health dashboard |
+| `/agents/[id]/config` | Agent configuration |
+| `/agents/[id]/logs` | Execution logs |
+| `/agents/[id]/history` | Activity history |
+| `/agents/[id]/settings` | Agent settings |
+| `/entities` | Entity types list |
+| `/entities/[type]` | Entity list (real-time) |
+| `/entities/[type]/[id]` | Entity detail |
+| `/entities/[type]/[id]/edit` | Entity edit |
+| `/jobs` | Job dashboard (real-time) |
+| `/api-keys` | API key management |
+| `/usage` | Usage statistics |
+| `/settings` | Organization settings |
+| `/settings/integrations` | Integration settings |
+| `/settings/integrations/whatsapp` | WhatsApp config |
+| `/settings/integrations/flow` | Flow payments config |
+| `/settings/packs` | Pack catalog |
+
+### Real-time Components
+- `agents-list-realtime.tsx` - Real-time agents list with CRUD
+- `entities-list-realtime.tsx` - Real-time entity list with search
+- `events-timeline-realtime.tsx` - Real-time event timeline
+- `jobs-dashboard-realtime.tsx` - Real-time job dashboard with stats
+- `components/entities/entity-actions.tsx` - Entity CRUD buttons
 
 ### Key Hooks (use-convex-data.ts)
 
@@ -203,32 +482,9 @@ Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
 
 **Users/Orgs**: useUsers, useCurrentUser, useEnsureUser, useCurrentOrganization
 
-**Packs**: usePacks, usePack, useInstallPack, useUninstallPack
+**Packs**: usePacks, usePack, useInstallPack, useUninstallPack, useUpgradePack
 
-### Key Pages
-| Route | Purpose |
-|-------|---------|
-| `/agents` | List all agents (real-time) |
-| `/agents/new` | Create new agent |
-| `/agents/[id]` | Agent health dashboard |
-| `/agents/[id]/config` | Agent configuration |
-| `/agents/[id]/logs` | Execution logs |
-| `/agents/[id]/history` | Activity history |
-| `/agents/[id]/settings` | Agent settings |
-| `/entities` | Entity types list |
-| `/entities/[type]` | Entity list (real-time) |
-| `/entities/[type]/[id]` | Entity detail |
-| `/jobs` | Job dashboard (real-time) |
-| `/api-keys` | API key management |
-| `/usage` | Usage statistics |
-| `/settings` | Organization settings |
-| `/packs` | Pack management |
-
-### Real-time Components
-- `agents-list-realtime.tsx` - Real-time agents list with CRUD
-- `entities-list-realtime.tsx` - Real-time entity list with search
-- `events-timeline-realtime.tsx` - Real-time event timeline
-- `jobs-dashboard-realtime.tsx` - Real-time job dashboard with stats
+**Integrations**: useIntegrationConfigs, useIntegrationConfig, useUpdateIntegrationConfig
 
 ### Environment Variables
 ```env
@@ -435,7 +691,7 @@ Body: { path: "agents:syncDevelopment", args: { agentId, config } }
 - tools: [{ name, description, parameters, handlerCode?, isBuiltin }]
 - createdAt, deployedBy
 
-## Agent Execution Deep Dive
+## Agent Execution Flow
 
 ### Complete Execution Flow
 
@@ -451,10 +707,11 @@ HTTP Request: POST /v1/chat
     ▼
 [2] Chat Action (agent.ts)
     • Load agent and config
+    • Build ActorContext
     • Get/create thread
     • Load message history
     • Build template context
-    • Process system prompt templates
+    • Process system prompt templates (permission-aware)
     │
     ▼
 [3] LLM Loop (max 10 iterations)
@@ -464,12 +721,13 @@ HTTP Request: POST /v1/chat
     │    • model, max_tokens, system, messages, tools
     │
     ├──► Process Tool Calls
+    │    ├─► Check tool permission (canUseTool)
     │    ├─► Built-in: executeBuiltinTool()
-    │    │   └─► Convex mutation (entity.*, event.*, job.*)
+    │    │   └─► Permission-aware Convex mutation
     │    │
     │    └─► Custom: executeCustomTool()
     │        └─► POST to Cloudflare Worker /execute
-    │            └─► Sandboxed execution with allowlisted fetch
+    │            └─► Sandboxed execution with actor context
     │
     └──► Add tool results to messages
          Continue loop or exit
@@ -483,56 +741,21 @@ HTTP Request: POST /v1/chat
 
 ### Built-in Tool Implementations
 
+All tools are permission-aware and pass actor context:
+
 | Tool | Convex Mutation | Purpose |
 |------|-----------------|---------|
 | `entity.create` | `tools.entities.entityCreate` | Create entity + emit event |
-| `entity.get` | `tools.entities.entityGet` | Get entity by ID |
-| `entity.query` | `tools.entities.entityQuery` | Query with filters |
+| `entity.get` | `tools.entities.entityGet` | Get entity by ID (field-masked) |
+| `entity.query` | `tools.entities.entityQuery` | Query with scope filters |
 | `entity.update` | `tools.entities.entityUpdate` | Update data + emit event |
 | `entity.delete` | `tools.entities.entityDelete` | Soft delete + emit event |
 | `entity.link` | `tools.entities.entityLink` | Create relation |
 | `entity.unlink` | `tools.entities.entityUnlink` | Remove relation |
 | `event.emit` | `tools.events.eventEmit` | Emit custom event |
-| `event.query` | `tools.events.eventQuery` | Query events |
-| `job.enqueue` | `tools.jobs.jobEnqueue` | Schedule job |
+| `event.query` | `tools.events.eventQuery` | Query events (visibility filtered) |
+| `job.enqueue` | `tools.jobs.jobEnqueue` | Schedule job (preserves actor) |
 | `job.status` | `tools.jobs.jobStatus` | Get job status |
-
-### Tool Executor Sandboxing
-
-**Allowed Fetch Domains**:
-- api.openai.com
-- api.anthropic.com
-- api.stripe.com
-- api.sendgrid.com
-- api.twilio.com
-- hooks.slack.com
-- discord.com
-- api.github.com
-
-**Execution Context**:
-```typescript
-handler(args, context, sandboxedFetch)
-// context: { organizationId, actorId, actorType }
-// sandboxedFetch: fetch wrapper with domain allowlist
-```
-
-## Built-in Tools
-
-Agents can use these tools (implemented as Convex mutations):
-
-| Tool | Description |
-|------|-------------|
-| `entity.create` | Create a new entity |
-| `entity.get` | Get entity by ID |
-| `entity.query` | Query entities by type/filters |
-| `entity.update` | Update entity data |
-| `entity.delete` | Soft-delete entity |
-| `entity.link` | Create entity relation |
-| `entity.unlink` | Remove entity relation |
-| `event.emit` | Emit custom event |
-| `event.query` | Query events |
-| `job.enqueue` | Schedule a job |
-| `job.status` | Get job status |
 
 ## Web App (apps/web)
 
@@ -577,6 +800,13 @@ cd platform/convex && npx convex deploy
 ```bash
 cd platform/tool-executor && wrangler deploy
 ```
+
+## Known Limitations
+
+1. **Query performance** - Some queries filter in memory after index lookup (documented trade-off for V1)
+2. **Relation scope patterns** - Only `field_match` implemented, complex relations require code patterns
+3. **Event payload masking** - Event payloads may contain unmasked historical data
+4. **Single payment provider** - Only Flow implemented
 
 ## Server Management
 
