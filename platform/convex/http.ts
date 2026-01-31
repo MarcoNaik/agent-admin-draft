@@ -156,9 +156,6 @@ http.route({
             email_addresses: Array<{ email_address: string }>
             first_name?: string
             last_name?: string
-            organization_memberships?: Array<{
-              organization: { id: string; name: string; slug: string }
-            }>
           }
 
           const email = userData.email_addresses[0]?.email_address
@@ -168,33 +165,10 @@ http.route({
 
           if (!email) break
 
-          const orgMembership = userData.organization_memberships?.[0]
-          let orgId
-
-          if (orgMembership) {
-            orgId = await ctx.runMutation(
-              internal.organizations.getOrCreateFromClerk,
-              {
-                clerkOrgId: orgMembership.organization.id,
-                name: orgMembership.organization.name,
-                slug: orgMembership.organization.slug,
-              }
-            )
-          } else {
-            orgId = await ctx.runMutation(
-              internal.organizations.getOrCreatePersonal,
-              {
-                clerkUserId: userData.id,
-                name: name || email.split("@")[0],
-              }
-            )
-          }
-
-          await ctx.runMutation(internal.users.getOrCreateFromClerk, {
+          await ctx.runMutation(internal.users.getOrCreateFromClerkNoOrg, {
             clerkUserId: userData.id,
             email,
             name: name || undefined,
-            organizationId: orgId,
           })
           break
         }
@@ -211,6 +185,67 @@ http.route({
             clerkOrgId: orgData.id,
             name: orgData.name,
             slug: orgData.slug,
+          })
+          break
+        }
+
+        case "organization.deleted": {
+          const orgData = data as { id: string }
+          await ctx.runMutation(internal.organizations.markAsDeleted, {
+            clerkOrgId: orgData.id,
+          })
+          break
+        }
+
+        case "organizationMembership.created":
+        case "organizationMembership.updated": {
+          const membershipData = data as {
+            id: string
+            organization: { id: string; name: string; slug: string }
+            public_user_data: {
+              user_id: string
+              first_name?: string
+              last_name?: string
+              identifier?: string
+            }
+            role: string
+          }
+
+          await ctx.runMutation(internal.organizations.getOrCreateFromClerk, {
+            clerkOrgId: membershipData.organization.id,
+            name: membershipData.organization.name,
+            slug: membershipData.organization.slug,
+          })
+
+          const role = membershipData.role === "org:admin" ? "admin" as const
+            : membershipData.role === "org:owner" ? "owner" as const
+            : "member" as const
+
+          const userName = [
+            membershipData.public_user_data.first_name,
+            membershipData.public_user_data.last_name,
+          ].filter(Boolean).join(" ") || undefined
+
+          await ctx.runMutation(internal.organizations.syncMembership, {
+            clerkOrgId: membershipData.organization.id,
+            clerkUserId: membershipData.public_user_data.user_id,
+            clerkMembershipId: membershipData.id,
+            role,
+            userEmail: membershipData.public_user_data.identifier,
+            userName,
+          })
+          break
+        }
+
+        case "organizationMembership.deleted": {
+          const membershipData = data as {
+            organization: { id: string }
+            public_user_data: { user_id: string }
+          }
+
+          await ctx.runMutation(internal.organizations.removeMembership, {
+            clerkOrgId: membershipData.organization.id,
+            clerkUserId: membershipData.public_user_data.user_id,
           })
           break
         }
