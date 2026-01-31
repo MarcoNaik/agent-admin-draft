@@ -36,15 +36,48 @@ export const getByClerkId = query({
 export const getCurrent = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
+    const identity = await ctx.auth.getUserIdentity() as {
+      subject: string
+      org_id?: string
+    } | null
     if (!identity) {
       return null
     }
 
-    return await ctx.db
+    const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", identity.subject))
       .first()
+
+    if (!user) {
+      return null
+    }
+
+    if (!identity.org_id) {
+      return user
+    }
+
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", identity.org_id))
+      .first()
+
+    if (!org) {
+      return user
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", org._id)
+      )
+      .first()
+
+    if (!membership) {
+      return user
+    }
+
+    return { ...user, role: membership.role }
   },
 })
 
