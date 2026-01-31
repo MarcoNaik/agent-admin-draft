@@ -382,121 +382,426 @@ export function getPackageJsonV2(name: string): string {
 export function getClaudeMDV2(orgName: string): string {
   return `# ${orgName} - Struere Project
 
-This is a Struere organization project. Struere is a framework for building production AI agents with built-in data management, RBAC permissions, and job scheduling.
+Struere is a framework for building production AI agents with Convex as the real-time backend. Agents can manage entities (business data), emit events, and schedule background jobs—all with built-in RBAC permissions.
+
+## How It Works
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────────┐
+│  Your Project (this folder)                                     │
+│  ├── agents/*.ts      → Agent configs synced to Convex          │
+│  ├── entity-types/*.ts → Schema definitions synced to Convex    │
+│  ├── roles/*.ts        → RBAC policies synced to Convex         │
+│  └── tools/index.ts    → Custom tools (handlers run on CF Worker)│
+└─────────────────────┬───────────────────────────────────────────┘
+                      │ struere dev (watches & syncs)
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Convex (Real-time Backend)                                      │
+│  • Stores agent configs, entities, events, jobs                  │
+│  • Runs LLM calls (Anthropic/OpenAI)                             │
+│  • Enforces RBAC on every operation                              │
+│  • Executes custom tools via Cloudflare Worker                   │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │ HTTP API
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Clients                                                         │
+│  • Dashboard (chat UI, entity browser)                           │
+│  • Your app (REST API with Bearer token)                         │
+│  • WhatsApp/Webhooks                                             │
+└─────────────────────────────────────────────────────────────────┘
+\`\`\`
 
 ## Project Structure
 
 \`\`\`
-agents/              # Agent definitions
-├── scheduler.ts     # Example agent
-└── index.ts         # Re-exports all agents
+agents/              # Agent definitions (synced to Convex)
+├── my-agent.ts      # One file per agent
+└── index.ts         # Re-exports (optional)
 
-entity-types/        # Entity type schemas
-├── teacher.ts       # Example entity type
-└── index.ts         # Re-exports all entity types
+entity-types/        # Data schemas (like DB tables)
+├── customer.ts      # Defines shape of "customer" entities
+└── index.ts
 
-roles/               # Role + permission definitions
-├── admin.ts         # Example role with policies
-└── index.ts         # Re-exports all roles
+roles/               # RBAC: who can do what
+├── admin.ts         # Full access
+├── support.ts       # Limited access
+└── index.ts
 
-tools/               # Shared custom tools
-└── index.ts         # Custom tool definitions
+tools/               # Custom tools shared by all agents
+└── index.ts         # defineTools([...])
 
-struere.json         # Organization configuration
-struere.config.ts    # Framework settings
+struere.json         # Organization ID (don't edit)
+struere.config.ts    # Local dev settings (port, CORS)
+\`\`\`
+
+## Configuration Files
+
+### struere.json (auto-generated, don't edit)
+Links this project to your Convex organization:
+\`\`\`json
+{
+  "version": "2.0",
+  "organization": { "id": "org_xxx", "slug": "my-org", "name": "My Org" }
+}
+\`\`\`
+
+### struere.config.ts (optional local settings)
+\`\`\`typescript
+import { defineConfig } from 'struere'
+export default defineConfig({
+  port: 3000,           // Local dev server port
+  logging: { level: 'debug' }
+})
 \`\`\`
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| \`struere dev\` | Watch and sync all resources to Convex |
-| \`struere deploy\` | Deploy all agents to production |
-| \`struere add <type> <name>\` | Scaffold new agent/entity-type/role |
-| \`struere status\` | Compare local vs remote state |
+| Command | What it does |
+|---------|--------------|
+| \`struere dev\` | Watch files, sync to Convex on every save |
+| \`struere deploy\` | Copy dev config to production for all agents |
+| \`struere add agent <name>\` | Create agents/name.ts with template |
+| \`struere add entity-type <name>\` | Create entity-types/name.ts |
+| \`struere add role <name>\` | Create roles/name.ts |
+| \`struere status\` | Show what's synced vs local-only |
 
-## Defining Resources
+## Defining Agents
 
-### Agents (\`agents/*.ts\`)
-
+Create \`agents/support.ts\`:
 \`\`\`typescript
 import { defineAgent } from 'struere'
 
 export default defineAgent({
-  name: "Scheduler",
-  slug: "scheduler",
+  name: "Support Agent",
+  slug: "support",
   version: "0.1.0",
-  systemPrompt: "You are a scheduling assistant...",
-  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
-  tools: ["entity.create", "entity.query", "event.emit"],
+  model: {
+    provider: "anthropic",  // or "openai", "google"
+    name: "claude-sonnet-4-20250514",
+    temperature: 0.7,
+    maxTokens: 4096,
+  },
+  systemPrompt: \\\`You are a support agent for {{organizationName}}.
+Current time: {{currentTime}}
+
+Available customers:
+{{#each entityTypes}}
+- {{this.name}}: {{this.description}}
+{{/each}}
+
+Use entity.query to look up customer info before responding.\\\`,
+  tools: [
+    "entity.query",
+    "entity.get",
+    "entity.update",
+    "event.emit",
+    "send_email",  // custom tool from tools/index.ts
+  ],
 })
 \`\`\`
 
-### Entity Types (\`entity-types/*.ts\`)
+### System Prompt Variables
 
+| Variable | Value |
+|----------|-------|
+| \`{{currentTime}}\` | ISO 8601 timestamp |
+| \`{{organizationName}}\` | Your org name |
+| \`{{agentName}}\` | This agent's name |
+| \`{{entityTypes}}\` | Array of all entity types (for #each loops) |
+| \`{{roles}}\` | Array of all roles |
+
+## Defining Entity Types
+
+Create \`entity-types/customer.ts\`:
 \`\`\`typescript
 import { defineEntityType } from 'struere'
 
 export default defineEntityType({
-  name: "Teacher",
-  slug: "teacher",
+  name: "Customer",
+  slug: "customer",
   schema: {
     type: "object",
     properties: {
       name: { type: "string" },
       email: { type: "string", format: "email" },
-      hourlyRate: { type: "number" },
+      plan: { type: "string", enum: ["free", "pro", "enterprise"] },
+      metadata: { type: "object" },
     },
     required: ["name", "email"],
   },
-  searchFields: ["name", "email"],
+  searchFields: ["name", "email"],  // Fields indexed for search
 })
 \`\`\`
 
-### Roles (\`roles/*.ts\`)
+Entities are stored as:
+\`\`\`json
+{
+  "_id": "ent_abc123",
+  "type": "customer",
+  "data": { "name": "John", "email": "john@example.com", "plan": "pro" },
+  "status": "active",
+  "createdAt": 1706745600000
+}
+\`\`\`
 
+## Defining Roles (RBAC)
+
+Create \`roles/support.ts\`:
 \`\`\`typescript
 import { defineRole } from 'struere'
 
 export default defineRole({
-  name: "teacher",
-  description: "Tutors who conduct sessions",
+  name: "support",
+  description: "Support staff with limited access",
+
+  // What actions are allowed/denied
   policies: [
-    { resource: "session", actions: ["list", "read", "update"], effect: "allow", priority: 50 },
+    { resource: "customer", actions: ["list", "read"], effect: "allow", priority: 50 },
+    { resource: "customer", actions: ["delete"], effect: "deny", priority: 100 },
     { resource: "payment", actions: ["*"], effect: "deny", priority: 100 },
   ],
+
+  // Row-level security: only see assigned customers
   scopeRules: [
-    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
+    {
+      entityType: "customer",
+      field: "data.assignedTo",  // Field in entity data
+      operator: "eq",
+      value: "actor.userId"      // Current user's ID
+    },
   ],
+
+  // Column-level security: hide sensitive fields
   fieldMasks: [
-    { entityType: "session", fieldPath: "data.paymentId", maskType: "hide" },
+    { entityType: "customer", fieldPath: "data.ssn", maskType: "hide" },
+    { entityType: "customer", fieldPath: "data.creditCard", maskType: "redact" },
   ],
 })
 \`\`\`
 
-## Built-in Tools
+### RBAC Enforcement
 
-| Tool | Description |
-|------|-------------|
-| \`entity.create\` | Create a new entity |
-| \`entity.get\` | Get entity by ID |
-| \`entity.query\` | Query entities by type/filters |
-| \`entity.update\` | Update entity data |
-| \`entity.delete\` | Soft-delete entity |
-| \`entity.link\` | Create entity relation |
-| \`entity.unlink\` | Remove entity relation |
-| \`event.emit\` | Emit custom event |
-| \`event.query\` | Query events |
-| \`job.enqueue\` | Schedule background job |
-| \`job.status\` | Get job status |
+Every tool call goes through permission checks:
+1. **Policy check**: Does this role allow the action on this resource?
+2. **Scope filter**: Query results filtered to rows user can access
+3. **Field mask**: Sensitive fields hidden/redacted in response
+
+Deny policies override allow. Higher priority wins.
+
+## Defining Custom Tools
+
+Edit \`tools/index.ts\`:
+\`\`\`typescript
+import { defineTools } from 'struere'
+
+export default defineTools([
+  {
+    name: "send_email",
+    description: "Send an email to a recipient",
+    parameters: {
+      type: "object",
+      properties: {
+        to: { type: "string", description: "Recipient email" },
+        subject: { type: "string", description: "Email subject" },
+        body: { type: "string", description: "Email body" },
+      },
+      required: ["to", "subject", "body"],
+    },
+    // Handler runs on Cloudflare Worker (sandboxed)
+    handler: async (args, context, fetch) => {
+      // context = { organizationId, actorId, actorType }
+      // fetch = sandboxed fetch (limited domains)
+
+      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": \\\`Bearer \\\${process.env.SENDGRID_API_KEY}\\\`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: args.to }] }],
+          from: { email: "noreply@example.com" },
+          subject: args.subject,
+          content: [{ type: "text/plain", value: args.body }],
+        }),
+      })
+      return { success: response.ok, status: response.status }
+    },
+  },
+
+  {
+    name: "lookup_order",
+    description: "Look up order by ID",
+    parameters: {
+      type: "object",
+      properties: {
+        orderId: { type: "string", description: "Order ID" },
+      },
+      required: ["orderId"],
+    },
+    handler: async (args, context, fetch) => {
+      const res = await fetch(\\\`https://api.myshop.com/orders/\\\${args.orderId}\\\`, {
+        headers: { "X-Org-Id": context.organizationId },
+      })
+      return await res.json()
+    },
+  },
+])
+\`\`\`
+
+### Allowed Domains for Custom Tools
+
+Custom tool handlers can only fetch from:
+- api.openai.com, api.anthropic.com
+- api.stripe.com, api.sendgrid.com, api.twilio.com
+- hooks.slack.com, discord.com, api.github.com
+
+## Built-in Tools Reference
+
+### Entity Tools
+
+\`\`\`typescript
+// entity.create - Create new entity
+{ type: "customer", data: { name: "John", email: "j@example.com" }, status: "active" }
+
+// entity.get - Get by ID
+{ id: "ent_abc123" }
+
+// entity.query - Search/filter
+{ type: "customer", filters: { "data.plan": "pro" }, status: "active", limit: 50 }
+
+// entity.update - Partial update
+{ id: "ent_abc123", data: { plan: "enterprise" } }
+
+// entity.delete - Soft delete
+{ id: "ent_abc123" }
+
+// entity.link - Create relation
+{ fromEntityId: "ent_abc", toEntityId: "ent_xyz", relationType: "assigned_to" }
+
+// entity.unlink - Remove relation
+{ fromEntityId: "ent_abc", toEntityId: "ent_xyz", relationType: "assigned_to" }
+\`\`\`
+
+### Event Tools
+
+\`\`\`typescript
+// event.emit - Log an event
+{ eventType: "support.ticket.resolved", entityId: "ent_abc", payload: { rating: 5 } }
+
+// event.query - Query event history
+{ eventType: "support.ticket.*", entityId: "ent_abc", limit: 20 }
+\`\`\`
+
+Events are immutable audit logs. Use for analytics, debugging, compliance.
+
+### Job Tools
+
+\`\`\`typescript
+// job.enqueue - Schedule background work
+{
+  jobType: "send_reminder",
+  payload: { customerId: "ent_abc", message: "Your trial ends soon" },
+  runAt: 1706832000000  // Unix timestamp (optional, runs immediately if omitted)
+}
+
+// job.status - Check job status
+{ jobId: "job_xyz123" }
+// Returns: { status: "pending" | "running" | "completed" | "failed", result: {...} }
+\`\`\`
+
+Jobs run asynchronously with retry logic. Use for: emails, notifications, data sync.
+
+## Invoking Agents (API)
+
+### Chat Endpoint
+\`\`\`bash
+curl -X POST https://your-convex-url.convex.cloud/v1/chat \\
+  -H "Authorization: Bearer sk_live_xxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "agentId": "agent_abc123",
+    "message": "What is the status of order #12345?",
+    "threadId": "thread_xyz",  // optional, creates new if omitted
+    "metadata": { "customerId": "ent_cust_789" }  // available in system prompt
+  }'
+\`\`\`
+
+### Response
+\`\`\`json
+{
+  "threadId": "thread_xyz",
+  "message": "Order #12345 is currently being shipped...",
+  "usage": { "inputTokens": 150, "outputTokens": 89 }
+}
+\`\`\`
+
+### By Slug (production)
+\`\`\`bash
+curl -X POST https://your-convex-url.convex.cloud/v1/agents/support/chat \\
+  -H "Authorization: Bearer sk_live_xxx" \\
+  -d '{"message": "Hello"}'
+\`\`\`
 
 ## Development Workflow
 
-1. Run \`struere dev\` to start watching for changes
-2. Edit agents, entity types, or roles
-3. Changes are automatically synced to Convex
-4. Test via API or dashboard
-5. Run \`struere deploy\` when ready for production
+1. \`struere dev\` - Start watching
+2. Edit files in agents/, entity-types/, roles/, tools/
+3. Save → auto-syncs to Convex (you'll see "Synced" message)
+4. Test via dashboard or curl
+5. \`struere deploy\` - Push to production
+
+## Common Patterns
+
+### Customer Support Agent
+\`\`\`typescript
+// agents/support.ts
+export default defineAgent({
+  name: "Support",
+  slug: "support",
+  version: "0.1.0",
+  systemPrompt: \\\`You help customers with their orders and account issues.
+
+When a customer asks about an order, use entity.query to find it first.
+Always be polite and helpful. If you can't help, offer to escalate.\\\`,
+  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  tools: ["entity.query", "entity.get", "entity.update", "event.emit"],
+})
+\`\`\`
+
+### Scheduling Agent
+\`\`\`typescript
+// agents/scheduler.ts
+export default defineAgent({
+  name: "Scheduler",
+  slug: "scheduler",
+  version: "0.1.0",
+  systemPrompt: \\\`You help schedule appointments between teachers and students.
+
+Check teacher availability before booking. Create session entities for confirmed bookings.
+Send confirmation via the send_notification custom tool.\\\`,
+  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  tools: ["entity.create", "entity.query", "job.enqueue", "send_notification"],
+})
+\`\`\`
+
+### Data Entry Agent
+\`\`\`typescript
+// agents/data-entry.ts
+export default defineAgent({
+  name: "Data Entry",
+  slug: "data-entry",
+  version: "0.1.0",
+  systemPrompt: \\\`You help users create and update records in the system.
+
+When creating entities, validate the data matches the schema.
+Always confirm what was created/updated.\\\`,
+  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  tools: ["entity.create", "entity.update", "entity.query"],
+})
+\`\`\`
 `
 }
 

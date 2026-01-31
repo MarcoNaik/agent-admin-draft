@@ -142,6 +142,8 @@ export const devCommand = new Command('dev')
     const watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
       ignored: /node_modules/,
+      persistent: true,
+      usePolling: false,
     })
 
     watcher.on('change', async (path) => {
@@ -204,10 +206,15 @@ export const devCommand = new Command('dev')
       }
     })
 
-    process.on('SIGINT', () => {
+    let isClosing = false
+    process.on('SIGINT', async () => {
+      if (isClosing) {
+        process.exit(0)
+      }
+      isClosing = true
       console.log()
-      watcher.close()
-      console.log(chalk.gray('Stopped'))
+      console.log(chalk.gray('Stopping...'))
+      await watcher.close()
       process.exit(0)
     })
   })

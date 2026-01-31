@@ -589,8 +589,13 @@ export async function syncOrganization(payload: SyncPayload): Promise<SyncResult
     return { success: false, error }
   }
 
-  const result = await response.json() as SyncResult
-  return result
+  const json = await response.json() as { status: string; value: SyncResult }
+
+  if (json.status === 'success' && json.value) {
+    return json.value
+  }
+
+  return { success: false, error: 'Unexpected response format' }
 }
 
 export interface SyncState {
@@ -662,6 +667,11 @@ export async function deployAllAgents(): Promise<DeployAllResult> {
     return { success: false, error }
   }
 
-  const result = await response.json() as DeployAllResult
-  return result
+  const json = await response.json() as { status: string; value: DeployAllResult }
+
+  if (json.status === 'success' && json.value) {
+    return json.value
+  }
+
+  return { success: false, error: 'Unexpected response format' }
 }
