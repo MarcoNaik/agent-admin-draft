@@ -12,11 +12,10 @@ import {
   Settings,
   FileText,
   ExternalLink,
-  Zap,
-  Layers,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
+
 interface Agent {
   id: string
   name: string
@@ -24,8 +23,8 @@ interface Agent {
   description?: string
   createdAt: string
 }
+
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
@@ -135,31 +134,29 @@ export function AgentsList({ agents }: AgentsListProps) {
       </div>
 
       {filteredAgents.length === 0 ? (
-        <Card className="bg-background-secondary border-border/50">
-          <CardContent className="py-12 text-center">
-            {search ? (
-              <>
-                <h3 className="text-lg font-medium text-content-primary">No agents found</h3>
-                <p className="mt-1 text-sm text-content-secondary">
-                  Try adjusting your search query
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-lg font-medium text-content-primary">No agents yet</h3>
-                <p className="mt-1 text-sm text-content-secondary">
-                  Create your first agent to get started
-                </p>
-                <Link href="/agents/new">
-                  <Button className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Agent
-                  </Button>
-                </Link>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="rounded-md border bg-card p-12 text-center">
+          {search ? (
+            <>
+              <p className="text-sm text-content-primary">No agents found</p>
+              <p className="mt-1 text-xs text-content-secondary">
+                Try adjusting your search query
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-content-primary">No agents yet</p>
+              <p className="mt-1 text-xs text-content-secondary">
+                Create your first agent to get started
+              </p>
+              <Link href="/agents/new">
+                <Button className="mt-4" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Agent
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
       ) : viewMode === "grid" ? (
         <div className="mb-4 grid w-full grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
           {paginatedAgents.map((agent) => (
@@ -301,74 +298,30 @@ export function AgentsList({ agents }: AgentsListProps) {
         </div>
       )}
 
-      <div className="mb-4 flex w-full justify-end">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-content-secondary">Showing</span>
-          <span className="text-content-primary">{pageSize}</span>
-          <span className="text-content-secondary">projects per page</span>
-          <button
-            type="button"
-            disabled={currentPage === 1}
-            className="p-1 disabled:opacity-30"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="text-content-secondary">Page {currentPage}</span>
-          <button
-            type="button"
-            disabled={currentPage >= totalPages}
-            className="p-1 disabled:opacity-30"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+      {filteredAgents.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-content-secondary">
+          <span>
+            {filteredAgents.length} agent{filteredAgents.length !== 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              className="p-1 disabled:opacity-30 hover:bg-background-tertiary rounded transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span>Page {currentPage} of {totalPages || 1}</span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              className="p-1 disabled:opacity-30 hover:bg-background-tertiary rounded transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-8">
-        <h4 className="text-lg font-semibold">Learn about Struere</h4>
-        <ul className="flex flex-wrap gap-4 py-4">
-          <li className="grow">
-            <div className="relative flex items-center gap-3 rounded-lg p-3 hover:bg-background-tertiary transition-colors">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-                <Zap className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-content-primary hover:underline"
-                  href="https://docs.struere.dev"
-                >
-                  Docs →
-                </a>
-                <p className="text-sm text-content-secondary">
-                  Learn more about Struere
-                </p>
-              </div>
-            </div>
-          </li>
-          <li className="grow">
-            <div className="relative flex items-center gap-3 rounded-lg p-3 hover:bg-background-tertiary transition-colors">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <Layers className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-content-primary hover:underline"
-                  href="https://blog.struere.dev"
-                >
-                  Blog →
-                </a>
-                <p className="text-sm text-content-secondary">
-                  Get tips and tricks
-                </p>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </div>
+      )}
     </div>
   )
 }
