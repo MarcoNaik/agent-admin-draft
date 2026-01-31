@@ -205,12 +205,36 @@ async function interactiveSetup(cwd: string): Promise<{
 
   spinner.start('Fetching agents')
 
-  const { agents: existingAgents, error: listError } = await listAgents()
+  let { agents: existingAgents, error: listError } = await listAgents()
+
   if (listError) {
-    spinner.fail('Failed to fetch agents')
-    console.log()
-    console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to re-authenticate'))
-    return null
+    const isAuthError = listError.includes('Unauthenticated') ||
+                        listError.includes('OIDC') ||
+                        listError.includes('token') ||
+                        listError.includes('expired')
+
+    if (isAuthError) {
+      spinner.fail('Session expired')
+      console.log()
+      console.log(chalk.gray('Re-authenticating...'))
+      clearCredentials()
+      credentials = await performLogin()
+      if (!credentials) {
+        console.log(chalk.red('Authentication failed'))
+        return null
+      }
+      spinner.start('Fetching agents')
+      const retryResult = await listAgents()
+      existingAgents = retryResult.agents
+      listError = retryResult.error
+    }
+
+    if (listError) {
+      spinner.fail('Failed to fetch agents')
+      console.log()
+      console.log(chalk.red('Error:'), listError)
+      return null
+    }
   }
 
   const agents = existingAgents.map(a => ({ id: a._id, name: a.name, slug: a.slug }))
@@ -256,11 +280,38 @@ async function interactiveSetup(cwd: string): Promise<{
 
     spinner.start('Creating agent')
 
-    const { agentId, error: createError } = await createAgent({
+    let { agentId, error: createError } = await createAgent({
       name: displayName,
       slug: name,
       description: `${displayName} Agent`,
     })
+
+    if (createError) {
+      const isAuthError = createError.includes('Unauthenticated') ||
+                          createError.includes('OIDC') ||
+                          createError.includes('token') ||
+                          createError.includes('expired')
+
+      if (isAuthError) {
+        spinner.fail('Session expired')
+        console.log()
+        console.log(chalk.gray('Re-authenticating...'))
+        clearCredentials()
+        credentials = await performLogin()
+        if (!credentials) {
+          console.log(chalk.red('Authentication failed'))
+          return null
+        }
+        spinner.start('Creating agent')
+        const retryResult = await createAgent({
+          name: displayName,
+          slug: name,
+          description: `${displayName} Agent`,
+        })
+        agentId = retryResult.agentId
+        createError = retryResult.error
+      }
+    }
 
     if (createError || !agentId) {
       spinner.fail('Failed to create agent')
