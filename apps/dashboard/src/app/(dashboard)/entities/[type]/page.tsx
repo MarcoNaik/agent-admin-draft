@@ -86,10 +86,10 @@ export default function EntityListPage({ params }: EntityListPageProps) {
 
   const mappedEntities = filteredEntities.map((e: Doc<"entities">) => ({
     id: e._id,
-    status: e.status,
-    data: e.data,
-    createdAt: new Date(e.createdAt).toISOString(),
-    updatedAt: new Date(e.updatedAt).toISOString(),
+    status: e.status || "active",
+    data: e.data || {},
+    createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: e.updatedAt ? new Date(e.updatedAt).toISOString() : new Date().toISOString(),
   }))
 
   return (

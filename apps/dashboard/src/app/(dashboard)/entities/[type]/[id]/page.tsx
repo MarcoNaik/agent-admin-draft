@@ -109,10 +109,10 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
 
   const mappedEntity = {
     id: entity._id,
-    status: entity.status,
-    data: entity.data,
-    createdAt: new Date(entity.createdAt).toISOString(),
-    updatedAt: new Date(entity.updatedAt).toISOString(),
+    status: entity.status || "active",
+    data: entity.data || {},
+    createdAt: entity.createdAt ? new Date(entity.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: entity.updatedAt ? new Date(entity.updatedAt).toISOString() : new Date().toISOString(),
   }
 
   const mappedEvents = events.map((e: Doc<"events">) => ({
@@ -121,7 +121,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
     actorType: e.actorType,
     actorId: e.actorId,
     payload: e.payload,
-    timestamp: new Date(e.timestamp).toISOString(),
+    timestamp: e.timestamp ? new Date(e.timestamp).toISOString() : new Date().toISOString(),
   }))
 
   const handleDelete = async () => {

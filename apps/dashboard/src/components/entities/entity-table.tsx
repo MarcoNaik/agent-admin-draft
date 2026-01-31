@@ -152,7 +152,7 @@ export function EntityTable({ entityType, entities, onRowClick }: EntityTablePro
                 const field = schemaFields.find((f) => f.name === col)
                 return (
                   <td key={col} className="px-4 py-3 text-sm">
-                    {formatFieldValue(entity.data[col], field)}
+                    {formatFieldValue(entity.data?.[col], field)}
                   </td>
                 )
               })}
