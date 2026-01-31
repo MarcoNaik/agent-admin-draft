@@ -14,7 +14,8 @@ import {
   Bot,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAgents } from "@/hooks/use-convex-data"
+import { useAgents, useCurrentOrganization } from "@/hooks/use-convex-data"
+import { Doc } from "@convex/_generated/dataModel"
 import {
   Popover,
   PopoverContent,
@@ -65,21 +66,22 @@ export function OrgSwitcher() {
   const [createOrgOpen, setCreateOrgOpen] = useState(false)
 
   const { user, isLoaded: userLoaded } = useUser()
-  const { organization, isLoaded: orgLoaded } = useOrganization()
-  const { userMemberships, setActive, isLoaded: membershipsLoaded } = useOrganizationList({
+  const { organization: clerkOrg, isLoaded: orgLoaded } = useOrganization()
+  const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   })
   const agents = useAgents()
+  const convexOrg = useCurrentOrganization()
 
-  const isLoaded = userLoaded && orgLoaded && membershipsLoaded
-  const orgName = organization?.name || user?.firstName || "Personal"
+  const isLoaded = userLoaded && orgLoaded
+  const orgName = convexOrg?.name || clerkOrg?.name || user?.firstName || "Personal"
 
   const filteredAgents = useMemo(() => {
     if (!agents) return []
     if (!searchQuery.trim()) return agents
     const query = searchQuery.toLowerCase()
     return agents.filter(
-      (agent) =>
+      (agent: Doc<"agents">) =>
         agent.name.toLowerCase().includes(query) ||
         agent.slug?.toLowerCase().includes(query)
     )
@@ -90,7 +92,7 @@ export function OrgSwitcher() {
       await setActive({ organization: orgId })
       setView("agents")
       setOpen(false)
-      router.push("/agents")
+      window.location.href = "/agents"
     }
   }
 
@@ -182,7 +184,7 @@ export function OrgSwitcher() {
                       {searchQuery ? "No agents found" : "No agents yet"}
                     </div>
                   ) : (
-                    filteredAgents.map((agent) => (
+                    filteredAgents.map((agent: Doc<"agents">) => (
                       <button
                         key={agent._id}
                         type="button"
@@ -229,21 +231,19 @@ export function OrgSwitcher() {
               </div>
 
               <div className="p-1 max-h-64 overflow-y-auto">
-                {organization && (
-                  <button
-                    type="button"
-                    onClick={() => setView("agents")}
-                    className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-colors cursor-pointer bg-background-tertiary"
-                  >
-                    <OrgAvatar name={organization.name} />
-                    <span className="text-sm text-content-primary truncate flex-1 text-left">
-                      {organization.name}
-                    </span>
-                    <Check className="h-4 w-4 text-primary shrink-0" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setView("agents")}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-colors cursor-pointer bg-background-tertiary"
+                >
+                  <OrgAvatar name={orgName} />
+                  <span className="text-sm text-content-primary truncate flex-1 text-left">
+                    {orgName}
+                  </span>
+                  <Check className="h-4 w-4 text-primary shrink-0" />
+                </button>
                 {userMemberships?.data
-                  ?.filter((membership) => membership.organization.id !== organization?.id)
+                  ?.filter((membership) => membership.organization.id !== clerkOrg?.id)
                   .map((membership) => (
                     <button
                       key={membership.id}
