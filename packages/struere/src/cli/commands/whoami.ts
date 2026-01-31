@@ -39,16 +39,21 @@ export const whoamiCommand = new Command('whoami')
 
       spinner.stop()
 
-      const { user, organization } = userInfo
+      const { user, organizations } = userInfo
 
       console.log(chalk.bold('Logged in as:'))
       console.log()
       console.log(chalk.gray('  User:        '), chalk.cyan(user.name || user.email), chalk.gray(`<${user.email}>`))
       console.log(chalk.gray('  User ID:     '), chalk.gray(user.id))
       console.log()
-      console.log(chalk.gray('  Organization:'), chalk.cyan(organization.name))
-      console.log(chalk.gray('  Org ID:      '), chalk.gray(organization.id))
-      console.log(chalk.gray('  Slug:        '), chalk.cyan(organization.slug))
+      if (organizations.length > 0) {
+        console.log(chalk.gray('  Organizations:'))
+        for (const org of organizations) {
+          console.log(chalk.gray('    •'), chalk.cyan(org.name), chalk.gray(`(${org.slug})`), chalk.gray(`- ${org.role}`))
+        }
+      } else {
+        console.log(chalk.yellow('  No organizations found'))
+      }
       console.log()
     } else {
       console.log(chalk.bold('Logged in as:'))
@@ -56,11 +61,7 @@ export const whoamiCommand = new Command('whoami')
       console.log(chalk.gray('  User:        '), chalk.cyan(credentials.user.name), chalk.gray(`<${credentials.user.email}>`))
       console.log(chalk.gray('  User ID:     '), chalk.gray(credentials.user.id))
       console.log()
-      console.log(chalk.gray('  Organization:'), chalk.cyan(credentials.organization.name))
-      console.log(chalk.gray('  Org ID:      '), chalk.gray(credentials.organization.id))
-      console.log(chalk.gray('  Slug:        '), chalk.cyan(credentials.organization.slug))
-      console.log()
-      console.log(chalk.gray('Use'), chalk.cyan('struere whoami --refresh'), chalk.gray('to fetch latest info'))
+      console.log(chalk.gray('Use'), chalk.cyan('struere whoami --refresh'), chalk.gray('to fetch organizations'))
       console.log()
     }
   })

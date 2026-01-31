@@ -9,9 +9,9 @@ export interface Credentials {
     id: string
     email: string
     name: string
-    organizationId: string
+    organizationId?: string
   }
-  organization: {
+  organization?: {
     id: string
     name: string
     slug: string

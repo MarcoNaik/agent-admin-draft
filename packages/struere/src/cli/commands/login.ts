@@ -117,7 +117,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
       throw new Error(error || 'Failed to fetch user info')
     }
 
-    const { user, organization } = userInfo
+    const { user, organizations } = userInfo
 
     const credentials: Credentials = {
       token,
@@ -125,12 +125,6 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
         id: user.id,
         email: user.email,
         name: user.name || user.email,
-        organizationId: user.organizationId
-      },
-      organization: {
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug
       },
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     }
@@ -141,7 +135,11 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
 
     console.log()
     console.log(chalk.green('Welcome,'), chalk.cyan(user.name || user.email))
-    console.log(chalk.gray('Organization:'), organization.name)
+    if (organizations.length > 0) {
+      console.log(chalk.gray('Organizations:'), organizations.map(o => o.name).join(', '))
+    } else {
+      console.log(chalk.yellow('No organizations found. Create one in the dashboard first.'))
+    }
     console.log()
 
     return credentials

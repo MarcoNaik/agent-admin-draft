@@ -172,13 +172,8 @@ export interface UserInfo {
     id: string
     email: string
     name?: string
-    organizationId: string
   }
-  organization: {
-    id: string
-    name: string
-    slug: string
-  }
+  organizations: OrgInfo[]
 }
 
 export interface OrgInfo {
@@ -245,33 +240,15 @@ export async function getUserInfo(token: string): Promise<{ userInfo?: UserInfo;
     return { error }
   }
 
-  const userResponse = await response.json() as { status: string; value?: { _id: string; email: string; name?: string; organizationId: string } }
+  const userResponse = await response.json() as { status: string; value?: { _id: string; email: string; name?: string } }
   const user = userResponse.value
   if (!user) {
     return { error: 'User not found' }
   }
 
-  const orgResponse = await fetch(`${CONVEX_URL}/api/query`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      path: 'organizations:getCurrent',
-      args: {},
-    }),
-  })
-
-  if (!orgResponse.ok) {
-    return { error: 'Failed to fetch organization' }
-  }
-
-  const orgResult = await orgResponse.json() as { status: string; value?: { _id: string; name: string; slug: string } }
-  const org = orgResult.value
-
-  if (!org) {
-    return { error: 'Organization not found' }
+  const { organizations, error: orgsError } = await listMyOrganizations(token)
+  if (orgsError) {
+    return { error: orgsError }
   }
 
   return {
@@ -280,13 +257,8 @@ export async function getUserInfo(token: string): Promise<{ userInfo?: UserInfo;
         id: user._id,
         email: user.email,
         name: user.name,
-        organizationId: user.organizationId,
       },
-      organization: {
-        id: org._id,
-        name: org.name,
-        slug: org.slug,
-      },
+      organizations,
     },
   }
 }
