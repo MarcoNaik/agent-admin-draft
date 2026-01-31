@@ -79,8 +79,8 @@ function LogRow({ execution }: { execution: Doc<"executions"> }) {
                   <div className="font-mono text-content-secondary truncate">{execution._id}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-content-tertiary">Environment</div>
-                  <div className="text-content-secondary">{execution.environment || "development"}</div>
+                  <div className="text-xs text-content-tertiary">Status</div>
+                  <div className="text-content-secondary capitalize">{execution.status}</div>
                 </div>
                 <div>
                   <div className="text-xs text-content-tertiary">Total Tokens</div>
