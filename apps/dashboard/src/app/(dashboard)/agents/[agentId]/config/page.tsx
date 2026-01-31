@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Code, Play, ChevronDown, ChevronRight } from "lucide-react"
+import Link from "next/link"
+import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, Clock, ExternalLink } from "lucide-react"
 import { useAgentWithConfig, useCompileSystemPrompt } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Id } from "@convex/_generated/dataModel"
+import { cn } from "@/lib/utils"
 
 interface AgentConfigPageProps {
   params: { agentId: string }
@@ -19,20 +21,39 @@ interface Tool {
   parameters?: Record<string, unknown>
 }
 
+const TOOL_CATEGORIES: Record<string, { icon: typeof Database; color: string; bgColor: string }> = {
+  entity: { icon: Database, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  event: { icon: Bell, color: "text-amber-500", bgColor: "bg-amber-500/10" },
+  job: { icon: Clock, color: "text-purple-500", bgColor: "bg-purple-500/10" },
+  custom: { icon: Code, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+}
+
+function getToolCategory(name: string): keyof typeof TOOL_CATEGORIES {
+  if (name.startsWith("entity.")) return "entity"
+  if (name.startsWith("event.")) return "event"
+  if (name.startsWith("job.")) return "job"
+  return "custom"
+}
+
 function ToolItem({ tool }: { tool: Tool }) {
   const [expanded, setExpanded] = useState(false)
+  const category = getToolCategory(tool.name)
+  const { icon: Icon, color, bgColor } = TOOL_CATEGORIES[category]
 
   return (
     <div className="border-b last:border-0">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-background-secondary transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-background-secondary transition-colors cursor-pointer"
       >
         {expanded ? (
           <ChevronDown className="h-4 w-4 text-content-tertiary shrink-0" />
         ) : (
           <ChevronRight className="h-4 w-4 text-content-tertiary shrink-0" />
         )}
+        <div className={cn("p-1 rounded", bgColor)}>
+          <Icon className={cn("h-3.5 w-3.5", color)} />
+        </div>
         <span className="font-mono text-sm text-content-primary">{tool.name}</span>
         {tool.isBuiltin && (
           <Badge variant="secondary" className="text-xs">builtin</Badge>
@@ -244,10 +265,58 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
       </div>
 
       <div className="rounded-md border bg-card">
-        <div className="border-b px-4 py-3">
-          <div className="text-sm font-medium text-content-primary">
-            Tools ({config.tools?.length || 0})
+        <div className="border-b px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-content-primary">
+              Tools ({config.tools?.length || 0})
+            </div>
+            {config.tools && config.tools.length > 0 && (
+              <div className="flex items-center gap-3 mt-1">
+                {(() => {
+                  const builtinCount = config.tools.filter((t: Tool) => t.isBuiltin).length
+                  const customCount = config.tools.length - builtinCount
+                  const entityCount = config.tools.filter((t: Tool) => t.name.startsWith("entity.")).length
+                  const eventCount = config.tools.filter((t: Tool) => t.name.startsWith("event.")).length
+                  const jobCount = config.tools.filter((t: Tool) => t.name.startsWith("job.")).length
+                  return (
+                    <>
+                      {entityCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-content-tertiary">
+                          <Database className="h-3 w-3 text-blue-500" />
+                          {entityCount} entity
+                        </span>
+                      )}
+                      {eventCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-content-tertiary">
+                          <Bell className="h-3 w-3 text-amber-500" />
+                          {eventCount} event
+                        </span>
+                      )}
+                      {jobCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-content-tertiary">
+                          <Clock className="h-3 w-3 text-purple-500" />
+                          {jobCount} job
+                        </span>
+                      )}
+                      {customCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-content-tertiary">
+                          <Code className="h-3 w-3 text-emerald-500" />
+                          {customCount} custom
+                        </span>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+            )}
           </div>
+          <Link
+            href={`/agents/${agentId}/functions`}
+            className="inline-flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition-colors"
+          >
+            View All
+            <ExternalLink className="h-3 w-3" />
+          </Link>
         </div>
         {config.tools && config.tools.length > 0 ? (
           <div>
@@ -256,8 +325,18 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
             ))}
           </div>
         ) : (
-          <div className="p-8 text-center text-sm text-content-secondary">
-            No tools configured
+          <div className="p-8 text-center">
+            <p className="text-sm text-content-secondary mb-2">No tools configured</p>
+            <p className="text-xs text-content-tertiary mb-3">
+              11 built-in tools available for entities, events, and jobs
+            </p>
+            <Link
+              href={`/agents/${agentId}/functions`}
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+            >
+              View Available Tools
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
         )}
       </div>
