@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { EntityDetail } from "@/components/entities/entity-detail"
 import { EntityTimeline } from "@/components/entities/entity-timeline"
+import { EntityCreateForm } from "@/components/entities/entity-create-form"
 import { Id, Doc } from "@convex/_generated/dataModel"
 import { useRouter } from "next/navigation"
 
@@ -16,14 +17,39 @@ interface EntityDetailPageProps {
   params: { type: string; id: string }
 }
 
+function isValidConvexId(id: string): boolean {
+  return id !== "new" && id.length > 10
+}
+
 export default function EntityDetailPage({ params }: EntityDetailPageProps) {
   const { type, id } = params
   const router = useRouter()
+  const isNewEntity = !isValidConvexId(id)
 
-  const entityData = useEntityWithType(id as Id<"entities">)
-  const relatedEntities = useRelatedEntities(id as Id<"entities">)
-  const events = useEntityEvents(id as Id<"entities">)
+  const entityData = useEntityWithType(isNewEntity ? undefined : id as Id<"entities">)
+  const relatedEntities = useRelatedEntities(isNewEntity ? undefined : id as Id<"entities">)
+  const events = useEntityEvents(isNewEntity ? undefined : id as Id<"entities">)
   const deleteEntity = useDeleteEntity()
+
+  if (isNewEntity) {
+    return (
+      <div className="space-y-6">
+        <Link href={`/entities/${type}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Back to {type}
+        </Link>
+        <Card>
+          <CardHeader>
+            <CardTitle>Create New {type}</CardTitle>
+            <CardDescription>Add a new {type} to the system</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EntityCreateForm entityTypeSlug={type} onSuccess={(entityId) => router.push(`/entities/${type}/${entityId}`)} />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (entityData === undefined || events === undefined) {
     return (

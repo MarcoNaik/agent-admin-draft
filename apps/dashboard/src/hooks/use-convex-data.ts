@@ -76,8 +76,8 @@ export function useEntity(id: Id<"entities">) {
   return useQuery(api.entities.get, { id })
 }
 
-export function useEntityWithType(id: Id<"entities">) {
-  return useQuery(api.entities.getWithType, { id })
+export function useEntityWithType(id: Id<"entities"> | undefined) {
+  return useQuery(api.entities.getWithType, id ? { id } : "skip")
 }
 
 export function useSearchEntities(entityTypeSlug: string | undefined, query: string) {
@@ -107,16 +107,16 @@ export function useUnlinkEntities() {
   return useMutation(api.entities.unlink)
 }
 
-export function useRelatedEntities(entityId: Id<"entities">, relationType?: string) {
-  return useQuery(api.entities.getRelated, { entityId, relationType })
+export function useRelatedEntities(entityId: Id<"entities"> | undefined, relationType?: string) {
+  return useQuery(api.entities.getRelated, entityId ? { entityId, relationType } : "skip")
 }
 
 export function useEvents(entityId?: Id<"entities">, eventType?: string) {
   return useQuery(api.events.list, { entityId, eventType })
 }
 
-export function useEntityEvents(entityId: Id<"entities">) {
-  return useQuery(api.events.getByEntity, { entityId })
+export function useEntityEvents(entityId: Id<"entities"> | undefined) {
+  return useQuery(api.events.getByEntity, entityId ? { entityId } : "skip")
 }
 
 export function useEventTypes() {
@@ -191,8 +191,8 @@ export function useRemoveRoleFromUser() {
   return useMutation(api.roles.removeFromUser)
 }
 
-export function useUserRoles(userId: Id<"users">) {
-  return useQuery(api.roles.getUserRoles, { userId })
+export function useUserRoles(userId: Id<"users"> | undefined) {
+  return useQuery(api.roles.getUserRoles, userId ? { userId } : "skip")
 }
 
 export function useApiKeys() {
@@ -259,6 +259,10 @@ export function useUsers() {
   return useQuery(api.users.list, {})
 }
 
+export function useUpdateUser() {
+  return useMutation(api.users.update)
+}
+
 export function useCurrentUser() {
   return useQuery(api.users.getCurrent, {})
 }
@@ -285,4 +289,48 @@ export function useInstallPack() {
 
 export function useUninstallPack() {
   return useMutation(api.packs.uninstall)
+}
+
+export function useUpgradePack() {
+  return useMutation(api.packs.upgrade)
+}
+
+export function usePreviewUpgrade(packId: string | undefined) {
+  return useQuery(api.packs.previewUpgrade, packId ? { packId } : "skip")
+}
+
+export function useTrackPackCustomization() {
+  return useMutation(api.packs.trackCustomization)
+}
+
+export function useCurrentUserRoles() {
+  const currentUser = useCurrentUser()
+  return useQuery(
+    api.roles.getUserRoles,
+    currentUser?._id ? { userId: currentUser._id } : "skip"
+  )
+}
+
+export function useIntegrationConfig(provider: "whatsapp" | "flow" | "google" | "zoom") {
+  return useQuery(api.integrations.getConfig, { provider })
+}
+
+export function useIntegrationConfigs() {
+  return useQuery(api.integrations.listConfigs, {})
+}
+
+export function useUpdateIntegrationConfig() {
+  return useMutation(api.integrations.updateConfig)
+}
+
+export function useTestIntegrationConnection() {
+  return useMutation(api.integrations.testConnection)
+}
+
+export function useDeleteIntegrationConfig() {
+  return useMutation(api.integrations.deleteConfig)
+}
+
+export function useSetIntegrationStatus() {
+  return useMutation(api.integrations.setConfigStatus)
 }
