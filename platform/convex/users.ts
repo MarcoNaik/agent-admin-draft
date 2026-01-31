@@ -106,6 +106,7 @@ export const update = mutation({
   args: {
     id: v.id("users"),
     name: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -126,11 +127,23 @@ export const update = mutation({
       throw new Error("User not found in organization")
     }
 
-    const updates: Record<string, unknown> = { updatedAt: Date.now() }
-    if (args.name !== undefined) updates.name = args.name
+    if (args.role !== undefined) {
+      await ctx.db.patch(membership._id, {
+        role: args.role,
+        updatedAt: Date.now(),
+      })
+    }
 
-    await ctx.db.patch(args.id, updates)
-    return await ctx.db.get(args.id)
+    const userUpdates: Record<string, unknown> = { updatedAt: Date.now() }
+    if (args.name !== undefined) userUpdates.name = args.name
+
+    if (Object.keys(userUpdates).length > 1) {
+      await ctx.db.patch(args.id, userUpdates)
+    }
+
+    const updatedUser = await ctx.db.get(args.id)
+    const updatedMembership = await ctx.db.get(membership._id)
+    return { ...updatedUser, role: updatedMembership?.role }
   },
 })
 

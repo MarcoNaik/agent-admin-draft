@@ -403,6 +403,8 @@ export const getUserRoles = query({
       })
     )
 
-    return rolesWithDetails.filter((r) => r.role !== null)
+    return rolesWithDetails.filter(
+      (r) => r.role !== null && r.role.organizationId === auth.organizationId
+    )
   },
 })
