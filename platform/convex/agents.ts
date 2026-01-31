@@ -12,11 +12,10 @@ export const list = query({
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
 
-    let q = ctx.db
+    const agents = await ctx.db
       .query("agents")
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-
-    const agents = await q.collect()
+      .collect()
 
     if (args.status) {
       return agents.filter((a) => a.status === args.status)
@@ -425,12 +424,20 @@ export const compileSystemPrompt = query({
       threadMetadata: v.optional(v.any()),
     })),
   },
+  returns: v.union(
+    v.object({
+      raw: v.string(),
+      compiled: v.string(),
+      context: v.any(),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const agent = await ctx.db.get(args.agentId)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
-      throw new Error("Agent not found")
+      return null
     }
 
     const configId = args.environment === "production"
@@ -438,12 +445,12 @@ export const compileSystemPrompt = query({
       : agent.developmentConfigId
 
     if (!configId) {
-      throw new Error(`No ${args.environment} configuration found`)
+      return null
     }
 
     const config = await ctx.db.get(configId)
     if (!config) {
-      throw new Error("Configuration not found")
+      return null
     }
 
     const sampleContext = args.sampleContext || {}
