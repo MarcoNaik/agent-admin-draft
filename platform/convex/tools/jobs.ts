@@ -6,6 +6,8 @@ import { Id } from "../_generated/dataModel"
 export const jobEnqueue = internalMutation({
   args: {
     organizationId: v.id("organizations"),
+    actorId: v.string(),
+    actorType: v.string(),
     jobType: v.string(),
     payload: v.any(),
     scheduledFor: v.optional(v.number()),
@@ -14,6 +16,10 @@ export const jobEnqueue = internalMutation({
     idempotencyKey: v.optional(v.string()),
     entityId: v.optional(v.string()),
   },
+  returns: v.object({
+    id: v.id("jobs"),
+    existing: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     if (args.idempotencyKey) {
       const existing = await ctx.db
@@ -27,6 +33,27 @@ export const jobEnqueue = internalMutation({
 
       if (existing) {
         return { id: existing._id, existing: true }
+      }
+    }
+
+    let roleIds: string[] = []
+    if (args.actorType === "user") {
+      const userRoles = await ctx.db
+        .query("userRoles")
+        .withIndex("by_user", (q) => q.eq("userId", args.actorId as Id<"users">))
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("expiresAt"), undefined),
+            q.gt(q.field("expiresAt"), Date.now())
+          )
+        )
+        .collect()
+
+      for (const ur of userRoles) {
+        const role = await ctx.db.get(ur.roleId)
+        if (role && role.organizationId === args.organizationId) {
+          roleIds.push(ur.roleId)
+        }
       }
     }
 
@@ -45,6 +72,11 @@ export const jobEnqueue = internalMutation({
       maxAttempts: args.maxAttempts ?? 3,
       scheduledFor,
       createdAt: now,
+      actorContext: {
+        actorType: args.actorType,
+        actorId: args.actorId,
+        roleIds,
+      },
     })
 
     const delay = Math.max(0, scheduledFor - now)
@@ -59,6 +91,26 @@ export const jobStatus = internalQuery({
     organizationId: v.id("organizations"),
     id: v.string(),
   },
+  returns: v.object({
+    id: v.id("jobs"),
+    jobType: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("claimed"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("dead")
+    ),
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    result: v.optional(v.any()),
+    errorMessage: v.optional(v.string()),
+    scheduledFor: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }),
   handler: async (ctx, args) => {
     const job = await ctx.db.get(args.id as Id<"jobs">)
 
