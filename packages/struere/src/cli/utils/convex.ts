@@ -557,13 +557,19 @@ export interface SyncPayload {
 
 export interface SyncResult {
   success: boolean
-  entityTypes?: { created: string[]; updated: string[]; deleted: string[] }
-  roles?: { created: string[]; updated: string[]; deleted: string[] }
-  agents?: { created: string[]; updated: string[]; deleted: string[] }
+  entityTypes?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
+  roles?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
+  agents?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
+  packResourcesPreserved?: boolean
   error?: string
 }
 
-export async function syncOrganization(payload: SyncPayload): Promise<SyncResult> {
+export interface SyncOptions extends SyncPayload {
+  preservePackResources?: boolean
+  preserveUnmanagedAgents?: boolean
+}
+
+export async function syncOrganization(payload: SyncOptions): Promise<SyncResult> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   const token = apiKey || credentials?.token
@@ -600,8 +606,9 @@ export async function syncOrganization(payload: SyncPayload): Promise<SyncResult
 
 export interface SyncState {
   agents: Array<{ slug: string; name: string; version: string; hasDevConfig: boolean; hasProdConfig: boolean }>
-  entityTypes: Array<{ slug: string; name: string }>
-  roles: Array<{ name: string; policyCount: number }>
+  entityTypes: Array<{ slug: string; name: string; isPackManaged?: boolean }>
+  roles: Array<{ name: string; policyCount: number; isPackManaged?: boolean }>
+  installedPacks?: Array<{ packId: string; version: string; entityTypeCount: number; roleCount: number }>
 }
 
 export async function getSyncState(): Promise<{ state?: SyncState; error?: string }> {

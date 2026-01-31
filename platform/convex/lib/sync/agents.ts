@@ -26,9 +26,10 @@ export async function syncAgents(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   agents: AgentInput[],
-  userId?: Id<"users">
-): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
-  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
+  userId?: Id<"users">,
+  preserveUnmanaged?: boolean
+): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
+  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], preserved: [] as string[] }
   const now = Date.now()
 
   const existingAgents = await ctx.db
@@ -70,11 +71,15 @@ export async function syncAgents(
 
   for (const existing of activeAgents) {
     if (!inputSlugs.has(existing.slug)) {
-      await ctx.db.patch(existing._id, {
-        status: "deleted",
-        updatedAt: now,
-      })
-      result.deleted.push(existing.slug)
+      if (preserveUnmanaged) {
+        result.preserved.push(existing.slug)
+      } else {
+        await ctx.db.patch(existing._id, {
+          status: "deleted",
+          updatedAt: now,
+        })
+        result.deleted.push(existing.slug)
+      }
     }
   }
 

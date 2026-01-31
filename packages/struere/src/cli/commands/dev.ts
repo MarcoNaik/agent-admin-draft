@@ -7,7 +7,7 @@ import { existsSync, writeFileSync } from 'fs'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
 import { performLogin } from './login'
-import { syncOrganization } from '../utils/convex'
+import { syncOrganization, getSyncState } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { getClaudeMDV2 } from '../templates'
@@ -75,10 +75,61 @@ export const devCommand = new Command('dev')
              message.includes('expired')
     }
 
+    spinner.start('Checking remote state')
+
+    const { state: remoteState, error: stateError } = await getSyncState()
+
+    if (stateError) {
+      if (isAuthError(new Error(stateError))) {
+        spinner.fail('Session expired - re-authenticating...')
+        clearCredentials()
+        credentials = await performLogin()
+        if (!credentials) {
+          console.log(chalk.red('Authentication failed'))
+          process.exit(1)
+        }
+      } else {
+        spinner.fail('Failed to fetch remote state')
+        console.log(chalk.red('Error:'), stateError)
+        process.exit(1)
+      }
+    } else {
+      spinner.succeed('Remote state fetched')
+    }
+
+    if (remoteState?.installedPacks && remoteState.installedPacks.length > 0) {
+      console.log()
+      console.log(chalk.cyan('Installed packs detected:'))
+      for (const pack of remoteState.installedPacks) {
+        console.log(chalk.gray('  •'), `${pack.packId} v${pack.version}`, chalk.gray(`(${pack.entityTypeCount} types, ${pack.roleCount} roles)`))
+      }
+      console.log(chalk.gray('  Pack resources will be preserved during sync.'))
+      console.log()
+    }
+
+    if (remoteState?.agents && remoteState.agents.length > 0) {
+      const localResources = await loadAllResources(cwd)
+      const localSlugs = new Set(localResources.agents.map((a) => a.slug))
+      const unmanagedAgents = remoteState.agents.filter((a) => !localSlugs.has(a.slug))
+
+      if (unmanagedAgents.length > 0) {
+        console.log(chalk.cyan('Existing agents not in local files:'))
+        for (const agent of unmanagedAgents) {
+          console.log(chalk.gray('  •'), agent.name, chalk.gray(`(${agent.slug})`))
+        }
+        console.log(chalk.gray('  These agents will be preserved during sync.'))
+        console.log()
+      }
+    }
+
     const performSync = async (): Promise<boolean> => {
       const resources = await loadAllResources(cwd)
       const payload = extractSyncPayload(resources)
-      const result = await syncOrganization(payload)
+      const result = await syncOrganization({
+        ...payload,
+        preservePackResources: true,
+        preserveUnmanagedAgents: true,
+      })
       if (!result.success) {
         throw new Error(result.error || 'Sync failed')
       }

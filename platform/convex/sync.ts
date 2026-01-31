@@ -77,27 +77,44 @@ export const syncOrganization = mutation({
         ),
       })
     ),
+    preservePackResources: v.optional(v.boolean()),
+    preserveUnmanagedAgents: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
+    const installedPacks = await ctx.db
+      .query("installedPacks")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .collect()
+
+    const packEntityTypeIds = new Set(
+      installedPacks.flatMap((p) => p.entityTypeIds.map((id) => id.toString()))
+    )
+    const packRoleIds = new Set(
+      installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
+    )
+
     const entityTypeResult = await syncEntityTypes(
       ctx,
       auth.organizationId,
-      args.entityTypes
+      args.entityTypes,
+      args.preservePackResources !== false ? packEntityTypeIds : undefined
     )
 
     const roleResult = await syncRoles(
       ctx,
       auth.organizationId,
-      args.roles
+      args.roles,
+      args.preservePackResources !== false ? packRoleIds : undefined
     )
 
     const agentResult = await syncAgents(
       ctx,
       auth.organizationId,
       args.agents,
-      auth.userId
+      auth.userId,
+      args.preserveUnmanagedAgents !== false
     )
 
     return {
@@ -105,6 +122,7 @@ export const syncOrganization = mutation({
       entityTypes: entityTypeResult,
       roles: roleResult,
       agents: agentResult,
+      packResourcesPreserved: installedPacks.length > 0,
     }
   },
 })
@@ -174,13 +192,38 @@ export const getSyncState = query({
       })
     )
 
+    const installedPacks = await ctx.db
+      .query("installedPacks")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .collect()
+
+    const packEntityTypeIds = new Set(
+      installedPacks.flatMap((p) => p.entityTypeIds.map((id) => id.toString()))
+    )
+    const packRoleIds = new Set(
+      installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
+    )
+
     return {
       agents: agentStates,
       entityTypes: entityTypes.map((t) => ({
         slug: t.slug,
         name: t.name,
+        isPackManaged: packEntityTypeIds.has(t._id.toString()),
       })),
-      roles: roleWithPolicyCounts,
+      roles: roleWithPolicyCounts.map((r) => {
+        const role = nonSystemRoles.find((nr) => nr.name === r.name)
+        return {
+          ...r,
+          isPackManaged: role ? packRoleIds.has(role._id.toString()) : false,
+        }
+      }),
+      installedPacks: installedPacks.map((p) => ({
+        packId: p.packId,
+        version: p.version,
+        entityTypeCount: p.entityTypeIds.length,
+        roleCount: p.roleIds.length,
+      })),
     }
   },
 })
