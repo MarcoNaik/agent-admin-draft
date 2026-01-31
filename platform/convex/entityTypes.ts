@@ -2,9 +2,11 @@ import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
+import { buildActorContext, assertCanPerform } from "./lib/permissions"
 
 export const list = query({
   args: {},
+  returns: v.array(v.any()),
   handler: async (ctx) => {
     const auth = await getAuthContext(ctx)
 
@@ -17,6 +19,7 @@ export const list = query({
 
 export const get = query({
   args: { id: v.id("entityTypes") },
+  returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const entityType = await ctx.db.get(args.id)
@@ -31,6 +34,7 @@ export const get = query({
 
 export const getBySlug = query({
   args: { slug: v.string() },
+  returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
 
@@ -52,8 +56,17 @@ export const create = mutation({
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
   },
+  returns: v.id("entityTypes"),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const actor = await buildActorContext(ctx, {
+      organizationId: auth.organizationId,
+      actorType: auth.actorType,
+      actorId: auth.userId,
+    })
+
+    await assertCanPerform(ctx, actor, "create", "entityType")
+
     const slug = args.slug || generateSlug(args.name)
 
     const existing = await ctx.db
@@ -91,6 +104,7 @@ export const update = mutation({
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
   },
+  returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     const entityType = await ctx.db.get(args.id)
@@ -98,6 +112,14 @@ export const update = mutation({
     if (!entityType || entityType.organizationId !== auth.organizationId) {
       throw new Error("Entity type not found")
     }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: auth.organizationId,
+      actorType: auth.actorType,
+      actorId: auth.userId,
+    })
+
+    await assertCanPerform(ctx, actor, "update", "entityType")
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() }
     if (args.name !== undefined) updates.name = args.name
@@ -114,6 +136,7 @@ export const update = mutation({
 
 export const remove = mutation({
   args: { id: v.id("entityTypes") },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     const entityType = await ctx.db.get(args.id)
@@ -121,6 +144,14 @@ export const remove = mutation({
     if (!entityType || entityType.organizationId !== auth.organizationId) {
       throw new Error("Entity type not found")
     }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: auth.organizationId,
+      actorType: auth.actorType,
+      actorId: auth.userId,
+    })
+
+    await assertCanPerform(ctx, actor, "delete", "entityType")
 
     const entities = await ctx.db
       .query("entities")
