@@ -13,11 +13,25 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_clerk_org", ["clerkOrgId"]),
 
+  projects: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    color: v.optional(v.string()),
+    archivedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_slug", ["organizationId", "slug"]),
+
   users: defineTable({
     email: v.string(),
     name: v.optional(v.string()),
     clerkUserId: v.string(),
     organizationId: v.id("organizations"),
+    activeProjectId: v.optional(v.id("projects")),
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -29,6 +43,7 @@ export default defineSchema({
 
   agents: defineTable({
     organizationId: v.id("organizations"),
+    projectId: v.optional(v.id("projects")),
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
@@ -39,7 +54,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_slug", ["organizationId", "slug"]),
+    .index("by_org_slug", ["organizationId", "slug"])
+    .index("by_project", ["projectId"]),
 
   agentConfigs: defineTable({
     agentId: v.id("agents"),
@@ -107,7 +123,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_slug", ["organizationId", "slug"]),
+    .index("by_org_slug", ["organizationId", "slug"])
+    .index("by_slug", ["slug"]),
 
   entities: defineTable({
     organizationId: v.id("organizations"),
@@ -115,12 +132,14 @@ export default defineSchema({
     status: v.string(),
     data: v.any(),
     searchText: v.optional(v.string()),
+    providerReference: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   })
     .index("by_org_type", ["organizationId", "entityTypeId"])
     .index("by_org_type_status", ["organizationId", "entityTypeId", "status"])
+    .index("by_provider_reference", ["providerReference"])
     .searchIndex("search_text", { searchField: "searchText" }),
 
   entityRelations: defineTable({
@@ -179,6 +198,13 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
+    actorContext: v.optional(
+      v.object({
+        actorType: v.string(),
+        actorId: v.string(),
+        roleIds: v.array(v.string()),
+      })
+    ),
   })
     .index("by_org_status", ["organizationId", "status"])
     .index("by_idempotency", ["organizationId", "idempotencyKey"])
@@ -195,7 +221,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_name", ["organizationId", "name"]),
+    .index("by_org_name", ["organizationId", "name"])
+    .index("by_org_isSystem", ["organizationId", "isSystem"]),
 
   policies: defineTable({
     organizationId: v.id("organizations"),
@@ -294,7 +321,98 @@ export default defineSchema({
     installedBy: v.optional(v.id("users")),
     entityTypeIds: v.array(v.id("entityTypes")),
     roleIds: v.array(v.id("roles")),
+    status: v.optional(v.union(v.literal("active"), v.literal("upgrading"), v.literal("failed"))),
+    customizations: v.optional(v.object({
+      entityTypes: v.array(v.string()),
+      roles: v.array(v.string()),
+      policies: v.array(v.string()),
+    })),
+    lastUpgradedAt: v.optional(v.number()),
+    lastUpgradedBy: v.optional(v.id("users")),
+    upgradeHistory: v.optional(v.array(v.object({
+      fromVersion: v.string(),
+      toVersion: v.string(),
+      upgradedAt: v.number(),
+      upgradedBy: v.optional(v.id("users")),
+    }))),
   })
     .index("by_org", ["organizationId"])
     .index("by_org_pack", ["organizationId", "packId"]),
+
+  whatsappConversations: defineTable({
+    organizationId: v.id("organizations"),
+    phoneNumber: v.string(),
+    whatsappId: v.string(),
+    entityType: v.union(v.literal("guardian"), v.literal("teacher"), v.null()),
+    entityId: v.union(v.id("entities"), v.null()),
+    lastInboundAt: v.union(v.number(), v.null()),
+    lastOutboundAt: v.union(v.number(), v.null()),
+    windowExpiresAt: v.union(v.number(), v.null()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_phone", ["organizationId", "phoneNumber"]),
+
+  whatsappTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    language: v.string(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    category: v.union(v.literal("UTILITY"), v.literal("MARKETING"), v.literal("AUTHENTICATION")),
+    components: v.object({
+      header: v.optional(v.object({
+        type: v.union(v.literal("text"), v.literal("image"), v.literal("document")),
+        text: v.optional(v.string()),
+      })),
+      body: v.object({
+        text: v.string(),
+        variables: v.array(v.string()),
+      }),
+      footer: v.optional(v.object({
+        text: v.string(),
+      })),
+      buttons: v.optional(v.array(v.object({
+        type: v.union(v.literal("url"), v.literal("quick_reply")),
+        text: v.string(),
+        url: v.optional(v.string()),
+      }))),
+    }),
+    metaTemplateId: v.union(v.string(), v.null()),
+    approvedAt: v.union(v.number(), v.null()),
+    rejectedReason: v.union(v.string(), v.null()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_name", ["organizationId", "name"]),
+
+  whatsappMessages: defineTable({
+    organizationId: v.id("organizations"),
+    direction: v.union(v.literal("inbound"), v.literal("outbound")),
+    phoneNumber: v.string(),
+    templateName: v.optional(v.string()),
+    messageId: v.string(),
+    type: v.optional(v.string()),
+    text: v.optional(v.string()),
+    status: v.union(v.literal("sent"), v.literal("delivered"), v.literal("read"), v.literal("failed"), v.literal("received")),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_phone", ["organizationId", "phoneNumber"])
+    .index("by_message_id", ["messageId"]),
+
+  integrationConfigs: defineTable({
+    organizationId: v.id("organizations"),
+    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    config: v.any(),
+    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
+    lastVerifiedAt: v.union(v.number(), v.null()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_provider", ["organizationId", "provider"])
+    .index("by_provider", ["provider"])
+    .index("by_provider_status", ["provider", "status"]),
 })
