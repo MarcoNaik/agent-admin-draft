@@ -1,4 +1,7 @@
+import { ActionCtx } from "../_generated/server"
+import { internal } from "../_generated/api"
 import { Id } from "../_generated/dataModel"
+import { ActorContext, PermissionError } from "./permissions/types"
 
 const MAX_RESULT_SIZE = 10 * 1024
 
@@ -7,6 +10,7 @@ export interface TemplateContext {
   userId?: Id<"users">
   threadId: Id<"threads">
   agentId: Id<"agents">
+  actor: ActorContext
   agent: { name: string; slug: string }
   thread: { metadata?: Record<string, unknown> }
   message: string
@@ -143,7 +147,53 @@ function resolveNestedTemplates(text: string, context: TemplateContext): string 
   return result
 }
 
+async function resolveTemplateFunction(
+  runQuery: ActionCtx["runQuery"],
+  name: string,
+  args: Record<string, unknown>,
+  context: TemplateContext
+): Promise<unknown> {
+  try {
+    if (name === "entity.query") {
+      const queryArgs = args as { type: string }
+      const results = await runQuery(internal.permissions.queryEntitiesAsActorQuery, {
+        actor: {
+          organizationId: context.actor.organizationId,
+          actorType: context.actor.actorType,
+          actorId: context.actor.actorId,
+          roleIds: context.actor.roleIds,
+        },
+        entityTypeSlug: queryArgs.type,
+      })
+      return results
+    }
+
+    if (name === "entity.get") {
+      const getArgs = args as { type: string; id: string }
+      const result = await runQuery(internal.permissions.getEntityAsActorQuery, {
+        actor: {
+          organizationId: context.actor.organizationId,
+          actorType: context.actor.actorType,
+          actorId: context.actor.actorId,
+          roleIds: context.actor.roleIds,
+        },
+        entityTypeSlug: getArgs.type,
+        entityId: getArgs.id as Id<"entities">,
+      })
+      return result
+    }
+
+    return null
+  } catch (error) {
+    if (error instanceof PermissionError) {
+      return []
+    }
+    throw error
+  }
+}
+
 async function executeTemplateFunction(
+  runQuery: ActionCtx["runQuery"] | undefined,
   name: string,
   argsRaw: string,
   context: TemplateContext,
@@ -157,6 +207,23 @@ async function executeTemplateFunction(
     args = resolvedArgsRaw.trim() ? JSON.parse(resolvedArgsRaw) : {}
   } catch {
     return `[TEMPLATE_ERROR: ${name} - invalid JSON arguments]`
+  }
+
+  if (runQuery && (name === "entity.query" || name === "entity.get")) {
+    try {
+      const result = await resolveTemplateFunction(runQuery, name, args, context)
+      const stringified = JSON.stringify(result)
+      if (stringified.length > MAX_RESULT_SIZE) {
+        return stringified.slice(0, MAX_RESULT_SIZE) + "...[truncated]"
+      }
+      return stringified
+    } catch (error) {
+      if (error instanceof PermissionError) {
+        return "[]"
+      }
+      const message = error instanceof Error ? error.message : "execution failed"
+      return `[TEMPLATE_ERROR: ${name} - ${message}]`
+    }
   }
 
   const tool = tools.find((t) => t.name === name)
@@ -183,6 +250,9 @@ async function executeTemplateFunction(
 
     return stringified
   } catch (error) {
+    if (error instanceof PermissionError) {
+      return "[]"
+    }
     const message = error instanceof Error ? error.message : "execution failed"
     return `[TEMPLATE_ERROR: ${name} - ${message}]`
   }
@@ -192,7 +262,8 @@ export async function processTemplates(
   systemPrompt: string,
   context: TemplateContext,
   tools: ToolConfig[],
-  executor: ToolExecutor
+  executor: ToolExecutor,
+  runQuery?: ActionCtx["runQuery"]
 ): Promise<string> {
   const templates = parseTemplates(systemPrompt)
 
@@ -234,7 +305,7 @@ export async function processTemplates(
 
   const functionResults = await Promise.all(
     functionTemplates.map((t) =>
-      executeTemplateFunction(t.name, t.argsRaw ?? "", context, tools, executor)
+      executeTemplateFunction(runQuery, t.name, t.argsRaw ?? "", context, tools, executor)
     )
   )
 
