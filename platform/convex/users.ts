@@ -7,10 +7,19 @@ export const get = query({
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const user = await ctx.db.get(args.id)
-    if (!user || user.organizationId !== auth.organizationId) {
+    if (!user) {
       throw new Error("User not found")
     }
-    return user
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+    if (!membership) {
+      throw new Error("User not found in organization")
+    }
+    return { ...user, role: membership.role }
   },
 })
 
@@ -43,44 +52,20 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const auth = await getAuthContext(ctx)
-    return await ctx.db
-      .query("users")
+    const memberships = await ctx.db
+      .query("userOrganizations")
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .filter((q) => q.eq(q.field("deletedAt"), undefined))
       .collect()
-  },
-})
 
-export const create = mutation({
-  args: {
-    email: v.string(),
-    name: v.optional(v.string()),
-    clerkUserId: v.string(),
-    organizationId: v.id("organizations"),
-    role: v.optional(
-      v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))
-    ),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", args.clerkUserId))
-      .first()
+    const users = await Promise.all(
+      memberships.map(async (membership) => {
+        const user = await ctx.db.get(membership.userId)
+        if (!user || user.deletedAt) return null
+        return { ...user, role: membership.role }
+      })
+    )
 
-    if (existing) {
-      throw new Error("User already exists")
-    }
-
-    const now = Date.now()
-    return await ctx.db.insert("users", {
-      email: args.email,
-      name: args.name,
-      clerkUserId: args.clerkUserId,
-      organizationId: args.organizationId,
-      role: args.role ?? "member",
-      createdAt: now,
-      updatedAt: now,
-    })
+    return users.filter((u): u is NonNullable<typeof u> => u !== null)
   },
 })
 
@@ -88,21 +73,28 @@ export const update = mutation({
   args: {
     id: v.id("users"),
     name: v.optional(v.string()),
-    role: v.optional(
-      v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))
-    ),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     const user = await ctx.db.get(args.id)
 
-    if (!user || user.organizationId !== auth.organizationId) {
+    if (!user) {
       throw new Error("User not found")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("User not found in organization")
     }
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() }
     if (args.name !== undefined) updates.name = args.name
-    if (args.role !== undefined) updates.role = args.role
 
     await ctx.db.patch(args.id, updates)
     return await ctx.db.get(args.id)
@@ -115,21 +107,31 @@ export const remove = mutation({
     const auth = await requireAuth(ctx)
     const user = await ctx.db.get(args.id)
 
-    if (!user || user.organizationId !== auth.organizationId) {
+    if (!user) {
       throw new Error("User not found")
     }
 
-    await ctx.db.patch(args.id, { deletedAt: Date.now() })
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("User not found in organization")
+    }
+
+    await ctx.db.delete(membership._id)
     return { success: true }
   },
 })
 
-export const getOrCreateFromClerk = internalMutation({
+export const getOrCreateFromClerkNoOrg = internalMutation({
   args: {
     clerkUserId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -138,6 +140,12 @@ export const getOrCreateFromClerk = internalMutation({
       .first()
 
     if (existing) {
+      if (args.name && args.name !== existing.name) {
+        await ctx.db.patch(existing._id, {
+          name: args.name,
+          updatedAt: Date.now(),
+        })
+      }
       return existing._id
     }
 
@@ -146,8 +154,6 @@ export const getOrCreateFromClerk = internalMutation({
       email: args.email,
       name: args.name,
       clerkUserId: args.clerkUserId,
-      organizationId: args.organizationId,
-      role: "member",
       createdAt: now,
       updatedAt: now,
     })
@@ -172,30 +178,18 @@ export const ensureUser = mutation({
       .first()
 
     if (existing) {
-      return { userId: existing._id, organizationId: existing.organizationId, created: false }
+      return { userId: existing._id, created: false }
     }
 
     const now = Date.now()
-    const slug = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "-")
-
-    const organizationId = await ctx.db.insert("organizations", {
-      name: name ? `${name}'s Workspace` : "My Workspace",
-      slug: `${slug}-${now}`,
-      plan: "free",
-      createdAt: now,
-      updatedAt: now,
-    })
-
     const userId = await ctx.db.insert("users", {
       email,
       name,
       clerkUserId,
-      organizationId,
-      role: "owner",
       createdAt: now,
       updatedAt: now,
     })
 
-    return { userId, organizationId, created: true }
+    return { userId, created: true }
   },
 })
