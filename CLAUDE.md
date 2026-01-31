@@ -495,7 +495,7 @@ NEXT_PUBLIC_CONVEX_URL=https://struere.convex.cloud
 
 ## Struere Package (packages/struere)
 
-Unified SDK and CLI package for building AI agents.
+Unified SDK and CLI package for building AI agents. **Organization-centric architecture** - manage all agents, entity types, roles, and permissions from a single project.
 
 ### Installation
 ```bash
@@ -503,143 +503,213 @@ npm install struere
 npx struere init
 ```
 
+### Project Structure (v2)
+```
+my-org/
+├── struere.json              # Organization config (v2.0)
+├── agents/
+│   ├── scheduler.ts          # Agent definition
+│   ├── support.ts
+│   └── index.ts              # Re-exports all agents
+├── entity-types/
+│   ├── teacher.ts            # Entity type schema
+│   ├── student.ts
+│   └── index.ts
+├── roles/
+│   ├── admin.ts              # Role + policies + scope rules + field masks
+│   ├── teacher.ts
+│   └── index.ts
+├── tools/
+│   └── index.ts              # Shared custom tools
+└── struere.config.ts
+```
+
+### struere.json (v2 Schema)
+```json
+{
+  "version": "2.0",
+  "organization": {
+    "id": "org_abc123",
+    "slug": "acme-corp",
+    "name": "Acme Corp"
+  }
+}
+```
+
 ### SDK Exports
 ```typescript
-import { defineAgent, defineTools, defineContext, defineConfig } from 'struere'
+import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole } from 'struere'
 ```
 
 - `defineAgent(config)` - Creates/validates agent configurations
 - `defineTools(tools)` - Validates and wraps tool definitions
-- `defineContext(fn)` - Wraps context functions with error handling
 - `defineConfig(config)` - Creates framework config with defaults
+- `defineEntityType(config)` - Creates entity type schema definitions
+- `defineRole(config)` - Creates role with policies, scope rules, field masks
 
 ### Key Types
-- **AgentConfig**: name, version, systemPrompt, model, tools, state, context
-- **ModelConfig**: provider (anthropic/openai/google/custom), name, temperature, maxTokens
-- **ToolReference**: name, description, parameters, handler
-- **FrameworkConfig**: port, host, cors, logging, auth
+- **AgentConfigV2**: name, slug, version, systemPrompt, model, tools (string array of tool names)
+- **EntityTypeConfig**: name, slug, schema, searchFields, displayConfig
+- **RoleConfig**: name, description, policies, scopeRules, fieldMasks
+- **PolicyConfig**: resource, actions, effect, priority
+- **ScopeRuleConfig**: entityType, field, operator, value
+- **FieldMaskConfig**: entityType, fieldPath, maskType, maskConfig
 
-### Default Model
-Anthropic claude-sonnet-4-20250514, temperature 0.7, 4096 tokens
+### Definition Examples
+
+**Agent** (`agents/scheduler.ts`):
+```typescript
+import { defineAgent } from 'struere'
+
+export default defineAgent({
+  name: "Scheduler",
+  slug: "scheduler",
+  version: "0.1.0",
+  systemPrompt: "You are a scheduling assistant...",
+  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  tools: ["entity.create", "entity.query", "event.emit"],
+})
+```
+
+**Entity Type** (`entity-types/teacher.ts`):
+```typescript
+import { defineEntityType } from 'struere'
+
+export default defineEntityType({
+  name: "Teacher",
+  slug: "teacher",
+  schema: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      email: { type: "string", format: "email" },
+      hourlyRate: { type: "number" },
+    },
+    required: ["name", "email"],
+  },
+  searchFields: ["name", "email"],
+})
+```
+
+**Role** (`roles/teacher.ts`):
+```typescript
+import { defineRole } from 'struere'
+
+export default defineRole({
+  name: "teacher",
+  description: "Tutors who conduct sessions",
+  policies: [
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow", priority: 50 },
+    { resource: "payment", actions: ["*"], effect: "deny", priority: 100 },
+  ],
+  scopeRules: [
+    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
+  ],
+  fieldMasks: [
+    { entityType: "session", fieldPath: "data.paymentId", maskType: "hide" },
+  ],
+})
+```
 
 ### CLI Commands
 | Command | Purpose |
 |---------|---------|
-| `init` | Initialize new Struere project |
-| `dev` | Sync agent config to Convex (live reload) |
-| `build` | Bundle and validate agent configuration |
-| `deploy` | Deploy agent to production |
+| `init` | Initialize org-centric project, scaffold directories |
+| `dev` | Watch all files, sync everything to Convex on change |
+| `deploy` | Deploy all agents to production |
+| `add <type> <name>` | Scaffold new agent/entity-type/role |
+| `status` | Compare local vs remote state |
 | `login/logout` | Browser-based OAuth authentication |
 | `whoami` | Display current logged-in user |
-| `validate` | Validate agent configuration |
-| `test` | Run YAML-based test conversations |
-| `logs` | View recent execution logs |
-| `state` | Inspect conversation thread state |
+
+### CLI Auto-Run Behavior
+Commands automatically run prerequisites without manual intervention:
+- **No `struere.json`?** → Auto-runs `init`
+- **Not logged in?** → Auto-runs `login`
 
 ### CLI Architecture
 
 **Entry Point**: `src/cli/index.ts`
 - Uses Commander.js for command parsing
 - Version check against npm on startup (2s timeout)
-- Skippable via `STRUERE_SKIP_UPDATE_CHECK`
 
 **Command Files** (`src/cli/commands/`):
-| File | Lines | Purpose |
-|------|-------|---------|
-| `init.ts` | 316 | Project initialization with agent creation |
-| `dev.ts` | 424 | Live sync with chokidar file watching |
-| `deploy.ts` | 140 | Production deployment |
-| `login.ts` | 213 | Browser-based OAuth flow |
-| `logout.ts` | 24 | Clear credentials |
-| `whoami.ts` | 67 | Display current user/org |
-| `build.ts` | 73 | Bundle and validate |
-| `validate.ts` | 84 | Configuration validation |
-| `test.ts` | 276 | YAML-based conversation testing |
-| `logs.ts` | 62 | View execution logs |
-| `state.ts` | 64 | Inspect thread state |
+| File | Purpose |
+|------|---------|
+| `init.ts` | Org-centric project initialization |
+| `dev.ts` | Bulk sync with chokidar file watching |
+| `deploy.ts` | Deploy all agents to production |
+| `add.ts` | Scaffold new resources |
+| `status.ts` | Compare local vs remote state |
+| `login.ts` | Browser-based OAuth flow |
+| `logout.ts` | Clear credentials |
+| `whoami.ts` | Display current user/org |
 
-### Authentication Flow
-
-**Login Process** (`login.ts`):
-1. Start local HTTP server on port 9876
-2. Open browser to `https://app.struere.dev/authorize?callback=...`
-3. Receive token via callback redirect
-4. Fetch user info via Convex API
-5. Save credentials with 30-day expiration
-
-**Credentials Storage** (`~/.struere/credentials.json`):
-```typescript
-{
-  token: string
-  apiKey?: string
-  user: { id, email, name, organizationId }
-  organization: { id, name, slug }
-  expiresAt: string (ISO 8601)
-}
-```
-File permissions: `0o600` (owner read/write only)
+**Utility Files** (`src/cli/utils/`):
+| File | Purpose |
+|------|---------|
+| `loader.ts` | Load agents, entity types, roles from directories |
+| `extractor.ts` | Build sync payload from loaded resources |
+| `project.ts` | Load/save struere.json (v1 and v2) |
+| `convex.ts` | API calls (syncOrganization, getSyncState, deployAllAgents) |
+| `scaffold.ts` | Create files for new resources |
+| `credentials.ts` | Auth token management |
 
 ### CLI-Convex Sync Mechanism
 
 **Dev Command Flow** (`dev.ts`):
-1. Load project from `struere.json`
-2. Load agent definition from `src/agent.ts`
-3. Extract config via `extractConfig(agent)`
-4. Sync to Convex via HTTP POST to `/api/mutation`
-5. Watch files with chokidar (src/, struere.config.ts)
-6. Re-sync on any file change
+1. Auto-init if no `struere.json`
+2. Auto-login if not authenticated
+3. Load all resources from `agents/`, `entity-types/`, `roles/`, `tools/`
+4. Build sync payload via `extractSyncPayload()`
+5. Sync to Convex via `syncOrganization()` mutation
+6. Watch directories with chokidar
+7. Re-sync on any file change (add/change/delete)
 
-**Config Extraction** (`utils/convex.ts`):
-- Identifies 11 built-in tools (marked `isBuiltin: true`)
-- Extracts handler code from custom tools via regex
-- Resolves async system prompts
-- Default model: claude-sonnet-4-20250514
+**Sync Payload**:
+```typescript
+{
+  agents: [...],      // All agent configs
+  entityTypes: [...], // All entity type schemas
+  roles: [...]        // All roles with policies, scope rules, field masks
+}
+```
 
 **Sync HTTP Request**:
 ```
 POST /api/mutation
 Authorization: Bearer {token}
-Body: { path: "agents:syncDevelopment", args: { agentId, config } }
+Body: { path: "sync:syncOrganization", args: { agents, entityTypes, roles } }
 ```
 
-### Scaffolding System
+### Convex Sync Functions (`platform/convex/sync.ts`)
 
-**Files Created by `struere init`**:
+| Function | Purpose |
+|----------|---------|
+| `syncOrganization` | Bulk sync all resources (upsert by slug/name) |
+| `getSyncState` | Get current remote state for comparison |
+| `deployAllAgents` | Deploy all agents to production |
+
+**Sync Helpers** (`platform/convex/lib/sync/`):
 | File | Purpose |
 |------|---------|
-| `struere.json` | Project metadata (agentId, team, agent slug/name) |
-| `.env.local` | STRUERE_DEPLOYMENT_URL |
-| `package.json` | Dependencies, scripts (dev, build, deploy) |
-| `tsconfig.json` | TypeScript config (ES2022, bundler) |
-| `struere.config.ts` | Framework config (port, CORS, logging) |
-| `src/agent.ts` | Agent definition template |
-| `src/tools.ts` | Example tool definitions |
-| `src/workflows/.gitkeep` | Placeholder |
-| `tests/basic.test.yaml` | Sample test conversation |
-| `.env.example` | API key examples |
-| `CLAUDE.md` | Project documentation |
-| `.gitignore` | Standard ignores + .env.local |
-
-**Template Functions** (`templates/index.ts`):
-- `getPackageJson(name)` - NPM package setup
-- `getTsConfig()` - TypeScript configuration
-- `getStruereConfig()` - Framework defaults
-- `getAgentTs(name)` - Agent definition template
-- `getToolsTs()` - Sample tools (get_current_time, calculate)
-- `getBasicTestYaml()` - Test conversation template
-- `getClaudeMD(name)` - Project documentation
+| `entityTypes.ts` | Upsert entity types by slug |
+| `roles.ts` | Upsert roles with policies, scope rules, field masks |
+| `agents.ts` | Upsert agents with configs |
 
 ### Key Files
-- `src/index.ts` - SDK exports
+- `src/index.ts` - SDK exports (defineAgent, defineEntityType, defineRole, etc.)
 - `src/types.ts` - TypeScript type definitions
-- `src/define/` - SDK implementation
+- `src/define/agent.ts` - Agent definition function
+- `src/define/entityType.ts` - Entity type definition function
+- `src/define/role.ts` - Role definition function
 - `src/cli/index.ts` - CLI entry point
 - `src/cli/commands/` - Command implementations
-- `src/cli/utils/` - Utilities (credentials, convex, scaffold)
+- `src/cli/utils/` - Utilities
 - `src/cli/templates/` - Project scaffolding templates
 
 ### Configuration Files
-- `struere.json` - Project metadata (agentId, team, slug)
+- `struere.json` - Organization metadata (v2 schema)
 - `struere.config.ts` - Framework config (port, CORS, logging)
 - `~/.struere/credentials.json` - Auth tokens
 
@@ -648,35 +718,34 @@ Body: { path: "agents:syncDevelopment", args: { agentId, config } }
 - `STRUERE_API_KEY` - For production deployments
 - `STRUERE_AUTH_URL` - Auth callback URL (default: app.struere.dev)
 
-## Agent Creation Flow
+## Agent/Resource Creation Flow
+
+### Via CLI (`struere add`)
+```
+1. Auto-init if needed
+2. struere add agent my-agent
+3. Scaffold agents/my-agent.ts with template
+4. struere dev to sync
+```
 
 ### Via CLI (`struere init`)
 ```
-1. Check existing project (struere.json)
-2. Load/obtain credentials (login if needed)
-3. Derive/confirm project name → slugify
-4. Fetch existing agents (listAgents)
-5. Select: create new OR link existing
-6. Create agent via Convex mutation
-7. Write project config (struere.json, .env.local)
-8. Scaffold agent files (src/agent.ts, etc.)
-9. Run bun install
-10. Sync initial config to Convex
-11. Success → "Run struere dev"
+1. Auto-login if needed
+2. Create project structure (agents/, entity-types/, roles/, tools/)
+3. Write struere.json with organization info
+4. Run bun install
 ```
 
 ### Via Dashboard (/agents/new)
 ```
 1. User fills form (name, slug, description)
-2. Slug auto-generated from name (user can edit)
-3. Click Create Agent
-4. useCreateAgent() mutation
-5. Convex creates agent record (no config yet)
-6. Redirect to /agents/{agentId}
-7. User must sync from CLI to add configuration
+2. Click Create Agent
+3. useCreateAgent() mutation
+4. Convex creates agent record
+5. Redirect to /agents/{agentId}
 ```
 
-### Agent Database Structure
+### Database Structure
 
 **agents table**:
 - organizationId, name, slug, description
