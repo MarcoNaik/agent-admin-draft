@@ -17,6 +17,16 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        cream: {
+          DEFAULT: '#F5F1E8',
+          card: '#E8E4D4',
+        },
+        forest: {
+          DEFAULT: '#1B4332',
+          accent: '#2D5A45',
+        },
+      },
       fontFamily: {
         "space": ["var(--font-space-mono)", "monospace"],
         "share": ["var(--font-share-tech)", "monospace"],

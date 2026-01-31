@@ -17,13 +17,13 @@ export default function Home() {
 function BlueprintBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-      <div className="absolute inset-0 bg-[#0a1628]" />
+      <div className="absolute inset-0 bg-[#F5F1E8]" />
       <div
         className="absolute inset-0"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(200, 210, 220, 0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.02) 1px, transparent 1px)
+            linear-gradient(rgba(27, 67, 50, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.04) 1px, transparent 1px)
           `,
           backgroundSize: '80px 80px',
         }}
@@ -59,7 +59,7 @@ function TypewriterText({ text, delay = 0 }: { text: string; delay?: number }) {
     <span>
       {displayText}
       {started && displayText.length < text.length && (
-        <span className="inline-block w-[2px] h-[0.85em] bg-[#e8ecf0] ml-1 animate-pulse" />
+        <span className="inline-block w-[2px] h-[0.85em] bg-[#1B4332] ml-1 animate-pulse" />
       )}
     </span>
   )
@@ -120,30 +120,30 @@ function HeroSection() {
         <div className="lg:max-w-xl">
           <RevealText>
             <div className="mb-1">
-              <h1 className="text-2xl md:text-3xl text-[#f5f7fa] tracking-tight">
+              <h1 className="text-2xl md:text-3xl text-[#1B4332] tracking-tight">
                 <TypewriterText text="Struere" delay={300} />
               </h1>
             </div>
-            <p className="text-[9px] text-[#6b7c8d] tracking-[0.3em] uppercase">
+            <p className="text-[9px] text-[#2D5A45] tracking-[0.3em] uppercase opacity-70">
               Agent Factory
             </p>
           </RevealText>
 
           <RevealText delay={200}>
-            <p className="mt-14 text-sm md:text-base text-[#e8ecf0] leading-relaxed max-w-md">
+            <p className="mt-14 text-sm md:text-base text-[#1B4332] leading-relaxed max-w-md">
               Earn money building AI agents.
             </p>
           </RevealText>
 
           <RevealText delay={300}>
-            <p className="mt-6 text-[11px] text-[#8b9cad] leading-[1.95] max-w-md">
+            <p className="mt-6 text-[11px] text-[#1B4332] leading-[1.95] max-w-md opacity-70">
               We give you tools to build AI agents and sell them to small businesses. You describe what the agent does. We handle the tech. You set your price.
             </p>
           </RevealText>
 
-          <div className="mt-16 space-y-5 text-[#8b9cad] text-[11px] leading-[1.95]">
+          <div className="mt-16 space-y-5 text-[#1B4332] text-[11px] leading-[1.95] opacity-70">
             <RevealText delay={400}>
-              <p className="text-[9px] text-[#6b7c8d] tracking-[0.3em] uppercase mb-4">
+              <p className="text-[9px] text-[#2D5A45] tracking-[0.3em] uppercase mb-4 opacity-70">
                 Example
               </p>
               <p>
@@ -164,7 +164,7 @@ function HeroSection() {
             </RevealText>
 
             <RevealText delay={700}>
-              <p className="text-[#e8ecf0] mt-8">
+              <p className="text-[#1B4332] mt-8 opacity-100">
                 {"That's it."}
               </p>
               <p className="mt-4">
@@ -174,8 +174,8 @@ function HeroSection() {
           </div>
 
           <RevealText delay={800}>
-            <div className="mt-20 pt-12 border-t border-[#2a3a4a]">
-              <p className="text-[9px] text-[#6b7c8d] tracking-[0.3em] uppercase mb-10">
+            <div className="mt-20 pt-12 border-t border-[#2D5A45]/30">
+              <p className="text-[9px] text-[#2D5A45] tracking-[0.3em] uppercase mb-10 opacity-70">
                 {"You don't need to code. You need:"}
               </p>
               <div className="grid md:grid-cols-3 gap-8 text-[11px]">
@@ -186,9 +186,9 @@ function HeroSection() {
                 ].map((item, i) => (
                   <div
                     key={i}
-                    className="text-[#9aa8b5] flex items-start gap-3"
+                    className="text-[#1B4332] flex items-start gap-3 opacity-80"
                   >
-                    <span className="text-[#4a5a6a] text-[10px] font-medium mt-px">
+                    <span className="text-[#2D5A45] text-[10px] font-medium mt-px opacity-60">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span className="leading-[1.8]">{item}</span>
@@ -201,25 +201,25 @@ function HeroSection() {
 
         <div className="lg:max-w-sm lg:flex lg:flex-col lg:justify-end mt-20 lg:mt-0">
           <RevealText delay={900}>
-            <p className="text-[9px] text-[#6b7c8d] tracking-[0.3em] uppercase mb-6">Your terms</p>
+            <p className="text-[9px] text-[#2D5A45] tracking-[0.3em] uppercase mb-6 opacity-70">Your terms</p>
             <div className="space-y-3 mb-10">
               <div className="flex items-center gap-3">
-                <div className="w-1 h-1 bg-[#4a5a6a]" />
-                <span className="text-[11px] text-[#8b9cad]">Set your own price</span>
+                <div className="w-1 h-1 bg-[#2D5A45]" />
+                <span className="text-[11px] text-[#1B4332] opacity-70">Set your own price</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-1 h-1 bg-[#4a5a6a]" />
-                <span className="text-[11px] text-[#8b9cad]">Client pays net maintenance cost (under $100/mo)</span>
+                <div className="w-1 h-1 bg-[#2D5A45]" />
+                <span className="text-[11px] text-[#1B4332] opacity-70">Client pays net maintenance cost (under $100/mo)</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-1 h-1 bg-[#4a5a6a]" />
-                <span className="text-[11px] text-[#8b9cad]">Zero markup from Struere</span>
+                <div className="w-1 h-1 bg-[#2D5A45]" />
+                <span className="text-[11px] text-[#1B4332] opacity-70">Zero markup from Struere</span>
               </div>
             </div>
 
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-3">
-                <div className={`relative transition-all duration-300 ${isFocused ? 'ring-1 ring-[#3a4a5a]' : ''}`}>
+                <div className={`relative transition-all duration-300 ${isFocused ? 'ring-1 ring-[#2D5A45]/50' : ''}`}>
                   <input
                     type="email"
                     placeholder="email"
@@ -227,14 +227,14 @@ function HeroSection() {
                     onChange={(e) => setEmail(e.target.value)}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
-                    className="w-full bg-[#0a1628] border border-[#2a3a4a] text-[#e8ecf0] placeholder:text-[#4a5a6a] h-11 px-4 text-xs focus:outline-none transition-colors"
+                    className="w-full bg-[#FFFFFF] border border-[#2D5A45]/30 text-[#1B4332] placeholder:text-[#2D5A45]/50 h-11 px-4 text-xs focus:outline-none transition-colors"
                     required
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`relative bg-[#e8ecf0] text-[#0a1628] font-medium whitespace-nowrap h-11 px-6 text-xs transition-all duration-300 hover:bg-[#f5f7fa] disabled:opacity-70 ${
+                  className={`relative bg-[#1B4332] text-[#F5F1E8] font-medium whitespace-nowrap h-11 px-6 text-xs transition-all duration-300 hover:bg-[#2D5A45] disabled:opacity-70 ${
                     isButtonHovered ? "tracking-wider" : ""
                   }`}
                   onMouseEnter={() => setIsButtonHovered(true)}
@@ -311,14 +311,14 @@ function StepCard({ step, index }: { step: typeof steps[0]; index: number }) {
     >
       <div className="relative">
         <div className="flex items-start gap-4">
-          <span className="text-[10px] text-[#8b9cad] font-medium tracking-wider mt-0.5">
+          <span className="text-[10px] text-[#2D5A45] font-medium tracking-wider mt-0.5 opacity-70">
             {step.number}
           </span>
           <div>
-            <h3 className="text-xs text-[#e8ecf0] tracking-wide mb-2">
+            <h3 className="text-xs text-[#1B4332] tracking-wide mb-2">
               {step.title}
             </h3>
-            <p className="text-[11px] text-[#8b9cad] leading-[1.9]">
+            <p className="text-[11px] text-[#1B4332] leading-[1.9] opacity-70">
               {step.description}
             </p>
           </div>
@@ -347,21 +347,21 @@ function HowItWorks() {
   }, [])
 
   return (
-    <section className="relative bg-[#0d1a2e]">
+    <section className="relative bg-[#E8E4D4]">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(200, 210, 220, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.08) 1px, transparent 1px),
-            linear-gradient(rgba(200, 210, 220, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.03) 1px, transparent 1px)
+            linear-gradient(rgba(27, 67, 50, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.06) 1px, transparent 1px),
+            linear-gradient(rgba(27, 67, 50, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.02) 1px, transparent 1px)
           `,
           backgroundSize: '80px 80px, 80px 80px, 16px 16px, 16px 16px',
         }}
       />
 
-      <div className="absolute top-0 left-0 right-0 h-px bg-[#2a3a4a]" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-[#2D5A45]/20" />
 
       <div className="relative mx-auto max-w-2xl px-6 md:px-8 py-28">
         <div
@@ -371,12 +371,12 @@ function HowItWorks() {
           }`}
         >
           <div className="flex items-center gap-4 mb-4">
-            <div className="h-px w-8 bg-[#3a4a5a]" />
-            <span className="text-[9px] text-[#6b7c8d] tracking-[0.3em] uppercase">
+            <div className="h-px w-8 bg-[#2D5A45]/50" />
+            <span className="text-[9px] text-[#2D5A45] tracking-[0.3em] uppercase opacity-70">
               Process
             </span>
           </div>
-          <h2 className="text-lg text-[#f5f7fa] tracking-tight">
+          <h2 className="text-lg text-[#1B4332] tracking-tight">
             How it works
           </h2>
         </div>
@@ -424,10 +424,10 @@ function RealityCard({
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
       }`}
     >
-      <h3 className="text-xs text-[#e8ecf0] tracking-wide mb-3">
+      <h3 className="text-xs text-[#1B4332] tracking-wide mb-3">
         {title}
       </h3>
-      <p className="text-[11px] text-[#8b9cad] leading-[1.9]">
+      <p className="text-[11px] text-[#1B4332] leading-[1.9] opacity-70">
         {description}
       </p>
     </div>
@@ -453,22 +453,22 @@ function RealitySection() {
   }, [])
 
   return (
-    <section className="relative bg-[#0d1a2e]">
+    <section className="relative bg-[#E8E4D4]">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(200, 210, 220, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.08) 1px, transparent 1px),
-            linear-gradient(rgba(200, 210, 220, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.03) 1px, transparent 1px)
+            linear-gradient(rgba(27, 67, 50, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.06) 1px, transparent 1px),
+            linear-gradient(rgba(27, 67, 50, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.02) 1px, transparent 1px)
           `,
           backgroundSize: '80px 80px, 80px 80px, 16px 16px, 16px 16px',
         }}
       />
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6">
-        <div className="h-px bg-[#2a3a4a]" />
+        <div className="h-px bg-[#2D5A45]/20" />
       </div>
 
       <div className="relative mx-auto max-w-2xl px-6 md:px-8 py-24">
@@ -479,8 +479,8 @@ function RealitySection() {
           }`}
         >
           <div className="flex items-center gap-4">
-            <div className="h-px w-8 bg-[#3a4a5a]" />
-            <span className="text-[9px] text-[#6b7c8d] tracking-[0.3em] uppercase">
+            <div className="h-px w-8 bg-[#2D5A45]/50" />
+            <span className="text-[9px] text-[#2D5A45] tracking-[0.3em] uppercase opacity-70">
               The reality
             </span>
           </div>
@@ -523,33 +523,33 @@ function Footer() {
   }, [])
 
   return (
-    <footer ref={ref} className="relative bg-[#0d1a2e]">
+    <footer ref={ref} className="relative bg-[#E8E4D4]">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(200, 210, 220, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.08) 1px, transparent 1px),
-            linear-gradient(rgba(200, 210, 220, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(200, 210, 220, 0.03) 1px, transparent 1px)
+            linear-gradient(rgba(27, 67, 50, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.06) 1px, transparent 1px),
+            linear-gradient(rgba(27, 67, 50, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(27, 67, 50, 0.02) 1px, transparent 1px)
           `,
           backgroundSize: '80px 80px, 80px 80px, 16px 16px, 16px 16px',
         }}
       />
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6">
-        <div className="h-px bg-[#2a3a4a]" />
+        <div className="h-px bg-[#2D5A45]/20" />
       </div>
 
       <div className="relative mx-auto max-w-2xl px-6 md:px-8 py-20">
-        <p className={`text-center text-[10px] text-[#6b7c8d] tracking-wider transition-all duration-1000 ease-out ${
-          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        <p className={`text-center text-[10px] text-[#2D5A45] tracking-wider transition-all duration-1000 ease-out opacity-70 ${
+          isVisible ? "opacity-70 translate-y-0" : "opacity-0 translate-y-4"
         }`}>
           Struere: Agent Factory — AI agents for small businesses, built by people like you.
         </p>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-[#2a3a4a]" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-[#2D5A45]/20" />
     </footer>
   )
 }
