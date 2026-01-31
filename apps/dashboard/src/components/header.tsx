@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UserButton, useUser, useOrganization } from "@clerk/nextjs"
 import {
-  Zap,
   Sparkles,
   HelpCircle,
   ChevronsUpDown,
@@ -15,11 +14,11 @@ import {
   CreditCard,
   Clock,
   GraduationCap,
-  UserCheck,
   Globe,
   Code,
   Settings,
   User,
+  Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -32,6 +31,7 @@ import {
 import { useAgentContext } from "@/contexts/agent-context"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 type NavItem = {
   name: string
@@ -344,6 +344,7 @@ export function Header() {
               <HelpCircle className="h-4 w-4" />
               <span className="hidden md:block">Support</span>
             </button>
+            <ThemeToggle />
           </div>
           <div className="rounded-md p-1 transition-colors hover:bg-background-tertiary">
             <UserButton />
