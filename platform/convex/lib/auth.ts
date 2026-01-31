@@ -8,15 +8,24 @@ export interface AuthContext {
   actorType: "user" | "agent" | "system" | "webhook"
 }
 
+interface ClerkIdentity {
+  subject: string
+  email?: string
+  name?: string
+  nickname?: string
+  org_id?: string
+}
+
 export async function getAuthContext(
   ctx: QueryCtx | MutationCtx
 ): Promise<AuthContext> {
-  const identity = await ctx.auth.getUserIdentity()
+  const identity = await ctx.auth.getUserIdentity() as ClerkIdentity | null
   if (!identity) {
     throw new Error("Not authenticated")
   }
 
   const clerkUserId = identity.subject
+  const clerkOrgId = identity.org_id
 
   const user = await ctx.db
     .query("users")
@@ -27,9 +36,49 @@ export async function getAuthContext(
     throw new Error("User not found. Please ensure your account is provisioned.")
   }
 
+  if (clerkOrgId) {
+    const clerkOrg = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", clerkOrgId))
+      .first()
+
+    if (clerkOrg) {
+      const clerkMembership = await ctx.db
+        .query("userOrganizations")
+        .withIndex("by_user_org", (q) =>
+          q.eq("userId", user._id).eq("organizationId", clerkOrg._id)
+        )
+        .first()
+
+      if (clerkMembership) {
+        return {
+          userId: user._id,
+          organizationId: clerkOrg._id,
+          clerkUserId,
+          actorType: "user",
+        }
+      }
+    }
+  }
+
+  const firstMembership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .first()
+
+  if (!firstMembership) {
+    throw new Error("No organization found. Please create or join an organization.")
+  }
+
+  const fallbackOrg = await ctx.db.get(firstMembership.organizationId)
+
+  if (!fallbackOrg) {
+    throw new Error("Organization not found.")
+  }
+
   return {
     userId: user._id,
-    organizationId: user.organizationId,
+    organizationId: fallbackOrg._id,
     clerkUserId,
     actorType: "user",
   }
@@ -38,56 +87,7 @@ export async function getAuthContext(
 export async function getOrCreateAuthContext(
   ctx: MutationCtx
 ): Promise<AuthContext> {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) {
-    throw new Error("Not authenticated")
-  }
-
-  const clerkUserId = identity.subject
-  const email = identity.email ?? `${clerkUserId}@unknown.com`
-  const name = identity.name ?? identity.nickname ?? undefined
-
-  let user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", clerkUserId))
-    .first()
-
-  if (!user) {
-    const now = Date.now()
-    const slug = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "-")
-
-    const organizationId = await ctx.db.insert("organizations", {
-      name: name ? `${name}'s Organization` : "My Organization",
-      slug: `${slug}-${now}`,
-      plan: "free",
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    const userId = await ctx.db.insert("users", {
-      email,
-      name,
-      clerkUserId,
-      organizationId,
-      role: "owner",
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    return {
-      userId,
-      organizationId,
-      clerkUserId,
-      actorType: "user",
-    }
-  }
-
-  return {
-    userId: user._id,
-    organizationId: user.organizationId,
-    clerkUserId,
-    actorType: "user",
-  }
+  return getAuthContext(ctx)
 }
 
 export async function getAuthContextFromApiKey(
