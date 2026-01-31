@@ -32,32 +32,34 @@ export default function SettingsPage() {
         <p className="text-sm text-content-secondary">Organization and profile settings</p>
       </div>
 
-      <Card>
+      <Card className="bg-background-secondary">
         <CardHeader>
-          <CardTitle>Organization</CardTitle>
-          <CardDescription>Your organization details</CardDescription>
+          <CardTitle className="text-content-primary">Organization</CardTitle>
+          <CardDescription className="text-content-secondary">Your organization details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="org-name">Organization Name</Label>
+              <Label htmlFor="org-name" className="text-content-primary">Organization Name</Label>
               <Input
                 id="org-name"
                 defaultValue={organization?.name || ""}
                 disabled
+                className="bg-background-tertiary"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="org-slug">Slug</Label>
+              <Label htmlFor="org-slug" className="text-content-primary">Slug</Label>
               <Input
                 id="org-slug"
                 defaultValue={organization?.slug || ""}
                 disabled
+                className="bg-background-tertiary"
               />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Current Plan:</span>
+            <span className="text-sm text-content-secondary">Current Plan:</span>
             <Badge variant="secondary" className="capitalize">
               {organization?.plan || "free"}
             </Badge>
@@ -65,20 +67,20 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-background-secondary">
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Your personal information</CardDescription>
+          <CardTitle className="text-content-primary">Profile</CardTitle>
+          <CardDescription className="text-content-secondary">Your personal information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" defaultValue={user?.name || ""} disabled />
+              <Label htmlFor="name" className="text-content-primary">Name</Label>
+              <Input id="name" defaultValue={user?.name || ""} disabled className="bg-background-tertiary" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" defaultValue={user?.email || ""} disabled />
+              <Label htmlFor="email" className="text-content-primary">Email</Label>
+              <Input id="email" defaultValue={user?.email || ""} disabled className="bg-background-tertiary" />
             </div>
           </div>
         </CardContent>

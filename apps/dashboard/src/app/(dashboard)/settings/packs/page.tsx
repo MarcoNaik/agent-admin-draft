@@ -172,13 +172,13 @@ export default function PacksPage() {
 
   if (packs === undefined) {
     return (
-      <div className="mx-auto max-w-5xl space-y-8 p-6">
+      <div className="space-y-6">
         <div>
           <h1 className="text-xl font-semibold text-content-primary">Solution Packs</h1>
-          <p className="text-content-secondary">Pre-built configurations for common business domains</p>
+          <p className="text-sm text-content-secondary">Pre-built configurations for common business domains</p>
         </div>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     )
@@ -188,10 +188,10 @@ export default function PacksPage() {
   const availablePacks = packs.filter((p: PackData) => !p.isInstalled)
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 p-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-content-primary">Solution Packs</h1>
-        <p className="text-content-secondary">Pre-built configurations for common business domains</p>
+        <p className="text-sm text-content-secondary">Pre-built configurations for common business domains</p>
       </div>
 
       {installedPacks.length > 0 && (

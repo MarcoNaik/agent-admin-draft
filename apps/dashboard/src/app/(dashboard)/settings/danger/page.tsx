@@ -26,20 +26,20 @@ export default function DangerZonePage() {
         <p className="text-sm text-content-secondary">Irreversible and destructive actions</p>
       </div>
 
-      <Card className="border-destructive">
+      <Card className="border-destructive bg-background-secondary">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
             Delete Organization
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-content-secondary">
             Permanently delete this organization and all of its data. This action cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-4 bg-destructive/10 rounded-lg space-y-2">
             <p className="text-sm font-medium text-destructive">This will permanently delete:</p>
-            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+            <ul className="text-sm text-content-secondary list-disc list-inside space-y-1">
               <li>All agents and their configurations</li>
               <li>All entity types and entities</li>
               <li>All events, jobs, and execution history</li>

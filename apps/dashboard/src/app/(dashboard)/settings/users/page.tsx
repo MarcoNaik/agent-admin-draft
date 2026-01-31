@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import { ArrowLeft, Loader2, Shield, User, Crown } from "lucide-react"
+import { Loader2, Shield, User, Crown } from "lucide-react"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +15,8 @@ import {
 } from "@/components/ui/select"
 import { Doc, Id } from "@convex/_generated/dataModel"
 
+type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
+
 function UserRoleBadges({ userId }: { userId: Id<"users"> }) {
   const userRoles = useUserRoles(userId)
 
@@ -23,7 +24,7 @@ function UserRoleBadges({ userId }: { userId: Id<"users"> }) {
 
   return (
     <div className="flex flex-wrap gap-1">
-      {userRoles.map((ur) => (
+      {userRoles.map((ur: UserRoleWithDetails) => (
         <Badge key={ur._id} variant="secondary" className="text-xs">
           <Shield className="mr-1 h-3 w-3" />
           {ur.role?.name}
@@ -52,7 +53,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
   const handlePackRoleToggle = async (role: Doc<"roles">) => {
     setIsUpdating(true)
     try {
-      const hasRole = userRoles?.some((ur) => ur.roleId === role._id)
+      const hasRole = userRoles?.some((ur: UserRoleWithDetails) => ur.roleId === role._id)
       if (hasRole) {
         await removeRole({ userId: user._id, roleId: role._id })
       } else {
@@ -107,7 +108,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
               <span className="text-sm text-content-secondary">Pack Roles:</span>
               <div className="flex flex-wrap gap-1">
                 {roles.map((role) => {
-                  const hasRole = userRoles?.some((ur) => ur.roleId === role._id)
+                  const hasRole = userRoles?.some((ur: UserRoleWithDetails) => ur.roleId === role._id)
                   return (
                     <Button
                       key={role._id}
@@ -137,39 +138,25 @@ export default function UsersPage() {
 
   if (users === undefined || roles === undefined) {
     return (
-      <div className="mx-auto max-w-5xl space-y-6 p-6">
-        <div className="flex items-center gap-4">
-          <Link href="/settings">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-semibold text-content-primary">Users</h1>
-            <p className="text-content-secondary">Manage team members and their roles</p>
-          </div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold text-content-primary">Users</h1>
+          <p className="text-sm text-content-secondary">Manage team members and their roles</p>
         </div>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     )
   }
 
-  const packRoles = roles.filter((r) => !r.isSystem)
+  const packRoles = roles.filter((r: Doc<"roles">) => !r.isSystem)
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <div className="flex items-center gap-4">
-        <Link href="/settings">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-xl font-semibold text-content-primary">Users</h1>
-          <p className="text-content-secondary">Manage team members and their roles</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-content-primary">Users</h1>
+        <p className="text-sm text-content-secondary">Manage team members and their roles</p>
       </div>
 
       <Card className="bg-background-secondary">
@@ -183,7 +170,7 @@ export default function UsersPage() {
           {users.length === 0 ? (
             <div className="py-8 text-center text-content-secondary">No users found</div>
           ) : (
-            users.map((user) => (
+            users.map((user: Doc<"users">) => (
               <UserRow key={user._id} user={user} roles={packRoles} />
             ))
           )}

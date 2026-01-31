@@ -138,19 +138,19 @@ export default function ApiKeysPage() {
         </Dialog>
       </div>
 
-      <Card>
+      <Card className="bg-background-secondary">
         <CardHeader>
-          <CardTitle>Your API Keys</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-content-primary">Your API Keys</CardTitle>
+          <CardDescription className="text-content-secondary">
             API keys allow external applications to access your data
           </CardDescription>
         </CardHeader>
         <CardContent>
           {apiKeys.length === 0 ? (
             <div className="py-8 text-center">
-              <Key className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No API keys yet</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <Key className="mx-auto mb-4 h-10 w-10 text-content-secondary/50" />
+              <p className="text-sm text-content-secondary">No API keys yet</p>
+              <p className="text-xs text-content-secondary mt-1">
                 Create an API key to get started
               </p>
             </div>
@@ -159,14 +159,14 @@ export default function ApiKeysPage() {
               {apiKeys.map((key: Doc<"apiKeys">) => (
                 <div
                   key={key._id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
+                  className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-background-tertiary"
                 >
                   <div className="flex items-center gap-3">
-                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <Key className="h-4 w-4 text-content-secondary" />
                     <div>
-                      <p className="text-sm font-medium">{key.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {key.prefix}...
+                      <p className="text-sm font-medium text-content-primary">{key.name}</p>
+                      <p className="text-xs text-content-secondary font-mono">
+                        {key.keyPrefix}...
                       </p>
                     </div>
                   </div>

@@ -57,10 +57,10 @@ export default function BillingPage() {
         <p className="text-sm text-content-secondary">Manage your subscription and payment methods</p>
       </div>
 
-      <Card>
+      <Card className="bg-background-secondary">
         <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-          <CardDescription>You are currently on the {currentPlan} plan</CardDescription>
+          <CardTitle className="text-content-primary">Current Plan</CardTitle>
+          <CardDescription className="text-content-secondary">You are currently on the {currentPlan} plan</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
@@ -68,7 +68,7 @@ export default function BillingPage() {
               {currentPlan}
             </Badge>
             {currentPlan === "free" && (
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-content-secondary">
                 Upgrade to unlock more features
               </span>
             )}
@@ -80,21 +80,21 @@ export default function BillingPage() {
         {plans.map((plan) => {
           const isCurrent = plan.name.toLowerCase() === currentPlan
           return (
-            <Card key={plan.name} className={isCurrent ? "border-primary" : ""}>
+            <Card key={plan.name} className={`bg-background-secondary ${isCurrent ? "border-primary" : ""}`}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>{plan.name}</CardTitle>
+                  <CardTitle className="text-content-primary">{plan.name}</CardTitle>
                   {isCurrent && <Badge>Current</Badge>}
                 </div>
                 <CardDescription>
                   <span className="text-2xl font-bold text-content-primary">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className="text-content-secondary">{plan.period}</span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <ul className="space-y-2">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm">
+                    <li key={feature} className="flex items-center gap-2 text-sm text-content-secondary">
                       <Check className="h-4 w-4 text-primary" />
                       {feature}
                     </li>
@@ -111,15 +111,15 @@ export default function BillingPage() {
         })}
       </div>
 
-      <Card>
+      <Card className="bg-background-secondary">
         <CardHeader>
-          <CardTitle>Payment Method</CardTitle>
-          <CardDescription>Manage your payment information</CardDescription>
+          <CardTitle className="text-content-primary">Payment Method</CardTitle>
+          <CardDescription className="text-content-secondary">Manage your payment information</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3 p-3 border rounded-lg">
-            <CreditCard className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">No payment method on file</span>
+          <div className="flex items-center gap-3 p-3 border border-border/50 rounded-lg bg-background-tertiary">
+            <CreditCard className="h-5 w-5 text-content-secondary" />
+            <span className="text-sm text-content-secondary">No payment method on file</span>
           </div>
           <Button variant="outline" className="mt-4">
             Add Payment Method
