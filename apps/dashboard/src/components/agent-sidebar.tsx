@@ -4,34 +4,22 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Activity,
-  Database,
-  Code,
-  FileText,
   ScrollText,
-  Clock,
   Settings,
   Cpu,
+  Wrench,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 interface AgentSidebarProps {
   agentId: string
 }
 
 const navItems = [
-  { icon: Activity, label: "Health", href: "" },
+  { icon: Activity, label: "Overview", href: "" },
   { icon: Cpu, label: "Config", href: "/config" },
-  { icon: Database, label: "Data", href: "/data" },
-  { icon: Code, label: "Functions", href: "/functions" },
-  { icon: FileText, label: "Files", href: "/files" },
+  { icon: Wrench, label: "Tools", href: "/functions" },
   { icon: ScrollText, label: "Logs", href: "/logs" },
-  { icon: Clock, label: "History", href: "/history" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
 
@@ -40,8 +28,13 @@ export function AgentSidebar({ agentId }: AgentSidebarProps) {
   const basePath = `/agents/${agentId}`
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <nav className="flex w-14 flex-col items-center gap-2 border-r bg-background-secondary py-4">
+    <nav className="flex w-48 flex-col border-r bg-background-secondary">
+      <div className="px-3 py-4">
+        <span className="text-xs font-medium text-content-tertiary uppercase tracking-wider">
+          Agent
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5 px-2">
         {navItems.map((item) => {
           const fullPath = `${basePath}${item.href}`
           const isActive =
@@ -50,27 +43,22 @@ export function AgentSidebar({ agentId }: AgentSidebarProps) {
               : pathname.startsWith(fullPath)
 
           return (
-            <Tooltip key={item.label}>
-              <TooltipTrigger asChild>
-                <Link
-                  href={fullPath}
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                    isActive
-                      ? "bg-util-accent text-white"
-                      : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>{item.label}</p>
-              </TooltipContent>
-            </Tooltip>
+            <Link
+              key={item.label}
+              href={fullPath}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground font-medium"
+                  : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Link>
           )
         })}
-      </nav>
-    </TooltipProvider>
+      </div>
+    </nav>
   )
 }
