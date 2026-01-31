@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useOrganizationList } from "@clerk/nextjs"
+import { useOrganizationList, useUser } from "@clerk/nextjs"
 import { Loader2, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,7 @@ export default function CreateOrganizationPage() {
   const [name, setName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { user } = useUser()
   const { createOrganization, setActive } = useOrganizationList()
 
   const handleCreate = async () => {
@@ -22,6 +23,9 @@ export default function CreateOrganizationPage() {
 
     try {
       const org = await createOrganization({ name: name.trim() })
+      if (user?.id) {
+        await org.updateMember({ userId: user.id, role: "org:owner" })
+      }
       await setActive?.({ organization: org.id })
       window.location.href = "/agents"
     } catch (err) {

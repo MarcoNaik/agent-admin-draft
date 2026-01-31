@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useOrganizationList } from "@clerk/nextjs"
+import { useOrganizationList, useUser } from "@clerk/nextjs"
 import { Loader2 } from "lucide-react"
 import {
   Dialog,
@@ -21,6 +21,7 @@ interface CreateOrgDialogProps {
 export function CreateOrgDialog({ open, onOpenChange, onSuccess }: CreateOrgDialogProps) {
   const [name, setName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+  const { user } = useUser()
   const { createOrganization, setActive } = useOrganizationList()
 
   const handleCreate = async () => {
@@ -29,6 +30,9 @@ export function CreateOrgDialog({ open, onOpenChange, onSuccess }: CreateOrgDial
     setIsCreating(true)
     try {
       const org = await createOrganization({ name: name.trim() })
+      if (user?.id) {
+        await org.updateMember({ userId: user.id, role: "org:owner" })
+      }
       await setActive?.({ organization: org.id })
       setName("")
       onOpenChange(false)
