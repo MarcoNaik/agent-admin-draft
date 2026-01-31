@@ -267,8 +267,19 @@ export const assignToUser = mutation({
     const auth = await requireAuth(ctx)
 
     const user = await ctx.db.get(args.userId)
-    if (!user || user.organizationId !== auth.organizationId) {
+    if (!user) {
       throw new Error("User not found")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("User not in organization")
     }
 
     const role = await ctx.db.get(args.roleId)
@@ -331,7 +342,18 @@ export const removeFromUser = mutation({
     }
 
     const user = await ctx.db.get(args.userId)
-    if (!user || user.organizationId !== auth.organizationId) {
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
       throw new Error("Access denied")
     }
 
@@ -346,8 +368,19 @@ export const getUserRoles = query({
     const auth = await getAuthContext(ctx)
 
     const user = await ctx.db.get(args.userId)
-    if (!user || user.organizationId !== auth.organizationId) {
+    if (!user) {
       throw new Error("User not found")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("User not in organization")
     }
 
     const userRoles = await ctx.db
