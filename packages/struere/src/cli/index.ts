@@ -11,6 +11,8 @@ import { stateCommand } from './commands/state'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { whoamiCommand } from './commands/whoami'
+import { addCommand } from './commands/add'
+import { statusCommand } from './commands/status'
 import pkg from '../../package.json'
 
 const CURRENT_VERSION = pkg.version
@@ -63,5 +65,8 @@ program.addCommand(deployCommand)
 program.addCommand(validateCommand)
 program.addCommand(logsCommand)
 program.addCommand(stateCommand)
+
+program.addCommand(addCommand)
+program.addCommand(statusCommand)
 
 program.parse()

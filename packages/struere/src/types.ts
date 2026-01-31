@@ -135,3 +135,92 @@ export interface ScalingConfig {
   maxInstances: number
   targetConcurrency?: number
 }
+
+export interface EntityTypeConfig {
+  name: string
+  slug: string
+  schema: JSONSchema
+  searchFields?: string[]
+  displayConfig?: {
+    titleField?: string
+    subtitleField?: string
+    descriptionField?: string
+  }
+}
+
+export interface JSONSchema {
+  type: 'object'
+  properties: Record<string, JSONSchemaProperty>
+  required?: string[]
+}
+
+export interface JSONSchemaProperty {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object'
+  description?: string
+  format?: string
+  enum?: string[]
+  items?: JSONSchemaProperty
+  properties?: Record<string, JSONSchemaProperty>
+  required?: string[]
+}
+
+export interface RoleConfig {
+  name: string
+  description?: string
+  policies: PolicyConfig[]
+  scopeRules?: ScopeRuleConfig[]
+  fieldMasks?: FieldMaskConfig[]
+}
+
+export interface PolicyConfig {
+  resource: string
+  actions: string[]
+  effect: 'allow' | 'deny'
+  priority?: number
+}
+
+export interface ScopeRuleConfig {
+  entityType: string
+  field: string
+  operator: 'eq' | 'ne' | 'in' | 'contains'
+  value: string
+}
+
+export interface FieldMaskConfig {
+  entityType: string
+  fieldPath: string
+  maskType: 'hide' | 'redact'
+  maskConfig?: Record<string, unknown>
+}
+
+export interface StruereProjectV2 {
+  version: '2.0'
+  organization: {
+    id: string
+    slug: string
+    name: string
+  }
+}
+
+export interface AgentConfigV2 {
+  name: string
+  slug: string
+  version: string
+  description?: string
+  systemPrompt: string | (() => string | Promise<string>)
+  model?: ModelConfig
+  tools?: string[]
+}
+
+export interface SyncPayload {
+  agents: AgentConfigV2[]
+  entityTypes: EntityTypeConfig[]
+  roles: RoleConfig[]
+  customTools?: ToolReference[]
+}
+
+export interface SyncState {
+  agents: Array<{ slug: string; name: string; version: string; hasDevConfig: boolean; hasProdConfig: boolean }>
+  entityTypes: Array<{ slug: string; name: string }>
+  roles: Array<{ name: string; policyCount: number }>
+}

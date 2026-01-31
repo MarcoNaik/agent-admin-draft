@@ -2,16 +2,24 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } fr
 import { join, dirname } from 'path'
 import {
   getPackageJson,
+  getPackageJsonV2,
   getTsConfig,
   getStruereConfig,
   getAgentTs,
+  getAgentTsV2,
   getToolsTs,
+  getToolsIndexTs,
   getBasicTestYaml,
   getEnvExample,
   getGitignore,
   getStruereJson,
+  getStruereJsonV2,
   getEnvLocal,
   getClaudeMD,
+  getClaudeMDV2,
+  getEntityTypeTs,
+  getRoleTs,
+  getIndexTs,
 } from '../templates'
 
 export interface ScaffoldOptions {
@@ -21,6 +29,13 @@ export interface ScaffoldOptions {
   agentSlug: string
   agentName: string
   deploymentUrl: string
+}
+
+export interface ScaffoldOptionsV2 {
+  projectName: string
+  orgId: string
+  orgSlug: string
+  orgName: string
 }
 
 export interface ScaffoldResult {
@@ -145,4 +160,128 @@ function updateGitignore(cwd: string, result: ScaffoldResult): void {
 
 export function hasAgentFiles(cwd: string): boolean {
   return existsSync(join(cwd, 'src', 'agent.ts'))
+}
+
+export function scaffoldProjectV2(cwd: string, options: ScaffoldOptionsV2): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const directories = [
+    'agents',
+    'entity-types',
+    'roles',
+    'tools',
+  ]
+
+  for (const dir of directories) {
+    const dirPath = join(cwd, dir)
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, { recursive: true })
+    }
+  }
+
+  const files: Record<string, string> = {
+    'struere.json': getStruereJsonV2(options.orgId, options.orgSlug, options.orgName),
+    'package.json': getPackageJsonV2(options.projectName),
+    'tsconfig.json': getTsConfig(),
+    'struere.config.ts': getStruereConfig(),
+    '.env.example': getEnvExample(),
+    '.gitignore': getGitignore(),
+    'CLAUDE.md': getClaudeMDV2(options.orgName),
+    'agents/index.ts': getIndexTs('agents'),
+    'entity-types/index.ts': getIndexTs('entity-types'),
+    'roles/index.ts': getIndexTs('roles'),
+    'tools/index.ts': getToolsIndexTs(),
+  }
+
+  for (const [relativePath, content] of Object.entries(files)) {
+    const fullPath = join(cwd, relativePath)
+    if (existsSync(fullPath)) {
+      continue
+    }
+    writeFile(cwd, relativePath, content)
+    result.createdFiles.push(relativePath)
+  }
+
+  return result
+}
+
+export function scaffoldAgent(cwd: string, name: string, slug: string): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const agentsDir = join(cwd, 'agents')
+  if (!existsSync(agentsDir)) {
+    mkdirSync(agentsDir, { recursive: true })
+  }
+
+  const fileName = `${slug}.ts`
+  const filePath = join(agentsDir, fileName)
+
+  if (existsSync(filePath)) {
+    return result
+  }
+
+  writeFileSync(filePath, getAgentTsV2(name, slug))
+  result.createdFiles.push(`agents/${fileName}`)
+
+  return result
+}
+
+export function scaffoldEntityType(cwd: string, name: string, slug: string): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const entityTypesDir = join(cwd, 'entity-types')
+  if (!existsSync(entityTypesDir)) {
+    mkdirSync(entityTypesDir, { recursive: true })
+  }
+
+  const fileName = `${slug}.ts`
+  const filePath = join(entityTypesDir, fileName)
+
+  if (existsSync(filePath)) {
+    return result
+  }
+
+  writeFileSync(filePath, getEntityTypeTs(name, slug))
+  result.createdFiles.push(`entity-types/${fileName}`)
+
+  return result
+}
+
+export function scaffoldRole(cwd: string, name: string): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const rolesDir = join(cwd, 'roles')
+  if (!existsSync(rolesDir)) {
+    mkdirSync(rolesDir, { recursive: true })
+  }
+
+  const fileName = `${name}.ts`
+  const filePath = join(rolesDir, fileName)
+
+  if (existsSync(filePath)) {
+    return result
+  }
+
+  writeFileSync(filePath, getRoleTs(name))
+  result.createdFiles.push(`roles/${fileName}`)
+
+  return result
+}
+
+export function hasV2Structure(cwd: string): boolean {
+  return existsSync(join(cwd, 'agents')) ||
+         existsSync(join(cwd, 'entity-types')) ||
+         existsSync(join(cwd, 'roles'))
 }

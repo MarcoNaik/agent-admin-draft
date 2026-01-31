@@ -21,7 +21,7 @@ interface AgentConfig {
   }>
 }
 
-interface SyncResult {
+interface AgentSyncResult {
   success: boolean
   error?: string
 }
@@ -35,7 +35,7 @@ interface DeployResult {
 export async function syncToConvex(
   agentId: string,
   config: AgentConfig
-): Promise<SyncResult> {
+): Promise<AgentSyncResult> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   const token = apiKey || credentials?.token
@@ -501,4 +501,167 @@ export async function runTestConversation(
     },
     threadId: result.threadId,
   }
+}
+
+export interface SyncPayload {
+  agents: Array<{
+    name: string
+    slug: string
+    version: string
+    description?: string
+    systemPrompt: string
+    model: {
+      provider: string
+      name: string
+      temperature?: number
+      maxTokens?: number
+    }
+    tools: Array<{
+      name: string
+      description: string
+      parameters: unknown
+      handlerCode?: string
+      isBuiltin: boolean
+    }>
+  }>
+  entityTypes: Array<{
+    name: string
+    slug: string
+    schema: unknown
+    searchFields?: string[]
+    displayConfig?: unknown
+  }>
+  roles: Array<{
+    name: string
+    description?: string
+    policies: Array<{
+      resource: string
+      actions: string[]
+      effect: 'allow' | 'deny'
+      priority?: number
+    }>
+    scopeRules?: Array<{
+      entityType: string
+      field: string
+      operator: string
+      value: string
+    }>
+    fieldMasks?: Array<{
+      entityType: string
+      fieldPath: string
+      maskType: 'hide' | 'redact'
+      maskConfig?: Record<string, unknown>
+    }>
+  }>
+}
+
+export interface SyncResult {
+  success: boolean
+  entityTypes?: { created: string[]; updated: string[]; deleted: string[] }
+  roles?: { created: string[]; updated: string[]; deleted: string[] }
+  agents?: { created: string[]; updated: string[]; deleted: string[] }
+  error?: string
+}
+
+export async function syncOrganization(payload: SyncPayload): Promise<SyncResult> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/mutation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'sync:syncOrganization',
+      args: payload,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { success: false, error }
+  }
+
+  const result = await response.json() as SyncResult
+  return result
+}
+
+export interface SyncState {
+  agents: Array<{ slug: string; name: string; version: string; hasDevConfig: boolean; hasProdConfig: boolean }>
+  entityTypes: Array<{ slug: string; name: string }>
+  roles: Array<{ name: string; policyCount: number }>
+}
+
+export async function getSyncState(): Promise<{ state?: SyncState; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'sync:getSyncState',
+      args: {},
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { error }
+  }
+
+  const result = await response.json() as { status: string; value?: SyncState }
+  return { state: result.value }
+}
+
+export interface DeployAllResult {
+  success: boolean
+  deployed?: string[]
+  skipped?: string[]
+  error?: string
+}
+
+export async function deployAllAgents(): Promise<DeployAllResult> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/mutation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'sync:deployAllAgents',
+      args: {},
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { success: false, error }
+  }
+
+  const result = await response.json() as DeployAllResult
+  return result
 }

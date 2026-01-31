@@ -1,0 +1,167 @@
+import { Command } from 'commander'
+import chalk from 'chalk'
+import ora from 'ora'
+import { loadCredentials, getApiKey } from '../utils/credentials'
+import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
+import { getSyncState } from '../utils/convex'
+import { loadAllResources } from '../utils/loader'
+
+export const statusCommand = new Command('status')
+  .description('Compare local vs remote state')
+  .action(async () => {
+    const spinner = ora()
+    const cwd = process.cwd()
+
+    console.log()
+    console.log(chalk.bold('Struere Status'))
+    console.log()
+
+    if (!hasProject(cwd)) {
+      console.log(chalk.yellow('No struere.json found'))
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
+      console.log()
+      process.exit(1)
+    }
+
+    const version = getProjectVersion(cwd)
+    if (version === '1.0') {
+      console.log(chalk.yellow('This is a v1 agent-centric project.'))
+      console.log(chalk.yellow('The status command requires v2 structure.'))
+      console.log()
+      process.exit(1)
+    }
+
+    const project = loadProjectV2(cwd)
+    if (!project) {
+      console.log(chalk.red('Failed to load struere.json'))
+      process.exit(1)
+    }
+
+    console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
+    console.log()
+
+    const credentials = loadCredentials()
+    const apiKey = getApiKey()
+
+    if (!credentials && !apiKey) {
+      console.log(chalk.red('Not authenticated'))
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
+      console.log()
+      process.exit(1)
+    }
+
+    spinner.start('Loading local resources')
+
+    let localResources
+    try {
+      localResources = await loadAllResources(cwd)
+      spinner.succeed('Local resources loaded')
+    } catch (error) {
+      spinner.fail('Failed to load local resources')
+      console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+      process.exit(1)
+    }
+
+    spinner.start('Fetching remote state')
+
+    const { state: remoteState, error: fetchError } = await getSyncState()
+
+    if (fetchError || !remoteState) {
+      spinner.fail('Failed to fetch remote state')
+      console.log(chalk.red('Error:'), fetchError || 'Unknown error')
+      process.exit(1)
+    }
+
+    spinner.succeed('Remote state fetched')
+    console.log()
+
+    const localAgentSlugs = new Set(localResources.agents.map((a) => a.slug))
+    const remoteAgentSlugs = new Set(remoteState.agents.map((a) => a.slug))
+
+    const localEntityTypeSlugs = new Set(localResources.entityTypes.map((et) => et.slug))
+    const remoteEntityTypeSlugs = new Set(remoteState.entityTypes.map((et) => et.slug))
+
+    const localRoleNames = new Set(localResources.roles.map((r) => r.name))
+    const remoteRoleNames = new Set(remoteState.roles.map((r) => r.name))
+
+    console.log(chalk.bold('Agents'))
+    console.log(chalk.gray('─'.repeat(60)))
+
+    if (localResources.agents.length === 0 && remoteState.agents.length === 0) {
+      console.log(chalk.gray('  No agents'))
+    } else {
+      for (const agent of localResources.agents) {
+        const remote = remoteState.agents.find((a) => a.slug === agent.slug)
+        if (remote) {
+          const statusIcon = remote.hasProdConfig ? chalk.green('●') : chalk.yellow('○')
+          console.log(`  ${statusIcon} ${chalk.cyan(agent.name)} (${agent.slug}) - v${agent.version}`)
+          if (!remote.hasProdConfig) {
+            console.log(chalk.gray('      Not deployed to production'))
+          }
+        } else {
+          console.log(`  ${chalk.blue('+')} ${chalk.cyan(agent.name)} (${agent.slug}) - ${chalk.blue('new')}`)
+        }
+      }
+
+      for (const remote of remoteState.agents) {
+        if (!localAgentSlugs.has(remote.slug)) {
+          console.log(`  ${chalk.red('-')} ${remote.name} (${remote.slug}) - ${chalk.red('will be deleted')}`)
+        }
+      }
+    }
+
+    console.log()
+    console.log(chalk.bold('Entity Types'))
+    console.log(chalk.gray('─'.repeat(60)))
+
+    if (localResources.entityTypes.length === 0 && remoteState.entityTypes.length === 0) {
+      console.log(chalk.gray('  No entity types'))
+    } else {
+      for (const et of localResources.entityTypes) {
+        const remote = remoteState.entityTypes.find((r) => r.slug === et.slug)
+        if (remote) {
+          console.log(`  ${chalk.green('●')} ${chalk.cyan(et.name)} (${et.slug})`)
+        } else {
+          console.log(`  ${chalk.blue('+')} ${chalk.cyan(et.name)} (${et.slug}) - ${chalk.blue('new')}`)
+        }
+      }
+
+      for (const remote of remoteState.entityTypes) {
+        if (!localEntityTypeSlugs.has(remote.slug)) {
+          console.log(`  ${chalk.red('-')} ${remote.name} (${remote.slug}) - ${chalk.red('will be deleted')}`)
+        }
+      }
+    }
+
+    console.log()
+    console.log(chalk.bold('Roles'))
+    console.log(chalk.gray('─'.repeat(60)))
+
+    if (localResources.roles.length === 0 && remoteState.roles.length === 0) {
+      console.log(chalk.gray('  No roles'))
+    } else {
+      for (const role of localResources.roles) {
+        const remote = remoteState.roles.find((r) => r.name === role.name)
+        if (remote) {
+          console.log(`  ${chalk.green('●')} ${chalk.cyan(role.name)} (${role.policies.length} policies)`)
+        } else {
+          console.log(`  ${chalk.blue('+')} ${chalk.cyan(role.name)} - ${chalk.blue('new')}`)
+        }
+      }
+
+      for (const remote of remoteState.roles) {
+        if (!localRoleNames.has(remote.name)) {
+          console.log(`  ${chalk.red('-')} ${remote.name} - ${chalk.red('will be deleted')}`)
+        }
+      }
+    }
+
+    console.log()
+    console.log(chalk.gray('Legend:'))
+    console.log(chalk.gray('  '), chalk.green('●'), 'Synced', chalk.yellow('○'), 'Not deployed', chalk.blue('+'), 'New', chalk.red('-'), 'Will be deleted')
+    console.log()
+    console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to sync changes'))
+    console.log()
+  })

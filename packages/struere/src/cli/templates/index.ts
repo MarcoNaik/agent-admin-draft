@@ -227,6 +227,279 @@ export function getEnvLocal(deploymentUrl: string): string {
 `
 }
 
+export function getEntityTypeTs(name: string, slug: string): string {
+  const displayName = name
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+
+  return `import { defineEntityType } from 'struere'
+
+export default defineEntityType({
+  name: "${displayName}",
+  slug: "${slug}",
+  schema: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "Name" },
+      email: { type: "string", format: "email", description: "Email address" },
+      status: { type: "string", enum: ["active", "inactive"], description: "Status" },
+    },
+    required: ["name"],
+  },
+  searchFields: ["name", "email"],
+})
+`
+}
+
+export function getRoleTs(name: string): string {
+  return `import { defineRole } from 'struere'
+
+export default defineRole({
+  name: "${name}",
+  description: "${name.charAt(0).toUpperCase() + name.slice(1)} role",
+  policies: [
+    { resource: "*", actions: ["list", "read"], effect: "allow", priority: 50 },
+  ],
+  scopeRules: [],
+  fieldMasks: [],
+})
+`
+}
+
+export function getAgentTsV2(name: string, slug: string): string {
+  const displayName = name
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+
+  return `import { defineAgent } from 'struere'
+
+export default defineAgent({
+  name: "${displayName}",
+  slug: "${slug}",
+  version: "0.1.0",
+  description: "${displayName} Agent",
+  model: {
+    provider: "anthropic",
+    name: "claude-sonnet-4-20250514",
+    temperature: 0.7,
+    maxTokens: 4096,
+  },
+  systemPrompt: \`You are ${displayName}, a helpful AI assistant.
+
+Current time: {{datetime}}
+
+Your capabilities:
+- Answer questions accurately and helpfully
+- Use available tools when appropriate
+- Maintain conversation context
+
+Always be concise, accurate, and helpful.\`,
+  tools: ["entity.query", "entity.get", "event.emit"],
+})
+`
+}
+
+export function getIndexTs(type: 'agents' | 'entity-types' | 'roles'): string {
+  return `// Export all ${type} from this directory
+// Example: export { default as myAgent } from './my-agent'
+`
+}
+
+export function getToolsIndexTs(): string {
+  return `import { defineTools } from 'struere'
+
+export const tools = defineTools([
+  {
+    name: 'get_current_time',
+    description: 'Get the current date and time',
+    parameters: {
+      type: 'object',
+      properties: {
+        timezone: {
+          type: 'string',
+          description: 'Timezone (e.g., "America/New_York", "UTC")',
+        },
+      },
+    },
+    handler: async (params) => {
+      const timezone = (params.timezone as string) || 'UTC'
+      const now = new Date()
+      return {
+        timestamp: now.toISOString(),
+        formatted: now.toLocaleString('en-US', { timeZone: timezone }),
+        timezone,
+      }
+    },
+  },
+])
+
+export default tools
+`
+}
+
+export function getStruereJsonV2(orgId: string, orgSlug: string, orgName: string): string {
+  return JSON.stringify(
+    {
+      version: '2.0',
+      organization: {
+        id: orgId,
+        slug: orgSlug,
+        name: orgName,
+      },
+    },
+    null,
+    2
+  )
+}
+
+export function getPackageJsonV2(name: string): string {
+  return JSON.stringify(
+    {
+      name,
+      version: '0.1.0',
+      type: 'module',
+      scripts: {
+        dev: 'struere dev',
+        build: 'struere build',
+        deploy: 'struere deploy',
+        status: 'struere status',
+      },
+      dependencies: {
+        struere: '^0.4.0',
+      },
+      devDependencies: {
+        'bun-types': '^1.0.0',
+        typescript: '^5.3.0',
+      },
+    },
+    null,
+    2
+  )
+}
+
+export function getClaudeMDV2(orgName: string): string {
+  return `# ${orgName} - Struere Project
+
+This is a Struere organization project. Struere is a framework for building production AI agents with built-in data management, RBAC permissions, and job scheduling.
+
+## Project Structure
+
+\`\`\`
+agents/              # Agent definitions
+├── scheduler.ts     # Example agent
+└── index.ts         # Re-exports all agents
+
+entity-types/        # Entity type schemas
+├── teacher.ts       # Example entity type
+└── index.ts         # Re-exports all entity types
+
+roles/               # Role + permission definitions
+├── admin.ts         # Example role with policies
+└── index.ts         # Re-exports all roles
+
+tools/               # Shared custom tools
+└── index.ts         # Custom tool definitions
+
+struere.json         # Organization configuration
+struere.config.ts    # Framework settings
+\`\`\`
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| \`struere dev\` | Watch and sync all resources to Convex |
+| \`struere deploy\` | Deploy all agents to production |
+| \`struere add <type> <name>\` | Scaffold new agent/entity-type/role |
+| \`struere status\` | Compare local vs remote state |
+
+## Defining Resources
+
+### Agents (\`agents/*.ts\`)
+
+\`\`\`typescript
+import { defineAgent } from 'struere'
+
+export default defineAgent({
+  name: "Scheduler",
+  slug: "scheduler",
+  version: "0.1.0",
+  systemPrompt: "You are a scheduling assistant...",
+  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  tools: ["entity.create", "entity.query", "event.emit"],
+})
+\`\`\`
+
+### Entity Types (\`entity-types/*.ts\`)
+
+\`\`\`typescript
+import { defineEntityType } from 'struere'
+
+export default defineEntityType({
+  name: "Teacher",
+  slug: "teacher",
+  schema: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      email: { type: "string", format: "email" },
+      hourlyRate: { type: "number" },
+    },
+    required: ["name", "email"],
+  },
+  searchFields: ["name", "email"],
+})
+\`\`\`
+
+### Roles (\`roles/*.ts\`)
+
+\`\`\`typescript
+import { defineRole } from 'struere'
+
+export default defineRole({
+  name: "teacher",
+  description: "Tutors who conduct sessions",
+  policies: [
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow", priority: 50 },
+    { resource: "payment", actions: ["*"], effect: "deny", priority: 100 },
+  ],
+  scopeRules: [
+    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
+  ],
+  fieldMasks: [
+    { entityType: "session", fieldPath: "data.paymentId", maskType: "hide" },
+  ],
+})
+\`\`\`
+
+## Built-in Tools
+
+| Tool | Description |
+|------|-------------|
+| \`entity.create\` | Create a new entity |
+| \`entity.get\` | Get entity by ID |
+| \`entity.query\` | Query entities by type/filters |
+| \`entity.update\` | Update entity data |
+| \`entity.delete\` | Soft-delete entity |
+| \`entity.link\` | Create entity relation |
+| \`entity.unlink\` | Remove entity relation |
+| \`event.emit\` | Emit custom event |
+| \`event.query\` | Query events |
+| \`job.enqueue\` | Schedule background job |
+| \`job.status\` | Get job status |
+
+## Development Workflow
+
+1. Run \`struere dev\` to start watching for changes
+2. Edit agents, entity types, or roles
+3. Changes are automatically synced to Convex
+4. Test via API or dashboard
+5. Run \`struere deploy\` when ready for production
+`
+}
+
 export function getClaudeMD(name: string): string {
   const displayName = name
     .split('-')

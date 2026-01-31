@@ -1,23 +1,21 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
-import { loadConfig } from '../utils/config'
-import { loadAgent } from '../utils/agent'
-import { validateAgent } from '../utils/validate'
 import { loadCredentials, getApiKey } from '../utils/credentials'
-import { hasProject, loadProject } from '../utils/project'
-import { syncToConvex, deployToProduction, extractConfig } from '../utils/convex'
+import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
+import { syncOrganization, deployAllAgents } from '../utils/convex'
+import { loadAllResources } from '../utils/loader'
+import { extractSyncPayload } from '../utils/extractor'
 
 export const deployCommand = new Command('deploy')
-  .description('Deploy agent to production')
+  .description('Deploy all agents to production')
   .option('--dry-run', 'Show what would be deployed without deploying')
   .action(async (options) => {
-    const environment = 'production'
     const spinner = ora()
     const cwd = process.cwd()
 
     console.log()
-    console.log(chalk.bold('Deploying Agent'))
+    console.log(chalk.bold('Deploying Agents'))
     console.log()
 
     if (!hasProject(cwd)) {
@@ -28,55 +26,28 @@ export const deployCommand = new Command('deploy')
       process.exit(1)
     }
 
-    const project = loadProject(cwd)
+    const version = getProjectVersion(cwd)
+    if (version === '1.0') {
+      console.log(chalk.yellow('This is a v1 agent-centric project.'))
+      console.log(chalk.yellow('Please migrate to v2 structure or use an older CLI version.'))
+      console.log()
+      process.exit(1)
+    }
+
+    const project = loadProjectV2(cwd)
     if (!project) {
       console.log(chalk.red('Failed to load struere.json'))
       process.exit(1)
     }
 
-    console.log(chalk.gray('Agent:'), chalk.cyan(project.agent.name))
+    console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
     console.log()
-
-    spinner.start('Loading configuration')
-    await loadConfig(cwd)
-    spinner.succeed('Configuration loaded')
-
-    spinner.start('Loading agent')
-    const agent = await loadAgent(cwd)
-    spinner.succeed(`Agent "${agent.name}" loaded`)
-
-    spinner.start('Validating agent')
-    const errors = validateAgent(agent)
-
-    if (errors.length > 0) {
-      spinner.fail('Validation failed')
-      console.log()
-      for (const error of errors) {
-        console.log(chalk.red('  x'), error)
-      }
-      console.log()
-      process.exit(1)
-    }
-    spinner.succeed('Agent validated')
-
-    if (options.dryRun) {
-      console.log()
-      console.log(chalk.yellow('Dry run mode - no changes will be made'))
-      console.log()
-      console.log('Would deploy:')
-      console.log(chalk.gray('  -'), `Agent: ${chalk.cyan(agent.name)}`)
-      console.log(chalk.gray('  -'), `Version: ${chalk.cyan(agent.version)}`)
-      console.log(chalk.gray('  -'), `Environment: ${chalk.cyan(environment)}`)
-      console.log(chalk.gray('  -'), `Agent ID: ${chalk.cyan(project.agentId)}`)
-      console.log()
-      return
-    }
 
     const credentials = loadCredentials()
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
-      spinner.fail('Not authenticated')
+      console.log(chalk.red('Not authenticated'))
       console.log()
       console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
       console.log(chalk.gray('Or set'), chalk.cyan('STRUERE_API_KEY'), chalk.gray('environment variable'))
@@ -84,15 +55,54 @@ export const deployCommand = new Command('deploy')
       process.exit(1)
     }
 
-    spinner.start('Extracting agent configuration')
+    spinner.start('Loading resources')
 
-    const config = extractConfig(agent)
-    spinner.succeed('Configuration extracted')
+    let resources
+    try {
+      resources = await loadAllResources(cwd)
+      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles`)
+    } catch (error) {
+      spinner.fail('Failed to load resources')
+      console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+      process.exit(1)
+    }
+
+    if (resources.agents.length === 0) {
+      console.log()
+      console.log(chalk.yellow('No agents found to deploy'))
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere add agent my-agent'), chalk.gray('to create an agent'))
+      console.log()
+      return
+    }
+
+    if (options.dryRun) {
+      console.log()
+      console.log(chalk.yellow('Dry run mode - no changes will be made'))
+      console.log()
+      console.log('Would deploy:')
+      for (const agent of resources.agents) {
+        console.log(chalk.gray('  -'), `${chalk.cyan(agent.name)} (${agent.slug}) v${agent.version}`)
+      }
+      console.log()
+      console.log('Entity types:')
+      for (const et of resources.entityTypes) {
+        console.log(chalk.gray('  -'), chalk.cyan(et.name), `(${et.slug})`)
+      }
+      console.log()
+      console.log('Roles:')
+      for (const role of resources.roles) {
+        console.log(chalk.gray('  -'), chalk.cyan(role.name))
+      }
+      console.log()
+      return
+    }
 
     spinner.start('Syncing to development')
 
     try {
-      const syncResult = await syncToConvex(project.agentId, config)
+      const payload = extractSyncPayload(resources)
+      const syncResult = await syncOrganization(payload)
       if (!syncResult.success) {
         throw new Error(syncResult.error || 'Sync failed')
       }
@@ -103,29 +113,41 @@ export const deployCommand = new Command('deploy')
       process.exit(1)
     }
 
-    spinner.start(`Deploying to ${environment}`)
+    spinner.start('Deploying to production')
 
     try {
-      const deployResult = await deployToProduction(project.agentId)
+      const deployResult = await deployAllAgents()
 
       if (!deployResult.success) {
         throw new Error(deployResult.error || 'Deployment failed')
       }
 
-      spinner.succeed(`Deployed to ${environment}`)
-
-      const prodUrl = `https://${project.agent.slug}.struere.dev`
+      spinner.succeed('Deployed to production')
 
       console.log()
-      console.log(chalk.green('Success!'), 'Agent deployed')
+      console.log(chalk.green('Success!'), 'All agents deployed')
       console.log()
-      console.log('Deployment details:')
-      console.log(chalk.gray('  -'), `Version: ${chalk.cyan(agent.version)}`)
-      console.log(chalk.gray('  -'), `Environment: ${chalk.cyan(environment)}`)
-      console.log(chalk.gray('  -'), `URL: ${chalk.cyan(prodUrl)}`)
+
+      if (deployResult.deployed && deployResult.deployed.length > 0) {
+        console.log('Deployed agents:')
+        for (const slug of deployResult.deployed) {
+          const agent = resources.agents.find((a) => a.slug === slug)
+          const prodUrl = `https://${slug}.struere.dev`
+          console.log(chalk.gray('  -'), chalk.cyan(agent?.name || slug), chalk.gray(`→ ${prodUrl}`))
+        }
+      }
+
+      if (deployResult.skipped && deployResult.skipped.length > 0) {
+        console.log()
+        console.log(chalk.yellow('Skipped (no development config):'))
+        for (const slug of deployResult.skipped) {
+          console.log(chalk.gray('  -'), slug)
+        }
+      }
+
       console.log()
-      console.log(chalk.gray('Test your agent:'))
-      console.log(chalk.gray('  $'), chalk.cyan(`curl -X POST ${prodUrl}/chat -H "Authorization: Bearer YOUR_API_KEY" -d '{"message": "Hello"}'`))
+      console.log(chalk.gray('Test your agents:'))
+      console.log(chalk.gray('  $'), chalk.cyan(`curl -X POST https://<agent-slug>.struere.dev/chat -H "Authorization: Bearer YOUR_API_KEY" -d '{"message": "Hello"}'`))
       console.log()
     } catch (error) {
       spinner.fail('Deployment failed')
