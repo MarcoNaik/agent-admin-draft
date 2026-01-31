@@ -1,8 +1,8 @@
 "use client"
 
-import { ScrollText, AlertCircle, Info, AlertTriangle, Bug, Loader2 } from "lucide-react"
+import { Loader2, ChevronDown, ChevronRight } from "lucide-react"
+import { useState } from "react"
 import { useRecentExecutions } from "@/hooks/use-convex-data"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Id, Doc } from "@convex/_generated/dataModel"
 
@@ -10,47 +10,96 @@ interface AgentLogsPageProps {
   params: { agentId: string }
 }
 
-type LogLevel = "info" | "warn" | "error" | "debug"
-
-interface LogEntry {
-  id: string
-  level: LogLevel
-  message: string
-  timestamp: number
-  metadata: {
-    inputTokens: number
-    outputTokens: number
-    durationMs: number
-  }
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(2)}s`
 }
 
-function LogLevelIcon({ level }: { level: LogLevel }) {
-  switch (level) {
-    case "info":
-      return <Info className="h-4 w-4 text-blue-500" />
-    case "warn":
-      return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-    case "error":
-      return <AlertCircle className="h-4 w-4 text-red-500" />
-    case "debug":
-      return <Bug className="h-4 w-4 text-gray-500" />
-    default:
-      return <Info className="h-4 w-4" />
-  }
+function formatTimestamp(timestamp: number): string {
+  const date = new Date(timestamp)
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })
 }
 
-function LogLevelBadge({ level }: { level: LogLevel }) {
-  const variants: Record<LogLevel, "default" | "secondary" | "destructive" | "warning"> = {
-    info: "default",
-    warn: "warning",
-    error: "destructive",
-    debug: "secondary",
-  }
+function LogRow({ execution }: { execution: Doc<"executions"> }) {
+  const [expanded, setExpanded] = useState(false)
+  const isError = execution.status === "error"
 
   return (
-    <Badge variant={variants[level]} className="text-xs uppercase">
-      {level}
-    </Badge>
+    <>
+      <tr
+        className="border-b hover:bg-background-secondary cursor-pointer transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <td className="px-4 py-3 w-8">
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-content-tertiary" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-content-tertiary" />
+          )}
+        </td>
+        <td className="px-4 py-3">
+          <Badge variant={isError ? "destructive" : "success"} className="text-xs font-normal">
+            {isError ? "error" : "success"}
+          </Badge>
+        </td>
+        <td className="px-4 py-3 text-sm text-content-primary font-mono">
+          {formatTimestamp(execution.createdAt)}
+        </td>
+        <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+          {formatDuration(execution.durationMs)}
+        </td>
+        <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+          {execution.inputTokens.toLocaleString()}
+        </td>
+        <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+          {execution.outputTokens.toLocaleString()}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="bg-background-secondary">
+          <td colSpan={6} className="px-4 py-4">
+            <div className="space-y-3">
+              {isError && execution.errorMessage && (
+                <div>
+                  <div className="text-xs font-medium text-content-secondary mb-1">Error Message</div>
+                  <div className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive font-mono">
+                    {execution.errorMessage}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-content-tertiary">Execution ID</div>
+                  <div className="font-mono text-content-secondary truncate">{execution._id}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-content-tertiary">Environment</div>
+                  <div className="text-content-secondary">{execution.environment || "development"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-content-tertiary">Total Tokens</div>
+                  <div className="font-mono text-content-secondary">
+                    {(execution.inputTokens + execution.outputTokens).toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-content-tertiary">Created</div>
+                  <div className="text-content-secondary">
+                    {new Date(execution.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
@@ -61,77 +110,61 @@ export default function AgentLogsPage({ params }: AgentLogsPageProps) {
   if (executions === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        <Loader2 className="h-6 w-6 animate-spin text-content-secondary" />
       </div>
     )
   }
 
-  const logs = executions.map((exec: Doc<"executions">) => ({
-    id: exec._id,
-    level: (exec.status === "error" ? "error" : "info") as LogLevel,
-    message: exec.status === "error"
-      ? `Execution failed: ${exec.errorMessage || "Unknown error"}`
-      : `Execution completed in ${exec.durationMs}ms (${exec.inputTokens} in / ${exec.outputTokens} out)`,
-    timestamp: exec.createdAt,
-    metadata: {
-      inputTokens: exec.inputTokens,
-      outputTokens: exec.outputTokens,
-      durationMs: exec.durationMs,
-    },
-  }))
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold">Logs</h2>
-        <p className="text-muted-foreground">View agent execution logs and events</p>
+        <h2 className="text-xl font-semibold text-content-primary">Logs</h2>
+        <p className="text-sm text-content-secondary mt-0.5">Execution history and performance metrics</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ScrollText className="h-5 w-5" />
-            Recent Executions
-          </CardTitle>
-          <CardDescription>Latest execution entries from your agent</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {logs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <ScrollText className="mb-4 h-12 w-12 text-muted-foreground/50" />
-              <h3 className="font-medium">No logs yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Logs will appear here when your agent runs
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {logs.map((log: LogEntry) => (
-                <div
-                  key={log.id}
-                  className="flex items-start gap-3 rounded-lg border p-3 font-mono text-sm"
-                >
-                  <LogLevelIcon level={log.level} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <LogLevelBadge level={log.level} />
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="mt-1 break-words">{log.message}</p>
-                    {Object.keys(log.metadata).length > 0 && (
-                      <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs">
-                        {JSON.stringify(log.metadata, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="rounded-md border bg-card overflow-hidden">
+        {executions.length === 0 ? (
+          <div className="p-12 text-center text-sm text-content-secondary">
+            No executions yet. Logs will appear here when your agent receives requests.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-background-secondary border-b">
+                <tr>
+                  <th className="px-4 py-3 w-8" />
+                  <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                    Timestamp
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">
+                    Duration
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">
+                    Input
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">
+                    Output
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {executions.map((execution: Doc<"executions">) => (
+                  <LogRow key={execution._id} execution={execution} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {executions.length > 0 && (
+        <div className="text-xs text-content-tertiary text-right">
+          Showing {executions.length} most recent executions
+        </div>
+      )}
     </div>
   )
 }
