@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { UserButton, useUser, useOrganization } from "@clerk/nextjs"
+import { UserButton } from "@clerk/nextjs"
 import {
   Sparkles,
   HelpCircle,
@@ -32,6 +32,7 @@ import { useAgentContext } from "@/contexts/agent-context"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { OrgSwitcher } from "@/components/org-switcher"
 
 type NavItem = {
   name: string
@@ -50,7 +51,6 @@ type NavEntry = NavItem | NavSeparator
 
 const adminNavigation: NavItem[] = [
   { name: "Agents", href: "/agents" },
-  { name: "Packs", href: "/packs" },
   { name: "Settings", href: "/settings" },
 ]
 
@@ -94,30 +94,6 @@ function getNavigationForRole(role: UserRole): NavItem[] {
     default:
       return adminNavigation
   }
-}
-
-function OrgAvatar({ name }: { name: string }) {
-  const initials = (name || "U")
-    .split(" ")
-    .map((n) => n[0] || "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "U"
-
-  return (
-    <span
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full relative overflow-hidden shrink-0"
-      style={{
-        backgroundImage:
-          "radial-gradient(circle at 21% 59%, hsl(var(--primary) / 0.6) 0%, hsl(var(--primary)) 80%, hsl(var(--primary) / 0.8) 100%)",
-      }}
-    >
-      <span className="pointer-events-none absolute inset-0 z-10 h-full w-full rounded-full bg-black/30 dark:bg-black/15" />
-      <span className="relative z-20 text-xs font-medium text-white leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>
-        {initials}
-      </span>
-    </span>
-  )
 }
 
 function EnvironmentSelector() {
@@ -209,14 +185,9 @@ function EnvironmentSelector() {
 
 export function Header() {
   const pathname = usePathname()
-  const { user, isLoaded: userLoaded } = useUser()
-  const { organization, isLoaded: orgLoaded } = useOrganization()
   const { role: userRole } = useCurrentRole()
   const { agent } = useAgentContext()
   const roleNavigation = getNavigationForRole(userRole)
-
-  const isLoaded = userLoaded && orgLoaded
-  const orgName = organization?.name || user?.firstName || "Personal"
 
   const filteredEntitiesNav = entitiesNavigation.filter((entry) => {
     if (isSeparator(entry)) {
@@ -236,26 +207,7 @@ export function Header() {
           </Link>
 
           <div className="flex items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex items-center h-8 px-2 gap-1.5 select-none text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors"
-                >
-                  <OrgAvatar name={orgName} />
-                  <span className="text-content-tertiary">/</span>
-                  <span className="font-medium">
-                    {isLoaded ? orgName : "..."}
-                  </span>
-                  <ChevronsUpDown className="h-3.5 w-3.5 text-content-tertiary" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link href="/settings">Organization Settings</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <OrgSwitcher />
 
             {agent && (
               <div className="flex items-center ml-1">
