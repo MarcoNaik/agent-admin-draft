@@ -1,7 +1,25 @@
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
-import { api, internal } from "./_generated/api"
+import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+
+interface WhatsAppWebhookEntry {
+  changes: Array<{
+    field: string
+    value: {
+      metadata: {
+        phone_number_id: string
+      }
+      messages?: Array<{
+        from: string
+        id: string
+        timestamp: string
+        type: string
+        text?: { body: string }
+      }>
+    }
+  }>
+}
 
 const http = httpRouter()
 
@@ -209,6 +227,114 @@ http.route({
         headers: { "Content-Type": "application/json" },
       })
     }
+  }),
+})
+
+http.route({
+  path: "/webhook/whatsapp",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url)
+    const mode = url.searchParams.get("hub.mode")
+    const token = url.searchParams.get("hub.verify_token")
+    const challenge = url.searchParams.get("hub.challenge")
+
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN
+
+    if (mode === "subscribe" && token === verifyToken) {
+      return new Response(challenge, { status: 200 })
+    }
+
+    return new Response("Forbidden", { status: 403 })
+  }),
+})
+
+http.route({
+  path: "/webhook/whatsapp",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json() as { object: string; entry?: WhatsAppWebhookEntry[] }
+
+    if (body.object !== "whatsapp_business_account") {
+      return new Response("OK", { status: 200 })
+    }
+
+    for (const entry of body.entry || []) {
+      for (const change of entry.changes || []) {
+        if (change.field === "messages") {
+          const phoneNumberId = change.value.metadata.phone_number_id
+
+          const org = await ctx.runQuery(internal.integrations.getOrgByWhatsAppPhone, {
+            phoneNumberId,
+          })
+
+          if (!org) {
+            console.warn("Unknown WhatsApp phone number:", phoneNumberId)
+            continue
+          }
+
+          for (const message of change.value.messages || []) {
+            await ctx.runMutation(internal.whatsapp.processInboundMessage, {
+              organizationId: org._id,
+              from: message.from,
+              messageId: message.id,
+              timestamp: parseInt(message.timestamp) * 1000,
+              type: message.type,
+              text: message.text?.body,
+            })
+          }
+        }
+      }
+    }
+
+    return new Response("OK", { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/webhook/flow",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const formData = await request.formData()
+    const token = formData.get("token") as string
+
+    if (!token) {
+      return new Response("Missing token", { status: 400 })
+    }
+
+    const configs = await ctx.runQuery(internal.integrations.listFlowConfigs)
+
+    if (configs.length === 0) {
+      console.warn("No Flow configurations found")
+      return new Response("OK", { status: 200 })
+    }
+
+    for (const config of configs) {
+      try {
+        const result = await ctx.runAction(internal.payments.verifyPaymentFromWebhook, {
+          token,
+          organizationId: config.organizationId,
+        }) as { flowOrder: number; status: string; statusMessage: string }
+
+        if (result.status === "2") {
+          await ctx.runMutation(internal.payments.markAsPaid, {
+            providerReference: result.flowOrder.toString(),
+            paidAt: Date.now(),
+          })
+          break
+        } else if (result.status === "3" || result.status === "4") {
+          await ctx.runMutation(internal.payments.markAsFailed, {
+            providerReference: result.flowOrder.toString(),
+            reason: result.statusMessage,
+          })
+          break
+        }
+      } catch (error) {
+        continue
+      }
+    }
+
+    return new Response("OK", { status: 200 })
   }),
 })
 
