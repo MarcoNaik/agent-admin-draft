@@ -6,6 +6,8 @@ import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
 import { syncOrganization, deployAllAgents } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
+import { performLogin } from './login'
+import { runInit } from './init'
 
 export const deployCommand = new Command('deploy')
   .description('Deploy all agents to production')
@@ -19,11 +21,13 @@ export const deployCommand = new Command('deploy')
     console.log()
 
     if (!hasProject(cwd)) {
-      console.log(chalk.yellow('No struere.json found'))
+      console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
+      const success = await runInit(cwd)
+      if (!success) {
+        process.exit(1)
+      }
       console.log()
-      process.exit(1)
     }
 
     const version = getProjectVersion(cwd)
@@ -43,16 +47,18 @@ export const deployCommand = new Command('deploy')
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
     console.log()
 
-    const credentials = loadCredentials()
+    let credentials = loadCredentials()
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
-      console.log(chalk.red('Not authenticated'))
+      console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
-      console.log(chalk.gray('Or set'), chalk.cyan('STRUERE_API_KEY'), chalk.gray('environment variable'))
+      credentials = await performLogin()
+      if (!credentials) {
+        console.log(chalk.red('Authentication failed'))
+        process.exit(1)
+      }
       console.log()
-      process.exit(1)
     }
 
     spinner.start('Loading resources')
@@ -153,8 +159,6 @@ export const deployCommand = new Command('deploy')
       spinner.fail('Deployment failed')
       console.log()
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      console.log()
-      console.log(chalk.gray('Try running'), chalk.cyan('struere login'), chalk.gray('to re-authenticate'))
       console.log()
       process.exit(1)
     }

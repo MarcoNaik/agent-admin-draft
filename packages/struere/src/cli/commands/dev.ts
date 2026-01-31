@@ -11,6 +11,7 @@ import { syncOrganization } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { getClaudeMDV2 } from '../templates'
+import { runInit } from './init'
 
 export const devCommand = new Command('dev')
   .description('Sync all resources to development environment')
@@ -23,11 +24,10 @@ export const devCommand = new Command('dev')
     console.log()
 
     if (!hasProject(cwd)) {
-      console.log(chalk.yellow('No struere.json found'))
+      console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
+      await runInit(cwd)
       console.log()
-      process.exit(1)
     }
 
     const version = getProjectVersion(cwd)
@@ -51,13 +51,14 @@ export const devCommand = new Command('dev')
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
-      console.log(chalk.gray('Authentication required'))
+      console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
       credentials = await performLogin()
       if (!credentials) {
         console.log(chalk.red('Authentication failed'))
         process.exit(1)
       }
+      console.log()
     }
 
     const claudeMdPath = join(cwd, 'CLAUDE.md')
@@ -75,20 +76,13 @@ export const devCommand = new Command('dev')
     }
 
     const performSync = async (): Promise<boolean> => {
-      try {
-        const resources = await loadAllResources(cwd)
-        const payload = extractSyncPayload(resources)
-
-        const result = await syncOrganization(payload)
-
-        if (!result.success) {
-          throw new Error(result.error || 'Sync failed')
-        }
-
-        return true
-      } catch (error) {
-        throw error
+      const resources = await loadAllResources(cwd)
+      const payload = extractSyncPayload(resources)
+      const result = await syncOrganization(payload)
+      if (!result.success) {
+        throw new Error(result.error || 'Sync failed')
       }
+      return true
     }
 
     spinner.start('Loading resources')
@@ -109,9 +103,7 @@ export const devCommand = new Command('dev')
       spinner.succeed('Synced to development')
     } catch (error) {
       if (isAuthError(error)) {
-        spinner.fail('Session expired')
-        console.log()
-        console.log(chalk.gray('Re-authenticating...'))
+        spinner.fail('Session expired - re-authenticating...')
         clearCredentials()
         credentials = await performLogin()
         if (!credentials) {
@@ -162,9 +154,7 @@ export const devCommand = new Command('dev')
         syncSpinner.succeed('Synced')
       } catch (error) {
         if (isAuthError(error)) {
-          syncSpinner.fail('Session expired')
-          console.log()
-          console.log(chalk.gray('Re-authenticating...'))
+          syncSpinner.fail('Session expired - re-authenticating...')
           clearCredentials()
           const newCredentials = await performLogin()
           if (!newCredentials) {

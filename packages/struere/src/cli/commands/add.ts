@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import { hasProject, getProjectVersion } from '../utils/project'
 import { scaffoldAgent, scaffoldEntityType, scaffoldRole } from '../utils/scaffold'
+import { runInit } from './init'
 
 export const addCommand = new Command('add')
   .description('Scaffold a new resource')
@@ -13,11 +14,13 @@ export const addCommand = new Command('add')
     console.log()
 
     if (!hasProject(cwd)) {
-      console.log(chalk.yellow('No struere.json found'))
+      console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
+      const success = await runInit(cwd)
+      if (!success) {
+        process.exit(1)
+      }
       console.log()
-      process.exit(1)
     }
 
     const version = getProjectVersion(cwd)

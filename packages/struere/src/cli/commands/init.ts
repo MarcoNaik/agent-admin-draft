@@ -4,8 +4,66 @@ import ora from 'ora'
 import { basename } from 'path'
 import { loadCredentials } from '../utils/credentials'
 import { performLogin } from './login'
-import { hasProject, saveProjectV2, getProjectVersion } from '../utils/project'
+import { hasProject, getProjectVersion } from '../utils/project'
 import { scaffoldProjectV2 } from '../utils/scaffold'
+
+export async function runInit(cwd: string): Promise<boolean> {
+  const spinner = ora()
+
+  let credentials = loadCredentials()
+  if (!credentials) {
+    console.log(chalk.yellow('Not logged in - authenticating...'))
+    console.log()
+    credentials = await performLogin()
+    if (!credentials) {
+      console.log(chalk.red('Authentication failed'))
+      return false
+    }
+    console.log()
+  }
+
+  console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
+  console.log(chalk.gray('  Organization:'), chalk.cyan(credentials.organization.name))
+  console.log()
+
+  const projectName = slugify(basename(cwd))
+
+  spinner.start('Creating project structure')
+
+  const scaffoldResult = scaffoldProjectV2(cwd, {
+    projectName,
+    orgId: credentials.organization.id,
+    orgSlug: credentials.organization.slug,
+    orgName: credentials.organization.name,
+  })
+
+  spinner.succeed('Project structure created')
+
+  for (const file of scaffoldResult.createdFiles) {
+    console.log(chalk.green('✓'), `Created ${file}`)
+  }
+
+  console.log()
+  spinner.start('Installing dependencies')
+
+  const installResult = Bun.spawnSync(['bun', 'install'], {
+    cwd,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+
+  if (installResult.exitCode === 0) {
+    spinner.succeed('Dependencies installed')
+  } else {
+    spinner.warn('Could not install dependencies automatically')
+    console.log(chalk.gray('  Run'), chalk.cyan('bun install'), chalk.gray('manually'))
+  }
+
+  console.log()
+  console.log(chalk.green('✓'), 'Project initialized')
+
+  return true
+}
 
 export const initCommand = new Command('init')
   .description('Initialize a new Struere organization project')
@@ -39,35 +97,23 @@ export const initCommand = new Command('init')
 
     let credentials = loadCredentials()
     if (!credentials) {
-      console.log(chalk.gray('Authentication required'))
+      console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
       credentials = await performLogin()
       if (!credentials) {
         console.log(chalk.red('Authentication failed'))
         process.exit(1)
       }
-    } else {
-      console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
-      console.log(chalk.gray('  Organization:'), chalk.cyan(credentials.organization.name))
       console.log()
     }
 
-    if (!options.yes) {
-      const confirmed = await promptYesNo(`Initialize project for organization "${credentials.organization.name}"?`)
-      if (!confirmed) {
-        console.log()
-        console.log(chalk.gray('Cancelled'))
-        return
-      }
-    }
+    console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
+    console.log(chalk.gray('  Organization:'), chalk.cyan(credentials.organization.name))
+    console.log()
 
     let projectName = projectNameArg
     if (!projectName) {
       projectName = slugify(basename(cwd))
-      if (!options.yes) {
-        const confirmed = await promptText('Project name:', projectName)
-        projectName = confirmed || projectName
-      }
     }
 
     projectName = slugify(projectName)
@@ -123,43 +169,4 @@ export function slugify(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-}
-
-async function promptYesNo(message: string): Promise<boolean> {
-  process.stdout.write(chalk.gray(`${message} (Y/n) `))
-
-  const answer = await readLine()
-  return answer === '' || answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes'
-}
-
-async function promptText(message: string, defaultValue: string): Promise<string> {
-  process.stdout.write(chalk.gray(`${message} `))
-  process.stdout.write(chalk.cyan(`(${defaultValue}) `))
-
-  const answer = await readLine()
-  return answer || defaultValue
-}
-
-function readLine(): Promise<string> {
-  return new Promise((resolve) => {
-    let buffer = ''
-
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false)
-    }
-
-    process.stdin.setEncoding('utf8')
-    process.stdin.resume()
-
-    const onData = (data: string) => {
-      buffer += data
-      if (buffer.includes('\n')) {
-        process.stdin.removeListener('data', onData)
-        process.stdin.pause()
-        resolve(buffer.replace(/[\r\n]/g, '').trim())
-      }
-    }
-
-    process.stdin.on('data', onData)
-  })
 }

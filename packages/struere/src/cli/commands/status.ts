@@ -5,6 +5,8 @@ import { loadCredentials, getApiKey } from '../utils/credentials'
 import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
 import { getSyncState } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
+import { performLogin } from './login'
+import { runInit } from './init'
 
 export const statusCommand = new Command('status')
   .description('Compare local vs remote state')
@@ -17,11 +19,13 @@ export const statusCommand = new Command('status')
     console.log()
 
     if (!hasProject(cwd)) {
-      console.log(chalk.yellow('No struere.json found'))
+      console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere init'), chalk.gray('to initialize this project'))
+      const success = await runInit(cwd)
+      if (!success) {
+        process.exit(1)
+      }
       console.log()
-      process.exit(1)
     }
 
     const version = getProjectVersion(cwd)
@@ -41,15 +45,18 @@ export const statusCommand = new Command('status')
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
     console.log()
 
-    const credentials = loadCredentials()
+    let credentials = loadCredentials()
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
-      console.log(chalk.red('Not authenticated'))
+      console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere login'), chalk.gray('to authenticate'))
+      credentials = await performLogin()
+      if (!credentials) {
+        console.log(chalk.red('Authentication failed'))
+        process.exit(1)
+      }
       console.log()
-      process.exit(1)
     }
 
     spinner.start('Loading local resources')
