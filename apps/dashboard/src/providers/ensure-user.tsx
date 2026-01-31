@@ -1,12 +1,16 @@
 "use client"
 
 import { useEffect, useState, ReactNode } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useRouter, usePathname } from "next/navigation"
+import { useUser, useOrganization } from "@clerk/nextjs"
 import { useCurrentUser, useEnsureUser } from "@/hooks/use-convex-data"
 import { Loader2 } from "lucide-react"
 
 export function EnsureUserProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
   const { isSignedIn, isLoaded: clerkLoaded } = useUser()
+  const { organization: clerkOrg, isLoaded: orgLoaded } = useOrganization()
   const currentUser = useCurrentUser()
   const ensureUser = useEnsureUser()
   const [isProvisioning, setIsProvisioning] = useState(false)
@@ -31,7 +35,16 @@ export function EnsureUserProvider({ children }: { children: ReactNode }) {
     provision()
   }, [clerkLoaded, isSignedIn, currentUser, ensureUser, isProvisioning])
 
-  if (!clerkLoaded) {
+  useEffect(() => {
+    if (!clerkLoaded || !orgLoaded || !isSignedIn) return
+    if (pathname === "/create-organization") return
+
+    if (!clerkOrg) {
+      router.push("/create-organization")
+    }
+  }, [clerkLoaded, orgLoaded, isSignedIn, clerkOrg, pathname, router])
+
+  if (!clerkLoaded || !orgLoaded) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -41,6 +54,18 @@ export function EnsureUserProvider({ children }: { children: ReactNode }) {
 
   if (!isSignedIn) {
     return <>{children}</>
+  }
+
+  if (pathname === "/create-organization") {
+    return <>{children}</>
+  }
+
+  if (!clerkOrg) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   if (currentUser === null && !isProvisioning) {
