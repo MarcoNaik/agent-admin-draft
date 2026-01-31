@@ -1,6 +1,7 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation } from "./_generated/server"
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
+import { Id } from "./_generated/dataModel"
 
 export const get = query({
   args: { id: v.id("organizations") },
@@ -85,6 +86,16 @@ export const update = mutation({
   },
 })
 
+export const getByClerkOrgId = internalQuery({
+  args: { clerkOrgId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .first()
+  },
+})
+
 export const getOrCreateFromClerk = internalMutation({
   args: {
     clerkOrgId: v.string(),
@@ -98,6 +109,10 @@ export const getOrCreateFromClerk = internalMutation({
       .first()
 
     if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        updatedAt: Date.now(),
+      })
       return existing._id
     }
 
@@ -125,30 +140,139 @@ export const getOrCreateFromClerk = internalMutation({
   },
 })
 
-export const getOrCreatePersonal = internalMutation({
+export const markAsDeleted = internalMutation({
+  args: { clerkOrgId: v.string() },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .first()
+
+    if (!org) return
+
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
+      .collect()
+
+    for (const membership of memberships) {
+      await ctx.db.delete(membership._id)
+    }
+  },
+})
+
+export const syncMembership = internalMutation({
   args: {
+    clerkOrgId: v.string(),
     clerkUserId: v.string(),
-    name: v.string(),
+    clerkMembershipId: v.string(),
+    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    userEmail: v.optional(v.string()),
+    userName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const personalSlug = `personal-${args.clerkUserId.slice(-8)}`
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .first()
+
+    if (!org) {
+      throw new Error(`Organization not found for clerkOrgId: ${args.clerkOrgId}`)
+    }
+
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first()
+
+    const now = Date.now()
+
+    if (!user) {
+      const userId = await ctx.db.insert("users", {
+        email: args.userEmail ?? `${args.clerkUserId}@unknown.com`,
+        name: args.userName,
+        clerkUserId: args.clerkUserId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      user = await ctx.db.get(userId)
+    }
+
+    if (!user) {
+      throw new Error("Failed to create user")
+    }
 
     const existing = await ctx.db
-      .query("organizations")
-      .withIndex("by_slug", (q) => q.eq("slug", personalSlug))
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", org._id)
+      )
       .first()
 
     if (existing) {
+      await ctx.db.patch(existing._id, {
+        role: args.role,
+        clerkMembershipId: args.clerkMembershipId,
+        updatedAt: now,
+      })
       return existing._id
     }
 
-    const now = Date.now()
-    return await ctx.db.insert("organizations", {
-      name: `${args.name}'s Workspace`,
-      slug: personalSlug,
-      plan: "free",
+    return await ctx.db.insert("userOrganizations", {
+      userId: user._id,
+      organizationId: org._id,
+      role: args.role,
+      clerkMembershipId: args.clerkMembershipId,
       createdAt: now,
       updatedAt: now,
     })
+  },
+})
+
+export const removeMembership = internalMutation({
+  args: {
+    clerkOrgId: v.string(),
+    clerkUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .first()
+
+    if (!org) return
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first()
+
+    if (!user) return
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", org._id)
+      )
+      .first()
+
+    if (membership) {
+      await ctx.db.delete(membership._id)
+    }
+  },
+})
+
+export const getUserMembership = internalQuery({
+  args: {
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId)
+      )
+      .first()
   },
 })
