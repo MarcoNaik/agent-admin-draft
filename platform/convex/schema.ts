@@ -17,14 +17,11 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     clerkUserId: v.string(),
-    organizationId: v.id("organizations"),
-    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_clerk_user", ["clerkUserId"])
-    .index("by_org", ["organizationId"])
     .index("by_email", ["email"]),
 
   agents: defineTable({
@@ -237,6 +234,19 @@ export default defineSchema({
     maskConfig: v.optional(v.any()),
     createdAt: v.number(),
   }).index("by_policy", ["policyId"]),
+
+  userOrganizations: defineTable({
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    clerkMembershipId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_org", ["organizationId"])
+    .index("by_user_org", ["userId", "organizationId"])
+    .index("by_clerk_membership", ["clerkMembershipId"]),
 
   userRoles: defineTable({
     userId: v.id("users"),
