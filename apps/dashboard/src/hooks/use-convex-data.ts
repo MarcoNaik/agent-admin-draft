@@ -303,6 +303,10 @@ export function useTrackPackCustomization() {
   return useMutation(api.packs.trackCustomization)
 }
 
+export function useRepairPack() {
+  return useMutation(api.packs.repair)
+}
+
 export function useCurrentUserRoles() {
   const currentUser = useCurrentUser()
   return useQuery(

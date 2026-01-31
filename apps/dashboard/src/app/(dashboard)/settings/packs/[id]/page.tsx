@@ -15,8 +15,10 @@ import {
   FileText,
   Shield,
   History,
+  AlertTriangle,
+  Wrench,
 } from "lucide-react"
-import { usePack, useInstallPack, useUpgradePack, usePreviewUpgrade } from "@/hooks/use-convex-data"
+import { usePack, useInstallPack, useUpgradePack, usePreviewUpgrade, useRepairPack } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,8 +40,9 @@ export default function PackDetailPage() {
   const upgradePreview = usePreviewUpgrade(pack?.hasUpgrade ? packId : undefined)
   const installPack = useInstallPack()
   const upgradePack = useUpgradePack()
+  const repairPack = useRepairPack()
 
-  const [dialogMode, setDialogMode] = useState<"install" | "upgrade" | null>(null)
+  const [dialogMode, setDialogMode] = useState<"install" | "upgrade" | "repair" | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,6 +67,19 @@ export default function PackDetailPage() {
       setDialogMode(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upgrade failed")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleRepair = async () => {
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await repairPack({ packId })
+      setDialogMode(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Repair failed")
     } finally {
       setIsProcessing(false)
     }
@@ -170,6 +186,36 @@ export default function PackDetailPage() {
               Please try upgrading again or contact support if the issue persists.
             </p>
           </div>
+        </div>
+      )}
+
+      {pack.hasDrift && pack.driftDetails && (
+        <div className="flex items-start justify-between gap-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-yellow-500" />
+            <div>
+              <p className="font-medium text-yellow-500">Resources out of sync</p>
+              <p className="text-sm mt-1 text-yellow-500/80">
+                Some pack resources are missing. This may have happened from a CLI sync that didn't preserve pack resources.
+              </p>
+              <div className="mt-2 space-y-1">
+                {pack.driftDetails.missingEntityTypes.length > 0 && (
+                  <p className="text-sm text-yellow-500/70">
+                    Missing entity types: {pack.driftDetails.missingEntityTypes.join(", ")}
+                  </p>
+                )}
+                {pack.driftDetails.missingRoles.length > 0 && (
+                  <p className="text-sm text-yellow-500/70">
+                    Missing roles: {pack.driftDetails.missingRoles.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          <Button onClick={() => setDialogMode("repair")} variant="outline" className="flex-shrink-0 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10">
+            <Wrench className="mr-2 h-4 w-4" />
+            Repair
+          </Button>
         </div>
       )}
 
@@ -416,6 +462,56 @@ export default function PackDetailPage() {
                 </>
               ) : (
                 "Upgrade"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dialogMode === "repair"} onOpenChange={handleCloseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Repair {pack.name}?</DialogTitle>
+            <DialogDescription>
+              This will recreate missing pack resources that were accidentally deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {pack.driftDetails && (
+              <div className="space-y-2 text-sm text-content-secondary">
+                {pack.driftDetails.missingEntityTypes.length > 0 && (
+                  <p>
+                    <span className="font-medium text-content-primary">Entity types to recreate:</span>{" "}
+                    {pack.driftDetails.missingEntityTypes.join(", ")}
+                  </p>
+                )}
+                {pack.driftDetails.missingRoles.length > 0 && (
+                  <p>
+                    <span className="font-medium text-content-primary">Roles to recreate:</span>{" "}
+                    {pack.driftDetails.missingRoles.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+            {error && (
+              <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button onClick={handleRepair} disabled={isProcessing}>
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Repairing...
+                </>
+              ) : (
+                "Repair Pack"
               )}
             </Button>
           </DialogFooter>

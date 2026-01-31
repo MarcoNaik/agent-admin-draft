@@ -593,6 +593,204 @@ export const upgrade = mutation({
   },
 })
 
+export const repair = mutation({
+  args: { packId: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    entityTypesRepaired: v.number(),
+    rolesRepaired: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const pack = getPackById(args.packId)
+
+    if (!pack) {
+      throw new Error(`Pack ${args.packId} not found`)
+    }
+
+    const installed = await ctx.db
+      .query("installedPacks")
+      .withIndex("by_org_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      )
+      .first()
+
+    if (!installed) {
+      throw new Error(`Pack ${args.packId} is not installed`)
+    }
+
+    const now = Date.now()
+    let entityTypesRepaired = 0
+    let rolesRepaired = 0
+    const newEntityTypeIds: Id<"entityTypes">[] = []
+    const newRoleIds: Id<"roles">[] = []
+    const roleNameToId = new Map<string, Id<"roles">>()
+
+    for (let i = 0; i < pack.entityTypes.length; i++) {
+      const et = pack.entityTypes[i]
+      const existingId = installed.entityTypeIds[i]
+      let entityExists = false
+
+      if (existingId) {
+        const existing = await ctx.db.get(existingId)
+        if (existing) {
+          entityExists = true
+          newEntityTypeIds.push(existingId)
+        }
+      }
+
+      if (!entityExists) {
+        const existingBySlug = await ctx.db
+          .query("entityTypes")
+          .withIndex("by_org_slug", (q) =>
+            q.eq("organizationId", auth.organizationId).eq("slug", et.slug)
+          )
+          .first()
+
+        if (existingBySlug) {
+          newEntityTypeIds.push(existingBySlug._id)
+        } else {
+          const id = await ctx.db.insert("entityTypes", {
+            organizationId: auth.organizationId,
+            name: et.name,
+            slug: et.slug,
+            schema: et.schema,
+            searchFields: et.searchFields,
+            displayConfig: et.displayConfig,
+            createdAt: now,
+            updatedAt: now,
+          })
+          newEntityTypeIds.push(id)
+          entityTypesRepaired++
+        }
+      }
+    }
+
+    for (let i = 0; i < pack.roles.length; i++) {
+      const role = pack.roles[i]
+      const existingId = installed.roleIds[i]
+      let roleExists = false
+      let roleId: Id<"roles">
+
+      if (existingId) {
+        const existing = await ctx.db.get(existingId)
+        if (existing) {
+          roleExists = true
+          roleId = existingId
+          newRoleIds.push(existingId)
+          roleNameToId.set(role.name, existingId)
+        }
+      }
+
+      if (!roleExists) {
+        const existingByName = await ctx.db
+          .query("roles")
+          .withIndex("by_org_name", (q) =>
+            q.eq("organizationId", auth.organizationId).eq("name", role.name)
+          )
+          .first()
+
+        if (existingByName) {
+          roleId = existingByName._id
+          newRoleIds.push(existingByName._id)
+          roleNameToId.set(role.name, existingByName._id)
+        } else {
+          roleId = await ctx.db.insert("roles", {
+            organizationId: auth.organizationId,
+            name: role.name,
+            description: role.description,
+            isSystem: role.isSystem,
+            createdAt: now,
+            updatedAt: now,
+          })
+          newRoleIds.push(roleId)
+          roleNameToId.set(role.name, roleId)
+          rolesRepaired++
+
+          for (const policy of role.policies) {
+            for (const action of policy.actions) {
+              const policyId = await ctx.db.insert("policies", {
+                organizationId: auth.organizationId,
+                roleId,
+                resource: policy.resource,
+                action,
+                effect: policy.effect,
+                priority: policy.priority,
+                createdAt: now,
+              })
+
+              if (pack.scopeRules) {
+                const matchingScopeRules = pack.scopeRules.filter(
+                  (sr) =>
+                    sr.roleName === role.name &&
+                    (sr.entityTypeSlug === policy.resource || policy.resource === "*")
+                )
+                for (const sr of matchingScopeRules) {
+                  if (sr.entityTypeSlug === policy.resource) {
+                    await ctx.db.insert("scopeRules", {
+                      policyId,
+                      type: sr.type,
+                      field: sr.field,
+                      operator: sr.operator,
+                      value: sr.value,
+                      relationPath: sr.relationPath,
+                      createdAt: now,
+                    })
+                  }
+                }
+              }
+
+              if (pack.fieldMasks) {
+                const matchingFieldMasks = pack.fieldMasks.filter(
+                  (fm) =>
+                    fm.roleName === role.name &&
+                    (fm.entityTypeSlug === policy.resource || policy.resource === "*")
+                )
+                for (const fm of matchingFieldMasks) {
+                  if (fm.entityTypeSlug === policy.resource) {
+                    await ctx.db.insert("fieldMasks", {
+                      policyId,
+                      fieldPath: fm.fieldPath,
+                      maskType: fm.maskType,
+                      maskConfig: fm.maskConfig,
+                      createdAt: now,
+                    })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    await ctx.db.patch(installed._id, {
+      entityTypeIds: newEntityTypeIds,
+      roleIds: newRoleIds,
+    })
+
+    await ctx.db.insert("events", {
+      organizationId: auth.organizationId,
+      eventType: "pack.repaired",
+      schemaVersion: 1,
+      actorId: auth.userId as unknown as string,
+      actorType: "user",
+      payload: {
+        packId: args.packId,
+        entityTypesRepaired,
+        rolesRepaired,
+      },
+      timestamp: now,
+    })
+
+    return {
+      success: true,
+      entityTypesRepaired,
+      rolesRepaired,
+    }
+  },
+})
+
 export const trackCustomization = mutation({
   args: {
     packId: v.string(),
