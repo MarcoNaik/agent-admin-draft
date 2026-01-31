@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Package, CheckCircle, ArrowUpCircle, Loader2, AlertCircle } from "lucide-react"
+import { Package, CheckCircle, ArrowUpCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
 import { usePacks, useInstallPack, useUpgradePack } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,11 @@ interface PackData {
   hasUpgrade: boolean
   upgradeType?: string
   status?: string
+  hasDrift?: boolean
+  driftDetails?: {
+    missingEntityTypes: string[]
+    missingRoles: string[]
+  }
 }
 
 function PackCard({ pack, onInstall, onUpgrade }: {
@@ -38,7 +43,7 @@ function PackCard({ pack, onInstall, onUpgrade }: {
   onUpgrade: (packId: string) => void
 }) {
   return (
-    <Card className="bg-background-secondary flex flex-col">
+    <Card className={`bg-background-secondary flex flex-col ${pack.hasDrift ? "border-yellow-500/50" : ""}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -54,15 +59,27 @@ function PackCard({ pack, onInstall, onUpgrade }: {
             </div>
           </div>
           {pack.isInstalled && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <CheckCircle className="h-3 w-3" />
-              Installed
-            </Badge>
+            pack.hasDrift ? (
+              <Badge variant="outline" className="flex items-center gap-1 border-yellow-500/50 text-yellow-500">
+                <AlertTriangle className="h-3 w-3" />
+                Needs Repair
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Installed
+              </Badge>
+            )
           )}
         </div>
       </CardHeader>
       <CardContent className="flex-1">
         <CardDescription className="text-content-secondary">{pack.description}</CardDescription>
+        {pack.hasDrift && pack.driftDetails && (
+          <div className="mt-3 p-2 rounded bg-yellow-500/10 text-xs text-yellow-500">
+            Missing: {[...pack.driftDetails.missingEntityTypes, ...pack.driftDetails.missingRoles].join(", ")}
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           <Badge variant="outline" className="text-xs">
             {pack.entityTypes.length} entity types
@@ -82,12 +99,19 @@ function PackCard({ pack, onInstall, onUpgrade }: {
               v{pack.installedVersion}
             </span>
             <div className="flex items-center gap-2">
-              {pack.hasUpgrade && (
+              {pack.hasDrift ? (
+                <Link href={`/settings/packs/${pack.id}`}>
+                  <Button size="sm" variant="outline" className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10">
+                    <AlertTriangle className="mr-1 h-4 w-4" />
+                    Repair
+                  </Button>
+                </Link>
+              ) : pack.hasUpgrade ? (
                 <Button size="sm" onClick={() => onUpgrade(pack.id)} className="flex items-center gap-1">
                   <ArrowUpCircle className="h-4 w-4" />
                   Upgrade to v{pack.version}
                 </Button>
-              )}
+              ) : null}
               <Link href={`/settings/packs/${pack.id}`}>
                 <Button variant="outline" size="sm">View Details</Button>
               </Link>
