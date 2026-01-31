@@ -1,7 +1,47 @@
 import { v } from "convex/values"
-import { internalMutation } from "../_generated/server"
+import { internalMutation, internalQuery } from "../_generated/server"
 import { buildSearchText } from "../lib/utils"
 import { Id } from "../_generated/dataModel"
+import {
+  buildActorContext,
+  assertCanPerform,
+  getScopeFilters,
+  applyScopeFiltersToQuery,
+  getFieldMask,
+  applyFieldMask,
+  PermissionError,
+  ActorType,
+  FieldMaskResult,
+} from "../lib/permissions"
+
+function filterDataByMask(
+  data: Record<string, unknown>,
+  mask: FieldMaskResult & { hiddenFields?: string[] }
+): Record<string, unknown> {
+  if (mask.isWildcard) {
+    return data
+  }
+  if (mask.hiddenFields && mask.hiddenFields.length > 0) {
+    const filtered: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data)) {
+      const dataPath = `data.${key}`
+      if (!mask.hiddenFields.includes(dataPath) && !mask.hiddenFields.includes(key)) {
+        filtered[key] = value
+      }
+    }
+    return filtered
+  }
+  if (mask.allowedFields.length > 0) {
+    const filtered: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data)) {
+      if (mask.allowedFields.includes(key) || mask.allowedFields.includes(`data.${key}`)) {
+        filtered[key] = value
+      }
+    }
+    return filtered
+  }
+  return data
+}
 
 export const entityCreate = internalMutation({
   args: {
@@ -17,7 +57,16 @@ export const entityCreate = internalMutation({
     data: v.any(),
     status: v.optional(v.string()),
   },
+  returns: v.object({ id: v.id("entities") }),
   handler: async (ctx, args) => {
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "create", args.type)
+
     const entityType = await ctx.db
       .query("entityTypes")
       .withIndex("by_org_slug", (q) =>
@@ -48,8 +97,8 @@ export const entityCreate = internalMutation({
       entityTypeSlug: args.type,
       eventType: `${args.type}.created`,
       schemaVersion: 1,
-      actorId: args.actorId,
-      actorType: args.actorType,
+      actorId: actor.actorId,
+      actorType: actor.actorType,
       payload: { data: args.data },
       timestamp: now,
     })
@@ -58,11 +107,26 @@ export const entityCreate = internalMutation({
   },
 })
 
-export const entityGet = internalMutation({
+export const entityGet = internalQuery({
   args: {
     organizationId: v.id("organizations"),
+    actorId: v.string(),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("webhook")
+    ),
     id: v.string(),
   },
+  returns: v.object({
+    id: v.id("entities"),
+    type: v.string(),
+    status: v.any(),
+    data: v.any(),
+    createdAt: v.any(),
+    updatedAt: v.any(),
+  }),
   handler: async (ctx, args) => {
     const entity = await ctx.db.get(args.id as Id<"entities">)
 
@@ -75,27 +139,78 @@ export const entityGet = internalMutation({
     }
 
     const entityType = await ctx.db.get(entity.entityTypeId)
+    if (!entityType) {
+      throw new Error("Entity type not found")
+    }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "read", entityType.slug, entity as unknown as Record<string, unknown>)
+
+    const scopeFilters = await getScopeFilters(ctx, actor, entityType.slug)
+    const scoped = applyScopeFiltersToQuery(
+      [entity as unknown as Record<string, unknown>],
+      scopeFilters
+    )
+    if (scoped.length === 0) {
+      throw new PermissionError(
+        "Entity not accessible within scope",
+        actor,
+        "read",
+        entityType.slug
+      )
+    }
+
+    const fieldMask = await getFieldMask(ctx, actor, entityType.slug)
+    const maskedEntity = applyFieldMask(entity as unknown as Record<string, unknown>, fieldMask)
 
     return {
       id: entity._id,
-      type: entityType?.slug,
-      status: entity.status,
-      data: entity.data,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
+      type: entityType.slug,
+      status: maskedEntity.status,
+      data: maskedEntity.data,
+      createdAt: maskedEntity.createdAt,
+      updatedAt: maskedEntity.updatedAt,
     }
   },
 })
 
-export const entityQuery = internalMutation({
+export const entityQuery = internalQuery({
   args: {
     organizationId: v.id("organizations"),
+    actorId: v.string(),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("webhook")
+    ),
     type: v.string(),
     filters: v.optional(v.any()),
     status: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
+  returns: v.array(v.object({
+    id: v.any(),
+    type: v.string(),
+    status: v.any(),
+    data: v.any(),
+    createdAt: v.any(),
+    updatedAt: v.any(),
+  })),
   handler: async (ctx, args) => {
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "list", args.type)
+
     const entityType = await ctx.db
       .query("entityTypes")
       .withIndex("by_org_slug", (q) =>
@@ -142,7 +257,18 @@ export const entityQuery = internalMutation({
       })
     }
 
-    return filtered.map((e) => ({
+    const scopeFilters = await getScopeFilters(ctx, actor, args.type)
+    const scopedEntities = applyScopeFiltersToQuery(
+      filtered as unknown as Record<string, unknown>[],
+      scopeFilters
+    )
+
+    const fieldMask = await getFieldMask(ctx, actor, args.type)
+    const maskedEntities = scopedEntities.map((e) =>
+      applyFieldMask(e, fieldMask)
+    )
+
+    return maskedEntities.map((e) => ({
       id: e._id,
       type: args.type,
       status: e.status,
@@ -167,6 +293,7 @@ export const entityUpdate = internalMutation({
     data: v.any(),
     status: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const entity = await ctx.db.get(args.id as Id<"entities">)
 
@@ -179,12 +306,41 @@ export const entityUpdate = internalMutation({
     }
 
     const entityType = await ctx.db.get(entity.entityTypeId)
-    const mergedData = { ...entity.data, ...args.data }
+    if (!entityType) {
+      throw new Error("Entity type not found")
+    }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "update", entityType.slug, entity as unknown as Record<string, unknown>)
+
+    const scopeFilters = await getScopeFilters(ctx, actor, entityType.slug)
+    const canAccessRecord = applyScopeFiltersToQuery(
+      [entity as unknown as Record<string, unknown>],
+      scopeFilters
+    ).length > 0
+    if (!canAccessRecord) {
+      throw new PermissionError(
+        "Cannot update entity outside of scope",
+        actor,
+        "update",
+        entityType.slug
+      )
+    }
+
+    const fieldMask = await getFieldMask(ctx, actor, entityType.slug)
+    const allowedData = filterDataByMask(args.data, fieldMask)
+
+    const mergedData = { ...entity.data, ...allowedData }
     const now = Date.now()
 
     const updates: Record<string, unknown> = {
       data: mergedData,
-      searchText: buildSearchText(mergedData, entityType?.searchFields ?? undefined),
+      searchText: buildSearchText(mergedData, entityType.searchFields ?? undefined),
       updatedAt: now,
     }
 
@@ -197,12 +353,12 @@ export const entityUpdate = internalMutation({
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
       entityId: entity._id,
-      entityTypeSlug: entityType?.slug,
-      eventType: `${entityType?.slug ?? "entity"}.updated`,
+      entityTypeSlug: entityType.slug,
+      eventType: `${entityType.slug}.updated`,
       schemaVersion: 1,
-      actorId: args.actorId,
-      actorType: args.actorType,
-      payload: { changes: args.data },
+      actorId: actor.actorId,
+      actorType: actor.actorType,
+      payload: { changes: allowedData, previousData: entity.data },
       timestamp: now,
     })
 
@@ -222,6 +378,7 @@ export const entityDelete = internalMutation({
     ),
     id: v.string(),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const entity = await ctx.db.get(args.id as Id<"entities">)
 
@@ -230,19 +387,48 @@ export const entityDelete = internalMutation({
     }
 
     const entityType = await ctx.db.get(entity.entityTypeId)
-    const now = Date.now()
+    if (!entityType) {
+      throw new Error("Entity type not found")
+    }
 
-    await ctx.db.patch(entity._id, { deletedAt: now })
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "delete", entityType.slug, entity as unknown as Record<string, unknown>)
+
+    const scopeFilters = await getScopeFilters(ctx, actor, entityType.slug)
+    const canAccessRecord = applyScopeFiltersToQuery(
+      [entity as unknown as Record<string, unknown>],
+      scopeFilters
+    ).length > 0
+    if (!canAccessRecord) {
+      throw new PermissionError(
+        "Cannot delete entity outside of scope",
+        actor,
+        "delete",
+        entityType.slug
+      )
+    }
+
+    const now = Date.now()
+    await ctx.db.patch(entity._id, {
+      status: "deleted",
+      deletedAt: now,
+      updatedAt: now,
+    })
 
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
       entityId: entity._id,
-      entityTypeSlug: entityType?.slug,
-      eventType: `${entityType?.slug ?? "entity"}.deleted`,
+      entityTypeSlug: entityType.slug,
+      eventType: `${entityType.slug}.deleted`,
       schemaVersion: 1,
-      actorId: args.actorId,
-      actorType: args.actorType,
-      payload: {},
+      actorId: actor.actorId,
+      actorType: actor.actorType,
+      payload: { previousData: entity.data },
       timestamp: now,
     })
 
@@ -253,23 +439,45 @@ export const entityDelete = internalMutation({
 export const entityLink = internalMutation({
   args: {
     organizationId: v.id("organizations"),
+    actorId: v.string(),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("webhook")
+    ),
     fromId: v.string(),
     toId: v.string(),
     relationType: v.string(),
     metadata: v.optional(v.any()),
   },
+  returns: v.object({ id: v.id("entityRelations"), existing: v.boolean() }),
   handler: async (ctx, args) => {
     const fromEntity = await ctx.db.get(args.fromId as Id<"entities">)
     const toEntity = await ctx.db.get(args.toId as Id<"entities">)
 
-    if (
-      !fromEntity ||
-      fromEntity.organizationId !== args.organizationId ||
-      !toEntity ||
-      toEntity.organizationId !== args.organizationId
-    ) {
-      throw new Error("Entity not found")
+    if (!fromEntity || fromEntity.organizationId !== args.organizationId) {
+      throw new Error("Source entity not found")
     }
+    if (!toEntity || toEntity.organizationId !== args.organizationId) {
+      throw new Error("Target entity not found")
+    }
+
+    const fromType = await ctx.db.get(fromEntity.entityTypeId)
+    const toType = await ctx.db.get(toEntity.entityTypeId)
+
+    if (!fromType || !toType) {
+      throw new Error("Entity type not found")
+    }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
+    await assertCanPerform(ctx, actor, "read", toType.slug, toEntity as unknown as Record<string, unknown>)
 
     const existing = await ctx.db
       .query("entityRelations")
@@ -285,13 +493,29 @@ export const entityLink = internalMutation({
       return { id: existing._id, existing: true }
     }
 
+    const now = Date.now()
     const relationId = await ctx.db.insert("entityRelations", {
       organizationId: args.organizationId,
       fromEntityId: args.fromId as Id<"entities">,
       toEntityId: args.toId as Id<"entities">,
       relationType: args.relationType,
       metadata: args.metadata,
-      createdAt: Date.now(),
+      createdAt: now,
+    })
+
+    await ctx.db.insert("events", {
+      organizationId: args.organizationId,
+      entityId: args.fromId as Id<"entities">,
+      entityTypeSlug: fromType.slug,
+      eventType: "entity.linked",
+      schemaVersion: 1,
+      actorId: actor.actorId,
+      actorType: actor.actorType,
+      payload: {
+        toEntityId: args.toId,
+        relationType: args.relationType,
+      },
+      timestamp: now,
     })
 
     return { id: relationId, existing: false }
@@ -301,11 +525,45 @@ export const entityLink = internalMutation({
 export const entityUnlink = internalMutation({
   args: {
     organizationId: v.id("organizations"),
+    actorId: v.string(),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("webhook")
+    ),
     fromId: v.string(),
     toId: v.string(),
     relationType: v.string(),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
+    const fromEntity = await ctx.db.get(args.fromId as Id<"entities">)
+    const toEntity = await ctx.db.get(args.toId as Id<"entities">)
+
+    if (!fromEntity || fromEntity.organizationId !== args.organizationId) {
+      throw new Error("Source entity not found")
+    }
+    if (!toEntity || toEntity.organizationId !== args.organizationId) {
+      throw new Error("Target entity not found")
+    }
+
+    const fromType = await ctx.db.get(fromEntity.entityTypeId)
+    const toType = await ctx.db.get(toEntity.entityTypeId)
+
+    if (!fromType || !toType) {
+      throw new Error("Entity type not found")
+    }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+    })
+
+    await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
+    await assertCanPerform(ctx, actor, "read", toType.slug, toEntity as unknown as Record<string, unknown>)
+
     const relation = await ctx.db
       .query("entityRelations")
       .withIndex("by_from", (q) =>
@@ -320,7 +578,24 @@ export const entityUnlink = internalMutation({
       throw new Error("Relation not found")
     }
 
+    const now = Date.now()
     await ctx.db.delete(relation._id)
+
+    await ctx.db.insert("events", {
+      organizationId: args.organizationId,
+      entityId: args.fromId as Id<"entities">,
+      entityTypeSlug: fromType.slug,
+      eventType: "entity.unlinked",
+      schemaVersion: 1,
+      actorId: actor.actorId,
+      actorType: actor.actorType,
+      payload: {
+        toEntityId: args.toId,
+        relationType: args.relationType,
+      },
+      timestamp: now,
+    })
+
     return { success: true }
   },
 })
