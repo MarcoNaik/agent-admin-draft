@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useAgentWithConfig } from "@/hooks/use-convex-data"
 import { AgentSidebar } from "@/components/agent-sidebar"
+import { ChatSidebar } from "@/components/chat-sidebar"
 import { useAgentContext } from "@/contexts/agent-context"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -16,6 +17,7 @@ export default function AgentLayout({ children, params }: AgentLayoutProps) {
   const { agentId } = params
   const agent = useAgentWithConfig(agentId as Id<"agents">)
   const { setAgent } = useAgentContext()
+  const [chatOpen, setChatOpen] = useState(false)
 
   useEffect(() => {
     if (agent) {
@@ -25,12 +27,12 @@ export default function AgentLayout({ children, params }: AgentLayoutProps) {
         slug: agent.slug,
         environments: {
           development: agent.developmentConfig ? {
-            url: `https://${agent.slug}-dev.struere.dev`,
+            url: `/chat/${agent.slug}`,
             version: agent.developmentConfig.version,
             deployedAt: new Date(agent.developmentConfig.createdAt).toISOString(),
           } : null,
           production: agent.productionConfig ? {
-            url: `https://${agent.slug}.struere.dev`,
+            url: `/chat/${agent.slug}`,
             version: agent.productionConfig.version,
             deployedAt: new Date(agent.productionConfig.createdAt).toISOString(),
           } : null,
@@ -58,8 +60,13 @@ export default function AgentLayout({ children, params }: AgentLayoutProps) {
 
   return (
     <div className="flex h-full flex-1 overflow-hidden">
-      <AgentSidebar agentId={agentId} />
+      <AgentSidebar agentId={agentId} chatOpen={chatOpen} onChatToggle={() => setChatOpen(!chatOpen)} />
       <main className="flex-1 overflow-auto p-6">{children}</main>
+      <ChatSidebar
+        agent={agent}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+      />
     </div>
   )
 }
