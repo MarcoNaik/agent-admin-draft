@@ -3,7 +3,7 @@ import { internalAction, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { hashApiKey } from "./lib/utils"
-import { processTemplates, TemplateContext, ToolExecutor } from "./lib/templateEngine"
+import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType } from "./lib/permissions/types"
 
 interface ToolCall {
@@ -84,15 +84,11 @@ export const chat = internalAction({
       environment: "production",
     })
 
-    let threadId = args.threadId
-
-    if (!threadId) {
-      threadId = await ctx.runMutation(internal.threads.getOrCreate, {
-        organizationId: auth.organizationId,
-        agentId: args.agentId,
-        externalId: args.externalThreadId,
-      })
-    }
+    const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
+      organizationId: auth.organizationId,
+      agentId: args.agentId,
+      externalId: args.externalThreadId,
+    })
 
     const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, {
       threadId,
@@ -106,17 +102,44 @@ export const chat = internalAction({
       actorId: `apikey:${auth.keyPrefix}`,
     })
 
+    const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
+      ctx.runQuery(internal.organizations.getInternal, { organizationId: auth.organizationId }),
+      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: auth.organizationId }),
+      ctx.runQuery(internal.roles.listInternal, { organizationId: auth.organizationId }),
+    ])
+
+    const now = Date.now()
+    const currentTimeStr = new Date(now).toISOString()
+
+    const entityTypes: EntityTypeContext[] = (entityTypesRaw || []).map((et: { name: string; slug: string; description?: string; schema: Record<string, unknown>; searchFields?: string[] }) => ({
+      name: et.name,
+      slug: et.slug,
+      description: et.description,
+      schema: et.schema as Record<string, unknown>,
+      searchFields: et.searchFields,
+    }))
+
+    const roles = (rolesRaw || []).map((r: { name: string; description?: string }) => ({
+      name: r.name,
+      description: r.description,
+    }))
+
     const templateContext: TemplateContext = {
       organizationId: auth.organizationId,
+      organizationName: organization?.name ?? "Unknown Organization",
       userId: thread?.userId,
       threadId,
       agentId: args.agentId,
       actor,
       agent: { name: agent.name, slug: agent.slug },
+      agentName: agent.name,
       thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
       message: args.message,
-      timestamp: Date.now(),
-      datetime: new Date().toISOString(),
+      timestamp: now,
+      datetime: currentTimeStr,
+      currentTime: currentTimeStr,
+      entityTypes,
+      roles,
     }
 
     const toolExecutor: ToolExecutor = {
@@ -374,10 +397,28 @@ export const chat = internalAction({
 
     const durationMs = Date.now() - startTime
 
+    const executedToolCalls = newMessages
+      .filter(m => m.role === "tool")
+      .map(m => {
+        const assistantMsg = newMessages.find(
+          am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
+        )
+        const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
+        return toolCall ? {
+          name: toolCall.name,
+          arguments: toolCall.arguments,
+          result: JSON.parse(m.content),
+        } : null
+      })
+      .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
+
     await ctx.runMutation(internal.executions.record, {
       organizationId: auth.organizationId,
       agentId: args.agentId,
       threadId,
+      inputMessage: args.message,
+      outputMessage: finalContent,
+      toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       durationMs,
@@ -437,6 +478,395 @@ export const chatBySlug = internalAction({
       threadId: args.threadId,
       externalThreadId: args.externalThreadId,
     })
+  },
+})
+
+export const chatAuthenticated = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    agentId: v.id("agents"),
+    message: v.string(),
+    threadId: v.optional(v.id("threads")),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+  },
+  returns: v.object({
+    message: v.string(),
+    threadId: v.id("threads"),
+    usage: v.object({
+      inputTokens: v.number(),
+      outputTokens: v.number(),
+      totalTokens: v.number(),
+    }),
+  }),
+  handler: async (ctx, args): Promise<ChatResponse> => {
+    const startTime = Date.now()
+    const environment = args.environment ?? "development"
+
+    const agent = await ctx.runQuery(internal.agent.getAgentInternal, {
+      agentId: args.agentId,
+      organizationId: args.organizationId,
+    })
+
+    if (!agent) {
+      throw new Error("Agent not found")
+    }
+
+    const config = await ctx.runQuery(internal.agents.getActiveConfig, {
+      agentId: args.agentId,
+      environment,
+    })
+
+    const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
+      organizationId: args.organizationId,
+      agentId: args.agentId,
+      userId: args.userId,
+    })
+
+    const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, {
+      threadId,
+    })
+
+    const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
+
+    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+      organizationId: args.organizationId,
+      actorType: "user",
+      actorId: args.userId as unknown as string,
+    })
+
+    const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
+      ctx.runQuery(internal.organizations.getInternal, { organizationId: args.organizationId }),
+      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: args.organizationId }),
+      ctx.runQuery(internal.roles.listInternal, { organizationId: args.organizationId }),
+    ])
+
+    const now = Date.now()
+    const currentTimeStr = new Date(now).toISOString()
+
+    const entityTypes: EntityTypeContext[] = (entityTypesRaw || []).map((et: { name: string; slug: string; description?: string; schema: Record<string, unknown>; searchFields?: string[] }) => ({
+      name: et.name,
+      slug: et.slug,
+      description: et.description,
+      schema: et.schema as Record<string, unknown>,
+      searchFields: et.searchFields,
+    }))
+
+    const roles = (rolesRaw || []).map((r: { name: string; description?: string }) => ({
+      name: r.name,
+      description: r.description,
+    }))
+
+    const templateContext: TemplateContext = {
+      organizationId: args.organizationId,
+      organizationName: organization?.name ?? "Unknown Organization",
+      userId: args.userId as unknown as Id<"users">,
+      threadId,
+      agentId: args.agentId,
+      actor,
+      agent: { name: agent.name, slug: agent.slug },
+      agentName: agent.name,
+      thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
+      message: args.message,
+      timestamp: now,
+      datetime: currentTimeStr,
+      currentTime: currentTimeStr,
+      entityTypes,
+      roles,
+    }
+
+    const toolExecutor: ToolExecutor = {
+      executeBuiltin: async (name, toolArgs) => {
+        const toolIdentity = await ctx.runQuery(
+          internal.permissions.getToolIdentityQuery,
+          {
+            actor: {
+              organizationId: actor.organizationId,
+              actorType: actor.actorType,
+              actorId: actor.actorId,
+              roleIds: actor.roleIds,
+            },
+            agentId: args.agentId,
+            toolName: name,
+          }
+        )
+        return executeBuiltinTool(ctx, {
+          organizationId: toolIdentity.organizationId,
+          actorId: toolIdentity.actorId,
+          actorType: toolIdentity.actorType,
+          toolName: name,
+          args: toolArgs,
+        })
+      },
+      executeCustom: (handlerCode, toolArgs) =>
+        ctx.runAction(internal.agent.executeCustomTool, {
+          handlerCode,
+          args: toolArgs,
+          context: {
+            organizationId: actor.organizationId,
+            actorId: actor.actorId,
+            actorType: actor.actorType,
+          },
+        }),
+    }
+
+    const processedSystemPrompt = await processTemplates(
+      config.systemPrompt,
+      templateContext,
+      config.tools,
+      toolExecutor,
+      ctx.runQuery
+    )
+
+    const messages: Message[] = [
+      { role: "system", content: processedSystemPrompt },
+      ...existingMessages.map((m: { role: string; content: string; toolCalls?: unknown; toolCallId?: string }) => ({
+        role: m.role as Message["role"],
+        content: m.content,
+        toolCalls: m.toolCalls as ToolCall[] | undefined,
+        toolCallId: m.toolCallId,
+      })),
+      { role: "user", content: args.message },
+    ]
+
+    const llmMessages = messages.map((m) => {
+      if (m.role === "assistant" && m.toolCalls) {
+        return {
+          role: m.role,
+          content: m.content,
+          tool_calls: m.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.arguments),
+            },
+          })),
+        }
+      }
+      if (m.role === "tool") {
+        return {
+          role: m.role,
+          content: m.content,
+          tool_call_id: m.toolCallId,
+        }
+      }
+      return { role: m.role, content: m.content }
+    })
+
+    const tools = config.tools.map((t: ToolConfig) => ({
+      type: "function" as const,
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    }))
+
+    let response = await callLLM({
+      model: config.model,
+      messages: llmMessages,
+      tools: tools.length > 0 ? tools : undefined,
+    })
+
+    let totalInputTokens = response.usage?.prompt_tokens ?? 0
+    let totalOutputTokens = response.usage?.completion_tokens ?? 0
+
+    const newMessages: Message[] = [{ role: "user", content: args.message }]
+
+    let iterations = 0
+    const maxIterations = 10
+
+    while (response.choices[0]?.message?.tool_calls && iterations < maxIterations) {
+      iterations++
+
+      const assistantMessage = response.choices[0].message
+      const toolCalls: ToolCall[] = (assistantMessage.tool_calls ?? []).map((tc: { id: string; function: { name: string; arguments: string } }) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: JSON.parse(tc.function.arguments),
+      }))
+
+      newMessages.push({
+        role: "assistant",
+        content: assistantMessage.content ?? "",
+        toolCalls,
+      })
+
+      for (const tc of toolCalls) {
+        const toolConfig = config.tools.find((t: ToolConfig) => t.name === tc.name)
+        if (!toolConfig) {
+          newMessages.push({
+            role: "tool",
+            content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }),
+            toolCallId: tc.id,
+          })
+          continue
+        }
+
+        const permissionResult = await ctx.runQuery(
+          internal.permissions.canUseToolQuery,
+          {
+            actor: {
+              organizationId: actor.organizationId,
+              actorType: actor.actorType,
+              actorId: actor.actorId,
+              roleIds: actor.roleIds,
+            },
+            agentId: args.agentId,
+            toolName: tc.name,
+          }
+        )
+
+        if (!permissionResult.allowed) {
+          newMessages.push({
+            role: "tool",
+            content: JSON.stringify({ error: `Permission denied: ${permissionResult.reason}` }),
+            toolCallId: tc.id,
+          })
+          continue
+        }
+
+        try {
+          const toolIdentity = await ctx.runQuery(
+            internal.permissions.getToolIdentityQuery,
+            {
+              actor: {
+                organizationId: actor.organizationId,
+                actorType: actor.actorType,
+                actorId: actor.actorId,
+                roleIds: actor.roleIds,
+              },
+              agentId: args.agentId,
+              toolName: tc.name,
+            }
+          )
+
+          let result: unknown
+
+          if (toolConfig.isBuiltin) {
+            result = await executeBuiltinTool(ctx, {
+              organizationId: toolIdentity.organizationId,
+              actorId: toolIdentity.actorId,
+              actorType: toolIdentity.actorType,
+              toolName: tc.name,
+              args: tc.arguments,
+            })
+          } else if (toolConfig.handlerCode) {
+            result = await ctx.runAction(internal.agent.executeCustomTool, {
+              handlerCode: toolConfig.handlerCode,
+              args: tc.arguments,
+              context: {
+                organizationId: toolIdentity.organizationId,
+                actorId: toolIdentity.actorId,
+                actorType: toolIdentity.actorType,
+              },
+            })
+          } else {
+            result = { error: "Tool has no handler" }
+          }
+
+          newMessages.push({
+            role: "tool",
+            content: JSON.stringify(result),
+            toolCallId: tc.id,
+          })
+        } catch (error) {
+          newMessages.push({
+            role: "tool",
+            content: JSON.stringify({
+              error: error instanceof Error ? error.message : "Tool execution failed",
+            }),
+            toolCallId: tc.id,
+          })
+        }
+      }
+
+      const updatedMessages = [
+        ...llmMessages,
+        ...newMessages.map((m) => {
+          if (m.role === "assistant" && m.toolCalls) {
+            return {
+              role: m.role,
+              content: m.content,
+              tool_calls: m.toolCalls.map((tc) => ({
+                id: tc.id,
+                type: "function" as const,
+                function: {
+                  name: tc.name,
+                  arguments: JSON.stringify(tc.arguments),
+                },
+              })),
+            }
+          }
+          if (m.role === "tool") {
+            return {
+              role: m.role,
+              content: m.content,
+              tool_call_id: m.toolCallId,
+            }
+          }
+          return { role: m.role, content: m.content }
+        }),
+      ]
+
+      response = await callLLM({
+        model: config.model,
+        messages: updatedMessages,
+        tools: tools.length > 0 ? tools : undefined,
+      })
+
+      totalInputTokens += response.usage?.prompt_tokens ?? 0
+      totalOutputTokens += response.usage?.completion_tokens ?? 0
+    }
+
+    const finalContent = response.choices[0]?.message?.content ?? ""
+    newMessages.push({ role: "assistant", content: finalContent })
+
+    await ctx.runMutation(internal.threads.appendMessages, {
+      threadId,
+      messages: newMessages,
+    })
+
+    const durationMs = Date.now() - startTime
+
+    const executedToolCalls = newMessages
+      .filter(m => m.role === "tool")
+      .map(m => {
+        const assistantMsg = newMessages.find(
+          am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
+        )
+        const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
+        return toolCall ? {
+          name: toolCall.name,
+          arguments: toolCall.arguments,
+          result: JSON.parse(m.content),
+        } : null
+      })
+      .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
+
+    await ctx.runMutation(internal.executions.record, {
+      organizationId: args.organizationId,
+      agentId: args.agentId,
+      threadId,
+      inputMessage: args.message,
+      outputMessage: finalContent,
+      toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      durationMs,
+      status: "success",
+    })
+
+    return {
+      threadId,
+      message: finalContent,
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens,
+      },
+    }
   },
 })
 
@@ -649,6 +1079,8 @@ async function executeBuiltinTool(
 
   switch (toolName) {
     case "entity.create":
+      if (!args.type) throw new Error("entity.create requires 'type' parameter")
+      if (!args.data) throw new Error("entity.create requires 'data' parameter")
       return await ctx.runMutation(internal.tools.entities.entityCreate, {
         organizationId,
         actorId,
@@ -659,14 +1091,20 @@ async function executeBuiltinTool(
       })
 
     case "entity.get":
-      return await ctx.runMutation(internal.tools.entities.entityGet, {
+      if (!args.id) throw new Error("entity.get requires 'id' parameter")
+      return await ctx.runQuery(internal.tools.entities.entityGet, {
         organizationId,
+        actorId,
+        actorType,
         id: args.id as string,
       })
 
     case "entity.query":
-      return await ctx.runMutation(internal.tools.entities.entityQuery, {
+      if (!args.type) throw new Error("entity.query requires 'type' parameter")
+      return await ctx.runQuery(internal.tools.entities.entityQuery, {
         organizationId,
+        actorId,
+        actorType,
         type: args.type as string,
         filters: args.filters,
         status: args.status as string | undefined,
@@ -674,6 +1112,8 @@ async function executeBuiltinTool(
       })
 
     case "entity.update":
+      if (!args.id) throw new Error("entity.update requires 'id' parameter")
+      if (!args.data) throw new Error("entity.update requires 'data' parameter")
       return await ctx.runMutation(internal.tools.entities.entityUpdate, {
         organizationId,
         actorId,
@@ -684,6 +1124,7 @@ async function executeBuiltinTool(
       })
 
     case "entity.delete":
+      if (!args.id) throw new Error("entity.delete requires 'id' parameter")
       return await ctx.runMutation(internal.tools.entities.entityDelete, {
         organizationId,
         actorId,
@@ -692,8 +1133,13 @@ async function executeBuiltinTool(
       })
 
     case "entity.link":
+      if (!args.fromId) throw new Error("entity.link requires 'fromId' parameter")
+      if (!args.toId) throw new Error("entity.link requires 'toId' parameter")
+      if (!args.relationType) throw new Error("entity.link requires 'relationType' parameter")
       return await ctx.runMutation(internal.tools.entities.entityLink, {
         organizationId,
+        actorId,
+        actorType,
         fromId: args.fromId as string,
         toId: args.toId as string,
         relationType: args.relationType as string,
@@ -701,14 +1147,20 @@ async function executeBuiltinTool(
       })
 
     case "entity.unlink":
+      if (!args.fromId) throw new Error("entity.unlink requires 'fromId' parameter")
+      if (!args.toId) throw new Error("entity.unlink requires 'toId' parameter")
+      if (!args.relationType) throw new Error("entity.unlink requires 'relationType' parameter")
       return await ctx.runMutation(internal.tools.entities.entityUnlink, {
         organizationId,
+        actorId,
+        actorType,
         fromId: args.fromId as string,
         toId: args.toId as string,
         relationType: args.relationType as string,
       })
 
     case "event.emit":
+      if (!args.eventType) throw new Error("event.emit requires 'eventType' parameter")
       return await ctx.runMutation(internal.tools.events.eventEmit, {
         organizationId,
         actorId,
@@ -729,6 +1181,7 @@ async function executeBuiltinTool(
       })
 
     case "job.enqueue":
+      if (!args.jobType) throw new Error("job.enqueue requires 'jobType' parameter")
       return await ctx.runMutation(internal.tools.jobs.jobEnqueue, {
         organizationId,
         actorId,
@@ -743,6 +1196,7 @@ async function executeBuiltinTool(
       })
 
     case "job.status":
+      if (!args.id) throw new Error("job.status requires 'id' parameter")
       return await ctx.runQuery(internal.tools.jobs.jobStatus, {
         organizationId,
         id: args.id as string,
@@ -751,6 +1205,21 @@ async function executeBuiltinTool(
     default:
       throw new Error(`Unknown builtin tool: ${toolName}`)
   }
+}
+
+const BUILTIN_PREFIXES = ["entity", "event", "job"]
+
+function toApiToolName(name: string): string {
+  return name.replace(/\./g, "_")
+}
+
+function fromApiToolName(name: string): string {
+  for (const prefix of BUILTIN_PREFIXES) {
+    if (name.startsWith(`${prefix}_`)) {
+      return name.replace(`${prefix}_`, `${prefix}.`)
+    }
+  }
+  return name
 }
 
 async function callLLM(params: {
@@ -803,7 +1272,7 @@ async function callLLM(params: {
             ...((m.tool_calls as any[]) || []).map((tc: any) => ({
               type: "tool_use",
               id: tc.id,
-              name: tc.function.name,
+              name: toApiToolName(tc.function.name),
               input: JSON.parse(tc.function.arguments),
             })),
           ],
@@ -815,7 +1284,7 @@ async function callLLM(params: {
   const systemMessage = params.messages.find((m) => m.role === "system")
 
   const anthropicTools = params.tools?.map((t) => ({
-    name: t.function.name,
+    name: toApiToolName(t.function.name),
     description: t.function.description,
     input_schema: t.function.parameters,
   }))
@@ -850,7 +1319,7 @@ async function callLLM(params: {
       id: c.id,
       type: "function",
       function: {
-        name: c.name,
+        name: fromApiToolName(c.name),
         arguments: JSON.stringify(c.input),
       },
     }))
