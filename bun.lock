@@ -16,7 +16,7 @@
         "@clerk/nextjs": "^5.0.0",
         "@radix-ui/react-alert-dialog": "^1.0.5",
         "@radix-ui/react-avatar": "^1.0.4",
-        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-dialog": "^1.1.15",
         "@radix-ui/react-dropdown-menu": "^2.1.16",
         "@radix-ui/react-label": "^2.0.2",
         "@radix-ui/react-popover": "^1.1.15",
@@ -70,7 +70,7 @@
     },
     "packages/struere": {
       "name": "struere",
-      "version": "0.4.4",
+      "version": "0.4.6",
       "bin": {
         "struere": "./dist/bin/struere.js",
       },
