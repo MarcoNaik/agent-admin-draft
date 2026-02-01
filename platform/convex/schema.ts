@@ -280,6 +280,13 @@ export default defineSchema({
     threadId: v.optional(v.id("threads")),
     versionId: v.optional(v.string()),
     conversationId: v.optional(v.string()),
+    inputMessage: v.optional(v.string()),
+    outputMessage: v.optional(v.string()),
+    toolCalls: v.optional(v.array(v.object({
+      name: v.string(),
+      arguments: v.any(),
+      result: v.optional(v.any()),
+    }))),
     inputTokens: v.number(),
     outputTokens: v.number(),
     durationMs: v.number(),
