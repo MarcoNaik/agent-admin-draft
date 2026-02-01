@@ -80,7 +80,7 @@ export default defineAgent({
   description: '${displayName} Agent',
   model: {
     provider: 'anthropic',
-    name: 'claude-sonnet-4-20250514',
+    name: 'claude-haiku-4-5',
     temperature: 0.7,
     maxTokens: 4096,
   },
@@ -248,6 +248,9 @@ export default defineEntityType({
     required: ["name"],
   },
   searchFields: ["name", "email"],
+  displayConfig: {
+    listFields: ["name", "email", "status"],
+  },
 })
 `
 }
@@ -282,13 +285,13 @@ export default defineAgent({
   description: "${displayName} Agent",
   model: {
     provider: "anthropic",
-    name: "claude-sonnet-4-20250514",
+    name: "claude-haiku-4-5",
     temperature: 0.7,
     maxTokens: 4096,
   },
-  systemPrompt: \`You are ${displayName}, a helpful AI assistant.
+  systemPrompt: \`You are {{agentName}}, an AI assistant for {{organizationName}}.
 
-Current time: {{datetime}}
+Current time: {{currentTime}}
 
 Your capabilities:
 - Answer questions accurately and helpfully
@@ -521,19 +524,15 @@ export default defineAgent({
   version: "0.1.0",
   model: {
     provider: "anthropic",  // or "openai", "google"
-    name: "claude-sonnet-4-20250514",
+    name: "claude-haiku-4-5",  // Best cost/intelligence ratio
     temperature: 0.7,
     maxTokens: 4096,
   },
-  systemPrompt: \\\`You are a support agent for {{organizationName}}.
+  systemPrompt: \\\`You are {{agentName}}, a support agent for {{organizationName}}.
 Current time: {{currentTime}}
 
-Available customers:
-{{#each entityTypes}}
-- {{this.name}}: {{this.description}}
-{{/each}}
-
-Use entity.query to look up customer info before responding.\\\`,
+Use entity.query to look up customer info before responding.
+Available entity types: {{entityTypes}}\\\`,
   tools: [
     "entity.query",
     "entity.get",
@@ -544,15 +543,45 @@ Use entity.query to look up customer info before responding.\\\`,
 })
 \`\`\`
 
-### System Prompt Variables
+### Model Selection Guide
 
-| Variable | Value |
-|----------|-------|
-| \`{{currentTime}}\` | ISO 8601 timestamp |
-| \`{{organizationName}}\` | Your org name |
-| \`{{agentName}}\` | This agent's name |
-| \`{{entityTypes}}\` | Array of all entity types (for #each loops) |
-| \`{{roles}}\` | Array of all roles |
+| Model | Cost (Input/Output) | Best For |
+|-------|---------------------|----------|
+| \`claude-haiku-4-5\` | $1/$5 per MTok | **Default** - Best cost/intelligence ratio |
+| \`claude-sonnet-4\` | $3/$15 per MTok | Complex reasoning, nuanced tasks |
+| \`claude-opus-4-5\` | $5/$25 per MTok | Most capable, research-grade tasks |
+
+Start with Haiku 4.5 for most agents. Upgrade to Sonnet only if you need better reasoning.
+
+### System Prompt Template Variables
+
+The template engine supports \`{{variable}}\` syntax for simple variable resolution and \`{{function(args)}}\` syntax for function calls.
+
+**Available Variables:**
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| \`{{currentTime}}\` | string | ISO 8601 timestamp |
+| \`{{datetime}}\` | string | ISO 8601 timestamp (alias) |
+| \`{{timestamp}}\` | number | Unix timestamp in milliseconds |
+| \`{{organizationName}}\` | string | Your organization name |
+| \`{{organizationId}}\` | string | Organization ID |
+| \`{{agentName}}\` | string | This agent's display name |
+| \`{{agent.name}}\` | string | Agent name |
+| \`{{agent.slug}}\` | string | Agent slug |
+| \`{{message}}\` | string | Current user message |
+| \`{{thread.metadata.X}}\` | any | Thread metadata field X |
+| \`{{entityTypes}}\` | array | JSON array of all entity types |
+| \`{{roles}}\` | array | JSON array of all roles |
+
+**Function Calls (embedded queries):**
+
+\`\`\`
+{{entity.query({"type": "customer", "limit": 5})}}
+{{entity.get({"id": "ent_123"})}}
+\`\`\`
+
+**Note:** Handlebars block helpers (\`{{#each}}\`, \`{{#if}}\`) are NOT supported. Use function calls instead.
 
 ## Defining Entity Types
 
@@ -808,7 +837,7 @@ export default defineAgent({
 
 When a customer asks about an order, use entity.query to find it first.
 Always be polite and helpful. If you can't help, offer to escalate.\\\`,
-  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  model: { provider: "anthropic", name: "claude-haiku-4-5" },
   tools: ["entity.query", "entity.get", "entity.update", "event.emit"],
 })
 \`\`\`
@@ -824,7 +853,7 @@ export default defineAgent({
 
 Check teacher availability before booking. Create session entities for confirmed bookings.
 Send confirmation via the send_notification custom tool.\\\`,
-  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  model: { provider: "anthropic", name: "claude-haiku-4-5" },
   tools: ["entity.create", "entity.query", "job.enqueue", "send_notification"],
 })
 \`\`\`
@@ -840,7 +869,7 @@ export default defineAgent({
 
 When creating entities, validate the data matches the schema.
 Always confirm what was created/updated.\\\`,
-  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  model: { provider: "anthropic", name: "claude-haiku-4-5" },
   tools: ["entity.create", "entity.update", "entity.query"],
 })
 \`\`\`
@@ -884,7 +913,7 @@ export default defineAgent({
   description: 'My AI Agent',
   model: {
     provider: 'anthropic',
-    name: 'claude-sonnet-4-20250514',
+    name: 'claude-haiku-4-5',  // Best cost/intelligence ratio
     temperature: 0.7,
     maxTokens: 4096,
   },
@@ -902,18 +931,23 @@ System prompts support dynamic \`{{...}}\` templates that are resolved at runtim
 
 ### Available Variables
 
-| Variable | Description |
-|----------|-------------|
-| \`{{organizationId}}\` | Current organization ID |
-| \`{{userId}}\` | Current user ID |
-| \`{{threadId}}\` | Conversation thread ID |
-| \`{{agentId}}\` | Agent ID |
-| \`{{agent.name}}\` | Agent name |
-| \`{{agent.slug}}\` | Agent slug |
-| \`{{thread.metadata.X}}\` | Thread metadata field X |
-| \`{{message}}\` | Current user message |
-| \`{{timestamp}}\` | Unix timestamp (ms) |
-| \`{{datetime}}\` | ISO 8601 datetime |
+| Variable | Type | Description |
+|----------|------|-------------|
+| \`{{currentTime}}\` | string | ISO 8601 timestamp |
+| \`{{datetime}}\` | string | ISO 8601 timestamp (alias) |
+| \`{{timestamp}}\` | number | Unix timestamp (ms) |
+| \`{{organizationName}}\` | string | Organization name |
+| \`{{organizationId}}\` | string | Organization ID |
+| \`{{agentName}}\` | string | Agent display name |
+| \`{{agent.name}}\` | string | Agent name |
+| \`{{agent.slug}}\` | string | Agent slug |
+| \`{{userId}}\` | string | Current user ID |
+| \`{{threadId}}\` | string | Conversation thread ID |
+| \`{{agentId}}\` | string | Agent ID |
+| \`{{thread.metadata.X}}\` | any | Thread metadata field X |
+| \`{{message}}\` | string | Current user message |
+| \`{{entityTypes}}\` | array | JSON array of all entity types |
+| \`{{roles}}\` | array | JSON array of all roles |
 
 ### Function Calls
 
