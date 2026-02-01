@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
+import { query, mutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
 import { buildActorContext, assertCanPerform } from "./lib/permissions"
@@ -166,5 +166,15 @@ export const remove = mutation({
 
     await ctx.db.delete(args.id)
     return { success: true }
+  },
+})
+
+export const listInternal = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
   },
 })
