@@ -68,7 +68,7 @@ export async function loadCustomTools(dir: string): Promise<ToolReference[]> {
   }
 
   try {
-    const module = await import(indexPath)
+    const module = await import(`${indexPath}?update=${Date.now()}`)
     if (Array.isArray(module.default)) {
       return module.default
     }
@@ -83,7 +83,7 @@ export async function loadCustomTools(dir: string): Promise<ToolReference[]> {
 
 async function loadFromIndex<T>(indexPath: string): Promise<T[]> {
   try {
-    const module = await import(indexPath)
+    const module = await import(`${indexPath}?update=${Date.now()}`)
 
     if (Array.isArray(module.default)) {
       return module.default
@@ -114,7 +114,7 @@ async function loadFromDirectory<T>(dir: string): Promise<T[]> {
   for (const file of files) {
     const filePath = join(dir, file)
     try {
-      const module = await import(filePath)
+      const module = await import(`${filePath}?update=${Date.now()}`)
       if (module.default) {
         items.push(module.default as T)
       }
