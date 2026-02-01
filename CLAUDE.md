@@ -566,7 +566,7 @@ export default defineAgent({
   slug: "scheduler",
   version: "0.1.0",
   systemPrompt: "You are a scheduling assistant...",
-  model: { provider: "anthropic", name: "claude-sonnet-4-20250514" },
+  model: { provider: "anthropic", name: "claude-haiku-4-5" },
   tools: ["entity.create", "entity.query", "event.emit"],
 })
 ```
@@ -650,45 +650,69 @@ Agents can enable any combination of these 11 built-in tools:
 **Available Providers:**
 | Provider | Model Names | Notes |
 |----------|-------------|-------|
-| `anthropic` | `claude-sonnet-4-20250514`, `claude-opus-4-20250514`, `claude-3-5-haiku-20241022` | Default provider |
+| `anthropic` | `claude-haiku-4-5`, `claude-sonnet-4`, `claude-opus-4-5` | Default provider |
 | `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Requires OPENAI_API_KEY |
 | `google` | `gemini-1.5-pro`, `gemini-1.5-flash` | Requires GOOGLE_API_KEY |
+
+**Model Pricing (Anthropic):**
+| Model | Input | Output | Best For |
+|-------|-------|--------|----------|
+| `claude-haiku-4-5` | $1/MTok | $5/MTok | **Default** - Best cost/intelligence ratio |
+| `claude-sonnet-4` | $3/MTok | $15/MTok | Complex reasoning, nuanced tasks |
+| `claude-opus-4-5` | $5/MTok | $25/MTok | Most capable, research-grade tasks |
 
 **Model Config Options:**
 ```typescript
 model: {
   provider: "anthropic",
-  name: "claude-sonnet-4-20250514",
+  name: "claude-haiku-4-5",
   temperature?: 0.7,
   maxTokens?: 4096,
 }
 ```
 
-**Default Model:** `anthropic/claude-sonnet-4-20250514` with temperature 0.7, maxTokens 4096
+**Default Model:** `anthropic/claude-haiku-4-5` with temperature 0.7, maxTokens 4096
 
 ### System Prompt Templates
 
-System prompts support Handlebars-style templates with these variables:
+System prompts support `{{variable}}` syntax for simple variable resolution and `{{function(args)}}` for embedded queries.
+
+**Available Variables:**
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `{{currentTime}}` | string | Current ISO 8601 timestamp |
-| `{{organizationName}}` | string | Current organization name |
+| `{{currentTime}}` | string | ISO 8601 timestamp |
+| `{{datetime}}` | string | ISO 8601 timestamp (alias) |
+| `{{timestamp}}` | number | Unix timestamp in milliseconds |
+| `{{organizationName}}` | string | Organization name |
+| `{{organizationId}}` | string | Organization ID |
 | `{{agentName}}` | string | Agent's display name |
-| `{{entityTypes}}` | array | All entity types with schemas |
-| `{{roles}}` | array | All roles with policies |
+| `{{agent.name}}` | string | Agent name |
+| `{{agent.slug}}` | string | Agent slug |
+| `{{userId}}` | string | Current user ID |
+| `{{threadId}}` | string | Thread ID |
+| `{{message}}` | string | Current user message |
+| `{{thread.metadata.X}}` | any | Thread metadata field X |
+| `{{entityTypes}}` | array | JSON array of all entity types |
+| `{{roles}}` | array | JSON array of all roles |
+
+**Function Calls (embedded queries):**
+```
+{{entity.query({"type": "customer", "limit": 5})}}
+{{entity.get({"id": "ent_123"})}}
+{{entity.get({"id": "{{thread.metadata.customerId}}"})}}
+```
+
+**Important:** Handlebars block helpers (`{{#each}}`, `{{#if}}`, `{{/each}}`) are NOT supported. Use `{{entityTypes}}` to get the JSON array directly.
 
 **Example System Prompt:**
 ```typescript
 systemPrompt: `You are {{agentName}}, an assistant for {{organizationName}}.
 Current time: {{currentTime}}
 
-Available entity types:
-{{#each entityTypes}}
-- {{this.name}} ({{this.slug}}): {{this.description}}
-{{/each}}
+Available entity types: {{entityTypes}}
 
-You can create, query, update, and delete entities using the tools provided.`
+Use entity.query to search for entities by type.`
 ```
 
 **Entity Type Context Structure:**
