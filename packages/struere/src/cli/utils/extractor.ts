@@ -131,7 +131,7 @@ function extractAgentPayload(
       return {
         name: toolName,
         description: getBuiltinToolDescription(toolName),
-        parameters: { type: 'object', properties: {} },
+        parameters: getBuiltinToolParameters(toolName),
         isBuiltin: true,
       }
     }
@@ -168,19 +168,125 @@ function extractAgentPayload(
 
 function getBuiltinToolDescription(name: string): string {
   const descriptions: Record<string, string> = {
-    'entity.create': 'Create a new entity',
-    'entity.get': 'Get an entity by ID',
-    'entity.query': 'Query entities by type and filters',
-    'entity.update': 'Update an entity',
-    'entity.delete': 'Delete an entity',
-    'entity.link': 'Link two entities',
-    'entity.unlink': 'Unlink two entities',
-    'event.emit': 'Emit an event',
-    'event.query': 'Query events',
-    'job.enqueue': 'Schedule a background job',
-    'job.status': 'Get job status',
+    'entity.create': 'Create a new entity of a specified type',
+    'entity.get': 'Get an entity by its ID',
+    'entity.query': 'Query entities by type with optional filters',
+    'entity.update': 'Update an existing entity by ID',
+    'entity.delete': 'Delete an entity by ID',
+    'entity.link': 'Create a relation between two entities',
+    'entity.unlink': 'Remove a relation between two entities',
+    'event.emit': 'Emit a custom event for audit logging',
+    'event.query': 'Query historical events with optional filters',
+    'job.enqueue': 'Schedule a background job to run later',
+    'job.status': 'Get the status of a scheduled job',
   }
   return descriptions[name] || name
+}
+
+function getBuiltinToolParameters(name: string): unknown {
+  const schemas: Record<string, unknown> = {
+    'entity.create': {
+      type: 'object',
+      properties: {
+        type: { type: 'string', description: 'The entity type slug (e.g., "customer", "order")' },
+        data: { type: 'object', description: 'The entity data matching the entity type schema' },
+        status: { type: 'string', description: 'Optional status (defaults to "active")' },
+      },
+      required: ['type', 'data'],
+    },
+    'entity.get': {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The entity ID to retrieve' },
+      },
+      required: ['id'],
+    },
+    'entity.query': {
+      type: 'object',
+      properties: {
+        type: { type: 'string', description: 'The entity type slug to query (e.g., "customer", "order")' },
+        filters: { type: 'object', description: 'Optional filters to apply (e.g., {"data.status": "active"})' },
+        status: { type: 'string', description: 'Filter by entity status' },
+        limit: { type: 'number', description: 'Maximum number of results (default 100)' },
+      },
+      required: ['type'],
+    },
+    'entity.update': {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The entity ID to update' },
+        data: { type: 'object', description: 'The fields to update (merged with existing data)' },
+        status: { type: 'string', description: 'Optional new status' },
+      },
+      required: ['id', 'data'],
+    },
+    'entity.delete': {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The entity ID to delete' },
+      },
+      required: ['id'],
+    },
+    'entity.link': {
+      type: 'object',
+      properties: {
+        fromId: { type: 'string', description: 'Source entity ID' },
+        toId: { type: 'string', description: 'Target entity ID' },
+        relationType: { type: 'string', description: 'Type of relation (e.g., "assigned_to", "belongs_to")' },
+        metadata: { type: 'object', description: 'Optional metadata for the relation' },
+      },
+      required: ['fromId', 'toId', 'relationType'],
+    },
+    'entity.unlink': {
+      type: 'object',
+      properties: {
+        fromId: { type: 'string', description: 'Source entity ID' },
+        toId: { type: 'string', description: 'Target entity ID' },
+        relationType: { type: 'string', description: 'Type of relation to remove' },
+      },
+      required: ['fromId', 'toId', 'relationType'],
+    },
+    'event.emit': {
+      type: 'object',
+      properties: {
+        eventType: { type: 'string', description: 'Event type (e.g., "order.placed", "user.signup")' },
+        entityId: { type: 'string', description: 'Optional entity ID this event relates to' },
+        entityTypeSlug: { type: 'string', description: 'Optional entity type slug' },
+        payload: { type: 'object', description: 'Optional event payload data' },
+      },
+      required: ['eventType'],
+    },
+    'event.query': {
+      type: 'object',
+      properties: {
+        eventType: { type: 'string', description: 'Filter by event type' },
+        entityId: { type: 'string', description: 'Filter by entity ID' },
+        since: { type: 'number', description: 'Unix timestamp to filter events after' },
+        limit: { type: 'number', description: 'Maximum number of results' },
+      },
+    },
+    'job.enqueue': {
+      type: 'object',
+      properties: {
+        jobType: { type: 'string', description: 'The type of job to schedule' },
+        payload: { type: 'object', description: 'Job payload data' },
+        scheduledFor: { type: 'number', description: 'Unix timestamp when job should run (optional, runs immediately if omitted)' },
+        priority: { type: 'number', description: 'Job priority (higher runs first)' },
+        maxAttempts: { type: 'number', description: 'Maximum retry attempts' },
+        idempotencyKey: { type: 'string', description: 'Unique key to prevent duplicate jobs' },
+        entityId: { type: 'string', description: 'Optional entity ID this job relates to' },
+      },
+      required: ['jobType'],
+    },
+    'job.status': {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The job ID to check' },
+      },
+      required: ['id'],
+    },
+  }
+  return schemas[name] || { type: 'object', properties: {} }
 }
 
 function extractHandlerCode(handler: Function): string {
