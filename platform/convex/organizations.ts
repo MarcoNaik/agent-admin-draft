@@ -348,3 +348,10 @@ export const getUserMembership = internalQuery({
       .first()
   },
 })
+
+export const getInternal = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.organizationId)
+  },
+})
