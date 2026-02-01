@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
+import { query, mutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
 export const list = query({
@@ -406,5 +406,15 @@ export const getUserRoles = query({
     return rolesWithDetails.filter(
       (r) => r.role !== null && r.role.organizationId === auth.organizationId
     )
+  },
+})
+
+export const listInternal = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("roles")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
   },
 })
