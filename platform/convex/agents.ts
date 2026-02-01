@@ -1,7 +1,11 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery } from "./_generated/server"
+import { query, mutation, internalQuery, action } from "./_generated/server"
+import { internal } from "./_generated/api"
+import { Id } from "./_generated/dataModel"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
+import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
+import { ActorContext } from "./lib/permissions/types"
 
 export const list = query({
   args: {
@@ -415,23 +419,11 @@ function compileTemplatePreview(
   return result
 }
 
-export const compileSystemPrompt = query({
+export const getCompileData = internalQuery({
   args: {
     agentId: v.id("agents"),
     environment: v.union(v.literal("development"), v.literal("production")),
-    sampleContext: v.optional(v.object({
-      message: v.optional(v.string()),
-      threadMetadata: v.optional(v.any()),
-    })),
   },
-  returns: v.union(
-    v.object({
-      raw: v.string(),
-      compiled: v.string(),
-      context: v.any(),
-    }),
-    v.null()
-  ),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const agent = await ctx.db.get(args.agentId)
@@ -453,22 +445,134 @@ export const compileSystemPrompt = query({
       return null
     }
 
-    const sampleContext = args.sampleContext || {}
-    const now = Date.now()
+    const organization = await ctx.db.get(auth.organizationId)
 
-    const templateContext: Record<string, unknown> = {
+    const entityTypesRaw = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .collect()
+
+    const rolesRaw = await ctx.db
+      .query("roles")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .collect()
+
+    return {
+      agent: { name: agent.name, slug: agent.slug },
+      config: {
+        systemPrompt: config.systemPrompt,
+        tools: config.tools,
+      },
+      organization: organization ? { name: organization.name } : null,
+      entityTypesRaw: entityTypesRaw.map((et) => ({
+        name: et.name,
+        slug: et.slug,
+        description: (et as { description?: string }).description,
+        schema: et.schema,
+        searchFields: et.searchFields,
+      })),
+      rolesRaw: rolesRaw.map((r) => ({
+        name: r.name,
+        description: r.description,
+      })),
       organizationId: auth.organizationId,
       userId: auth.userId,
-      threadId: "sample-thread-id",
+    }
+  },
+})
+
+interface CompileData {
+  agent: { name: string; slug: string }
+  config: { systemPrompt: string; tools: Array<{ name: string; isBuiltin?: boolean; handlerCode?: string }> }
+  organization: { name: string } | null
+  entityTypesRaw: Array<{ name: string; slug: string; description?: string; schema: unknown; searchFields?: string[] }>
+  rolesRaw: Array<{ name: string; description?: string }>
+  organizationId: Id<"organizations">
+  userId: Id<"users">
+}
+
+export const compileSystemPrompt = action({
+  args: {
+    agentId: v.id("agents"),
+    environment: v.union(v.literal("development"), v.literal("production")),
+    sampleContext: v.optional(v.object({
+      message: v.optional(v.string()),
+      threadMetadata: v.optional(v.any()),
+    })),
+  },
+  returns: v.union(
+    v.object({
+      raw: v.string(),
+      compiled: v.string(),
+      context: v.any(),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args): Promise<{ raw: string; compiled: string; context: TemplateContext } | null> => {
+    const data: CompileData | null = await ctx.runQuery(internal.agents.getCompileData, {
       agentId: args.agentId,
+      environment: args.environment,
+    })
+
+    if (!data) {
+      return null
+    }
+
+    const { agent, config, organization, entityTypesRaw, rolesRaw, organizationId, userId } = data
+
+    const sampleContext = args.sampleContext || {}
+    const now = Date.now()
+    const currentTimeStr = new Date(now).toISOString()
+
+    const entityTypes: EntityTypeContext[] = entityTypesRaw.map((et) => ({
+      name: et.name,
+      slug: et.slug,
+      description: et.description,
+      schema: et.schema as Record<string, unknown>,
+      searchFields: et.searchFields,
+    }))
+
+    const roles = rolesRaw.map((r) => ({
+      name: r.name,
+      description: r.description,
+    }))
+
+    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+      organizationId,
+      actorType: "user",
+      actorId: userId as unknown as string,
+    })
+
+    const templateContext: TemplateContext = {
+      organizationId,
+      organizationName: organization?.name ?? "Unknown Organization",
+      userId,
+      threadId: "sample-thread-id" as Id<"threads">,
+      agentId: args.agentId,
+      actor,
       agent: { name: agent.name, slug: agent.slug },
+      agentName: agent.name,
       thread: { metadata: sampleContext.threadMetadata || {} },
       message: sampleContext.message || "Hello, this is a sample message.",
       timestamp: now,
-      datetime: new Date(now).toISOString(),
+      datetime: currentTimeStr,
+      currentTime: currentTimeStr,
+      entityTypes,
+      roles,
     }
 
-    const compiled = compileTemplatePreview(config.systemPrompt, templateContext)
+    const toolExecutor: ToolExecutor = {
+      executeBuiltin: async () => ({ error: "Preview mode - tool execution disabled" }),
+      executeCustom: async () => ({ error: "Preview mode - tool execution disabled" }),
+    }
+
+    const compiled = await processTemplates(
+      config.systemPrompt,
+      templateContext,
+      config.tools || [],
+      toolExecutor,
+      ctx.runQuery
+    )
 
     return {
       raw: config.systemPrompt,
