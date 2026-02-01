@@ -5,17 +5,30 @@ import { ActorContext, PermissionError } from "./permissions/types"
 
 const MAX_RESULT_SIZE = 10 * 1024
 
+export interface EntityTypeContext {
+  name: string
+  slug: string
+  description?: string
+  schema: Record<string, unknown>
+  searchFields?: string[]
+}
+
 export interface TemplateContext {
   organizationId: Id<"organizations">
+  organizationName: string
   userId?: Id<"users">
   threadId: Id<"threads">
   agentId: Id<"agents">
   actor: ActorContext
   agent: { name: string; slug: string }
+  agentName: string
   thread: { metadata?: Record<string, unknown> }
   message: string
   timestamp: number
   datetime: string
+  currentTime: string
+  entityTypes: EntityTypeContext[]
+  roles: Array<{ name: string; description?: string }>
 }
 
 interface ToolConfig {
