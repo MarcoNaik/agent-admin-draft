@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -32,16 +32,8 @@ export function useDeployAgent() {
   return useMutation(api.agents.deploy)
 }
 
-export function useCompileSystemPrompt(
-  agentId: Id<"agents">,
-  environment: "development" | "production",
-  sampleContext?: { message?: string; threadMetadata?: Record<string, unknown> }
-) {
-  return useQuery(api.agents.compileSystemPrompt, {
-    agentId,
-    environment,
-    sampleContext,
-  })
+export function useCompileSystemPrompt() {
+  return useAction(api.agents.compileSystemPrompt)
 }
 
 export function useEntityTypes() {
@@ -239,8 +231,8 @@ export function useThread(id: Id<"threads">) {
   return useQuery(api.threads.get, { id })
 }
 
-export function useThreadWithMessages(id: Id<"threads">) {
-  return useQuery(api.threads.getWithMessages, { id })
+export function useThreadWithMessages(id: Id<"threads"> | null | undefined) {
+  return useQuery(api.threads.getWithMessages, id ? { id } : "skip")
 }
 
 export function useCreateThread() {
@@ -337,4 +329,16 @@ export function useDeleteIntegrationConfig() {
 
 export function useSetIntegrationStatus() {
   return useMutation(api.integrations.setConfigStatus)
+}
+
+export function useAgentBySlug(slug: string) {
+  return useQuery(api.chat.getAgentBySlug, { slug })
+}
+
+export function useSendChatMessage() {
+  return useAction(api.chat.send)
+}
+
+export function useSendChatMessageBySlug() {
+  return useAction(api.chat.sendBySlug)
 }
