@@ -11,6 +11,7 @@
 import type * as agent from "../agent.js";
 import type * as agents from "../agents.js";
 import type * as apiKeys from "../apiKeys.js";
+import type * as chat from "../chat.js";
 import type * as entities from "../entities.js";
 import type * as entityTypes from "../entityTypes.js";
 import type * as events from "../events.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agents: typeof agents;
   apiKeys: typeof apiKeys;
+  chat: typeof chat;
   entities: typeof entities;
   entityTypes: typeof entityTypes;
   events: typeof events;
