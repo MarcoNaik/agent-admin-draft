@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, Clock, ExternalLink } from "lucide-react"
+import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, Clock, ExternalLink, RefreshCw } from "lucide-react"
 import { useAgentWithConfig, useCompileSystemPrompt } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
@@ -73,15 +73,45 @@ function ToolItem({ tool }: { tool: Tool }) {
   )
 }
 
+interface CompiledPrompt {
+  raw: string
+  compiled: string
+  context: Record<string, unknown>
+}
+
 export default function AgentConfigPage({ params }: AgentConfigPageProps) {
   const { agentId } = params
   const agent = useAgentWithConfig(agentId as Id<"agents">)
   const { environment } = useEnvironment()
   const [showCompiled, setShowCompiled] = useState(false)
-  const compiledPrompt = useCompileSystemPrompt(
-    agentId as Id<"agents">,
-    environment as "development" | "production"
-  )
+  const [compiledPrompt, setCompiledPrompt] = useState<CompiledPrompt | null>(null)
+  const [isCompiling, setIsCompiling] = useState(false)
+  const compileAction = useCompileSystemPrompt()
+
+  const runCompile = useCallback(async () => {
+    setIsCompiling(true)
+    try {
+      const result = await compileAction({
+        agentId: agentId as Id<"agents">,
+        environment: environment as "development" | "production",
+      })
+      setCompiledPrompt(result)
+    } catch (error) {
+      console.error("Failed to compile:", error)
+    } finally {
+      setIsCompiling(false)
+    }
+  }, [compileAction, agentId, environment])
+
+  useEffect(() => {
+    if (showCompiled && !compiledPrompt && !isCompiling) {
+      runCompile()
+    }
+  }, [showCompiled, compiledPrompt, isCompiling, runCompile])
+
+  useEffect(() => {
+    setCompiledPrompt(null)
+  }, [environment])
 
   if (agent === undefined) {
     return (
@@ -204,6 +234,17 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
                 <Play className="h-3.5 w-3.5 mr-1.5" />
                 Compiled
               </Button>
+              {showCompiled && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={runCompile}
+                  disabled={isCompiling}
+                  className="h-7 text-xs"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", isCompiling && "animate-spin")} />
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -212,7 +253,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
             <div className="space-y-4">
               <div className="rounded bg-background-tertiary p-4 max-h-96 overflow-auto">
                 {showCompiled ? (
-                  compiledPrompt === undefined ? (
+                  isCompiling || !compiledPrompt ? (
                     <div className="flex items-center justify-center py-4">
                       <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />
                     </div>
