@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2, ExternalLink, Copy, Check } from "lucide-react"
+import { Loader2, ExternalLink, Copy, Check, Activity, Clock, Zap, TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { useAgentWithConfig, useExecutionStats, useRecentExecutions } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
@@ -32,16 +32,6 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="h-3.5 w-3.5 text-content-tertiary" />
       )}
     </button>
-  )
-}
-
-function StatCard({ label, value, subtext }: { label: string; value: string | number; subtext?: string }) {
-  return (
-    <div className="rounded-md border bg-card p-4">
-      <div className="text-xs text-content-secondary mb-1">{label}</div>
-      <div className="text-2xl font-semibold text-content-primary">{value}</div>
-      {subtext && <div className="text-xs text-content-tertiary mt-1">{subtext}</div>}
-    </div>
   )
 }
 
@@ -91,13 +81,15 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
 
   const config = environment === "production" ? agent.productionConfig : agent.developmentConfig
   const isDeployed = !!config
-  const endpoint = environment === "production"
-    ? `https://${agent.slug}.struere.dev`
-    : `https://${agent.slug}-dev.struere.dev`
+  const chatUrl = `/chat/${agent.slug}`
+  const apiEndpoint = `${process.env.NEXT_PUBLIC_CONVEX_URL}/v1/agents/${agent.slug}/chat`
 
-  const successRate = stats?.successRate ?? 1
-  const totalExecutions = stats?.executions ?? 0
-  const avgDuration = stats?.avgDuration ?? 0
+  const totalExecutions = stats?.total ?? 0
+  const successRate = totalExecutions > 0 ? (stats?.successRate ?? 0) : 0
+  const avgDuration = stats?.averageDurationMs ?? 0
+  const totalTokens = stats?.totalTokens ?? 0
+  const inputTokens = stats?.totalInputTokens ?? 0
+  const outputTokens = stats?.totalOutputTokens ?? 0
 
   return (
     <div className="space-y-6">
@@ -113,25 +105,35 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
 
       <div className="rounded-md border bg-card">
         <div className="border-b px-4 py-3">
-          <div className="text-sm font-medium text-content-primary">Endpoint</div>
+          <div className="text-sm font-medium text-content-primary">Chat</div>
         </div>
-        <div className="p-4">
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded bg-background-tertiary px-3 py-2 text-sm font-mono text-content-primary">
-              {endpoint}
-            </code>
-            <CopyButton text={endpoint} />
-            <a
-              href={endpoint}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded hover:bg-background-tertiary transition-colors"
-            >
-              <ExternalLink className="h-4 w-4 text-content-tertiary" />
-            </a>
+        <div className="p-4 space-y-4">
+          <div>
+            <div className="text-xs text-content-secondary mb-1.5">Chat UI</div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded bg-background-tertiary px-3 py-2 text-sm font-mono text-content-primary">
+                {chatUrl}
+              </code>
+              <CopyButton text={chatUrl} />
+              <a
+                href={chatUrl}
+                className="p-2 rounded hover:bg-background-tertiary transition-colors"
+              >
+                <ExternalLink className="h-4 w-4 text-content-tertiary" />
+              </a>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-content-secondary mb-1.5">API Endpoint</div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded bg-background-tertiary px-3 py-2 text-sm font-mono text-content-primary truncate">
+                {apiEndpoint}
+              </code>
+              <CopyButton text={apiEndpoint} />
+            </div>
           </div>
           {config && (
-            <div className="mt-3 flex items-center gap-4 text-xs text-content-secondary">
+            <div className="flex items-center gap-4 text-xs text-content-secondary pt-2 border-t">
               <span>Version: <span className="font-mono text-content-primary">{config.version}</span></span>
               <span>Model: <span className="font-mono text-content-primary">{config.model?.name || "claude-sonnet-4-20250514"}</span></span>
               <span>Tools: <span className="text-content-primary">{config.tools?.length || 0}</span></span>
@@ -140,33 +142,46 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Executions"
-          value={totalExecutions}
-        />
-        <StatCard
-          label="Success Rate"
-          value={`${(successRate * 100).toFixed(1)}%`}
-        />
-        <StatCard
-          label="Avg Duration"
-          value={formatDuration(avgDuration)}
-        />
-        <StatCard
-          label="Total Tokens"
-          value={formatTokens(stats?.totalTokens ?? 0)}
-          subtext={stats?.totalTokens ? `${formatTokens(stats.inputTokens ?? 0)} in / ${formatTokens(stats.outputTokens ?? 0)} out` : undefined}
-        />
-      </div>
-
       <div className="rounded-md border bg-card">
         <div className="border-b px-4 py-3 flex items-center justify-between">
-          <div className="text-sm font-medium text-content-primary">Recent Activity</div>
+          <div className="text-sm font-medium text-content-primary">Activity</div>
           <Button variant="ghost" size="sm" asChild>
             <a href={`/agents/${agentId}/logs`}>View all</a>
           </Button>
         </div>
+
+        <div className="px-4 py-3 border-b bg-background-secondary/30">
+          <div className="flex items-center gap-6 text-xs">
+            <div className="flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-content-tertiary" />
+              <span className="text-content-secondary">Executions</span>
+              <span className="font-medium text-content-primary">{totalExecutions}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-content-tertiary" />
+              <span className="text-content-secondary">Success</span>
+              <span className="font-medium text-content-primary">{successRate.toFixed(0)}%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-content-tertiary" />
+              <span className="text-content-secondary">Avg</span>
+              <span className="font-medium text-content-primary">{formatDuration(avgDuration)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-content-tertiary" />
+              <span className="text-content-secondary">Tokens</span>
+              <span className="font-medium text-content-primary">
+                {formatTokens(totalTokens)}
+                {totalTokens > 0 && (
+                  <span className="text-content-tertiary font-normal ml-1">
+                    ({formatTokens(inputTokens)} in / {formatTokens(outputTokens)} out)
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {executions === undefined ? (
           <div className="p-8 text-center">
             <Loader2 className="h-5 w-5 animate-spin text-content-secondary mx-auto" />
