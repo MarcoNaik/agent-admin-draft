@@ -8,11 +8,14 @@ import {
   Settings,
   Cpu,
   Wrench,
+  MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AgentSidebarProps {
   agentId: string
+  chatOpen?: boolean
+  onChatToggle?: () => void
 }
 
 const navItems = [
@@ -23,7 +26,7 @@ const navItems = [
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
 
-export function AgentSidebar({ agentId }: AgentSidebarProps) {
+export function AgentSidebar({ agentId, chatOpen, onChatToggle }: AgentSidebarProps) {
   const pathname = usePathname()
   const basePath = `/agents/${agentId}`
 
@@ -34,7 +37,7 @@ export function AgentSidebar({ agentId }: AgentSidebarProps) {
           Agent
         </span>
       </div>
-      <div className="flex flex-col gap-0.5 px-2">
+      <div className="flex flex-col gap-0.5 px-2 flex-1">
         {navItems.map((item) => {
           const fullPath = `${basePath}${item.href}`
           const isActive =
@@ -59,6 +62,22 @@ export function AgentSidebar({ agentId }: AgentSidebarProps) {
           )
         })}
       </div>
+      {onChatToggle && (
+        <div className="px-2 py-3 border-t">
+          <button
+            onClick={onChatToggle}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer",
+              chatOpen
+                ? "bg-primary text-primary-foreground font-medium"
+                : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
+            )}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </button>
+        </div>
+      )}
     </nav>
   )
 }
