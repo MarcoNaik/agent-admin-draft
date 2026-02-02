@@ -14,6 +14,7 @@ const actorContextValidator = v.object({
   ),
   actorId: v.string(),
   roleIds: v.array(v.id("roles")),
+  isOrgAdmin: v.optional(v.boolean()),
 })
 
 const toolPermissionResultValidator = v.object({
@@ -40,6 +41,7 @@ export const canUseToolQuery = internalQuery({
       actorType: args.actor.actorType,
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
+      isOrgAdmin: args.actor.isOrgAdmin,
     }
     return await canUseTool(ctx, actor, args.agentId, args.toolName)
   },
@@ -58,6 +60,7 @@ export const getToolIdentityQuery = internalQuery({
       actorType: args.actor.actorType,
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
+      isOrgAdmin: args.actor.isOrgAdmin,
     }
     return await getToolIdentity(ctx, actor, args.agentId, args.toolName)
   },
@@ -75,6 +78,7 @@ export const queryEntitiesAsActorQuery = internalQuery({
       actorType: args.actor.actorType,
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
+      isOrgAdmin: args.actor.isOrgAdmin,
     }
     return await queryEntitiesAsActor(ctx, actor, args.entityTypeSlug)
   },
@@ -93,6 +97,7 @@ export const getEntityAsActorQuery = internalQuery({
       actorType: args.actor.actorType,
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
+      isOrgAdmin: args.actor.isOrgAdmin,
     }
     return await getEntityAsActor(ctx, actor, args.entityTypeSlug, args.entityId)
   },
