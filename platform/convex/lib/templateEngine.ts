@@ -175,6 +175,7 @@ async function resolveTemplateFunction(
           actorType: context.actor.actorType,
           actorId: context.actor.actorId,
           roleIds: context.actor.roleIds,
+          isOrgAdmin: context.actor.isOrgAdmin,
         },
         entityTypeSlug: queryArgs.type,
       })
@@ -189,6 +190,7 @@ async function resolveTemplateFunction(
           actorType: context.actor.actorType,
           actorId: context.actor.actorId,
           roleIds: context.actor.roleIds,
+          isOrgAdmin: context.actor.isOrgAdmin,
         },
         entityTypeSlug: getArgs.type,
         entityId: getArgs.id as Id<"entities">,
