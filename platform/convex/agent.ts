@@ -152,6 +152,7 @@ export const chat = internalAction({
               actorType: actor.actorType,
               actorId: actor.actorId,
               roleIds: actor.roleIds,
+              isOrgAdmin: actor.isOrgAdmin,
             },
             agentId: args.agentId,
             toolName: name,
@@ -161,6 +162,7 @@ export const chat = internalAction({
           organizationId: toolIdentity.organizationId,
           actorId: toolIdentity.actorId,
           actorType: toolIdentity.actorType,
+          isOrgAdmin: toolIdentity.isOrgAdmin,
           toolName: name,
           args: toolArgs,
         })
@@ -279,6 +281,7 @@ export const chat = internalAction({
               actorType: actor.actorType,
               actorId: actor.actorId,
               roleIds: actor.roleIds,
+              isOrgAdmin: actor.isOrgAdmin,
             },
             agentId: args.agentId,
             toolName: tc.name,
@@ -303,6 +306,7 @@ export const chat = internalAction({
                 actorType: actor.actorType,
                 actorId: actor.actorId,
                 roleIds: actor.roleIds,
+                isOrgAdmin: actor.isOrgAdmin,
               },
               agentId: args.agentId,
               toolName: tc.name,
@@ -316,6 +320,7 @@ export const chat = internalAction({
               organizationId: toolIdentity.organizationId,
               actorId: toolIdentity.actorId,
               actorType: toolIdentity.actorType,
+              isOrgAdmin: toolIdentity.isOrgAdmin,
               toolName: tc.name,
               args: tc.arguments,
             })
@@ -585,6 +590,7 @@ export const chatAuthenticated = internalAction({
               actorType: actor.actorType,
               actorId: actor.actorId,
               roleIds: actor.roleIds,
+              isOrgAdmin: actor.isOrgAdmin,
             },
             agentId: args.agentId,
             toolName: name,
@@ -594,6 +600,7 @@ export const chatAuthenticated = internalAction({
           organizationId: toolIdentity.organizationId,
           actorId: toolIdentity.actorId,
           actorType: toolIdentity.actorType,
+          isOrgAdmin: toolIdentity.isOrgAdmin,
           toolName: name,
           args: toolArgs,
         })
@@ -712,6 +719,7 @@ export const chatAuthenticated = internalAction({
               actorType: actor.actorType,
               actorId: actor.actorId,
               roleIds: actor.roleIds,
+              isOrgAdmin: actor.isOrgAdmin,
             },
             agentId: args.agentId,
             toolName: tc.name,
@@ -736,6 +744,7 @@ export const chatAuthenticated = internalAction({
                 actorType: actor.actorType,
                 actorId: actor.actorId,
                 roleIds: actor.roleIds,
+                isOrgAdmin: actor.isOrgAdmin,
               },
               agentId: args.agentId,
               toolName: tc.name,
@@ -749,6 +758,7 @@ export const chatAuthenticated = internalAction({
               organizationId: toolIdentity.organizationId,
               actorId: toolIdentity.actorId,
               actorType: toolIdentity.actorType,
+              isOrgAdmin: toolIdentity.isOrgAdmin,
               toolName: tc.name,
               args: tc.arguments,
             })
@@ -1071,11 +1081,12 @@ async function executeBuiltinTool(
     organizationId: Id<"organizations">
     actorId: string
     actorType: ActorType
+    isOrgAdmin?: boolean
     toolName: string
     args: Record<string, unknown>
   }
 ): Promise<unknown> {
-  const { organizationId, actorId, actorType, toolName, args } = params
+  const { organizationId, actorId, actorType, isOrgAdmin, toolName, args } = params
 
   switch (toolName) {
     case "entity.create":
