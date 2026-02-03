@@ -8,9 +8,45 @@ html {
 
 body {
   background-color: #F5F1E8;
-  color: #1B4332;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+[data-mode="builder"] {
+  --bg-primary: #F5F1E8;
+  --bg-secondary: #E8E4D4;
+  --text-primary: #1B4332;
+  --text-accent: #2D5A45;
+  --border: rgba(45, 90, 69, 0.3);
+  --border-subtle: rgba(45, 90, 69, 0.2);
+  --grid-line: rgba(27, 67, 50, 0.04);
+  --grid-line-strong: rgba(27, 67, 50, 0.06);
+  --grid-line-subtle: rgba(27, 67, 50, 0.02);
+  --input-bg: #FFFFFF;
+  --btn-bg: #1B4332;
+  --btn-text: #F5F1E8;
+  --btn-hover: #2D5A45;
+}
+
+[data-mode="customer"] {
+  --bg-primary: #0F2419;
+  --bg-secondary: #132C1F;
+  --text-primary: #E8E4D4;
+  --text-accent: #9CB8A8;
+  --border: rgba(156, 184, 168, 0.25);
+  --border-subtle: rgba(156, 184, 168, 0.15);
+  --grid-line: rgba(156, 184, 168, 0.04);
+  --grid-line-strong: rgba(156, 184, 168, 0.06);
+  --grid-line-subtle: rgba(156, 184, 168, 0.02);
+  --input-bg: #1B3528;
+  --btn-bg: #E8E4D4;
+  --btn-text: #0F2419;
+  --btn-hover: #F5F1E8;
+}
+
+[data-mode] input::placeholder {
+  color: var(--text-accent);
+  opacity: 0.5;
 }
 
 @layer utilities {
