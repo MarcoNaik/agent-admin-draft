@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { CreditCard, Loader2, CheckCircle, Clock } from "lucide-react"
 import { useEntities } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -22,7 +23,8 @@ function formatDate(timestamp: number): string {
 }
 
 export default function GuardianPaymentsPage() {
-  const payments = useEntities("payment")
+  const { environment } = useEnvironment()
+  const payments = useEntities("payment", environment)
 
   const sortedPayments = useMemo(() => {
     if (!payments) return []
