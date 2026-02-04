@@ -170,25 +170,8 @@ export function AgentsList({ agents }: AgentsListProps) {
                 <div className="text-sm text-content-secondary">{agent.slug}</div>
               </div>
               <div className="flex items-center gap-3 ml-4">
-                <div className="flex flex-col items-end text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=production` }}
-                      className="hover:underline text-content-primary cursor-pointer"
-                    >
-                      Production
-                    </span>
-                    <span className="text-content-tertiary">•</span>
-                    <span
-                      onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=development` }}
-                      className="hover:underline text-content-primary cursor-pointer"
-                    >
-                      Development
-                    </span>
-                  </div>
-                  <div className="text-content-tertiary">
-                    Created {getTimeAgo(agent.createdAt)}
-                  </div>
+                <div className="text-xs text-content-tertiary">
+                  Created {getTimeAgo(agent.createdAt)}
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -244,21 +227,6 @@ export function AgentsList({ agents }: AgentsListProps) {
                 )}
               </div>
               <div className="flex items-center gap-4 ml-4">
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span
-                    onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=production` }}
-                    className="hover:underline text-content-primary cursor-pointer"
-                  >
-                    Production
-                  </span>
-                  <span className="text-content-tertiary">•</span>
-                  <span
-                    onClick={(e) => { e.preventDefault(); window.location.href = `/agents/${agent.id}?env=development` }}
-                    className="hover:underline text-content-primary cursor-pointer"
-                  >
-                    Development
-                  </span>
-                </div>
                 <span className="text-xs text-content-tertiary whitespace-nowrap">
                   Created {getTimeAgo(agent.createdAt)}
                 </span>
