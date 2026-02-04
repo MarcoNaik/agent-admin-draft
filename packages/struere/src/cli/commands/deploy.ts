@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
-import { syncOrganization, deployAllAgents } from '../utils/convex'
+import { syncOrganization } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { performLogin } from './login'
@@ -25,14 +25,14 @@ const isOrgAccessError = (error: unknown): boolean => {
 }
 
 export const deployCommand = new Command('deploy')
-  .description('Deploy all agents to production')
+  .description('Deploy all resources to production')
   .option('--dry-run', 'Show what would be deployed without deploying')
   .action(async (options) => {
     const spinner = ora()
     const cwd = process.cwd()
 
     console.log()
-    console.log(chalk.bold('Deploying Agents'))
+    console.log(chalk.bold('Deploying to Production'))
     console.log()
 
     if (!hasProject(cwd)) {
@@ -60,6 +60,7 @@ export const deployCommand = new Command('deploy')
     }
 
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
+    console.log(chalk.gray('Environment:'), chalk.cyan('production'))
     console.log()
 
     let credentials = loadCredentials()
@@ -119,89 +120,37 @@ export const deployCommand = new Command('deploy')
       return
     }
 
-    spinner.start('Syncing to development')
+    spinner.start('Deploying to production')
 
     try {
       const payload = extractSyncPayload(resources)
       const syncResult = await syncOrganization({
         ...payload,
         organizationId: project.organization.id,
+        environment: 'production',
       })
       if (!syncResult.success) {
-        throw new Error(syncResult.error || 'Sync failed')
+        throw new Error(syncResult.error || 'Deploy failed')
       }
-      spinner.succeed('Synced to development')
-    } catch (error) {
-      if (isAuthError(error)) {
-        spinner.fail('Session expired - re-authenticating...')
-        clearCredentials()
-        credentials = await performLogin()
-        if (!credentials) {
-          console.log(chalk.red('Authentication failed'))
-          process.exit(1)
-        }
-        spinner.start('Syncing to development')
-        try {
-          const payload = extractSyncPayload(resources)
-          const syncResult = await syncOrganization({
-            ...payload,
-            organizationId: project.organization.id,
-          })
-          if (!syncResult.success) {
-            throw new Error(syncResult.error || 'Sync failed')
-          }
-          spinner.succeed('Synced to development')
-        } catch (retryError) {
-          spinner.fail('Sync failed')
-          console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
-          process.exit(1)
-        }
-      } else if (isOrgAccessError(error)) {
-        spinner.fail('Organization access denied')
-        console.log()
-        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
-        console.log()
-        console.log(chalk.gray('To fix this:'))
-        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
-        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
-        console.log()
-        process.exit(1)
-      } else {
-        spinner.fail('Sync failed')
-        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-        process.exit(1)
-      }
-    }
-
-    spinner.start('Deploying to production')
-
-    try {
-      const deployResult = await deployAllAgents(project.organization.id)
-
-      if (!deployResult.success) {
-        throw new Error(deployResult.error || 'Deployment failed')
-      }
-
       spinner.succeed('Deployed to production')
 
       console.log()
-      console.log(chalk.green('Success!'), 'All agents deployed')
+      console.log(chalk.green('Success!'), 'All resources deployed to production')
       console.log()
 
-      if (deployResult.deployed && deployResult.deployed.length > 0) {
-        console.log('Deployed agents:')
-        for (const slug of deployResult.deployed) {
+      if (syncResult.agents?.created && syncResult.agents.created.length > 0) {
+        console.log('New agents:')
+        for (const slug of syncResult.agents.created) {
           const agent = resources.agents.find((a) => a.slug === slug)
-          const prodUrl = `https://${slug}.struere.dev`
-          console.log(chalk.gray('  -'), chalk.cyan(agent?.name || slug), chalk.gray(`→ ${prodUrl}`))
+          console.log(chalk.gray('  -'), chalk.cyan(agent?.name || slug))
         }
       }
 
-      if (deployResult.skipped && deployResult.skipped.length > 0) {
-        console.log()
-        console.log(chalk.yellow('Skipped (no development config):'))
-        for (const slug of deployResult.skipped) {
-          console.log(chalk.gray('  -'), slug)
+      if (syncResult.agents?.updated && syncResult.agents.updated.length > 0) {
+        console.log('Updated agents:')
+        for (const slug of syncResult.agents.updated) {
+          const agent = resources.agents.find((a) => a.slug === slug)
+          console.log(chalk.gray('  -'), chalk.cyan(agent?.name || slug))
         }
       }
 
@@ -220,13 +169,18 @@ export const deployCommand = new Command('deploy')
         }
         spinner.start('Deploying to production')
         try {
-          const deployResult = await deployAllAgents(project.organization.id)
-          if (!deployResult.success) {
-            throw new Error(deployResult.error || 'Deployment failed')
+          const payload = extractSyncPayload(resources)
+          const syncResult = await syncOrganization({
+            ...payload,
+            organizationId: project.organization.id,
+            environment: 'production',
+          })
+          if (!syncResult.success) {
+            throw new Error(syncResult.error || 'Deploy failed')
           }
           spinner.succeed('Deployed to production')
           console.log()
-          console.log(chalk.green('Success!'), 'All agents deployed')
+          console.log(chalk.green('Success!'), 'All resources deployed to production')
           console.log()
         } catch (retryError) {
           spinner.fail('Deployment failed')
