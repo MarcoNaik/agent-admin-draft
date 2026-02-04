@@ -26,6 +26,7 @@ export async function syncAgents(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   agents: AgentInput[],
+  environment: "development" | "production",
   userId?: Id<"users">,
   preserveUnmanaged?: boolean
 ): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
@@ -51,7 +52,7 @@ export async function syncAgents(
         updatedAt: now,
       })
 
-      await syncAgentConfig(ctx, existing._id, agent, userId)
+      await syncAgentConfig(ctx, existing._id, agent, environment, userId)
       result.updated.push(agent.slug)
     } else {
       const agentId = await ctx.db.insert("agents", {
@@ -64,7 +65,7 @@ export async function syncAgents(
         updatedAt: now,
       })
 
-      await syncAgentConfig(ctx, agentId, agent, userId)
+      await syncAgentConfig(ctx, agentId, agent, environment, userId)
       result.created.push(agent.slug)
     }
   }
@@ -90,11 +91,15 @@ async function syncAgentConfig(
   ctx: MutationCtx,
   agentId: Id<"agents">,
   agent: AgentInput,
+  environment: "development" | "production",
   userId?: Id<"users">
 ): Promise<void> {
   const now = Date.now()
-  const existingAgent = await ctx.db.get(agentId)
-  if (!existingAgent) return
+
+  const existingConfig = await ctx.db
+    .query("agentConfigs")
+    .withIndex("by_agent_env", (q) => q.eq("agentId", agentId).eq("environment", environment))
+    .first()
 
   const configData = {
     name: agent.name,
@@ -102,74 +107,19 @@ async function syncAgentConfig(
     systemPrompt: agent.systemPrompt,
     model: agent.model,
     tools: agent.tools,
-    environment: "development" as const,
+    environment,
     deployedBy: userId,
   }
 
-  if (existingAgent.developmentConfigId) {
-    await ctx.db.patch(existingAgent.developmentConfigId, configData)
+  if (existingConfig) {
+    await ctx.db.patch(existingConfig._id, configData)
   } else {
-    const configId = await ctx.db.insert("agentConfigs", {
+    await ctx.db.insert("agentConfigs", {
       agentId,
       ...configData,
       createdAt: now,
     })
-
-    await ctx.db.patch(agentId, {
-      developmentConfigId: configId,
-      updatedAt: now,
-    })
   }
-}
-
-export async function deployAllAgentsToProd(
-  ctx: MutationCtx,
-  organizationId: Id<"organizations">,
-  userId?: Id<"users">
-): Promise<{ deployed: string[]; skipped: string[] }> {
-  const result = { deployed: [] as string[], skipped: [] as string[] }
-  const now = Date.now()
-
-  const agents = await ctx.db
-    .query("agents")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-    .collect()
-
-  const activeAgents = agents.filter((a) => a.status === "active")
-
-  for (const agent of activeAgents) {
-    if (!agent.developmentConfigId) {
-      result.skipped.push(agent.slug)
-      continue
-    }
-
-    const devConfig = await ctx.db.get(agent.developmentConfigId)
-    if (!devConfig) {
-      result.skipped.push(agent.slug)
-      continue
-    }
-
-    const prodConfigId = await ctx.db.insert("agentConfigs", {
-      agentId: agent._id,
-      name: devConfig.name,
-      version: devConfig.version,
-      systemPrompt: devConfig.systemPrompt,
-      model: devConfig.model,
-      tools: devConfig.tools,
-      environment: "production",
-      createdAt: now,
-      deployedBy: userId,
-    })
-
-    await ctx.db.patch(agent._id, {
-      productionConfigId: prodConfigId,
-      updatedAt: now,
-    })
-
-    result.deployed.push(agent.slug)
-  }
-
-  return result
 }
 
 export async function getAgentSlugs(
