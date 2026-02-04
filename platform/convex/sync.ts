@@ -1,16 +1,18 @@
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
-import { requireAuth, getAuthContext, getAuthContextForOrg } from "./lib/auth"
+import { getAuthContextForOrg } from "./lib/auth"
 import {
   syncEntityTypes,
   syncRoles,
   syncAgents,
-  deployAllAgentsToProd,
 } from "./lib/sync"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 export const syncOrganization = mutation({
   args: {
     organizationId: v.optional(v.string()),
+    environment: environmentValidator,
     agents: v.array(
       v.object({
         name: v.string(),
@@ -86,7 +88,7 @@ export const syncOrganization = mutation({
 
     const installedPacks = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
     const packEntityTypeIds = new Set(
@@ -100,6 +102,7 @@ export const syncOrganization = mutation({
       ctx,
       auth.organizationId,
       args.entityTypes,
+      args.environment,
       args.preservePackResources !== false ? packEntityTypeIds : undefined
     )
 
@@ -107,6 +110,7 @@ export const syncOrganization = mutation({
       ctx,
       auth.organizationId,
       args.roles,
+      args.environment,
       args.preservePackResources !== false ? packRoleIds : undefined
     )
 
@@ -114,6 +118,7 @@ export const syncOrganization = mutation({
       ctx,
       auth.organizationId,
       args.agents,
+      args.environment,
       auth.userId,
       args.preserveUnmanagedAgents !== false
     )
@@ -131,18 +136,19 @@ export const syncOrganization = mutation({
 export const getSyncState = query({
   args: {
     organizationId: v.optional(v.string()),
+    environment: environmentValidator,
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
 
     const entityTypes = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
     const roles = await ctx.db
       .query("roles")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
     const nonSystemRoles = roles.filter((r) => !r.isSystem)
@@ -169,35 +175,23 @@ export const getSyncState = query({
 
     const agentStates = await Promise.all(
       activeAgents.map(async (agent) => {
-        let version = "0.0.0"
-        let hasDevConfig = false
-        let hasProdConfig = false
-
-        if (agent.developmentConfigId) {
-          const devConfig = await ctx.db.get(agent.developmentConfigId)
-          if (devConfig) {
-            version = devConfig.version
-            hasDevConfig = true
-          }
-        }
-
-        if (agent.productionConfigId) {
-          hasProdConfig = true
-        }
+        const config = await ctx.db
+          .query("agentConfigs")
+          .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", args.environment))
+          .first()
 
         return {
           slug: agent.slug,
           name: agent.name,
-          version,
-          hasDevConfig,
-          hasProdConfig,
+          version: config?.version ?? "0.0.0",
+          hasConfig: !!config,
         }
       })
     )
 
     const installedPacks = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
     const packEntityTypeIds = new Set(
@@ -227,26 +221,6 @@ export const getSyncState = query({
         entityTypeCount: p.entityTypeIds.length,
         roleCount: p.roleIds.length,
       })),
-    }
-  },
-})
-
-export const deployAllAgents = mutation({
-  args: {
-    organizationId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const auth = await getAuthContextForOrg(ctx, args.organizationId)
-
-    const result = await deployAllAgentsToProd(
-      ctx,
-      auth.organizationId,
-      auth.userId
-    )
-
-    return {
-      success: true,
-      ...result,
     }
   },
 })
