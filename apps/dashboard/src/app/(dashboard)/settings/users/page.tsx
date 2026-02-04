@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Loader2, Shield, User, Crown } from "lucide-react"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -133,8 +134,9 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
 }
 
 export default function UsersPage() {
+  const { environment } = useEnvironment()
   const users = useUsers()
-  const roles = useRoles()
+  const roles = useRoles(environment)
 
   if (users === undefined || roles === undefined) {
     return (
