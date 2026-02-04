@@ -1,4 +1,4 @@
-export { ActorContext, ActorType, Action, PermissionResult, PermissionError, ScopeFilter, FieldMaskResult } from "./types"
+export { ActorContext, ActorType, Action, Environment, PermissionResult, PermissionError, ScopeFilter, FieldMaskResult } from "./types"
 export { buildActorContext, buildSystemActorContext } from "./context"
 export { canPerform, assertCanPerform } from "./evaluate"
 export { getScopeFilters, applyScopeFiltersToQuery } from "./scope"
@@ -24,8 +24,8 @@ export async function queryEntitiesAsActor<T extends Record<string, unknown>>(
 
   const entityType = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", actor.organizationId).eq("slug", entityTypeSlug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("slug", entityTypeSlug)
     )
     .first()
 
@@ -35,8 +35,8 @@ export async function queryEntitiesAsActor<T extends Record<string, unknown>>(
 
   const entities = await ctx.db
     .query("entities")
-    .withIndex("by_org_type", (q) =>
-      q.eq("organizationId", actor.organizationId).eq("entityTypeId", entityType._id)
+    .withIndex("by_org_env_type", (q) =>
+      q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("entityTypeId", entityType._id)
     )
     .filter((q) => q.eq(q.field("deletedAt"), undefined))
     .collect()
@@ -59,6 +59,10 @@ export async function getEntityAsActor<T extends Record<string, unknown>>(
   const entity = await ctx.db.get(entityId)
 
   if (!entity || entity.organizationId !== actor.organizationId) {
+    return null
+  }
+
+  if (entity.environment !== actor.environment) {
     return null
   }
 

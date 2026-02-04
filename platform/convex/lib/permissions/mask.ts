@@ -12,8 +12,8 @@ export async function getFieldMask(
 
   const entityType = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", actor.organizationId).eq("slug", entityTypeSlug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("slug", entityTypeSlug)
     )
     .first()
 
