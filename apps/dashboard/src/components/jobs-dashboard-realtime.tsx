@@ -23,7 +23,7 @@ export function JobsDashboardRealtime() {
   const [statusFilter, setStatusFilter] = useState<JobStatus | undefined>(undefined)
   const { environment } = useEnvironment()
   const jobs = useJobs(environment, statusFilter)
-  const stats = useJobStats()
+  const stats = useJobStats(environment)
   const retryJob = useRetryJob()
   const cancelJob = useCancelJob()
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
