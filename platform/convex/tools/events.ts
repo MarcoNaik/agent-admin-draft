@@ -9,6 +9,8 @@ import {
   ActorType,
 } from "../lib/permissions"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
 async function filterVisibleEntityIds(
   ctx: Parameters<typeof canPerform>[0],
   actor: Awaited<ReturnType<typeof buildActorContext>>,
@@ -46,6 +48,7 @@ export const eventEmit = internalMutation({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     entityId: v.optional(v.string()),
     entityTypeSlug: v.optional(v.string()),
     eventType: v.string(),
@@ -63,6 +66,7 @@ export const eventEmit = internalMutation({
     const now = Date.now()
     const eventId = await ctx.db.insert("events", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId: args.entityId as Id<"entities"> | undefined,
       entityTypeSlug: args.entityTypeSlug,
       eventType: args.eventType,
@@ -87,6 +91,7 @@ export const eventQuery = internalQuery({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     entityId: v.optional(v.string()),
     entityTypeSlug: v.optional(v.string()),
     eventType: v.optional(v.string()),
@@ -99,6 +104,7 @@ export const eventQuery = internalQuery({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     if (args.entityId) {
@@ -154,8 +160,8 @@ export const eventQuery = internalQuery({
 
       const events = await ctx.db
         .query("events")
-        .withIndex("by_org_timestamp", (q) =>
-          q.eq("organizationId", args.organizationId)
+        .withIndex("by_org_env_timestamp", (q) =>
+          q.eq("organizationId", args.organizationId).eq("environment", args.environment)
         )
         .order("desc")
         .take((args.limit ?? 50) * 3)
@@ -191,9 +197,10 @@ export const eventQuery = internalQuery({
     if (args.eventType) {
       const events = await ctx.db
         .query("events")
-        .withIndex("by_org_type", (q) =>
+        .withIndex("by_org_env_type", (q) =>
           q
             .eq("organizationId", args.organizationId)
+            .eq("environment", args.environment)
             .eq("eventType", args.eventType!)
         )
         .order("desc")
@@ -231,8 +238,8 @@ export const eventQuery = internalQuery({
 
     const events = await ctx.db
       .query("events")
-      .withIndex("by_org_timestamp", (q) =>
-        q.eq("organizationId", args.organizationId)
+      .withIndex("by_org_env_timestamp", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment)
       )
       .order("desc")
       .take((args.limit ?? 50) * 3)
