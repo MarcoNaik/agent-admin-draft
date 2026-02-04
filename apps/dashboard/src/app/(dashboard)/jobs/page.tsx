@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { useJobs, useJobStats, useRetryJob, useCancelJob } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -77,8 +78,9 @@ function getStatusVariant(status: JobStatus): "default" | "secondary" | "destruc
 export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState<JobStatus | undefined>(undefined)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const { environment } = useEnvironment()
 
-  const jobs = useJobs(statusFilter)
+  const jobs = useJobs(environment, statusFilter)
   const stats = useJobStats()
   const retryJob = useRetryJob()
   const cancelJob = useCancelJob()
