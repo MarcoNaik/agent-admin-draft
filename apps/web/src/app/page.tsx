@@ -94,81 +94,81 @@ const modeContent = {
     ],
   },
   customer: {
-    hook: "An AI agent for the work you hate doing.",
+    hook: "You wake up, check WhatsApp. Bookings, reschedules, complaints. Every single morning.",
     description:
-      "We connect you with builders who create AI agents for your business. You describe your problem. They build the solution. It runs 24/7.",
+      "You run a team. Clients message to book. You check the spreadsheet, find a slot, reply. Repeat. All day. Every day. Now, what if you never had to touch that spreadsheet again?",
     example: [
-      "You run a therapy practice. 20 WhatsApp messages a day about scheduling. Back and forth. Hours you could spend with patients.",
-      "An agent handles it. Patient texts, it checks your calendar, books the appointment. Done.",
-      "Setup is a one-time fee. Running cost under $100/mo. No contracts.",
+      "You run a physio clinic with 8 therapists. Every morning starts the same. WhatsApp blowing up. Clients booking, rescheduling, asking if Thursday works. You check the spreadsheet. It's wrong again. Someone got double-booked last week.",
+      "You hired a receptionist. She's overwhelmed too. You tried Calendly — your clients ignored it and kept messaging. You looked at AI agencies. $400/month. For that, you expected magic. You got a chatbot.",
+      "Then you set up a Struere system. Clients text on WhatsApp, the agent checks real availability, books the slot, sends confirmation. You open a dashboard. Everyone's schedule. Today, tomorrow, next week. All there.",
     ],
-    closingBold: "That's it.",
+    closingBold: "You set it up once.",
     closing:
-      "Scheduling, follow-ups, reminders, intake — whatever pattern eats your day. Your agent handles it while you focus on what you're actually good at.",
+      "Under $100/mo to run. Not a salary. Not an agency fee. Not a spreadsheet you maintain. A system that works while you focus on growing the business.",
     requirementsHeader: "You don't need to be technical. You need:",
     requirements: [
-      "Know what takes up too much of your time",
-      "Describe your workflow in plain words",
-      "Be willing to test it for a few days",
+      "A team of 3–20 people doing the actual work",
+      "Clients who already message you on WhatsApp",
+      "Being done with duct-taping things together",
     ],
     termsHeader: "Simple pricing",
     terms: [
-      "Under $100/mo to run your agent",
-      "One-time setup fee from your builder",
-      "No contracts, cancel anytime",
+      "One-time setup cost — then it runs",
+      "Under $100/mo. Actual infrastructure cost, no markup",
+      "No contracts, no lock-in",
     ],
-    cta: "Join waitlist → get your agent",
+    cta: "Join waitlist → stop managing, start growing",
     stepsLabel: "Process",
     stepsHeader: "How it works",
     steps: [
       {
         number: "01",
-        title: "Describe your problem",
+        title: "Tell us how your business runs",
         description:
-          "What eats your time? Scheduling, follow-ups, reminders, intake forms? Just explain it in plain English.",
+          "Who's on your team, how clients book, what breaks. 15 minutes.",
       },
       {
         number: "02",
-        title: "Get matched with a builder",
+        title: "We design your system",
         description:
-          "We connect you with someone who understands businesses like yours.",
+          "Booking, scheduling, reminders. Fitted to how you already work.",
       },
       {
         number: "03",
-        title: "They build your agent",
+        title: "A builder sets it up",
         description:
-          "You describe what you need. They configure it. Test together until it handles your workflow.",
+          "Connected to your WhatsApp. Tested with real clients. Until it works.",
       },
       {
         number: "04",
-        title: "It goes live",
+        title: "You open the dashboard",
         description:
-          "Connected to WhatsApp, your calendar, whatever you already use. It starts working.",
+          "Every booking, every schedule, every client. One screen. Updated automatically.",
       },
       {
         number: "05",
-        title: "Save hours every week",
+        title: "Your team focuses on clients",
         description:
-          "The repetitive back-and-forth stops. Your agent handles it while you focus on clients.",
+          "No more WhatsApp tag. No more spreadsheet. Just the work.",
       },
       {
         number: "06",
-        title: "Add more as you grow",
+        title: "Grow without more admin",
         description:
-          "One agent for scheduling. Another for follow-ups. Stack them as your business needs evolve.",
+          "New hire? Add them to the system. New service? Add it. It scales with you.",
       },
     ],
     realityLabel: "The reality",
     reality: [
       {
-        title: "What you get",
+        title: "What changes",
         description:
-          "A working AI agent handling real tasks. WhatsApp integration. Calendar booking. Payment reminders. Running 24/7 for under $100/mo.",
+          "Clients book through WhatsApp automatically. Schedules update in real time. Reminders go out on their own. You see one dashboard instead of a spreadsheet with 47 tabs.",
       },
       {
-        title: "What to expect",
+        title: "What doesn't change",
         description:
-          "This isn't magic. It handles repetitive patterns well. Complex judgment still needs you. Setup takes a few days, not months.",
+          "Your team still does the work. You still run the business. This replaces the admin chaos, not your judgment.",
       },
     ],
   },
