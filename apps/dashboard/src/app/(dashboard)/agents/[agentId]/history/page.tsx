@@ -2,6 +2,7 @@
 
 import { Clock, Rocket, CheckCircle, XCircle, Loader2 as Loader2Icon } from "lucide-react"
 import { useAgentWithConfig, useRecentExecutions } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Id, Doc } from "@convex/_generated/dataModel"
@@ -46,7 +47,8 @@ function DeploymentStatusBadge({ status }: { status: string }) {
 export default function AgentHistoryPage({ params }: AgentHistoryPageProps) {
   const { agentId } = params
   const agent = useAgentWithConfig(agentId as Id<"agents">)
-  const executions = useRecentExecutions(agentId as Id<"agents">, 50)
+  const { environment } = useEnvironment()
+  const executions = useRecentExecutions(agentId as Id<"agents">, environment, 50)
 
   if (agent === undefined || executions === undefined) {
     return (
@@ -64,7 +66,7 @@ export default function AgentHistoryPage({ params }: AgentHistoryPageProps) {
     )
   }
 
-  const config = agent.productionConfig || agent.developmentConfig
+  const config = environment === "production" ? agent.productionConfig : agent.developmentConfig
 
   const historyItems = [
     ...(config ? [{
