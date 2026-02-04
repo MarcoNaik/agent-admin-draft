@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Calendar, Clock, User, Video, Loader2, CheckCircle } from "lucide-react"
 import { useEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,9 +39,10 @@ function formatDate(timestamp: number): string {
 
 export default function TeacherSessionDetailPage({ params }: TeacherSessionDetailPageProps) {
   const router = useRouter()
-  const session = useEntity(params.id as Id<"entities">)
+  const { environment } = useEnvironment()
+  const session = useEntity(params.id as Id<"entities">, environment)
   const studentId = session?.data?.studentId as Id<"entities"> | undefined
-  const student = useEntity(studentId as Id<"entities">)
+  const student = useEntity(studentId as Id<"entities">, environment)
   const [showReportForm, setShowReportForm] = useState(false)
   const reportFormRef = useRef<HTMLDivElement>(null)
 
