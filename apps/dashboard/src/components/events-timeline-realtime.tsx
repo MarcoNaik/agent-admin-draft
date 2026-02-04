@@ -1,6 +1,7 @@
 "use client"
 
 import { useEvents, useEventTypes } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Activity, Filter } from "lucide-react"
@@ -9,7 +10,8 @@ import { Doc } from "@convex/_generated/dataModel"
 
 export function EventsTimelineRealtime() {
   const [selectedEventType, setSelectedEventType] = useState<string | undefined>(undefined)
-  const events = useEvents(undefined, selectedEventType)
+  const { environment } = useEnvironment()
+  const events = useEvents(environment, undefined, selectedEventType)
   const eventTypes = useEventTypes()
 
   if (events === undefined || eventTypes === undefined) {
