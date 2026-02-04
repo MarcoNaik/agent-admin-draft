@@ -9,7 +9,7 @@ Struere is a **permission-aware AI agent platform** monorepo with:
 
 **Tech Stack**: Next.js 14, Convex, Cloudflare Workers, Clerk Auth, TypeScript, Bun
 
-**Core Capability**: Role-based access control (RBAC) with row-level security (scope rules) and column-level security (field masks) enforced across all operations.
+**Core Capability**: Role-based access control (RBAC) with row-level security (scope rules) and column-level security (field masks) enforced across all operations. Full environment isolation (development/production) across all data and permission layers.
 
 ## Architecture Overview
 
@@ -34,6 +34,7 @@ apps/                        packages/                   platform/
 │  │  - Teacher View │    │  │  • Policy evaluation (deny overrides)    │    │ │
 │  │  - Guardian View│    │  │  • Scope rules (row-level security)      │    │ │
 │  └─────────────────┘    │  │  • Field masks (column-level security)   │    │ │
+│                         │  │  • Environment isolation (dev/prod)      │    │ │
 │                         │  └─────────────────────────────────────────┘    │ │
 │  ┌─────────────────┐    │                      │                           │ │
 │  │   CLI           │    │  ┌───────────────────┴───────────────────┐      │ │
@@ -70,12 +71,14 @@ apps/                        packages/                   platform/
 
 | Aspect | Decision |
 |--------|----------|
-| **ActorContext** | Eager resolution (resolve roles once per request) |
+| **ActorContext** | Eager resolution (resolve roles once per request), includes environment |
+| **Environment Isolation** | `development` / `production` — all data, roles, configs, permissions are per-environment |
+| **Agent Config Lookup** | Via `by_agent_env` index on agentConfigs (no FK on agents table) |
 | **Field Masks** | Allowlist strategy (fail-safe, new fields hidden by default) |
 | **Permission Check API** | `canPerform()` returns result, `assertCanPerform()` throws |
 | **Action Granularity** | CRUD + List (5 actions: create, read, update, delete, list) |
 | **Scope Rule Types** | Field match + limited relations |
-| **Tool Identity Modes** | Configurable (inherit, system, configured) |
+| **Tool Identity Modes** | Configurable (inherit, system, configured) — system mode includes environment |
 | **Template Compilation** | Permission-aware (no privileged data paths) |
 | **Policy Evaluation** | Deny overrides allow (deny-safe model) |
 | **Organization Boundary** | Defense in depth (multiple protective layers) |
@@ -105,15 +108,30 @@ apps/                        packages/                   platform/
 
 | Category | Tables |
 |----------|--------|
-| **User & Org** | organizations, users, apiKeys, userRoles |
-| **Agents** | agents, agentConfigs |
-| **Conversation** | threads, messages |
-| **Business Data** | entityTypes, entities, entityRelations |
-| **Events & Audit** | events, executions |
-| **Jobs** | jobs (with actorContext) |
-| **RBAC** | roles, policies, scopeRules, fieldMasks, toolPermissions |
-| **Packs** | installedPacks (with customizations, upgradeHistory) |
+| **User & Org** | organizations, users, apiKeys (env-scoped), userRoles |
+| **Agents** | agents (shared), agentConfigs (env-scoped via `by_agent_env`) |
+| **Conversation** | threads (env-scoped), messages |
+| **Business Data** | entityTypes (env-scoped), entities (env-scoped), entityRelations (env-scoped) |
+| **Events & Audit** | events (env-scoped), executions (env-scoped) |
+| **Jobs** | jobs (env-scoped, with actorContext) |
+| **RBAC** | roles (env-scoped), policies, scopeRules, fieldMasks, toolPermissions |
+| **Packs** | installedPacks (env-scoped, with customizations, upgradeHistory) |
 | **Integrations** | integrationConfigs, whatsappConversations, whatsappTemplates, whatsappMessages |
+
+### Environment-Aware Indexes
+
+| Index | Table | Fields |
+|-------|-------|--------|
+| `by_org_env_slug` | entityTypes | organizationId, environment, slug |
+| `by_org_env_type` | entities | organizationId, environment, entityTypeId |
+| `by_org_env_type_status` | entities | organizationId, environment, entityTypeId, status |
+| `by_org_env_name` | roles | organizationId, environment, name |
+| `by_agent_env` | agentConfigs | agentId, environment |
+| `by_org_env` | installedPacks | organizationId, environment |
+| `by_org_env_pack` | installedPacks | organizationId, environment, packId |
+| `by_org_env_type` | events | organizationId, environment, eventType |
+
+**Note:** `entityRelations` has `environment` field but `by_from`/`by_to` indexes don't include it. Environment is enforced via post-index filter. The `by_org_isSystem` index on `roles` also lacks environment — system role lookups use `.collect()` + `.find()` by environment.
 
 ## Permission Engine
 
@@ -121,12 +139,12 @@ apps/                        packages/                   platform/
 
 | File | Purpose |
 |------|---------|
-| `types.ts` | Action, ActorContext, PermissionResult, PermissionError, ScopeFilter, FieldMaskResult |
-| `context.ts` | `buildActorContext()`, `buildSystemActorContext()` |
+| `types.ts` | Action, ActorContext (includes environment, isOrgAdmin), Environment, PermissionResult, PermissionError, ScopeFilter, FieldMaskResult |
+| `context.ts` | `buildActorContext()`, `buildSystemActorContext()` — both environment-aware, system role lookup filters by environment |
 | `evaluate.ts` | `canPerform()`, `assertCanPerform()`, `logPermissionDenied()` |
 | `scope.ts` | `getScopeFilters()`, `applyScopeFiltersToQuery()` |
 | `mask.ts` | `getFieldMask()`, `applyFieldMask()` |
-| `tools.ts` | `canUseTool()`, `getToolIdentity()` |
+| `tools.ts` | `canUseTool()`, `getToolIdentity()` — system mode returns environment + isOrgAdmin, `getSystemRoleIds()` filters by environment |
 | `index.ts` | Exports + `queryEntitiesAsActor()`, `getEntityAsActor()` |
 
 ### Permission Flow
@@ -140,7 +158,10 @@ Request
 │    - organizationId             │
 │    - actorType (user/agent/job) │
 │    - actorId                    │
-│    - roleIds (eager resolved)   │
+│    - environment (dev/prod)     │
+│    - isOrgAdmin                 │
+│    - roleIds (eager resolved,   │
+│      filtered by environment)   │
 └─────────────┬───────────────────┘
               │
               ▼
@@ -176,9 +197,10 @@ Request
 
 1. **No privileged data paths** - Templates, tools, jobs all go through permissions
 2. **Defense in depth** - Organization boundary checked at multiple layers
-3. **Deny overrides allow** - Any deny policy blocks access
-4. **Fail safe** - New fields hidden by default (allowlist)
-5. **Audit trail** - Events capture actor for all mutations
+3. **Environment isolation** - All queries, roles, configs, entities, relations scoped to environment. Dev API keys cannot access production data.
+4. **Deny overrides allow** - Any deny policy blocks access
+5. **Fail safe** - New fields hidden by default (allowlist)
+6. **Audit trail** - Events capture actor for all mutations
 
 ## Tutoring Domain
 
@@ -269,7 +291,7 @@ pending_payment ──[payment.success]──► scheduled
 | File | Purpose |
 |------|---------|
 | `version.ts` | `compareVersions()`, `isUpgrade()`, `isMajorUpgrade()` |
-| `migrate.ts` | Migration execution, field operations |
+| `migrate.ts` | Migration execution, field operations — all helpers accept environment, use `by_org_env_slug`/`by_org_env_type` indexes |
 
 ### Pack Functions (`platform/convex/packs/`)
 
@@ -301,8 +323,9 @@ Core backend with real-time subscriptions and scheduled functions.
 **Key Files**:
 - `schema.ts` - Database schema
 - `agents.ts` - Agent CRUD, syncDevelopment, deploy
-- `agent.ts` - LLM execution action (chat) with actor context
-- `entities.ts` - Permission-aware entity CRUD, search, relations
+- `agent.ts` - LLM execution action (chat) with actor context, `buildActorContextForAgent` (environment-aware)
+- `chat.ts` - Authenticated chat actions (send, sendBySlug, getAgentBySlug) — uses `by_agent_env` for config lookup
+- `entities.ts` - Permission-aware entity CRUD, search, relations — environment-filtered
 - `entityTypes.ts` - Admin-only entity type definitions
 - `events.ts` - Visibility-filtered event logging and queries
 - `jobs.ts` - Job scheduling with actor context preservation
@@ -330,6 +353,7 @@ Core backend with real-time subscriptions and scheduled functions.
 - `lib/utils.ts` - Common utilities (nanoid, slug generation)
 - `lib/templateEngine.ts` - System prompt template processing
 - `jobs/` - Job handlers (reminders, followups)
+- `migrations/` - Data migrations (environment backfill, FK removal)
 
 **Environment Variables**:
 ```env
@@ -952,14 +976,12 @@ Body: { path: "sync:syncOrganization", args: { agents, entityTypes, roles } }
 
 ### Database Structure
 
-**agents table**:
+**agents table** (shared across environments):
 - organizationId, name, slug, description
-- developmentConfigId (FK to agentConfigs)
-- productionConfigId (FK to agentConfigs)
 - status: "active" | "paused" | "deleted"
 
-**agentConfigs table**:
-- agentId, version, environment
+**agentConfigs table** (environment-scoped, looked up via `by_agent_env` index):
+- agentId, version, environment ("development" | "production")
 - name, systemPrompt
 - model: { provider, name, temperature?, maxTokens? }
 - tools: [{ name, description, parameters, handlerCode?, isBuiltin }]
@@ -980,9 +1002,9 @@ HTTP Request: POST /v1/chat
     │
     ▼
 [2] Chat Action (agent.ts)
-    • Load agent and config
-    • Build ActorContext
-    • Get/create thread
+    • Load agent and config (via by_agent_env index)
+    • Build ActorContext (with environment from API key)
+    • Get/create thread (environment-scoped)
     • Load message history
     • Build template context
     • Process system prompt templates (permission-aware)
@@ -1075,12 +1097,70 @@ cd platform/convex && npx convex deploy
 cd platform/tool-executor && wrangler deploy
 ```
 
+## Environment Isolation
+
+### Overview
+
+All data and permissions are isolated by environment (`"development"` | `"production"`). The `Environment` type is defined in `lib/permissions/types.ts`.
+
+### Environment-Scoped Resources
+
+| Scoped per environment | Shared across environments |
+|------------------------|---------------------------|
+| entityTypes, entities, entityRelations | agents (name, slug, description) |
+| roles, policies, scopeRules, fieldMasks | users, organizations, userOrganizations |
+| agentConfigs | toolPermissions |
+| threads, messages | |
+| events, executions | |
+| jobs | |
+| apiKeys | |
+| installedPacks | |
+
+### ActorContext
+
+```typescript
+interface ActorContext {
+  organizationId: Id<"organizations">
+  actorType: "user" | "agent" | "system" | "webhook"
+  actorId: string
+  roleIds: Id<"roles">[]
+  isOrgAdmin?: boolean
+  environment: Environment
+}
+```
+
+### System Role Resolution
+
+The `by_org_isSystem` index does not include environment. System role lookups use `.collect()` + `.find()` to filter by environment:
+- `buildActorContext()` in `lib/permissions/context.ts`
+- `buildActorContextForAgent()` in `agent.ts`
+- `getSystemRoleIds()` in `lib/permissions/tools.ts`
+
+### Tool Identity
+
+`getToolIdentity()` in "system" mode returns a full ActorContext including `environment` and `isOrgAdmin: true`.
+
+### Entity Relation Filtering
+
+`entityRelations` `by_from`/`by_to` indexes lack environment. All relation queries in `entities.ts` (link, unlink, getRelated) and `tools/entities.ts` (entityLink, entityUnlink) apply a post-index filter: `.filter((q) => q.eq(q.field("environment"), environment))`.
+
+### API Key Environment
+
+API keys carry an `environment` field. When a chat request arrives via API key, the environment is extracted from the key and threaded through the entire request: config lookup, thread creation, actor context, tool execution, event logging.
+
+### Migrations
+
+Backfill mutations in `migrations/addEnvironment.ts` set `environment` on all pre-existing records. Each batch filters for `environment === undefined` (naturally idempotent). `removeAgentConfigFKs` removes the old `developmentConfigId`/`productionConfigId` fields from agents.
+
 ## Known Limitations
 
 1. **Query performance** - Some queries filter in memory after index lookup (documented trade-off for V1)
-2. **Relation scope patterns** - Only `field_match` implemented, complex relations require code patterns
-3. **Event payload masking** - Event payloads may contain unmasked historical data
-4. **Single payment provider** - Only Flow implemented
+2. **Relation environment filtering** - `entityRelations` `by_from`/`by_to` indexes lack environment; filtered post-index
+3. **System role index** - `by_org_isSystem` lacks environment field; uses collect + find pattern
+4. **Relation scope patterns** - Only `field_match` implemented, complex relations require code patterns
+5. **Event payload masking** - Event payloads may contain unmasked historical data
+6. **Single payment provider** - Only Flow implemented
+7. **Legacy index usage** - Some files (`sessions.ts`, `payments.ts`, `scheduling.ts`, `entityTypes.ts`) still use `by_org_slug`/`by_org_type` on entityTypes/entities tables instead of environment-aware indexes
 
 ## Server Management
 
