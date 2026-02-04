@@ -7,6 +7,8 @@ import { generateSlug } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext } from "./lib/permissions/types"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
 export const list = query({
   args: {
     status: v.optional(
@@ -67,16 +69,15 @@ export const getWithConfig = query({
       return null
     }
 
-    let devConfig = null
-    let prodConfig = null
+    const devConfig = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", "development"))
+      .first()
 
-    if (agent.developmentConfigId) {
-      devConfig = await ctx.db.get(agent.developmentConfigId)
-    }
-
-    if (agent.productionConfigId) {
-      prodConfig = await ctx.db.get(agent.productionConfigId)
-    }
+    const prodConfig = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", "production"))
+      .first()
 
     return {
       ...agent,
@@ -166,137 +167,19 @@ export const remove = mutation({
   },
 })
 
-export const syncDevelopment = mutation({
-  args: {
-    agentId: v.id("agents"),
-    config: v.object({
-      name: v.string(),
-      version: v.string(),
-      systemPrompt: v.string(),
-      model: v.object({
-        provider: v.string(),
-        name: v.string(),
-        temperature: v.optional(v.number()),
-        maxTokens: v.optional(v.number()),
-      }),
-      tools: v.array(
-        v.object({
-          name: v.string(),
-          description: v.string(),
-          parameters: v.any(),
-          handlerCode: v.optional(v.string()),
-          isBuiltin: v.boolean(),
-        })
-      ),
-    }),
-  },
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-    const agent = await ctx.db.get(args.agentId)
-
-    if (!agent || agent.organizationId !== auth.organizationId) {
-      throw new Error("Agent not found")
-    }
-
-    const now = Date.now()
-
-    const existingConfig = agent.developmentConfigId
-      ? await ctx.db.get(agent.developmentConfigId)
-      : null
-
-    if (existingConfig) {
-      await ctx.db.patch(existingConfig._id, {
-        ...args.config,
-        environment: "development",
-        deployedBy: auth.userId,
-      })
-    } else {
-      const configId = await ctx.db.insert("agentConfigs", {
-        agentId: args.agentId,
-        ...args.config,
-        environment: "development",
-        createdAt: now,
-        deployedBy: auth.userId,
-      })
-
-      await ctx.db.patch(args.agentId, {
-        developmentConfigId: configId,
-        updatedAt: now,
-      })
-    }
-
-    return { success: true }
-  },
-})
-
-export const deploy = mutation({
-  args: { agentId: v.id("agents") },
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-    const agent = await ctx.db.get(args.agentId)
-
-    if (!agent || agent.organizationId !== auth.organizationId) {
-      throw new Error("Agent not found")
-    }
-
-    if (!agent.developmentConfigId) {
-      throw new Error("No development configuration to deploy")
-    }
-
-    const devConfig = await ctx.db.get(agent.developmentConfigId)
-    if (!devConfig) {
-      throw new Error("Development configuration not found")
-    }
-
-    const now = Date.now()
-
-    const prodConfigId = await ctx.db.insert("agentConfigs", {
-      agentId: args.agentId,
-      name: devConfig.name,
-      version: devConfig.version,
-      systemPrompt: devConfig.systemPrompt,
-      model: devConfig.model,
-      tools: devConfig.tools,
-      environment: "production",
-      createdAt: now,
-      deployedBy: auth.userId,
-    })
-
-    await ctx.db.patch(args.agentId, {
-      productionConfigId: prodConfigId,
-      updatedAt: now,
-    })
-
-    return { success: true, configId: prodConfigId }
-  },
-})
-
 export const getActiveConfig = internalQuery({
   args: {
     agentId: v.id("agents"),
-    environment: v.optional(
-      v.union(v.literal("development"), v.literal("production"))
-    ),
+    environment: environmentValidator,
   },
   handler: async (ctx, args) => {
-    const agent = await ctx.db.get(args.agentId)
-    if (!agent) {
-      throw new Error("Agent not found")
-    }
+    const config = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId).eq("environment", args.environment))
+      .first()
 
-    const env = args.environment ?? "production"
-    const configId =
-      env === "production"
-        ? agent.productionConfigId
-        : agent.developmentConfigId
-
-    if (!configId) {
-      throw new Error(`No ${env} configuration found`)
-    }
-
-    const config = await ctx.db.get(configId)
     if (!config) {
-      throw new Error("Configuration not found")
+      throw new Error(`No ${args.environment} configuration found`)
     }
 
     return config
@@ -422,7 +305,7 @@ function compileTemplatePreview(
 export const getCompileData = internalQuery({
   args: {
     agentId: v.id("agents"),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: environmentValidator,
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
@@ -432,15 +315,11 @@ export const getCompileData = internalQuery({
       return null
     }
 
-    const configId = args.environment === "production"
-      ? agent.productionConfigId
-      : agent.developmentConfigId
+    const config = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId).eq("environment", args.environment))
+      .first()
 
-    if (!configId) {
-      return null
-    }
-
-    const config = await ctx.db.get(configId)
     if (!config) {
       return null
     }
@@ -449,12 +328,12 @@ export const getCompileData = internalQuery({
 
     const entityTypesRaw = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
     const rolesRaw = await ctx.db
       .query("roles")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
     return {
@@ -494,7 +373,7 @@ interface CompileData {
 export const compileSystemPrompt = action({
   args: {
     agentId: v.id("agents"),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: environmentValidator,
     sampleContext: v.optional(v.object({
       message: v.optional(v.string()),
       threadMetadata: v.optional(v.any()),
@@ -541,6 +420,7 @@ export const compileSystemPrompt = action({
       organizationId,
       actorType: "user",
       actorId: userId as unknown as string,
+      environment: args.environment,
     })
 
     const templateContext: TemplateContext = {
