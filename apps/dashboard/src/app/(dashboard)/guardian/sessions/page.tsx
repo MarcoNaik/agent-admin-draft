@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { Calendar, Clock, Loader2, User } from "lucide-react"
 import { useEntities, useEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Doc, Id } from "@convex/_generated/dataModel"
@@ -22,10 +23,11 @@ interface SessionCardProps {
 }
 
 function SessionCard({ session }: SessionCardProps) {
+  const { environment } = useEnvironment()
   const teacherId = session.data?.teacherId as Id<"entities"> | undefined
-  const teacher = useEntity(teacherId as Id<"entities">)
+  const teacher = useEntity(teacherId as Id<"entities">, environment)
   const studentId = session.data?.studentId as Id<"entities"> | undefined
-  const student = useEntity(studentId as Id<"entities">)
+  const student = useEntity(studentId as Id<"entities">, environment)
   const startTime = session.data?.startTime as number | undefined
   const duration = session.data?.duration as number | undefined
   const subject = session.data?.subject as string | undefined
@@ -80,7 +82,8 @@ function SessionCard({ session }: SessionCardProps) {
 }
 
 export default function GuardianSessionsPage() {
-  const sessions = useEntities("session")
+  const { environment } = useEnvironment()
+  const sessions = useEntities("session", environment)
 
   const upcomingSessions = useMemo(() => {
     if (!sessions) return []
