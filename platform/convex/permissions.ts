@@ -1,8 +1,10 @@
 import { v } from "convex/values"
 import { internalQuery } from "./_generated/server"
-import { ActorContext, ActorType } from "./lib/permissions/types"
+import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { canUseTool, getToolIdentity, ToolPermissionResult } from "./lib/permissions/tools"
 import { queryEntitiesAsActor, getEntityAsActor } from "./lib/permissions"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 const actorContextValidator = v.object({
   organizationId: v.id("organizations"),
@@ -15,6 +17,7 @@ const actorContextValidator = v.object({
   actorId: v.string(),
   roleIds: v.array(v.id("roles")),
   isOrgAdmin: v.optional(v.boolean()),
+  environment: environmentValidator,
 })
 
 const toolPermissionResultValidator = v.object({
@@ -42,6 +45,7 @@ export const canUseToolQuery = internalQuery({
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
       isOrgAdmin: args.actor.isOrgAdmin,
+      environment: args.actor.environment,
     }
     return await canUseTool(ctx, actor, args.agentId, args.toolName)
   },
@@ -61,6 +65,7 @@ export const getToolIdentityQuery = internalQuery({
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
       isOrgAdmin: args.actor.isOrgAdmin,
+      environment: args.actor.environment,
     }
     return await getToolIdentity(ctx, actor, args.agentId, args.toolName)
   },
@@ -79,6 +84,7 @@ export const queryEntitiesAsActorQuery = internalQuery({
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
       isOrgAdmin: args.actor.isOrgAdmin,
+      environment: args.actor.environment,
     }
     return await queryEntitiesAsActor(ctx, actor, args.entityTypeSlug)
   },
@@ -98,6 +104,7 @@ export const getEntityAsActorQuery = internalQuery({
       actorId: args.actor.actorId,
       roleIds: args.actor.roleIds,
       isOrgAdmin: args.actor.isOrgAdmin,
+      environment: args.actor.environment,
     }
     return await getEntityAsActor(ctx, actor, args.entityTypeSlug, args.entityId)
   },
