@@ -7,6 +7,7 @@ const environmentValidator = v.union(v.literal("development"), v.literal("produc
 export const list = query({
   args: {
     agentId: v.optional(v.id("agents")),
+    environment: v.optional(environmentValidator),
     status: v.optional(
       v.union(v.literal("success"), v.literal("error"), v.literal("timeout"))
     ),
@@ -14,11 +15,12 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     if (args.agentId) {
       const executions = await ctx.db
         .query("executions")
-        .withIndex("by_agent", (q) => q.eq("agentId", args.agentId!))
+        .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
         .order("desc")
         .take(args.limit ?? 50)
 
@@ -30,7 +32,7 @@ export const list = query({
 
     const executions = await ctx.db
       .query("executions")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
       .order("desc")
       .take(args.limit ?? 50)
 
@@ -58,22 +60,24 @@ export const get = query({
 export const getStats = query({
   args: {
     agentId: v.optional(v.id("agents")),
+    environment: v.optional(environmentValidator),
     since: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     let executions
 
     if (args.agentId) {
       executions = await ctx.db
         .query("executions")
-        .withIndex("by_agent", (q) => q.eq("agentId", args.agentId!))
+        .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
         .collect()
     } else {
       executions = await ctx.db
         .query("executions")
-        .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+        .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
         .collect()
     }
 
@@ -110,13 +114,17 @@ export const getStats = query({
 })
 
 export const getUsageByAgent = query({
-  args: { since: v.optional(v.number()) },
+  args: {
+    environment: v.optional(environmentValidator),
+    since: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     let executions = await ctx.db
       .query("executions")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
       .collect()
 
     if (args.since) {
@@ -162,22 +170,24 @@ export const getUsageByAgent = query({
 export const getRecent = query({
   args: {
     agentId: v.optional(v.id("agents")),
+    environment: v.optional(environmentValidator),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     if (args.agentId) {
       return await ctx.db
         .query("executions")
-        .withIndex("by_agent", (q) => q.eq("agentId", args.agentId!))
+        .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
         .order("desc")
         .take(args.limit ?? 10)
     }
 
     return await ctx.db
       .query("executions")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
       .order("desc")
       .take(args.limit ?? 10)
   },
