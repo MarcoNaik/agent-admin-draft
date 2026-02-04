@@ -4,6 +4,8 @@ import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
+type Environment = "development" | "production"
+
 export function useAgents() {
   return useQuery(api.agents.list, {})
 }
@@ -28,24 +30,20 @@ export function useDeleteAgent() {
   return useMutation(api.agents.remove)
 }
 
-export function useDeployAgent() {
-  return useMutation(api.agents.deploy)
-}
-
 export function useCompileSystemPrompt() {
   return useAction(api.agents.compileSystemPrompt)
 }
 
-export function useEntityTypes() {
-  return useQuery(api.entityTypes.list, {})
+export function useEntityTypes(environment?: Environment) {
+  return useQuery(api.entityTypes.list, { environment })
 }
 
 export function useEntityType(id: Id<"entityTypes">) {
   return useQuery(api.entityTypes.get, { id })
 }
 
-export function useEntityTypeBySlug(slug: string) {
-  return useQuery(api.entityTypes.getBySlug, { slug })
+export function useEntityTypeBySlug(slug: string, environment?: Environment) {
+  return useQuery(api.entityTypes.getBySlug, { slug, environment })
 }
 
 export function useCreateEntityType() {
@@ -60,22 +58,22 @@ export function useDeleteEntityType() {
   return useMutation(api.entityTypes.remove)
 }
 
-export function useEntities(entityTypeSlug: string, status?: string) {
-  return useQuery(api.entities.list, { entityTypeSlug, status })
+export function useEntities(entityTypeSlug: string, environment?: Environment, status?: string) {
+  return useQuery(api.entities.list, { entityTypeSlug, environment, status })
 }
 
-export function useEntity(id: Id<"entities">) {
-  return useQuery(api.entities.get, { id })
+export function useEntity(id: Id<"entities">, environment?: Environment) {
+  return useQuery(api.entities.get, { id, environment })
 }
 
-export function useEntityWithType(id: Id<"entities"> | undefined) {
-  return useQuery(api.entities.getWithType, id ? { id } : "skip")
+export function useEntityWithType(id: Id<"entities"> | undefined, environment?: Environment) {
+  return useQuery(api.entities.getWithType, id ? { id, environment } : "skip")
 }
 
-export function useSearchEntities(entityTypeSlug: string | undefined, query: string) {
+export function useSearchEntities(entityTypeSlug: string | undefined, query: string, environment?: Environment) {
   return useQuery(
     api.entities.search,
-    query.length > 0 ? { entityTypeSlug, query } : "skip"
+    query.length > 0 ? { entityTypeSlug, query, environment } : "skip"
   )
 }
 
@@ -99,36 +97,36 @@ export function useUnlinkEntities() {
   return useMutation(api.entities.unlink)
 }
 
-export function useRelatedEntities(entityId: Id<"entities"> | undefined, relationType?: string) {
-  return useQuery(api.entities.getRelated, entityId ? { entityId, relationType } : "skip")
+export function useRelatedEntities(entityId: Id<"entities"> | undefined, environment?: Environment, relationType?: string) {
+  return useQuery(api.entities.getRelated, entityId ? { entityId, environment, relationType } : "skip")
 }
 
-export function useEvents(entityId?: Id<"entities">, eventType?: string) {
-  return useQuery(api.events.list, { entityId, eventType })
+export function useEvents(environment?: Environment, entityId?: Id<"entities">, eventType?: string) {
+  return useQuery(api.events.list, { environment, entityId, eventType })
 }
 
-export function useEntityEvents(entityId: Id<"entities"> | undefined) {
-  return useQuery(api.events.getByEntity, entityId ? { entityId } : "skip")
+export function useEntityEvents(entityId: Id<"entities"> | undefined, environment?: Environment) {
+  return useQuery(api.events.getByEntity, entityId ? { entityId, environment } : "skip")
 }
 
-export function useEventTypes() {
-  return useQuery(api.events.getEventTypes, {})
+export function useEventTypes(environment?: Environment) {
+  return useQuery(api.events.getEventTypes, { environment })
 }
 
 export function useEmitEvent() {
   return useMutation(api.events.emit)
 }
 
-export function useJobs(status?: "pending" | "claimed" | "running" | "completed" | "failed" | "dead") {
-  return useQuery(api.jobs.list, { status })
+export function useJobs(environment?: Environment, status?: "pending" | "claimed" | "running" | "completed" | "failed" | "dead") {
+  return useQuery(api.jobs.list, { environment, status })
 }
 
 export function useJob(id: Id<"jobs">) {
   return useQuery(api.jobs.get, { id })
 }
 
-export function useJobStats() {
-  return useQuery(api.jobs.getStats, {})
+export function useJobStats(environment?: Environment) {
+  return useQuery(api.jobs.getStats, { environment })
 }
 
 export function useEnqueueJob() {
@@ -143,8 +141,8 @@ export function useCancelJob() {
   return useMutation(api.jobs.cancel)
 }
 
-export function useRoles() {
-  return useQuery(api.roles.list, {})
+export function useRoles(environment?: Environment) {
+  return useQuery(api.roles.list, { environment })
 }
 
 export function useRole(id: Id<"roles">) {
@@ -267,12 +265,12 @@ export function useCurrentOrganization() {
   return useQuery(api.organizations.getCurrent, {})
 }
 
-export function usePacks() {
-  return useQuery(api.packs.list, {})
+export function usePacks(environment?: Environment) {
+  return useQuery(api.packs.list, { environment })
 }
 
-export function usePack(packId: string) {
-  return useQuery(api.packs.get, { packId })
+export function usePack(packId: string, environment?: Environment) {
+  return useQuery(api.packs.get, { packId, environment })
 }
 
 export function useInstallPack() {
