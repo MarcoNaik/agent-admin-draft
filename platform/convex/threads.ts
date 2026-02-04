@@ -5,22 +5,24 @@ import { getAuthContext, requireAuth } from "./lib/auth"
 export const list = query({
   args: {
     agentId: v.optional(v.id("agents")),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     if (args.agentId) {
       return await ctx.db
         .query("threads")
-        .withIndex("by_agent", (q) => q.eq("agentId", args.agentId!))
+        .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
         .order("desc")
         .take(args.limit ?? 50)
     }
 
     return await ctx.db
       .query("threads")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
       .order("desc")
       .take(args.limit ?? 50)
   },
