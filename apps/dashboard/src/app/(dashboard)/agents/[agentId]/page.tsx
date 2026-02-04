@@ -58,10 +58,10 @@ function timeAgo(timestamp: number): string {
 
 export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
   const { agentId } = params
-  const agent = useAgentWithConfig(agentId as Id<"agents">)
-  const stats = useExecutionStats(agentId as Id<"agents">)
-  const executions = useRecentExecutions(agentId as Id<"agents">, 10)
   const { environment } = useEnvironment()
+  const agent = useAgentWithConfig(agentId as Id<"agents">)
+  const stats = useExecutionStats(agentId as Id<"agents">, environment)
+  const executions = useRecentExecutions(agentId as Id<"agents">, environment, 10)
 
   if (agent === undefined) {
     return (
