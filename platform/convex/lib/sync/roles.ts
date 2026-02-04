@@ -34,6 +34,7 @@ export async function syncRoles(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   roles: RoleInput[],
+  environment: "development" | "production",
   preserveIds?: Set<string>
 ): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], preserved: [] as string[] }
@@ -41,7 +42,7 @@ export async function syncRoles(
 
   const existingRoles = await ctx.db
     .query("roles")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId).eq("environment", environment))
     .collect()
 
   const nonSystemRoles = existingRoles.filter((r) => !r.isSystem)
@@ -62,6 +63,7 @@ export async function syncRoles(
     } else {
       const roleId = await ctx.db.insert("roles", {
         organizationId,
+        environment,
         name: role.name,
         description: role.description,
         isSystem: false,
@@ -83,6 +85,10 @@ export async function syncRoles(
         result.deleted.push(existing.name)
       }
     }
+  }
+
+  if (environment === "production") {
+    await duplicateUserRolesForProduction(ctx, organizationId, roles)
   }
 
   return result
@@ -224,13 +230,67 @@ async function deleteRoleWithRelations(
   await ctx.db.delete(roleId)
 }
 
+async function duplicateUserRolesForProduction(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  roles: RoleInput[]
+): Promise<void> {
+  const now = Date.now()
+
+  for (const roleInput of roles) {
+    const devRole = await ctx.db
+      .query("roles")
+      .withIndex("by_org_env_name", (q) =>
+        q.eq("organizationId", organizationId).eq("environment", "development").eq("name", roleInput.name)
+      )
+      .first()
+
+    if (!devRole) continue
+
+    const prodRole = await ctx.db
+      .query("roles")
+      .withIndex("by_org_env_name", (q) =>
+        q.eq("organizationId", organizationId).eq("environment", "production").eq("name", roleInput.name)
+      )
+      .first()
+
+    if (!prodRole) continue
+
+    const devUserRoles = await ctx.db
+      .query("userRoles")
+      .withIndex("by_role", (q) => q.eq("roleId", devRole._id))
+      .collect()
+
+    for (const devUR of devUserRoles) {
+      const existingProdUR = await ctx.db
+        .query("userRoles")
+        .withIndex("by_user", (q) => q.eq("userId", devUR.userId))
+        .filter((q) => q.eq(q.field("roleId"), prodRole._id))
+        .first()
+
+      if (!existingProdUR) {
+        await ctx.db.insert("userRoles", {
+          userId: devUR.userId,
+          roleId: prodRole._id,
+          resourceType: devUR.resourceType,
+          resourceId: devUR.resourceId,
+          grantedBy: devUR.grantedBy,
+          expiresAt: devUR.expiresAt,
+          createdAt: now,
+        })
+      }
+    }
+  }
+}
+
 export async function getRoleNames(
   ctx: MutationCtx,
-  organizationId: Id<"organizations">
+  organizationId: Id<"organizations">,
+  environment: "development" | "production"
 ): Promise<string[]> {
   const roles = await ctx.db
     .query("roles")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId).eq("environment", environment))
     .filter((q) => q.eq(q.field("isSystem"), false))
     .collect()
 
