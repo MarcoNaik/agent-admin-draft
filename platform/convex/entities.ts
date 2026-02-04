@@ -15,6 +15,9 @@ import {
   PermissionError,
   FieldMaskResult,
 } from "./lib/permissions"
+import { Environment } from "./lib/permissions/types"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 function filterDataByMask(
   data: Record<string, unknown>,
@@ -48,16 +51,19 @@ function filterDataByMask(
 export const list = query({
   args: {
     entityTypeSlug: v.string(),
+    environment: v.optional(environmentValidator),
     status: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     const entities = await queryEntitiesAsActor(ctx, actor, args.entityTypeSlug)
@@ -73,10 +79,14 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("entities") },
+  args: {
+    id: v.id("entities"),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
     if (!entity || entity.organizationId !== auth.organizationId) {
@@ -96,6 +106,7 @@ export const get = query({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     return await getEntityAsActor(ctx, actor, entityType.slug, args.id)
@@ -103,10 +114,14 @@ export const get = query({
 })
 
 export const getWithType = query({
-  args: { id: v.id("entities") },
+  args: {
+    id: v.id("entities"),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
     if (!entity || entity.organizationId !== auth.organizationId) {
@@ -126,6 +141,7 @@ export const getWithType = query({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     const securedEntity = await getEntityAsActor(ctx, actor, entityType.slug, args.id)
@@ -143,16 +159,19 @@ export const getWithType = query({
 export const search = query({
   args: {
     entityTypeSlug: v.string(),
+    environment: v.optional(environmentValidator),
     query: v.string(),
     limit: v.optional(v.number()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     const canList = await canPerform(ctx, actor, "list", args.entityTypeSlug)
@@ -162,8 +181,8 @@ export const search = query({
 
     const entityType = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("slug", args.entityTypeSlug)
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("slug", args.entityTypeSlug)
       )
       .first()
 
@@ -180,6 +199,7 @@ export const search = query({
       (e) =>
         e.organizationId === auth.organizationId &&
         e.entityTypeId === entityType._id &&
+        e.environment === environment &&
         !e.deletedAt
     )
 
@@ -197,24 +217,27 @@ export const search = query({
 export const create = mutation({
   args: {
     entityTypeSlug: v.string(),
+    environment: v.optional(environmentValidator),
     data: v.any(),
     status: v.optional(v.string()),
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     await assertCanPerform(ctx, actor, "create", args.entityTypeSlug)
 
     const entityType = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("slug", args.entityTypeSlug)
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("slug", args.entityTypeSlug)
       )
       .first()
 
@@ -227,6 +250,7 @@ export const create = mutation({
 
     const entityId = await ctx.db.insert("entities", {
       organizationId: auth.organizationId,
+      environment,
       entityTypeId: entityType._id,
       status: args.status ?? "active",
       data: args.data,
@@ -237,6 +261,7 @@ export const create = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       entityId,
       entityTypeSlug: args.entityTypeSlug,
       eventType: `${args.entityTypeSlug}.created`,
@@ -254,12 +279,14 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("entities"),
+    environment: v.optional(environmentValidator),
     data: v.any(),
     status: v.optional(v.string()),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
     if (!entity || entity.organizationId !== auth.organizationId) {
@@ -279,6 +306,7 @@ export const update = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     await assertCanPerform(ctx, actor, "update", entityType.slug, entity as unknown as Record<string, unknown>)
@@ -317,6 +345,7 @@ export const update = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       entityId: args.id,
       entityTypeSlug: entityType.slug,
       eventType: `${entityType.slug}.updated`,
@@ -332,10 +361,14 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("entities") },
+  args: {
+    id: v.id("entities"),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
     if (!entity || entity.organizationId !== auth.organizationId) {
@@ -351,6 +384,7 @@ export const remove = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     await assertCanPerform(ctx, actor, "delete", entityType.slug, entity as unknown as Record<string, unknown>)
@@ -378,6 +412,7 @@ export const remove = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       entityId: args.id,
       entityTypeSlug: entityType.slug,
       eventType: `${entityType.slug}.deleted`,
@@ -396,12 +431,14 @@ export const link = mutation({
   args: {
     fromId: v.id("entities"),
     toId: v.id("entities"),
+    environment: v.optional(environmentValidator),
     relationType: v.string(),
     metadata: v.optional(v.any()),
   },
   returns: v.id("entityRelations"),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const fromEntity = await ctx.db.get(args.fromId)
     const toEntity = await ctx.db.get(args.toId)
@@ -424,6 +461,7 @@ export const link = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
@@ -434,7 +472,10 @@ export const link = mutation({
       .withIndex("by_from", (q) =>
         q.eq("fromEntityId", args.fromId).eq("relationType", args.relationType)
       )
-      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
+      .filter((q) => q.and(
+        q.eq(q.field("toEntityId"), args.toId),
+        q.eq(q.field("environment"), environment)
+      ))
       .first()
 
     if (existing) {
@@ -444,6 +485,7 @@ export const link = mutation({
     const now = Date.now()
     const relationId = await ctx.db.insert("entityRelations", {
       organizationId: auth.organizationId,
+      environment,
       fromEntityId: args.fromId,
       toEntityId: args.toId,
       relationType: args.relationType,
@@ -453,6 +495,7 @@ export const link = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       entityId: args.fromId,
       entityTypeSlug: fromType.slug,
       eventType: "entity.linked",
@@ -474,11 +517,13 @@ export const unlink = mutation({
   args: {
     fromId: v.id("entities"),
     toId: v.id("entities"),
+    environment: v.optional(environmentValidator),
     relationType: v.string(),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const fromEntity = await ctx.db.get(args.fromId)
     const toEntity = await ctx.db.get(args.toId)
@@ -501,6 +546,7 @@ export const unlink = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
@@ -511,7 +557,10 @@ export const unlink = mutation({
       .withIndex("by_from", (q) =>
         q.eq("fromEntityId", args.fromId).eq("relationType", args.relationType)
       )
-      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
+      .filter((q) => q.and(
+        q.eq(q.field("toEntityId"), args.toId),
+        q.eq(q.field("environment"), environment)
+      ))
       .first()
 
     if (!relation || relation.organizationId !== auth.organizationId) {
@@ -523,6 +572,7 @@ export const unlink = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       entityId: args.fromId,
       entityTypeSlug: fromType.slug,
       eventType: "entity.unlinked",
@@ -543,12 +593,14 @@ export const unlink = mutation({
 export const getRelated = query({
   args: {
     entityId: v.id("entities"),
+    environment: v.optional(environmentValidator),
     relationType: v.optional(v.string()),
     direction: v.optional(v.union(v.literal("from"), v.literal("to"))),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.entityId)
 
     if (!entity || entity.organizationId !== auth.organizationId) {
@@ -564,6 +616,7 @@ export const getRelated = query({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     const canRead = await canPerform(ctx, actor, "read", entityType.slug, entity as unknown as Record<string, unknown>)
@@ -583,11 +636,13 @@ export const getRelated = query({
         .withIndex(indexName, (q) =>
           q.eq(entityField, args.entityId).eq("relationType", relType)
         )
+        .filter((q) => q.eq(q.field("environment"), environment))
         .collect()
     } else {
       relations = await ctx.db
         .query("entityRelations")
         .withIndex(indexName, (q) => q.eq(entityField, args.entityId))
+        .filter((q) => q.eq(q.field("environment"), environment))
         .collect()
     }
 
