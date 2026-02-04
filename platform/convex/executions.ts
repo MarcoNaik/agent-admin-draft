@@ -2,6 +2,8 @@ import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
 import { getAuthContext } from "./lib/auth"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
 export const list = query({
   args: {
     agentId: v.optional(v.id("agents")),
@@ -185,6 +187,7 @@ export const record = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     agentId: v.id("agents"),
+    environment: environmentValidator,
     threadId: v.optional(v.id("threads")),
     versionId: v.optional(v.string()),
     conversationId: v.optional(v.string()),
@@ -205,6 +208,7 @@ export const record = internalMutation({
     return await ctx.db.insert("executions", {
       organizationId: args.organizationId,
       agentId: args.agentId,
+      environment: args.environment,
       threadId: args.threadId,
       versionId: args.versionId,
       conversationId: args.conversationId,
