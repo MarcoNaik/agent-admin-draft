@@ -52,6 +52,7 @@ export const create = mutation({
     name: v.string(),
     permissions: v.array(v.string()),
     expiresAt: v.optional(v.number()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -62,6 +63,7 @@ export const create = mutation({
     const now = Date.now()
     const id = await ctx.db.insert("apiKeys", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       name: args.name,
       keyHash,
       keyPrefix: prefix,
