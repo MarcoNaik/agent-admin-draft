@@ -1,6 +1,6 @@
 import { QueryCtx, MutationCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
-import { ActorContext, ActorType } from "./types"
+import { ActorContext, ActorType, Environment } from "./types"
 
 export async function buildActorContext(
   ctx: QueryCtx | MutationCtx,
@@ -8,9 +8,10 @@ export async function buildActorContext(
     organizationId: Id<"organizations">
     actorType: ActorType
     actorId: string
+    environment: Environment
   }
 ): Promise<ActorContext> {
-  const { organizationId, actorType, actorId } = options
+  const { organizationId, actorType, actorId, environment } = options
 
   let roleIds: Id<"roles">[] = []
   let isOrgAdmin = false
@@ -41,19 +42,20 @@ export async function buildActorContext(
     const validRoleIds: Id<"roles">[] = []
     for (const ur of userRoles) {
       const role = await ctx.db.get(ur.roleId)
-      if (role && role.organizationId === organizationId) {
+      if (role && role.organizationId === organizationId && role.environment === environment) {
         validRoleIds.push(ur.roleId)
       }
     }
     roleIds = validRoleIds
   } else if (actorType === "system") {
     isOrgAdmin = true
-    const systemRole = await ctx.db
+    const systemRoles = await ctx.db
       .query("roles")
       .withIndex("by_org_isSystem", (q) =>
         q.eq("organizationId", organizationId).eq("isSystem", true)
       )
-      .first()
+      .collect()
+    const systemRole = systemRoles.find((r) => r.environment === environment)
 
     if (systemRole) {
       roleIds = [systemRole._id]
@@ -66,11 +68,13 @@ export async function buildActorContext(
     actorId,
     roleIds,
     isOrgAdmin,
+    environment,
   }
 }
 
 export function buildSystemActorContext(
-  organizationId: Id<"organizations">
+  organizationId: Id<"organizations">,
+  environment: Environment
 ): ActorContext {
   return {
     organizationId,
@@ -78,5 +82,6 @@ export function buildSystemActorContext(
     actorId: "system",
     roleIds: [],
     isOrgAdmin: true,
+    environment,
   }
 }
