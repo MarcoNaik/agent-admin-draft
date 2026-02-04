@@ -71,6 +71,7 @@ export const sendTemplate = mutation({
     templateName: v.string(),
     languageCode: v.string(),
     variables: v.any(),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({ messageId: v.string() }),
   handler: async (ctx, args) => {
@@ -86,6 +87,7 @@ export const sendTemplate = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: undefined,
       entityTypeSlug: undefined,
       eventType: "whatsapp.template_sent",
@@ -108,6 +110,7 @@ export const sendMessage = mutation({
   args: {
     toPhoneNumber: v.string(),
     text: v.string(),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({ messageId: v.string() }),
   handler: async (ctx, args) => {
@@ -122,6 +125,7 @@ export const sendMessage = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: undefined,
       entityTypeSlug: undefined,
       eventType: "whatsapp.message_sent",
