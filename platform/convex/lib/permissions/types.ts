@@ -4,12 +4,15 @@ export type Action = "create" | "read" | "update" | "delete" | "list"
 
 export type ActorType = "user" | "agent" | "system" | "webhook"
 
+export type Environment = "development" | "production"
+
 export interface ActorContext {
   organizationId: Id<"organizations">
   actorType: ActorType
   actorId: string
   roleIds: Id<"roles">[]
   isOrgAdmin?: boolean
+  environment: Environment
 }
 
 export interface PermissionResult {
