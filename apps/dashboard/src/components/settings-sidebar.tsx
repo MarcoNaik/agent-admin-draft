@@ -1,59 +1,45 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+
+export type SettingsTab = "edit" | "deploy-production" | "deploy-preview" | "env-vars" | "delete"
 
 interface SettingsSidebarProps {
   agentId: string
+  activeTab: SettingsTab
+  onTabChange: (tab: SettingsTab) => void
 }
 
-const navItems = [
-  { label: "Edit Agent", href: "" },
-  { label: "Production Deploy Keys", href: "#deploy-keys-production" },
-  { label: "Preview Deploy Keys", href: "#deploy-keys-preview" },
-  { label: "Environment Variables", href: "#env-vars" },
-  { label: "Delete Agent", href: "#delete", variant: "destructive" as const },
+const navItems: { label: string; tab: SettingsTab; variant?: "destructive" }[] = [
+  { label: "Edit Agent", tab: "edit" },
+  { label: "Production Deploy Keys", tab: "deploy-production" },
+  { label: "Preview Deploy Keys", tab: "deploy-preview" },
+  { label: "Environment Variables", tab: "env-vars" },
+  { label: "Delete Agent", tab: "delete", variant: "destructive" },
 ]
 
-export function SettingsSidebar({ agentId }: SettingsSidebarProps) {
-  const pathname = usePathname()
-  const basePath = `/agents/${agentId}/settings`
-
+export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
   return (
     <nav className="w-56 flex-shrink-0 space-y-1">
-      {navItems.map((item) => {
-        const isHash = item.href.startsWith("#")
-        const fullPath = isHash ? `${basePath}${item.href}` : `${basePath}${item.href}`
-
-        return isHash ? (
-          <a
-            key={item.label}
-            href={item.href}
-            className={cn(
-              "block rounded-md px-3 py-2 text-sm transition-colors",
-              item.variant === "destructive"
-                ? "text-destructive hover:bg-destructive/10"
+      {navItems.map((item) => (
+        <button
+          key={item.tab}
+          type="button"
+          onClick={() => onTabChange(item.tab)}
+          className={cn(
+            "block w-full text-left rounded-md px-3 py-2 text-sm transition-colors cursor-pointer",
+            item.variant === "destructive"
+              ? activeTab === item.tab
+                ? "bg-destructive/10 text-destructive font-medium"
+                : "text-destructive hover:bg-destructive/10"
+              : activeTab === item.tab
+                ? "bg-background-tertiary text-content-primary font-medium"
                 : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
-            )}
-          >
-            {item.label}
-          </a>
-        ) : (
-          <Link
-            key={item.label}
-            href={fullPath}
-            className={cn(
-              "block rounded-md px-3 py-2 text-sm transition-colors",
-              pathname === basePath && item.href === ""
-                ? "bg-background-tertiary text-content-primary"
-                : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
-            )}
-          >
-            {item.label}
-          </Link>
-        )
-      })}
+          )}
+        >
+          {item.label}
+        </button>
+      ))}
     </nav>
   )
 }
