@@ -45,6 +45,7 @@ export const devCommand = new Command('dev')
     }
 
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
+    console.log(chalk.gray('Environment:'), chalk.cyan('development'))
     console.log()
 
     let credentials = loadCredentials()
@@ -84,7 +85,7 @@ export const devCommand = new Command('dev')
 
     spinner.start('Checking remote state')
 
-    const { state: remoteState, error: stateError } = await getSyncState(project.organization.id)
+    const { state: remoteState, error: stateError } = await getSyncState(project.organization.id, 'development')
 
     if (stateError) {
       if (isAuthError(new Error(stateError))) {
@@ -145,6 +146,7 @@ export const devCommand = new Command('dev')
       const result = await syncOrganization({
         ...payload,
         organizationId: project.organization.id,
+        environment: 'development',
         preservePackResources: true,
         preserveUnmanagedAgents: true,
       })
