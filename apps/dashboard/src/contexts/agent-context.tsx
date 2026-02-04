@@ -6,10 +6,6 @@ interface AgentInfo {
   id: string
   name: string
   slug: string
-  environments: {
-    development: { url: string; version: string; deployedAt: string } | null
-    production: { url: string; version: string; deployedAt: string } | null
-  }
 }
 
 interface AgentContextValue {
