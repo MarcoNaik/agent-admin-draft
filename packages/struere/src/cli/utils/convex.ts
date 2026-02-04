@@ -26,12 +26,6 @@ interface AgentSyncResult {
   error?: string
 }
 
-interface DeployResult {
-  success: boolean
-  configId?: string
-  error?: string
-}
-
 export async function syncToConvex(
   agentId: string,
   config: AgentConfig
@@ -66,36 +60,6 @@ export async function syncToConvex(
 
   const result = await response.json() as { success?: boolean }
   return { success: result.success ?? true }
-}
-
-export async function deployToProduction(agentId: string): Promise<DeployResult> {
-  const credentials = loadCredentials()
-  const apiKey = getApiKey()
-  const token = apiKey || credentials?.token
-
-  if (!token) {
-    return { success: false, error: 'Not authenticated' }
-  }
-
-  const response = await fetch(`${CONVEX_URL}/api/mutation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      path: 'agents:deploy',
-      args: { agentId },
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    return { success: false, error }
-  }
-
-  const result = await response.json() as { success?: boolean; configId?: string }
-  return { success: result.success ?? true, configId: result.configId }
 }
 
 export interface AgentInfo {
@@ -567,6 +531,7 @@ export interface SyncResult {
 
 export interface SyncOptions extends SyncPayload {
   organizationId?: string
+  environment: 'development' | 'production'
   preservePackResources?: boolean
   preserveUnmanagedAgents?: boolean
 }
@@ -607,13 +572,13 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
 }
 
 export interface SyncState {
-  agents: Array<{ slug: string; name: string; version: string; hasDevConfig: boolean; hasProdConfig: boolean }>
+  agents: Array<{ slug: string; name: string; version: string; hasConfig: boolean }>
   entityTypes: Array<{ slug: string; name: string; isPackManaged?: boolean }>
   roles: Array<{ name: string; policyCount: number; isPackManaged?: boolean }>
   installedPacks?: Array<{ packId: string; version: string; entityTypeCount: number; roleCount: number }>
 }
 
-export async function getSyncState(organizationId?: string): Promise<{ state?: SyncState; error?: string }> {
+export async function getSyncState(organizationId?: string, environment?: 'development' | 'production'): Promise<{ state?: SyncState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   const token = apiKey || credentials?.token
@@ -630,7 +595,7 @@ export async function getSyncState(organizationId?: string): Promise<{ state?: S
     },
     body: JSON.stringify({
       path: 'sync:getSyncState',
-      args: { organizationId },
+      args: { organizationId, environment },
     }),
   })
 
@@ -641,46 +606,4 @@ export async function getSyncState(organizationId?: string): Promise<{ state?: S
 
   const result = await response.json() as { status: string; value?: SyncState }
   return { state: result.value }
-}
-
-export interface DeployAllResult {
-  success: boolean
-  deployed?: string[]
-  skipped?: string[]
-  error?: string
-}
-
-export async function deployAllAgents(organizationId?: string): Promise<DeployAllResult> {
-  const credentials = loadCredentials()
-  const apiKey = getApiKey()
-  const token = apiKey || credentials?.token
-
-  if (!token) {
-    return { success: false, error: 'Not authenticated' }
-  }
-
-  const response = await fetch(`${CONVEX_URL}/api/mutation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      path: 'sync:deployAllAgents',
-      args: { organizationId },
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    return { success: false, error }
-  }
-
-  const json = await response.json() as { status: string; value: DeployAllResult }
-
-  if (json.status === 'success' && json.value) {
-    return json.value
-  }
-
-  return { success: false, error: 'Unexpected response format' }
 }
