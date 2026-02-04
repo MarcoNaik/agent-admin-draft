@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEntityTypeBySlug, useEntities } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -38,9 +39,10 @@ export default function EntityListPage({ params }: EntityListPageProps) {
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
+  const { environment } = useEnvironment()
 
-  const entityType = useEntityTypeBySlug(typeSlug)
-  const entities = useEntities(typeSlug, status !== "all" ? status : undefined)
+  const entityType = useEntityTypeBySlug(typeSlug, environment)
+  const entities = useEntities(typeSlug, environment, status !== "all" ? status : undefined)
 
   if (entityType === undefined || entities === undefined) {
     return (
