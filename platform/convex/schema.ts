@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
 export default defineSchema({
   organizations: defineTable({
     name: v.string(),
@@ -29,8 +31,6 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
-    developmentConfigId: v.optional(v.id("agentConfigs")),
-    productionConfigId: v.optional(v.id("agentConfigs")),
     status: v.union(v.literal("active"), v.literal("paused"), v.literal("deleted")),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -41,7 +41,7 @@ export default defineSchema({
   agentConfigs: defineTable({
     agentId: v.id("agents"),
     version: v.string(),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: environmentValidator,
     name: v.string(),
     systemPrompt: v.string(),
     model: v.object({
@@ -68,6 +68,7 @@ export default defineSchema({
   threads: defineTable({
     organizationId: v.id("organizations"),
     agentId: v.id("agents"),
+    environment: environmentValidator,
     userId: v.optional(v.id("users")),
     externalId: v.optional(v.string()),
     metadata: v.optional(v.any()),
@@ -75,8 +76,10 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_agent", ["agentId"])
+    .index("by_agent_env", ["agentId", "environment"])
     .index("by_external", ["externalId"])
-    .index("by_org", ["organizationId"]),
+    .index("by_org", ["organizationId"])
+    .index("by_org_env", ["organizationId", "environment"]),
 
   messages: defineTable({
     threadId: v.id("threads"),
@@ -94,6 +97,7 @@ export default defineSchema({
 
   entityTypes: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     name: v.string(),
     slug: v.string(),
     schema: v.any(),
@@ -105,10 +109,13 @@ export default defineSchema({
   })
     .index("by_org", ["organizationId"])
     .index("by_org_slug", ["organizationId", "slug"])
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_slug", ["organizationId", "environment", "slug"])
     .index("by_slug", ["slug"]),
 
   entities: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     entityTypeId: v.id("entityTypes"),
     status: v.string(),
     data: v.any(),
@@ -120,11 +127,14 @@ export default defineSchema({
   })
     .index("by_org_type", ["organizationId", "entityTypeId"])
     .index("by_org_type_status", ["organizationId", "entityTypeId", "status"])
+    .index("by_org_env_type", ["organizationId", "environment", "entityTypeId"])
+    .index("by_org_env_type_status", ["organizationId", "environment", "entityTypeId", "status"])
     .index("by_provider_reference", ["providerReference"])
     .searchIndex("search_text", { searchField: "searchText" }),
 
   entityRelations: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     fromEntityId: v.id("entities"),
     toEntityId: v.id("entities"),
     relationType: v.string(),
@@ -136,6 +146,7 @@ export default defineSchema({
 
   events: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     entityId: v.optional(v.id("entities")),
     entityTypeSlug: v.optional(v.string()),
     eventType: v.string(),
@@ -152,10 +163,13 @@ export default defineSchema({
   })
     .index("by_entity", ["entityId"])
     .index("by_org_type", ["organizationId", "eventType"])
-    .index("by_org_timestamp", ["organizationId", "timestamp"]),
+    .index("by_org_timestamp", ["organizationId", "timestamp"])
+    .index("by_org_env_timestamp", ["organizationId", "environment", "timestamp"])
+    .index("by_org_env_type", ["organizationId", "environment", "eventType"]),
 
   jobs: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     entityId: v.optional(v.id("entities")),
     jobType: v.string(),
     idempotencyKey: v.optional(v.string()),
@@ -188,6 +202,7 @@ export default defineSchema({
     ),
   })
     .index("by_org_status", ["organizationId", "status"])
+    .index("by_org_env_status", ["organizationId", "environment", "status"])
     .index("by_idempotency", ["organizationId", "idempotencyKey"])
     .index("by_pending", ["status", "scheduledFor", "priority"])
     .index("by_entity", ["entityId"])
@@ -195,6 +210,7 @@ export default defineSchema({
 
   roles: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     name: v.string(),
     description: v.optional(v.string()),
     isSystem: v.boolean(),
@@ -203,6 +219,8 @@ export default defineSchema({
   })
     .index("by_org", ["organizationId"])
     .index("by_org_name", ["organizationId", "name"])
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_name", ["organizationId", "environment", "name"])
     .index("by_org_isSystem", ["organizationId", "isSystem"]),
 
   policies: defineTable({
@@ -262,6 +280,7 @@ export default defineSchema({
 
   apiKeys: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     name: v.string(),
     keyHash: v.string(),
     keyPrefix: v.string(),
@@ -271,11 +290,13 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
+    .index("by_org_env", ["organizationId", "environment"])
     .index("by_prefix", ["keyPrefix"])
     .index("by_hash", ["keyHash"]),
 
   executions: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     agentId: v.id("agents"),
     threadId: v.optional(v.id("threads")),
     versionId: v.optional(v.string()),
@@ -295,7 +316,9 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
+    .index("by_org_env", ["organizationId", "environment"])
     .index("by_agent", ["agentId"])
+    .index("by_agent_env", ["agentId", "environment"])
     .index("by_timestamp", ["createdAt"]),
 
   toolPermissions: defineTable({
@@ -316,6 +339,7 @@ export default defineSchema({
 
   installedPacks: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     packId: v.string(),
     version: v.string(),
     installedAt: v.number(),
@@ -338,7 +362,9 @@ export default defineSchema({
     }))),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_pack", ["organizationId", "packId"]),
+    .index("by_org_pack", ["organizationId", "packId"])
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_pack", ["organizationId", "environment", "packId"]),
 
   whatsappConversations: defineTable({
     organizationId: v.id("organizations"),
