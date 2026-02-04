@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ChevronLeft, Edit, Trash2, Link2, Clock, Loader2 } from "lucide-react"
 import { useEntityWithType, useRelatedEntities, useEntityEvents, useDeleteEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,10 +26,11 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
   const { type, id } = params
   const router = useRouter()
   const isNewEntity = !isValidConvexId(id)
+  const { environment } = useEnvironment()
 
-  const entityData = useEntityWithType(isNewEntity ? undefined : id as Id<"entities">)
-  const relatedEntities = useRelatedEntities(isNewEntity ? undefined : id as Id<"entities">)
-  const events = useEntityEvents(isNewEntity ? undefined : id as Id<"entities">)
+  const entityData = useEntityWithType(isNewEntity ? undefined : id as Id<"entities">, environment)
+  const relatedEntities = useRelatedEntities(isNewEntity ? undefined : id as Id<"entities">, environment)
+  const events = useEntityEvents(isNewEntity ? undefined : id as Id<"entities">, environment)
   const deleteEntity = useDeleteEntity()
 
   if (isNewEntity) {
