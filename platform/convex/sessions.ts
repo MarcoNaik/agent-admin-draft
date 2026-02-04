@@ -64,6 +64,7 @@ export const createSession = mutation({
     meetingLink: v.optional(v.string()),
     entitlementId: v.optional(v.string()),
     guardianNotes: v.optional(v.string()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({
     sessionId: v.id("entities"),
@@ -75,6 +76,7 @@ export const createSession = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "create", "session")
@@ -144,6 +146,7 @@ export const createSession = mutation({
 
     const sessionId = await ctx.db.insert("entities", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityTypeId: sessionType._id,
       status: initialStatus,
       data: sessionData,
@@ -153,6 +156,7 @@ export const createSession = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: sessionId,
       entityTypeSlug: "session",
       eventType: "session.created",
@@ -172,6 +176,7 @@ export const createSession = mutation({
         if (guardianId) {
           const guardianJobId = await ctx.db.insert("jobs", {
             organizationId: auth.organizationId,
+            environment: args.environment,
             entityId: sessionId,
             jobType: "session.reminder",
             idempotencyKey: `reminder-guardian-${sessionId}`,
@@ -188,6 +193,7 @@ export const createSession = mutation({
 
         const teacherJobId = await ctx.db.insert("jobs", {
           organizationId: auth.organizationId,
+          environment: args.environment,
           entityId: sessionId,
           jobType: "session.reminder",
           idempotencyKey: `reminder-teacher-${sessionId}`,
@@ -212,6 +218,7 @@ export const rescheduleSession = mutation({
     sessionId: v.id("entities"),
     newStartTime: v.number(),
     newDuration: v.optional(v.number()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({
     success: v.boolean(),
@@ -224,6 +231,7 @@ export const rescheduleSession = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     const session = await ctx.db.get(args.sessionId)
@@ -275,6 +283,7 @@ export const rescheduleSession = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: args.sessionId,
       entityTypeSlug: "session",
       eventType: "session.rescheduled",
@@ -315,6 +324,7 @@ export const rescheduleSession = mutation({
       if (sessionData.guardianId) {
         const guardianJobId = await ctx.db.insert("jobs", {
           organizationId: auth.organizationId,
+          environment: args.environment,
           entityId: args.sessionId,
           jobType: "session.reminder",
           idempotencyKey: `reminder-guardian-${args.sessionId}-${now}`,
@@ -331,6 +341,7 @@ export const rescheduleSession = mutation({
 
       const teacherJobId = await ctx.db.insert("jobs", {
         organizationId: auth.organizationId,
+        environment: args.environment,
         entityId: args.sessionId,
         jobType: "session.reminder",
         idempotencyKey: `reminder-teacher-${args.sessionId}-${now}`,
@@ -353,6 +364,7 @@ export const cancelSession = mutation({
   args: {
     sessionId: v.id("entities"),
     reason: v.optional(v.string()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -361,6 +373,7 @@ export const cancelSession = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     const session = await ctx.db.get(args.sessionId)
@@ -397,6 +410,7 @@ export const cancelSession = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: args.sessionId,
       entityTypeSlug: "session",
       eventType: "session.cancelled",
@@ -434,6 +448,7 @@ export const completeSession = mutation({
     sessionId: v.id("entities"),
     reportContent: v.optional(v.string()),
     teacherNotes: v.optional(v.string()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -442,6 +457,7 @@ export const completeSession = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     const session = await ctx.db.get(args.sessionId)
@@ -474,6 +490,7 @@ export const completeSession = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: args.sessionId,
       entityTypeSlug: "session",
       eventType: "session.completed",
@@ -506,6 +523,7 @@ export const completeSession = mutation({
 
         await ctx.db.insert("events", {
           organizationId: auth.organizationId,
+          environment: args.environment,
           entityId: sessionData.entitlementId as Id<"entities">,
           entityTypeSlug: "entitlement",
           eventType: "entitlement.credit_consumed",
@@ -528,6 +546,7 @@ export const completeSession = mutation({
 
     const followupJobId = await ctx.db.insert("jobs", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: args.sessionId,
       jobType: "session.followup",
       idempotencyKey: `followup-${args.sessionId}`,
@@ -548,6 +567,7 @@ export const completeSession = mutation({
 export const startSession = mutation({
   args: {
     sessionId: v.id("entities"),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -556,6 +576,7 @@ export const startSession = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     const session = await ctx.db.get(args.sessionId)
@@ -585,6 +606,7 @@ export const startSession = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: args.sessionId,
       entityTypeSlug: "session",
       eventType: "session.started",
@@ -602,6 +624,7 @@ export const startSession = mutation({
 export const markNoShow = mutation({
   args: {
     sessionId: v.id("entities"),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -610,6 +633,7 @@ export const markNoShow = mutation({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     const session = await ctx.db.get(args.sessionId)
@@ -639,6 +663,7 @@ export const markNoShow = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: args.sessionId,
       entityTypeSlug: "session",
       eventType: "session.no_show",
