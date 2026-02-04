@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Struere Platform Architecture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #faf9f7;
+            --bg-alt: #f5f3ef;
+            --bg-card: #ffffff;
+            --bg-code: #1e1e2e;
+            --border: #e8e5e0;
+            --border-strong: #d4d0c8;
+            --text: #1a1a1a;
+            --text-secondary: #44403c;
+            --text-muted: #78716c;
+            --accent: #b45309;
+            --accent-light: #d97706;
+            --accent-bg: rgba(180, 83, 9, 0.06);
+            --accent-border: rgba(180, 83, 9, 0.2);
+            --green: #15803d;
+            --green-bg: rgba(21, 128, 61, 0.06);
+            --blue: #1d4ed8;
+            --blue-bg: rgba(29, 78, 216, 0.06);
+            --red: #b91c1c;
+            --red-bg: rgba(185, 28, 28, 0.06);
+            --purple: #7c3aed;
+            --purple-bg: rgba(124, 58, 237, 0.06);
+            --font-display: 'Cormorant Garamond', serif;
+            --font-body: 'DM Sans', sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --slide-padding: clamp(2rem, 5vw, 4.5rem);
+            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-snap-type: y mandatory;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            min-height: 100vh;
+            padding: var(--slide-padding);
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-inner {
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 2rem;
+            left: var(--slide-padding);
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.15em;
+        }
+
+        .slide-alt { background: var(--bg-alt); }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+        }
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .reveal:nth-child(2) { transition-delay: 0.08s; }
+        .reveal:nth-child(3) { transition-delay: 0.16s; }
+        .reveal:nth-child(4) { transition-delay: 0.24s; }
+        .reveal:nth-child(5) { transition-delay: 0.32s; }
+        .reveal:nth-child(6) { transition-delay: 0.4s; }
+        .reveal:nth-child(7) { transition-delay: 0.48s; }
+        .reveal:nth-child(8) { transition-delay: 0.56s; }
+
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--accent);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .rule {
+            width: 48px;
+            height: 2px;
+            background: var(--accent);
+            margin-bottom: 1.75rem;
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2.8rem, 5.5vw, 4.2rem);
+            font-weight: 600;
+            line-height: 1.1;
+            margin-bottom: 1.25rem;
+        }
+
+        h2 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            font-weight: 600;
+            line-height: 1.15;
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        h1 em, h2 em { font-style: italic; color: var(--accent); }
+
+        p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 620px;
+        }
+
+        .lead {
+            font-size: 1.1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+
+        .card-title {
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+
+        .card-accent {
+            border-left: 3px solid var(--accent);
+        }
+
+        .card-green { border-left: 3px solid var(--green); }
+        .card-blue { border-left: 3px solid var(--blue); }
+        .card-purple { border-left: 3px solid var(--purple); }
+        .card-red { border-left: 3px solid var(--red); }
+
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge-accent { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+        .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid rgba(21,128,61,0.2); }
+        .badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(29,78,216,0.2); }
+        .badge-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(124,58,237,0.2); }
+        .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid rgba(185,28,28,0.2); }
+
+        .code-block {
+            background: var(--bg-code);
+            color: #cdd6f4;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            line-height: 1.7;
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .code-block .kw { color: #cba6f7; }
+        .code-block .str { color: #a6e3a1; }
+        .code-block .type { color: #89b4fa; }
+        .code-block .comment { color: #6c7086; }
+        .code-block .field { color: #f9e2af; }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.8em;
+            background: var(--accent-bg);
+            color: var(--accent);
+            padding: 0.15em 0.4em;
+            border-radius: 3px;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        th {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            text-align: left;
+            padding: 0.6rem 1rem;
+            border-bottom: 2px solid var(--border-strong);
+        }
+
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        td:first-child {
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .flow {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+        }
+
+        .flow-step {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+
+        .flow-step:first-child { border-radius: 8px 0 0 8px; }
+        .flow-step:last-child { border-radius: 0 8px 8px 0; }
+        .flow-step + .flow-step { border-left: none; }
+
+        .flow-step::after {
+            content: '\2192';
+            position: absolute;
+            right: -0.6rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            color: var(--accent);
+            z-index: 1;
+        }
+
+        .flow-step:last-child::after { display: none; }
+
+        .flow-num {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.25rem;
+        }
+
+        .flow-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .flow-desc {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            line-height: 1.4;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            align-items: start;
+        }
+
+        .split-wide {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 2.5rem;
+            align-items: start;
+        }
+
+        .list-clean {
+            list-style: none;
+            padding: 0;
+        }
+
+        .list-clean li {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: baseline;
+            gap: 0.75rem;
+        }
+
+        .list-clean li::before {
+            content: '\2022';
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .diagram-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .mono { font-family: var(--font-mono); }
+        .muted { color: var(--text-muted); }
+        .small { font-size: 0.8rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+        .mt-4 { margin-top: 2rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: var(--accent);
+            z-index: 100;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .nav-dots {
+            position: fixed;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 50;
+        }
+
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--border-strong);
+            cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.4);
+        }
+
+        .keyboard-hint {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            opacity: 0.6;
+            transition: opacity 0.5s;
+        }
+
+        .env-bar {
+            display: flex;
+            gap: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .env-bar-item {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .env-dev {
+            background: var(--blue-bg);
+            color: var(--blue);
+            border-right: 1px solid var(--border);
+        }
+
+        .env-prod {
+            background: var(--green-bg);
+            color: var(--green);
+        }
+
+        .env-shared {
+            background: var(--purple-bg);
+            color: var(--purple);
+            border-right: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4, .split, .split-wide { grid-template-columns: 1fr; }
+            .flow { flex-direction: column; }
+            .flow-step::after { display: none; }
+            .flow-step { border-radius: 8px !important; border: 1px solid var(--border) !important; }
+            .nav-dots, .keyboard-hint { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { transition: opacity 0.3s ease; transform: none; }
+            html { scroll-behavior: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots"></nav>
+<div class="keyboard-hint" id="keyHint">ARROW KEYS OR SCROLL TO NAVIGATE</div>
+
+<!-- ============================================
+     SLIDE 1: TITLE
+     ============================================ -->
+<section class="slide" id="slide-1">
+    <span class="slide-number">01 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Team Onboarding</div>
+        <div class="rule reveal"></div>
+        <h1 class="reveal">Struere Platform<br><em>Architecture</em></h1>
+        <p class="lead reveal">A comprehensive guide to the permission-aware AI agent platform. Covering system design, environment isolation, data flow, and the full execution model.</p>
+        <div class="grid-4 mt-4 reveal">
+            <div><span class="mono muted small">STACK</span><br><strong>Convex + Next.js</strong></div>
+            <div><span class="mono muted small">AUTH</span><br><strong>Clerk RBAC</strong></div>
+            <div><span class="mono muted small">RUNTIME</span><br><strong>CF Workers</strong></div>
+            <div><span class="mono muted small">ENVS</span><br><strong>Dev / Prod</strong></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 2: WHAT IS STRUERE
+     ============================================ -->
+<section class="slide slide-alt" id="slide-2">
+    <span class="slide-number">02 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Overview</div>
+        <h2 class="reveal">What is <em>Struere?</em></h2>
+        <p class="lead reveal">A platform for building, deploying, and managing AI agents with built-in permission controls and environment isolation.</p>
+        <div class="grid-3 mt-3 reveal">
+            <div class="card card-accent">
+                <div class="card-title">Permission-Aware</div>
+                <div class="card-desc">Every operation goes through RBAC with row-level scope rules and column-level field masks. No privileged data paths.</div>
+            </div>
+            <div class="card card-green">
+                <div class="card-title">Environment Isolated</div>
+                <div class="card-desc">Full separation between development and production. Data, roles, configs, and permissions are all per-environment.</div>
+            </div>
+            <div class="card card-blue">
+                <div class="card-title">Real-Time</div>
+                <div class="card-desc">Native Convex subscriptions power live dashboards. No polling, no WebSocket management, no stale data.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 3: MONOREPO STRUCTURE
+     ============================================ -->
+<section class="slide" id="slide-3">
+    <span class="slide-number">03 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Codebase</div>
+        <h2 class="reveal">Monorepo <em>Structure</em></h2>
+        <p class="lead reveal">Three top-level directories, each with a distinct role.</p>
+        <div class="grid-3 mt-3 reveal">
+            <div class="card">
+                <span class="badge badge-blue">apps/</span>
+                <div class="card-title">Frontend Applications</div>
+                <ul class="list-clean mt-1">
+                    <li><strong>dashboard</strong> &mdash; Next.js admin UI</li>
+                    <li><strong>web</strong> &mdash; Marketing site</li>
+                </ul>
+            </div>
+            <div class="card">
+                <span class="badge badge-purple">packages/</span>
+                <div class="card-title">Shared Libraries</div>
+                <ul class="list-clean mt-1">
+                    <li><strong>struere</strong> &mdash; SDK + CLI</li>
+                    <li>defineAgent, defineRole, defineEntityType</li>
+                </ul>
+            </div>
+            <div class="card">
+                <span class="badge badge-accent">platform/</span>
+                <div class="card-title">Backend Services</div>
+                <ul class="list-clean mt-1">
+                    <li><strong>convex</strong> &mdash; Backend functions</li>
+                    <li><strong>tool-executor</strong> &mdash; CF Worker</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 4: TECH STACK
+     ============================================ -->
+<section class="slide slide-alt" id="slide-4">
+    <span class="slide-number">04 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Stack</div>
+        <h2 class="reveal">Technology <em>Choices</em></h2>
+        <div class="table-wrap mt-3 reveal">
+            <table>
+                <thead>
+                    <tr><th>Layer</th><th>Technology</th><th>Why</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Backend</td><td>Convex</td><td>Real-time subscriptions, scheduled functions, built-in DB</td></tr>
+                    <tr><td>Frontend</td><td>Next.js 14</td><td>App Router, React Server Components, TypeScript</td></tr>
+                    <tr><td>Auth</td><td>Clerk</td><td>Org management, JWT integration with Convex</td></tr>
+                    <tr><td>Sandboxed Exec</td><td>Cloudflare Workers</td><td>Isolated custom tool execution with domain allowlist</td></tr>
+                    <tr><td>LLM</td><td>Anthropic API</td><td>Direct API calls from Convex actions</td></tr>
+                    <tr><td>Package Manager</td><td>Bun</td><td>Speed, workspace support</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 5: ENVIRONMENT ISOLATION OVERVIEW
+     ============================================ -->
+<section class="slide" id="slide-5">
+    <span class="slide-number">05 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Core Concept</div>
+        <h2 class="reveal">Environment <em>Isolation</em></h2>
+        <p class="lead reveal">Every piece of data, every role, every config exists independently in <code>development</code> or <code>production</code>. The environment is set at request entry (API key or dashboard toggle) and threaded through every operation.</p>
+        <div class="env-bar mt-3 reveal">
+            <div class="env-dev">development</div>
+            <div class="env-prod">production</div>
+        </div>
+        <p class="small muted mt-2 reveal">The <code>Environment</code> type is defined in <code>lib/permissions/types.ts</code> as a union of <code>"development" | "production"</code>.</p>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 6: WHAT'S SCOPED VS SHARED
+     ============================================ -->
+<section class="slide slide-alt" id="slide-6">
+    <span class="slide-number">06 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Environment</div>
+        <h2 class="reveal">Scoped vs. <em>Shared</em></h2>
+        <div class="split mt-3 reveal">
+            <div>
+                <span class="badge badge-accent">Per-Environment</span>
+                <ul class="list-clean mt-1">
+                    <li>entityTypes, entities, entityRelations</li>
+                    <li>roles, policies, scopeRules, fieldMasks</li>
+                    <li>agentConfigs</li>
+                    <li>threads, events, executions, jobs</li>
+                    <li>apiKeys, installedPacks</li>
+                </ul>
+            </div>
+            <div>
+                <span class="badge badge-purple">Shared Across Environments</span>
+                <ul class="list-clean mt-1">
+                    <li>agents (name, slug, description)</li>
+                    <li>users, organizations</li>
+                    <li>userOrganizations</li>
+                    <li>toolPermissions</li>
+                    <li>messages (scoped via thread)</li>
+                </ul>
+            </div>
+        </div>
+        <p class="small muted mt-3 reveal">Agents are shared but their <strong>configs</strong> are per-environment, looked up via the <code>by_agent_env</code> index on <code>agentConfigs</code>.</p>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 7: DATABASE SCHEMA
+     ============================================ -->
+<section class="slide" id="slide-7">
+    <span class="slide-number">07 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Data Layer</div>
+        <h2 class="reveal">Database <em>Schema</em></h2>
+        <div class="table-wrap mt-3 reveal">
+            <table>
+                <thead>
+                    <tr><th>Category</th><th>Tables</th><th>Env</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>User & Org</td><td>organizations, users, apiKeys, userRoles</td><td>apiKeys only</td></tr>
+                    <tr><td>Agents</td><td>agents, agentConfigs</td><td>agentConfigs only</td></tr>
+                    <tr><td>Conversation</td><td>threads, messages</td><td>threads</td></tr>
+                    <tr><td>Business Data</td><td>entityTypes, entities, entityRelations</td><td>all</td></tr>
+                    <tr><td>Events & Audit</td><td>events, executions</td><td>all</td></tr>
+                    <tr><td>Jobs</td><td>jobs</td><td>all</td></tr>
+                    <tr><td>RBAC</td><td>roles, policies, scopeRules, fieldMasks</td><td>roles</td></tr>
+                    <tr><td>Packs</td><td>installedPacks</td><td>all</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 8: KEY INDEXES
+     ============================================ -->
+<section class="slide slide-alt" id="slide-8">
+    <span class="slide-number">08 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Data Layer</div>
+        <h2 class="reveal">Environment-Aware <em>Indexes</em></h2>
+        <div class="table-wrap mt-3 reveal">
+            <table>
+                <thead>
+                    <tr><th>Index</th><th>Table</th><th>Fields</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>by_org_env_slug</code></td><td>entityTypes</td><td>organizationId, environment, slug</td></tr>
+                    <tr><td><code>by_org_env_type</code></td><td>entities</td><td>organizationId, environment, entityTypeId</td></tr>
+                    <tr><td><code>by_org_env_name</code></td><td>roles</td><td>organizationId, environment, name</td></tr>
+                    <tr><td><code>by_agent_env</code></td><td>agentConfigs</td><td>agentId, environment</td></tr>
+                    <tr><td><code>by_org_env_pack</code></td><td>installedPacks</td><td>organizationId, environment, packId</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card card-red mt-3 reveal">
+            <div class="card-title">Caveat: Post-Index Filtering</div>
+            <div class="card-desc"><code>entityRelations</code> and <code>by_org_isSystem</code> (roles) lack environment in the index. Environment is enforced via <code>.collect()</code> + <code>.find()</code> or <code>.filter()</code> after the index query.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 9: PERMISSION ENGINE
+     ============================================ -->
+<section class="slide" id="slide-9">
+    <span class="slide-number">09 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Security</div>
+        <h2 class="reveal">Permission <em>Engine</em></h2>
+        <p class="lead reveal">Every read, write, and tool call goes through a four-step permission pipeline. No shortcuts, no bypasses.</p>
+        <div class="grid-2 mt-3 reveal">
+            <div class="card card-accent">
+                <div class="card-title">Row-Level Security</div>
+                <div class="card-desc">Scope rules filter which records an actor can see. A teacher only sees their own sessions.</div>
+            </div>
+            <div class="card card-blue">
+                <div class="card-title">Column-Level Security</div>
+                <div class="card-desc">Field masks hide sensitive fields. Allowlist strategy: new fields are hidden by default.</div>
+            </div>
+            <div class="card card-green">
+                <div class="card-title">Deny Overrides Allow</div>
+                <div class="card-desc">If any policy says deny, access is blocked. Fail-safe model prevents accidental exposure.</div>
+            </div>
+            <div class="card card-purple">
+                <div class="card-title">Eager Resolution</div>
+                <div class="card-desc">ActorContext is built once per request with all role IDs resolved, filtered by the request's environment.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 10: PERMISSION FLOW
+     ============================================ -->
+<section class="slide slide-alt" id="slide-10">
+    <span class="slide-number">10 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Security</div>
+        <h2 class="reveal">Permission <em>Flow</em></h2>
+        <div class="flow mt-4 reveal">
+            <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-label">Build Context</div>
+                <div class="flow-desc">Resolve ActorContext with org, actor, environment, roles</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-label">Check Policy</div>
+                <div class="flow-desc">Find matching policies. Deny overrides allow.</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-label">Apply Scope</div>
+                <div class="flow-desc">Filter records by scope rules (row-level)</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-label">Apply Mask</div>
+                <div class="flow-desc">Hide fields by mask (column-level)</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 11: ACTOR CONTEXT
+     ============================================ -->
+<section class="slide" id="slide-11">
+    <span class="slide-number">11 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Security</div>
+        <h2 class="reveal">The <em>ActorContext</em></h2>
+        <p class="lead reveal">The central identity object threaded through every operation.</p>
+        <div class="code-block mt-3 reveal"><span class="kw">interface</span> <span class="type">ActorContext</span> {
+  <span class="field">organizationId</span>: <span class="type">Id</span>&lt;<span class="str">"organizations"</span>&gt;
+  <span class="field">actorType</span>: <span class="str">"user"</span> | <span class="str">"agent"</span> | <span class="str">"system"</span> | <span class="str">"webhook"</span>
+  <span class="field">actorId</span>: <span class="type">string</span>
+  <span class="field">roleIds</span>: <span class="type">Id</span>&lt;<span class="str">"roles"</span>&gt;[]    <span class="comment">// filtered by environment</span>
+  <span class="field">isOrgAdmin</span>?: <span class="type">boolean</span>
+  <span class="field">environment</span>: <span class="type">Environment</span>  <span class="comment">// "development" | "production"</span>
+}</div>
+        <p class="small muted mt-2 reveal">Built by <code>buildActorContext()</code> in <code>context.ts</code> or <code>buildActorContextForAgent()</code> in <code>agent.ts</code>. System roles are resolved via <code>by_org_isSystem</code> index then filtered by environment.</p>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 12: PERMISSION FILES
+     ============================================ -->
+<section class="slide slide-alt" id="slide-12">
+    <span class="slide-number">12 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Security</div>
+        <h2 class="reveal">Permission <em>Files</em></h2>
+        <p class="lead reveal"><code>platform/convex/lib/permissions/</code></p>
+        <div class="table-wrap mt-3 reveal">
+            <table>
+                <thead>
+                    <tr><th>File</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>types.ts</code></td><td>ActorContext, Environment, PermissionResult, PermissionError, ScopeFilter, FieldMaskResult</td></tr>
+                    <tr><td><code>context.ts</code></td><td>buildActorContext(), buildSystemActorContext() &mdash; environment-aware</td></tr>
+                    <tr><td><code>evaluate.ts</code></td><td>canPerform(), assertCanPerform(), logPermissionDenied()</td></tr>
+                    <tr><td><code>scope.ts</code></td><td>getScopeFilters(), applyScopeFiltersToQuery()</td></tr>
+                    <tr><td><code>mask.ts</code></td><td>getFieldMask(), applyFieldMask()</td></tr>
+                    <tr><td><code>tools.ts</code></td><td>canUseTool(), getToolIdentity() &mdash; system mode returns env + isOrgAdmin</td></tr>
+                    <tr><td><code>index.ts</code></td><td>Exports + queryEntitiesAsActor(), getEntityAsActor()</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 13: AGENT EXECUTION FLOW
+     ============================================ -->
+<section class="slide" id="slide-13">
+    <span class="slide-number">13 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Agents</div>
+        <h2 class="reveal">Agent Execution <em>Flow</em></h2>
+        <div class="flow mt-4 reveal">
+            <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-label">HTTP Router</div>
+                <div class="flow-desc">Validate API key, extract environment</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-label">Chat Action</div>
+                <div class="flow-desc">Load config via by_agent_env, build ActorContext</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-label">LLM Loop</div>
+                <div class="flow-desc">Anthropic API, permission-checked tool calls</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-label">Persist</div>
+                <div class="flow-desc">Append messages, record execution</div>
+            </div>
+        </div>
+        <div class="card mt-3 reveal">
+            <div class="card-desc">The LLM loop runs up to <strong>10 iterations</strong>. Each tool call is permission-checked. Built-in tools run as Convex mutations. Custom tools execute on the Cloudflare Worker with sandboxed fetch.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 14: AGENT CONFIGS
+     ============================================ -->
+<section class="slide slide-alt" id="slide-14">
+    <span class="slide-number">14 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Agents</div>
+        <h2 class="reveal">Agent <em>Configuration</em></h2>
+        <div class="split mt-3">
+            <div class="reveal">
+                <h3>agents table <span class="badge badge-purple">shared</span></h3>
+                <ul class="list-clean">
+                    <li>organizationId, name, slug</li>
+                    <li>description</li>
+                    <li>status: active | paused | deleted</li>
+                </ul>
+                <h3 class="mt-3">agentConfigs table <span class="badge badge-accent">per-env</span></h3>
+                <ul class="list-clean">
+                    <li>agentId, environment, version</li>
+                    <li>systemPrompt, model config</li>
+                    <li>tools array (built-in + custom)</li>
+                </ul>
+            </div>
+            <div class="reveal">
+                <div class="code-block"><span class="comment">// Config lookup (no FK on agents table)</span>
+<span class="kw">const</span> config = <span class="kw">await</span> ctx.db
+  .query(<span class="str">"agentConfigs"</span>)
+  .withIndex(<span class="str">"by_agent_env"</span>, (q) =>
+    q.eq(<span class="str">"agentId"</span>, agent._id)
+     .eq(<span class="str">"environment"</span>, env)
+  )
+  .first()</div>
+                <p class="small muted mt-2">Agents used to have <code>developmentConfigId</code> / <code>productionConfigId</code> FK fields. These have been removed in favor of the index lookup.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 15: BUILT-IN TOOLS
+     ============================================ -->
+<section class="slide" id="slide-15">
+    <span class="slide-number">15 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Agents</div>
+        <h2 class="reveal">Built-in <em>Tools</em></h2>
+        <p class="lead reveal">11 permission-aware tools available to all agents.</p>
+        <div class="grid-3 mt-3 reveal">
+            <div class="card card-accent">
+                <span class="badge badge-accent">entity</span>
+                <ul class="list-clean mt-1">
+                    <li>entity.create</li>
+                    <li>entity.get</li>
+                    <li>entity.query</li>
+                    <li>entity.update</li>
+                    <li>entity.delete</li>
+                    <li>entity.link</li>
+                    <li>entity.unlink</li>
+                </ul>
+            </div>
+            <div class="card card-green">
+                <span class="badge badge-green">event</span>
+                <ul class="list-clean mt-1">
+                    <li>event.emit</li>
+                    <li>event.query</li>
+                </ul>
+            </div>
+            <div class="card card-blue">
+                <span class="badge badge-blue">job</span>
+                <ul class="list-clean mt-1">
+                    <li>job.enqueue</li>
+                    <li>job.status</li>
+                </ul>
+            </div>
+        </div>
+        <p class="small muted mt-2 reveal">All tools pass <code>environment</code> from the ActorContext. <code>entity.get</code> validates entity environment matches the request environment.</p>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 16: TOOL IDENTITY
+     ============================================ -->
+<section class="slide slide-alt" id="slide-16">
+    <span class="slide-number">16 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Agents</div>
+        <h2 class="reveal">Tool Identity <em>Modes</em></h2>
+        <p class="lead reveal">When an agent calls a tool, <em>whose permissions</em> does it use?</p>
+        <div class="grid-3 mt-3 reveal">
+            <div class="card card-accent">
+                <div class="card-title">inherit</div>
+                <div class="card-desc">Tool runs with the caller's ActorContext. Default mode. The agent or user's permissions apply.</div>
+            </div>
+            <div class="card card-green">
+                <div class="card-title">system</div>
+                <div class="card-desc">Tool runs as a system actor with full access. Returns ActorContext with environment and isOrgAdmin: true.</div>
+            </div>
+            <div class="card card-blue">
+                <div class="card-title">configured</div>
+                <div class="card-desc">Tool runs with a specific role's permissions. Configured per-agent per-tool in toolPermissions.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 17: PACK SYSTEM
+     ============================================ -->
+<section class="slide" id="slide-17">
+    <span class="slide-number">17 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Extensibility</div>
+        <h2 class="reveal">Pack <em>System</em></h2>
+        <p class="lead reveal">Packs bundle entity types, roles, policies, scope rules, and field masks into installable units. Installed per-environment.</p>
+        <div class="flow mt-4 reveal">
+            <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-label">Install</div>
+                <div class="flow-desc">Create entity types, roles, policies</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-label">Customize</div>
+                <div class="flow-desc">Track modifications to pack resources</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-label">Upgrade</div>
+                <div class="flow-desc">Run migrations, skip customized resources</div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-label">Repair</div>
+                <div class="flow-desc">Detect drift, recreate missing resources</div>
+            </div>
+        </div>
+        <p class="small muted mt-3 reveal">Migration helpers (<code>addFieldToEntities</code>, <code>createEntityType</code>, etc.) all accept <code>environment</code> and use <code>by_org_env_slug</code> / <code>by_org_env_type</code> indexes.</p>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 18: CLI ARCHITECTURE
+     ============================================ -->
+<section class="slide slide-alt" id="slide-18">
+    <span class="slide-number">18 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Developer Experience</div>
+        <h2 class="reveal">CLI <em>Architecture</em></h2>
+        <div class="split mt-3">
+            <div class="reveal">
+                <h3>Commands</h3>
+                <div class="table-wrap">
+                    <table>
+                        <tbody>
+                            <tr><td><code>init</code></td><td>Scaffold org-centric project</td></tr>
+                            <tr><td><code>dev</code></td><td>Watch + sync to Convex</td></tr>
+                            <tr><td><code>deploy</code></td><td>Deploy to production</td></tr>
+                            <tr><td><code>add</code></td><td>Scaffold agent/type/role</td></tr>
+                            <tr><td><code>status</code></td><td>Compare local vs remote</td></tr>
+                            <tr><td><code>login</code></td><td>Browser-based OAuth</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="reveal">
+                <h3>Dev Sync Flow</h3>
+                <ul class="list-clean">
+                    <li>Auto-init if no struere.json</li>
+                    <li>Auto-login if not authenticated</li>
+                    <li>Load agents/, entity-types/, roles/, tools/</li>
+                    <li>Build sync payload via extractSyncPayload()</li>
+                    <li>POST to syncOrganization mutation</li>
+                    <li>Watch with chokidar, re-sync on change</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 19: DASHBOARD
+     ============================================ -->
+<section class="slide" id="slide-19">
+    <span class="slide-number">19 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Frontend</div>
+        <h2 class="reveal">Dashboard <em>App</em></h2>
+        <p class="lead reveal">Next.js 14 with real-time Convex hooks. Role-based views for Admin, Teacher, and Guardian.</p>
+        <div class="grid-3 mt-3 reveal">
+            <div class="card">
+                <span class="badge badge-accent">Admin Module</span>
+                <ul class="list-clean mt-1">
+                    <li>/agents &mdash; Agent management</li>
+                    <li>/entities &mdash; Entity CRUD</li>
+                    <li>/jobs &mdash; Job dashboard</li>
+                    <li>/settings/packs &mdash; Pack catalog</li>
+                </ul>
+            </div>
+            <div class="card">
+                <span class="badge badge-green">Teacher Module</span>
+                <ul class="list-clean mt-1">
+                    <li>/teacher/sessions</li>
+                    <li>/teacher/students</li>
+                    <li>/teacher/profile</li>
+                </ul>
+            </div>
+            <div class="card">
+                <span class="badge badge-blue">Guardian Module</span>
+                <ul class="list-clean mt-1">
+                    <li>/guardian/sessions</li>
+                    <li>/guardian/payments</li>
+                    <li>/guardian/profile</li>
+                </ul>
+            </div>
+        </div>
+        <p class="small muted mt-2 reveal">Context providers: AgentContext, EnvironmentContext (dev/prod toggle via URL param), RoleContext.</p>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 20: INTEGRATIONS
+     ============================================ -->
+<section class="slide slide-alt" id="slide-20">
+    <span class="slide-number">20 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Integrations</div>
+        <h2 class="reveal">External <em>Services</em></h2>
+        <div class="grid-2 mt-3 reveal">
+            <div class="card card-green">
+                <div class="card-title">WhatsApp</div>
+                <div class="card-desc">
+                    Template message sending (approved templates only). 24-hour window tracking for freeform messages. Inbound message processing via webhook. Conversation state management.
+                </div>
+            </div>
+            <div class="card card-blue">
+                <div class="card-title">Flow Payments</div>
+                <div class="card-desc">
+                    Payment link generation. HMAC-SHA256 request signing. Webhook processing for status updates. Reconciliation job for missed webhooks.
+                </div>
+            </div>
+        </div>
+        <div class="card mt-3 reveal">
+            <div class="card-title">HTTP Endpoints</div>
+            <div class="table-wrap mt-1">
+                <table>
+                    <tbody>
+                        <tr><td><code>POST /v1/chat</code></td><td>Chat by agent ID (Bearer token)</td></tr>
+                        <tr><td><code>POST /v1/agents/:slug/chat</code></td><td>Chat by agent slug</td></tr>
+                        <tr><td><code>POST /webhook/clerk</code></td><td>User/org sync</td></tr>
+                        <tr><td><code>POST /webhook/whatsapp</code></td><td>Inbound messages</td></tr>
+                        <tr><td><code>POST /webhook/flow</code></td><td>Payment status</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 21: KEY DECISIONS
+     ============================================ -->
+<section class="slide" id="slide-21">
+    <span class="slide-number">21 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Architecture</div>
+        <h2 class="reveal">Key <em>Decisions</em></h2>
+        <div class="table-wrap mt-3 reveal">
+            <table>
+                <thead>
+                    <tr><th>Aspect</th><th>Decision</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>ActorContext</td><td>Eager resolution, includes environment</td></tr>
+                    <tr><td>Environment</td><td>Full isolation &mdash; all data, roles, configs per-env</td></tr>
+                    <tr><td>Agent Config</td><td>Via by_agent_env index (no FK on agents table)</td></tr>
+                    <tr><td>Field Masks</td><td>Allowlist strategy (fail-safe, new fields hidden)</td></tr>
+                    <tr><td>Policy Eval</td><td>Deny overrides allow (deny-safe model)</td></tr>
+                    <tr><td>Tool Identity</td><td>Configurable: inherit, system, configured</td></tr>
+                    <tr><td>Custom Tools</td><td>Handler code in Convex, executed on CF Worker</td></tr>
+                    <tr><td>Real-time</td><td>Native Convex subscriptions (no polling)</td></tr>
+                    <tr><td>CLI Sync</td><td>struere dev watches files, syncs to Convex</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================
+     SLIDE 22: KNOWN LIMITATIONS & END
+     ============================================ -->
+<section class="slide slide-alt" id="slide-22">
+    <span class="slide-number">22 / 22</span>
+    <div class="slide-inner">
+        <div class="tag reveal">Caveats</div>
+        <h2 class="reveal">Known <em>Limitations</em></h2>
+        <div class="grid-2 mt-3 reveal">
+            <div class="card card-red">
+                <div class="card-title">Post-Index Filtering</div>
+                <div class="card-desc">entityRelations by_from/by_to and roles by_org_isSystem lack environment in the index. Filtered in memory.</div>
+            </div>
+            <div class="card card-red">
+                <div class="card-title">Legacy Index Usage</div>
+                <div class="card-desc">sessions.ts, payments.ts, scheduling.ts still use by_org_slug/by_org_type instead of environment-aware indexes.</div>
+            </div>
+            <div class="card card-accent">
+                <div class="card-title">Relation Scope</div>
+                <div class="card-desc">Only field_match scope rules implemented. Complex relation-based scoping requires custom code patterns.</div>
+            </div>
+            <div class="card card-accent">
+                <div class="card-title">Event Payloads</div>
+                <div class="card-desc">Event payloads may contain unmasked historical data. No retroactive field mask application.</div>
+            </div>
+        </div>
+        <div class="mt-4 reveal" style="text-align: center;">
+            <div class="rule" style="margin: 0 auto 1.5rem;"></div>
+            <h2 style="margin-bottom: 0.5rem;"><em>Questions?</em></h2>
+            <p class="muted" style="margin: 0 auto;">Explore the codebase, read CLAUDE.md, or ask the team.</p>
+        </div>
+    </div>
+</section>
+
+<script>
+    class SlidePresentation {
+        constructor() {
+            this.slides = document.querySelectorAll('.slide');
+            this.currentIndex = 0;
+            this.isScrolling = false;
+            this.progressBar = document.getElementById('progressBar');
+            this.navDotsContainer = document.getElementById('navDots');
+            this.keyHint = document.getElementById('keyHint');
+
+            this.createNavDots();
+            this.setupIntersectionObserver();
+            this.setupKeyboard();
+            this.setupWheel();
+            this.setupTouch();
+            this.hideHintAfterDelay();
+        }
+
+        createNavDots() {
+            this.slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                dot.addEventListener('click', () => this.goToSlide(i));
+                this.navDotsContainer.appendChild(dot);
+            });
+            this.dots = this.navDotsContainer.querySelectorAll('.nav-dot');
+        }
+
+        setupIntersectionObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        const index = Array.from(this.slides).indexOf(entry.target);
+                        this.currentIndex = index;
+                        this.updateProgress();
+                        this.updateDots();
+                    }
+                });
+            }, { threshold: 0.4 });
+
+            this.slides.forEach(slide => observer.observe(slide));
+        }
+
+        setupKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                    e.preventDefault();
+                    this.next();
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    this.prev();
+                }
+            });
+        }
+
+        setupWheel() {
+            let lastWheel = 0;
+            document.addEventListener('wheel', (e) => {
+                const now = Date.now();
+                if (now - lastWheel < 800) return;
+                lastWheel = now;
+
+                if (e.deltaY > 30) this.next();
+                else if (e.deltaY < -30) this.prev();
+            }, { passive: true });
+        }
+
+        setupTouch() {
+            let startY = 0;
+            document.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', (e) => {
+                const diff = startY - e.changedTouches[0].clientY;
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) this.next();
+                    else this.prev();
+                }
+            }, { passive: true });
+        }
+
+        hideHintAfterDelay() {
+            setTimeout(() => {
+                if (this.keyHint) this.keyHint.style.opacity = '0';
+            }, 4000);
+        }
+
+        next() {
+            if (this.currentIndex < this.slides.length - 1) {
+                this.goToSlide(this.currentIndex + 1);
+            }
+        }
+
+        prev() {
+            if (this.currentIndex > 0) {
+                this.goToSlide(this.currentIndex - 1);
+            }
+        }
+
+        goToSlide(index) {
+            this.slides[index].scrollIntoView({ behavior: 'smooth' });
+        }
+
+        updateProgress() {
+            const progress = ((this.currentIndex + 1) / this.slides.length) * 100;
+            this.progressBar.style.width = progress + '%';
+        }
+
+        updateDots() {
+            this.dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === this.currentIndex);
+            });
+        }
+    }
+
+    new SlidePresentation();
+</script>
+</body>
+</html>
