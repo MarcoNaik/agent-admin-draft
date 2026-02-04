@@ -237,6 +237,7 @@ export const getOrCreate = internalMutation({
     externalId: v.optional(v.string()),
     userId: v.optional(v.id("users")),
     metadata: v.optional(v.any()),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
   },
   handler: async (ctx, args) => {
     if (args.externalId) {
@@ -257,6 +258,7 @@ export const getOrCreate = internalMutation({
       userId: args.userId,
       externalId: args.externalId,
       metadata: args.metadata,
+      environment: args.environment ?? "development",
       createdAt: now,
       updatedAt: now,
     })
