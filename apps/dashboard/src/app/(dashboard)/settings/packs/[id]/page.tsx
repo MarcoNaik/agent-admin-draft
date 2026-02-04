@@ -19,6 +19,7 @@ import {
   Wrench,
 } from "lucide-react"
 import { usePack, useInstallPack, useUpgradePack, usePreviewUpgrade, useRepairPack } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,8 +36,9 @@ import {
 export default function PackDetailPage() {
   const params = useParams()
   const packId = params.id as string
+  const { environment } = useEnvironment()
 
-  const pack = usePack(packId)
+  const pack = usePack(packId, environment)
   const upgradePreview = usePreviewUpgrade(pack?.hasUpgrade ? packId : undefined)
   const installPack = useInstallPack()
   const upgradePack = useUpgradePack()
