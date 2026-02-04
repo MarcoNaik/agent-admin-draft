@@ -1,6 +1,7 @@
 "use client"
 
 import { useEntities, useEntityTypeBySlug, useCreateEntity, useDeleteEntity, useSearchEntities } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,8 +15,9 @@ interface EntitiesListRealtimeProps {
 }
 
 export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimeProps) {
-  const entityType = useEntityTypeBySlug(entityTypeSlug)
-  const entities = useEntities(entityTypeSlug)
+  const { environment } = useEnvironment()
+  const entityType = useEntityTypeBySlug(entityTypeSlug, environment)
+  const entities = useEntities(entityTypeSlug, environment)
   const createEntity = useCreateEntity()
   const deleteEntity = useDeleteEntity()
 
@@ -24,7 +26,8 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
 
   const searchResults = useSearchEntities(
     entityTypeSlug,
-    searchQuery.length >= 2 ? searchQuery : ""
+    searchQuery.length >= 2 ? searchQuery : "",
+    environment
   )
 
   const displayedEntities = useMemo(() => {
