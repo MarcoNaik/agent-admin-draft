@@ -1,6 +1,6 @@
 import { QueryCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
-import { ActorContext, PermissionError } from "./types"
+import { ActorContext, Environment, PermissionError } from "./types"
 
 export interface ToolPermissionResult {
   allowed: boolean
@@ -79,7 +79,9 @@ export async function getToolIdentity(
         organizationId: actor.organizationId,
         actorType: "system",
         actorId: "system",
-        roleIds: await getSystemRoleIds(ctx, actor.organizationId),
+        roleIds: await getSystemRoleIds(ctx, actor.organizationId, actor.environment),
+        isOrgAdmin: true,
+        environment: actor.environment,
       }
 
     case "configured":
@@ -98,14 +100,16 @@ export async function getToolIdentity(
 
 async function getSystemRoleIds(
   ctx: QueryCtx,
-  organizationId: Id<"organizations">
+  organizationId: Id<"organizations">,
+  environment: Environment
 ): Promise<Id<"roles">[]> {
-  const systemRole = await ctx.db
+  const systemRoles = await ctx.db
     .query("roles")
     .withIndex("by_org_isSystem", (q) =>
       q.eq("organizationId", organizationId).eq("isSystem", true)
     )
-    .first()
+    .collect()
+  const systemRole = systemRoles.find((r) => r.environment === environment)
 
   return systemRole ? [systemRole._id] : []
 }
