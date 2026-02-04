@@ -8,6 +8,9 @@ import {
   getScopeFilters,
   applyScopeFiltersToQuery,
 } from "./lib/permissions"
+import { Environment } from "./lib/permissions/types"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 async function filterVisibleEntityIds(
   ctx: Parameters<typeof canPerform>[0],
@@ -38,6 +41,7 @@ async function filterVisibleEntityIds(
 
 export const list = query({
   args: {
+    environment: v.optional(environmentValidator),
     entityId: v.optional(v.id("entities")),
     entityTypeSlug: v.optional(v.string()),
     eventType: v.optional(v.string()),
@@ -46,10 +50,12 @@ export const list = query({
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     if (args.entityId) {
@@ -98,8 +104,8 @@ export const list = query({
 
       const entityType = await ctx.db
         .query("entityTypes")
-        .withIndex("by_org_slug", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("slug", args.entityTypeSlug!)
+        .withIndex("by_org_env_slug", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("slug", args.entityTypeSlug!)
         )
         .first()
 
@@ -109,8 +115,8 @@ export const list = query({
 
       const events = await ctx.db
         .query("events")
-        .withIndex("by_org_timestamp", (q) =>
-          q.eq("organizationId", auth.organizationId)
+        .withIndex("by_org_env_timestamp", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment)
         )
         .order("desc")
         .take((args.limit ?? 50) * 3)
@@ -142,8 +148,8 @@ export const list = query({
       const eventType = args.eventType
       const events = await ctx.db
         .query("events")
-        .withIndex("by_org_type", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("eventType", eventType)
+        .withIndex("by_org_env_type", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("eventType", eventType)
         )
         .order("desc")
         .take((args.limit ?? 50) * 3)
@@ -178,8 +184,8 @@ export const list = query({
 
     return await ctx.db
       .query("events")
-      .withIndex("by_org_timestamp", (q) =>
-        q.eq("organizationId", auth.organizationId)
+      .withIndex("by_org_env_timestamp", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .order("desc")
       .take(args.limit ?? 50)
@@ -187,10 +193,11 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("events") },
+  args: { id: v.id("events"), environment: v.optional(environmentValidator) },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const event = await ctx.db.get(args.id)
 
     if (!event || event.organizationId !== auth.organizationId) {
@@ -202,6 +209,7 @@ export const get = query({
         organizationId: auth.organizationId,
         actorType: auth.actorType,
         actorId: auth.userId,
+        environment,
       })
 
       const entity = await ctx.db.get(event.entityId)
@@ -237,11 +245,13 @@ export const get = query({
 export const getByEntity = query({
   args: {
     entityId: v.id("entities"),
+    environment: v.optional(environmentValidator),
     limit: v.optional(v.number()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const entity = await ctx.db.get(args.entityId)
     if (!entity || entity.organizationId !== auth.organizationId) {
@@ -257,6 +267,7 @@ export const getByEntity = query({
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     const canRead = await canPerform(
@@ -289,6 +300,7 @@ export const getByEntity = query({
 
 export const emit = mutation({
   args: {
+    environment: v.optional(environmentValidator),
     entityId: v.optional(v.id("entities")),
     entityTypeSlug: v.optional(v.string()),
     eventType: v.string(),
@@ -305,6 +317,7 @@ export const emit = mutation({
   returns: v.id("events"),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     if (args.entityId) {
       const entity = await ctx.db.get(args.entityId)
@@ -316,6 +329,7 @@ export const emit = mutation({
     const now = Date.now()
     return await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       entityId: args.entityId,
       entityTypeSlug: args.entityTypeSlug,
       eventType: args.eventType,
@@ -330,22 +344,25 @@ export const emit = mutation({
 
 export const getRecent = query({
   args: {
+    environment: v.optional(environmentValidator),
     since: v.optional(v.number()),
     limit: v.optional(v.number()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
       actorId: auth.userId,
+      environment,
     })
 
     let events = await ctx.db
       .query("events")
-      .withIndex("by_org_timestamp", (q) =>
-        q.eq("organizationId", auth.organizationId)
+      .withIndex("by_org_env_timestamp", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .order("desc")
       .take((args.limit ?? 100) * 3)
@@ -381,15 +398,18 @@ export const getRecent = query({
 })
 
 export const getEventTypes = query({
-  args: {},
+  args: {
+    environment: v.optional(environmentValidator),
+  },
   returns: v.array(v.string()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const events = await ctx.db
       .query("events")
-      .withIndex("by_org_timestamp", (q) =>
-        q.eq("organizationId", auth.organizationId)
+      .withIndex("by_org_env_timestamp", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .take(1000)
 
