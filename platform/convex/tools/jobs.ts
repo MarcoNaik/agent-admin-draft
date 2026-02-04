@@ -3,11 +3,14 @@ import { internalMutation, internalQuery } from "../_generated/server"
 import { internal } from "../_generated/api"
 import { Id } from "../_generated/dataModel"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
 export const jobEnqueue = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     actorId: v.string(),
     actorType: v.string(),
+    environment: environmentValidator,
     jobType: v.string(),
     payload: v.any(),
     scheduledFor: v.optional(v.number()),
@@ -51,7 +54,7 @@ export const jobEnqueue = internalMutation({
 
       for (const ur of userRoles) {
         const role = await ctx.db.get(ur.roleId)
-        if (role && role.organizationId === args.organizationId) {
+        if (role && role.organizationId === args.organizationId && role.environment === args.environment) {
           roleIds.push(ur.roleId)
         }
       }
@@ -62,6 +65,7 @@ export const jobEnqueue = internalMutation({
 
     const jobId = await ctx.db.insert("jobs", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId: args.entityId as Id<"entities"> | undefined,
       jobType: args.jobType,
       idempotencyKey: args.idempotencyKey,
