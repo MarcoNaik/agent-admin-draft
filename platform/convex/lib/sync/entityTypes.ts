@@ -13,6 +13,7 @@ export async function syncEntityTypes(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   entityTypes: EntityTypeInput[],
+  environment: "development" | "production",
   preserveIds?: Set<string>
 ): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], preserved: [] as string[] }
@@ -20,7 +21,7 @@ export async function syncEntityTypes(
 
   const existingTypes = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId).eq("environment", environment))
     .collect()
 
   const existingBySlug = new Map(existingTypes.map((t) => [t.slug, t]))
@@ -41,6 +42,7 @@ export async function syncEntityTypes(
     } else {
       await ctx.db.insert("entityTypes", {
         organizationId,
+        environment,
         name: entityType.name,
         slug: entityType.slug,
         schema: entityType.schema,
@@ -69,11 +71,12 @@ export async function syncEntityTypes(
 
 export async function getEntityTypeSlugs(
   ctx: MutationCtx,
-  organizationId: Id<"organizations">
+  organizationId: Id<"organizations">,
+  environment: "development" | "production"
 ): Promise<string[]> {
   const types = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId).eq("environment", environment))
     .collect()
 
   return types.map((t) => t.slug)
