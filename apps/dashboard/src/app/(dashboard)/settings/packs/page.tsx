@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Package, CheckCircle, ArrowUpCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
 import { usePacks, useInstallPack, useUpgradePack } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -131,7 +132,8 @@ function PackCard({ pack, onInstall, onUpgrade }: {
 }
 
 export default function PacksPage() {
-  const packs = usePacks()
+  const { environment } = useEnvironment()
+  const packs = usePacks(environment)
   const installPack = useInstallPack()
   const upgradePack = useUpgradePack()
 
