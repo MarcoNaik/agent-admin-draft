@@ -453,8 +453,8 @@ function PermissionsPanel() {
 export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) {
   const { agentId } = params
   const agent = useAgentWithConfig(agentId as Id<"agents">)
-  const entityTypes = useEntityTypes()
   const { environment } = useEnvironment()
+  const entityTypes = useEntityTypes(environment)
 
   if (agent === undefined) {
     return (
