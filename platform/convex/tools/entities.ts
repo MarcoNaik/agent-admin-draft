@@ -12,7 +12,10 @@ import {
   PermissionError,
   ActorType,
   FieldMaskResult,
+  Environment,
 } from "../lib/permissions"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 function filterDataByMask(
   data: Record<string, unknown>,
@@ -53,6 +56,7 @@ export const entityCreate = internalMutation({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     type: v.string(),
     data: v.any(),
     status: v.optional(v.string()),
@@ -63,14 +67,15 @@ export const entityCreate = internalMutation({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "create", args.type)
 
     const entityType = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", args.organizationId).eq("slug", args.type)
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("slug", args.type)
       )
       .first()
 
@@ -84,6 +89,7 @@ export const entityCreate = internalMutation({
     const entityId = await ctx.db.insert("entities", {
       organizationId: args.organizationId,
       entityTypeId: entityType._id,
+      environment: args.environment,
       status: args.status ?? "active",
       data: args.data,
       searchText,
@@ -93,6 +99,7 @@ export const entityCreate = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId,
       entityTypeSlug: args.type,
       eventType: `${args.type}.created`,
@@ -117,6 +124,7 @@ export const entityGet = internalQuery({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     id: v.string(),
   },
   returns: v.object({
@@ -134,6 +142,10 @@ export const entityGet = internalQuery({
       throw new Error("Entity not found")
     }
 
+    if (entity.environment !== args.environment) {
+      throw new Error("Entity not found")
+    }
+
     if (entity.deletedAt) {
       throw new Error("Entity has been deleted")
     }
@@ -147,6 +159,7 @@ export const entityGet = internalQuery({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "read", entityType.slug, entity as unknown as Record<string, unknown>)
@@ -189,6 +202,7 @@ export const entityQuery = internalQuery({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     type: v.string(),
     filters: v.optional(v.any()),
     status: v.optional(v.string()),
@@ -207,14 +221,15 @@ export const entityQuery = internalQuery({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "list", args.type)
 
     const entityType = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", args.organizationId).eq("slug", args.type)
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("slug", args.type)
       )
       .first()
 
@@ -228,17 +243,19 @@ export const entityQuery = internalQuery({
     const query = status
       ? ctx.db
           .query("entities")
-          .withIndex("by_org_type_status", (q) =>
+          .withIndex("by_org_env_type_status", (q) =>
             q
               .eq("organizationId", args.organizationId)
+              .eq("environment", args.environment)
               .eq("entityTypeId", typeId)
               .eq("status", status)
           )
       : ctx.db
           .query("entities")
-          .withIndex("by_org_type", (q) =>
+          .withIndex("by_org_env_type", (q) =>
             q
               .eq("organizationId", args.organizationId)
+              .eq("environment", args.environment)
               .eq("entityTypeId", typeId)
           )
 
@@ -289,6 +306,7 @@ export const entityUpdate = internalMutation({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     id: v.string(),
     data: v.any(),
     status: v.optional(v.string()),
@@ -314,6 +332,7 @@ export const entityUpdate = internalMutation({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "update", entityType.slug, entity as unknown as Record<string, unknown>)
@@ -352,6 +371,7 @@ export const entityUpdate = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId: entity._id,
       entityTypeSlug: entityType.slug,
       eventType: `${entityType.slug}.updated`,
@@ -376,6 +396,7 @@ export const entityDelete = internalMutation({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     id: v.string(),
   },
   returns: v.object({ success: v.boolean() }),
@@ -395,6 +416,7 @@ export const entityDelete = internalMutation({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "delete", entityType.slug, entity as unknown as Record<string, unknown>)
@@ -422,6 +444,7 @@ export const entityDelete = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId: entity._id,
       entityTypeSlug: entityType.slug,
       eventType: `${entityType.slug}.deleted`,
@@ -446,6 +469,7 @@ export const entityLink = internalMutation({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     fromId: v.string(),
     toId: v.string(),
     relationType: v.string(),
@@ -474,6 +498,7 @@ export const entityLink = internalMutation({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
@@ -486,7 +511,10 @@ export const entityLink = internalMutation({
           .eq("fromEntityId", args.fromId as Id<"entities">)
           .eq("relationType", args.relationType)
       )
-      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
+      .filter((q) => q.and(
+        q.eq(q.field("toEntityId"), args.toId),
+        q.eq(q.field("environment"), args.environment)
+      ))
       .first()
 
     if (existing) {
@@ -496,6 +524,7 @@ export const entityLink = internalMutation({
     const now = Date.now()
     const relationId = await ctx.db.insert("entityRelations", {
       organizationId: args.organizationId,
+      environment: args.environment,
       fromEntityId: args.fromId as Id<"entities">,
       toEntityId: args.toId as Id<"entities">,
       relationType: args.relationType,
@@ -505,6 +534,7 @@ export const entityLink = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId: args.fromId as Id<"entities">,
       entityTypeSlug: fromType.slug,
       eventType: "entity.linked",
@@ -532,6 +562,7 @@ export const entityUnlink = internalMutation({
       v.literal("system"),
       v.literal("webhook")
     ),
+    environment: environmentValidator,
     fromId: v.string(),
     toId: v.string(),
     relationType: v.string(),
@@ -559,6 +590,7 @@ export const entityUnlink = internalMutation({
       organizationId: args.organizationId,
       actorType: args.actorType as ActorType,
       actorId: args.actorId,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
@@ -571,7 +603,10 @@ export const entityUnlink = internalMutation({
           .eq("fromEntityId", args.fromId as Id<"entities">)
           .eq("relationType", args.relationType)
       )
-      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
+      .filter((q) => q.and(
+        q.eq(q.field("toEntityId"), args.toId),
+        q.eq(q.field("environment"), args.environment)
+      ))
       .first()
 
     if (!relation || relation.organizationId !== args.organizationId) {
@@ -583,6 +618,7 @@ export const entityUnlink = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityId: args.fromId as Id<"entities">,
       entityTypeSlug: fromType.slug,
       eventType: "entity.unlinked",
