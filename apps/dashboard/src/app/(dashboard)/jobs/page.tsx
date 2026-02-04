@@ -81,7 +81,7 @@ export default function JobsPage() {
   const { environment } = useEnvironment()
 
   const jobs = useJobs(environment, statusFilter)
-  const stats = useJobStats()
+  const stats = useJobStats(environment)
   const retryJob = useRetryJob()
   const cancelJob = useCancelJob()
 
