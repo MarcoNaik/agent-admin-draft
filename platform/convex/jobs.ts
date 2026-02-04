@@ -4,11 +4,15 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { ActorContext, ActorType, buildSystemActorContext } from "./lib/permissions"
+import { Environment } from "./lib/permissions/types"
 import { handleSessionReminder } from "./jobs/sessionReminder"
 import { handleSessionFollowup } from "./jobs/sessionFollowup"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
 export const list = query({
   args: {
+    environment: v.optional(environmentValidator),
     status: v.optional(
       v.union(
         v.literal("pending"),
@@ -25,12 +29,13 @@ export const list = query({
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     if (args.status) {
       const jobs = await ctx.db
         .query("jobs")
-        .withIndex("by_org_status", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("status", args.status!)
+        .withIndex("by_org_env_status", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("status", args.status!)
         )
         .order("desc")
         .take(args.limit ?? 50)
@@ -50,7 +55,9 @@ export const list = query({
 
     const allJobs = await ctx.db
       .query("jobs")
-      .withIndex("by_org_status", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env_status", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
       .order("desc")
       .take(args.limit ?? 50)
 
@@ -85,6 +92,7 @@ export const get = query({
 
 export const enqueue = mutation({
   args: {
+    environment: v.optional(environmentValidator),
     jobType: v.string(),
     payload: v.any(),
     scheduledFor: v.optional(v.number()),
@@ -99,6 +107,7 @@ export const enqueue = mutation({
   }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     if (args.idempotencyKey) {
       const existing = await ctx.db
@@ -130,7 +139,7 @@ export const enqueue = mutation({
 
       for (const ur of userRoles) {
         const role = await ctx.db.get(ur.roleId)
-        if (role && role.organizationId === auth.organizationId) {
+        if (role && role.organizationId === auth.organizationId && role.environment === environment) {
           roleIds.push(ur.roleId)
         }
       }
@@ -141,6 +150,7 @@ export const enqueue = mutation({
 
     const jobId = await ctx.db.insert("jobs", {
       organizationId: auth.organizationId,
+      environment,
       entityId: args.entityId,
       jobType: args.jobType,
       idempotencyKey: args.idempotencyKey,
@@ -179,6 +189,7 @@ export const execute = internalMutation({
     }
 
     const now = Date.now()
+    const environment: Environment = job.environment ?? "development"
 
     await ctx.db.patch(args.jobId, {
       status: "running",
@@ -193,9 +204,11 @@ export const execute = internalMutation({
         actorType: job.actorContext.actorType as ActorType,
         actorId: job.actorContext.actorId,
         roleIds: job.actorContext.roleIds.map((id) => id as Id<"roles">),
+        isOrgAdmin: false,
+        environment,
       }
     } else {
-      actor = buildSystemActorContext(job.organizationId)
+      actor = buildSystemActorContext(job.organizationId, environment)
     }
 
     try {
@@ -209,6 +222,7 @@ export const execute = internalMutation({
 
       await ctx.db.insert("events", {
         organizationId: job.organizationId,
+        environment,
         entityId: job.entityId,
         eventType: "job.completed",
         schemaVersion: 1,
@@ -229,6 +243,7 @@ export const execute = internalMutation({
 
       await ctx.db.insert("events", {
         organizationId: job.organizationId,
+        environment,
         entityId: job.entityId,
         eventType: shouldRetry ? "job.failed" : "job.dead",
         schemaVersion: 1,
@@ -295,6 +310,8 @@ export const retry = mutation({
       throw new Error("Can only retry failed or dead jobs")
     }
 
+    const environment: Environment = job.environment ?? "development"
+
     let roleIds: Id<"roles">[] = []
     if (auth.userId) {
       const userRoles = await ctx.db
@@ -310,7 +327,7 @@ export const retry = mutation({
 
       for (const ur of userRoles) {
         const role = await ctx.db.get(ur.roleId)
-        if (role && role.organizationId === auth.organizationId) {
+        if (role && role.organizationId === auth.organizationId && role.environment === environment) {
           roleIds.push(ur.roleId)
         }
       }
@@ -362,10 +379,13 @@ export const cancel = mutation({
 })
 
 export const getStats = query({
-  args: {},
+  args: {
+    environment: v.optional(environmentValidator),
+  },
   returns: v.record(v.string(), v.number()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const statuses = ["pending", "claimed", "running", "completed", "failed", "dead"] as const
     const stats: Record<string, number> = {}
@@ -373,8 +393,8 @@ export const getStats = query({
     for (const status of statuses) {
       const count = await ctx.db
         .query("jobs")
-        .withIndex("by_org_status", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("status", status)
+        .withIndex("by_org_env_status", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("status", status)
         )
         .collect()
 
