@@ -175,11 +175,11 @@ const modeContent = {
 }
 
 export default function Home() {
-  const [mode, setMode] = useState<Mode>("builder")
+  const [mode, setMode] = useState<Mode>("customer")
 
   useEffect(() => {
     const s = document.body.style
-    s.backgroundColor = mode === "builder" ? "#F5F1E8" : "#0F2419"
+    s.backgroundColor = mode === "customer" ? "#F5F1E8" : "#0F2419"
     s.transition = "background-color 0.6s cubic-bezier(0.6, 0, 0.2, 1)"
   }, [mode])
 
@@ -203,7 +203,7 @@ function ModeSwitcher() {
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20">
       <div className="flex gap-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md">
-        {(["builder", "customer"] as Mode[]).map((m) => (
+        {(["customer", "builder"] as Mode[]).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}

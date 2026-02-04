@@ -12,7 +12,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-[data-mode="builder"] {
+[data-mode="customer"] {
   --bg-primary: #F5F1E8;
   --bg-secondary: #E8E4D4;
   --text-primary: #1B4332;
@@ -28,7 +28,7 @@ body {
   --btn-hover: #2D5A45;
 }
 
-[data-mode="customer"] {
+[data-mode="builder"] {
   --bg-primary: #0F2419;
   --bg-secondary: #132C1F;
   --text-primary: #E8E4D4;
