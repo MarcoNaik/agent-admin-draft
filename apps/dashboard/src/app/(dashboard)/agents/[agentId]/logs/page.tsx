@@ -3,6 +3,7 @@
 import { Loader2, ChevronDown, ChevronRight, User, Bot, Wrench } from "lucide-react"
 import { useState } from "react"
 import { useRecentExecutions } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
 import { Id, Doc } from "@convex/_generated/dataModel"
 
@@ -219,7 +220,8 @@ function LogRow({ execution }: { execution: Doc<"executions"> }) {
 
 export default function AgentLogsPage({ params }: AgentLogsPageProps) {
   const { agentId } = params
-  const executions = useRecentExecutions(agentId as Id<"agents">, 100)
+  const { environment } = useEnvironment()
+  const executions = useRecentExecutions(agentId as Id<"agents">, environment, 100)
 
   if (executions === undefined) {
     return (
