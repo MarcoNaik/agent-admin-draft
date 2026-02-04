@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { useEntityWithType, useUpdateEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EntityForm } from "@/components/entities/entity-form"
 import { Id } from "@convex/_generated/dataModel"
@@ -15,8 +16,9 @@ interface EntityEditPageProps {
 export default function EntityEditPage({ params }: EntityEditPageProps) {
   const { type, id } = params
   const router = useRouter()
+  const { environment } = useEnvironment()
 
-  const entityData = useEntityWithType(id as Id<"entities">)
+  const entityData = useEntityWithType(id as Id<"entities">, environment)
   const updateEntity = useUpdateEntity()
 
   if (entityData === undefined) {
