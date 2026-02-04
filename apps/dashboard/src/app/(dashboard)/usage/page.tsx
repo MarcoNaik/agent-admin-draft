@@ -2,11 +2,13 @@
 
 import { Activity, Zap, Clock, CheckCircle, Loader2 } from "lucide-react"
 import { useExecutionStats } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
 
 export default function UsagePage() {
-  const stats = useExecutionStats()
+  const { environment } = useEnvironment()
+  const stats = useExecutionStats(undefined, environment)
 
   if (stats === undefined) {
     return (
