@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Calendar, Clock, Loader2, User, FileText, CheckCircle } from "lucide-react"
 import { useEntities, useEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -42,8 +43,9 @@ interface SessionCardProps {
 }
 
 function SessionCard({ session, onClick }: SessionCardProps) {
+  const { environment } = useEnvironment()
   const studentId = session.data?.studentId as Id<"entities"> | undefined
-  const student = useEntity(studentId as Id<"entities">)
+  const student = useEntity(studentId as Id<"entities">, environment)
   const startTime = session.data?.startTime as number | undefined
   const duration = session.data?.duration as number | undefined
   const subject = session.data?.subject as string | undefined
@@ -109,7 +111,8 @@ export default function TeacherSessionsPage() {
   const { isLoading: roleLoading } = useCurrentRole()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("upcoming")
 
-  const sessions = useEntities("session")
+  const { environment } = useEnvironment()
+  const sessions = useEntities("session", environment)
 
   const filteredSessions = useMemo(() => {
     if (!sessions) return []
