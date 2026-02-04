@@ -78,6 +78,7 @@ export async function handleSessionFollowup(
   if (followupType === "trial") {
     await ctx.db.insert("events", {
       organizationId: session.organizationId,
+      environment: session.environment,
       entityId: sessionId,
       entityTypeSlug: "session",
       eventType: "session.trial_followup_queued",
@@ -129,6 +130,7 @@ export async function handleSessionFollowup(
 
       await ctx.db.insert("events", {
         organizationId: session.organizationId,
+        environment: session.environment,
         entityId: sessionId,
         entityTypeSlug: "session",
         eventType: "session.pack_followup_queued",
@@ -155,6 +157,7 @@ export async function handleSessionFollowup(
 
       await ctx.db.insert("events", {
         organizationId: session.organizationId,
+        environment: session.environment,
         entityId: sessionId,
         entityTypeSlug: "session",
         eventType: "session.pack_followup_queued",
@@ -178,6 +181,7 @@ export async function handleSessionFollowup(
 
     await ctx.db.insert("events", {
       organizationId: session.organizationId,
+      environment: session.environment,
       entityId: sessionId,
       entityTypeSlug: "session",
       eventType: "session.pack_followup_queued",

@@ -73,6 +73,7 @@ export async function handleSessionReminder(
 
     await ctx.db.insert("events", {
       organizationId: session.organizationId,
+      environment: session.environment,
       entityId: sessionId,
       entityTypeSlug: "session",
       eventType: "session.reminder_queued",
@@ -111,6 +112,7 @@ export async function handleSessionReminder(
 
     await ctx.db.insert("events", {
       organizationId: session.organizationId,
+      environment: session.environment,
       entityId: sessionId,
       entityTypeSlug: "session",
       eventType: "session.reminder_queued",
