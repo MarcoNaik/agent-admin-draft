@@ -89,6 +89,7 @@ export const create = mutation({
     agentId: v.id("agents"),
     externalId: v.optional(v.string()),
     metadata: v.optional(v.any()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -101,6 +102,7 @@ export const create = mutation({
     const now = Date.now()
     return await ctx.db.insert("threads", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       agentId: args.agentId,
       userId: auth.userId,
       externalId: args.externalId,
