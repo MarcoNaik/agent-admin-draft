@@ -3,13 +3,18 @@ import { query, mutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+  },
+  handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     return await ctx.db
       .query("roles")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
       .collect()
   },
 })
