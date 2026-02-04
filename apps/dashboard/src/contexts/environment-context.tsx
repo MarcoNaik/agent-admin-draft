@@ -1,7 +1,6 @@
 "use client"
 
-import { createContext, useContext, useCallback, ReactNode } from "react"
-import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { createContext, useContext, useCallback, useState, useEffect, ReactNode } from "react"
 
 type Environment = "development" | "production"
 
@@ -10,26 +9,30 @@ interface EnvironmentContextValue {
   setEnvironment: (env: Environment) => void
 }
 
+const STORAGE_KEY = "struere-environment"
+
+function getStoredEnvironment(): Environment {
+  if (typeof window === "undefined") return "development"
+  const stored = localStorage.getItem(STORAGE_KEY)
+  return stored === "production" ? "production" : "development"
+}
+
 const EnvironmentContext = createContext<EnvironmentContextValue | null>(null)
 
 export function EnvironmentProvider({ children }: { children: ReactNode }) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
+  const [environment, setEnvironmentState] = useState<Environment>(getStoredEnvironment)
 
-  const envParam = searchParams.get("env")
-  const environment: Environment = envParam === "production" ? "production" : "development"
+  useEffect(() => {
+    const stored = getStoredEnvironment()
+    if (stored !== environment) {
+      setEnvironmentState(stored)
+    }
+  }, [])
 
   const setEnvironment = useCallback((env: Environment) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (env === "development") {
-      params.delete("env")
-    } else {
-      params.set("env", env)
-    }
-    const queryString = params.toString()
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname)
-  }, [searchParams, router, pathname])
+    setEnvironmentState(env)
+    localStorage.setItem(STORAGE_KEY, env)
+  }, [])
 
   return (
     <EnvironmentContext.Provider value={{ environment, setEnvironment }}>
