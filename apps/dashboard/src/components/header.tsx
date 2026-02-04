@@ -16,7 +16,6 @@ import {
   GraduationCap,
   Globe,
   Code,
-  Settings,
   User,
   Zap,
 } from "lucide-react"
@@ -97,14 +96,7 @@ function getNavigationForRole(role: UserRole): NavItem[] {
 }
 
 function EnvironmentSelector() {
-  const { agent } = useAgentContext()
   const { environment, setEnvironment } = useEnvironment()
-
-  if (!agent) return null
-
-  const productionUrl = agent.environments.production?.url || `${agent.slug}.struere.dev`
-  const developmentUrl = agent.environments.development?.url || `${agent.slug}-dev.struere.dev`
-  const currentUrl = environment === "production" ? productionUrl : developmentUrl
 
   return (
     <DropdownMenu>
@@ -115,68 +107,35 @@ function EnvironmentSelector() {
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              environment === "production"
-                ? agent.environments.production ? "bg-green-500" : "bg-gray-400"
-                : agent.environments.development ? "bg-yellow-500" : "bg-gray-400"
+              environment === "production" ? "bg-green-500" : "bg-yellow-500"
             }`}
           />
           <span className="text-content-primary">
             {environment === "production" ? "Production" : "Development"}
           </span>
-          <span className="text-content-tertiary">•</span>
-          <span className="font-mono text-xs text-content-secondary">
-            {currentUrl.replace('https://', '')}
-          </span>
           <ChevronsUpDown className="h-3 w-3 text-content-tertiary" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem
           className="flex items-center gap-3 py-2.5 cursor-pointer"
           onSelect={() => setEnvironment("production")}
         >
-          <Globe className={`h-4 w-4 ${agent.environments.production ? "text-green-500" : "text-content-tertiary"}`} />
-          <div className="flex flex-col flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-content-primary">Production</span>
-              {!agent.environments.production && (
-                <span className="text-xs text-content-tertiary">(not deployed)</span>
-              )}
-            </div>
-            <span className="font-mono text-xs text-content-secondary">
-              {productionUrl.replace('https://', '')}
-            </span>
-          </div>
+          <Globe className="h-4 w-4 text-green-500" />
+          <span className="flex-1 text-content-primary">Production</span>
           {environment === "production" && (
-            <span className={`h-2 w-2 rounded-full ${agent.environments.production ? "bg-green-500" : "bg-gray-400"}`} />
+            <span className="h-2 w-2 rounded-full bg-green-500" />
           )}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex items-center gap-3 py-2.5 cursor-pointer"
           onSelect={() => setEnvironment("development")}
         >
-          <Code className={`h-4 w-4 ${agent.environments.development ? "text-yellow-500" : "text-content-tertiary"}`} />
-          <div className="flex flex-col flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-content-primary">Development</span>
-              {!agent.environments.development && (
-                <span className="text-xs text-content-tertiary">(not deployed)</span>
-              )}
-            </div>
-            <span className="font-mono text-xs text-content-secondary">
-              {developmentUrl.replace('https://', '')}
-            </span>
-          </div>
+          <Code className="h-4 w-4 text-yellow-500" />
+          <span className="flex-1 text-content-primary">Development</span>
           {environment === "development" && (
-            <span className={`h-2 w-2 rounded-full ${agent.environments.development ? "bg-yellow-500" : "bg-gray-400"}`} />
+            <span className="h-2 w-2 rounded-full bg-yellow-500" />
           )}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href={`/agents/${agent.id}/settings`} className="flex items-center gap-3 py-2.5">
-            <Settings className="h-4 w-4" />
-            <span className="text-content-primary">Agent Settings</span>
-          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
