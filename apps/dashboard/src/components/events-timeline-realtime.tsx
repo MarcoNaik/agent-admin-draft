@@ -12,7 +12,7 @@ export function EventsTimelineRealtime() {
   const [selectedEventType, setSelectedEventType] = useState<string | undefined>(undefined)
   const { environment } = useEnvironment()
   const events = useEvents(environment, undefined, selectedEventType)
-  const eventTypes = useEventTypes()
+  const eventTypes = useEventTypes(environment)
 
   if (events === undefined || eventTypes === undefined) {
     return (
