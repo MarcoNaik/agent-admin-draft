@@ -73,38 +73,45 @@ export const statusCommand = new Command('status')
 
     spinner.start('Fetching remote state')
 
-    const { state: remoteState, error: fetchError } = await getSyncState()
+    const [devResult, prodResult] = await Promise.all([
+      getSyncState(undefined, 'development'),
+      getSyncState(undefined, 'production'),
+    ])
 
-    if (fetchError || !remoteState) {
+    if (devResult.error || !devResult.state) {
       spinner.fail('Failed to fetch remote state')
-      console.log(chalk.red('Error:'), fetchError || 'Unknown error')
+      console.log(chalk.red('Error:'), devResult.error || 'Unknown error')
       process.exit(1)
     }
 
     spinner.succeed('Remote state fetched')
     console.log()
 
+    const devState = devResult.state
+    const prodState = prodResult.state
+
     const localAgentSlugs = new Set(localResources.agents.map((a) => a.slug))
-    const remoteAgentSlugs = new Set(remoteState.agents.map((a) => a.slug))
+    const devAgentSlugs = new Set(devState.agents.map((a) => a.slug))
 
     const localEntityTypeSlugs = new Set(localResources.entityTypes.map((et) => et.slug))
-    const remoteEntityTypeSlugs = new Set(remoteState.entityTypes.map((et) => et.slug))
+    const devEntityTypeSlugs = new Set(devState.entityTypes.map((et) => et.slug))
 
     const localRoleNames = new Set(localResources.roles.map((r) => r.name))
-    const remoteRoleNames = new Set(remoteState.roles.map((r) => r.name))
+    const devRoleNames = new Set(devState.roles.map((r) => r.name))
 
     console.log(chalk.bold('Agents'))
     console.log(chalk.gray('─'.repeat(60)))
 
-    if (localResources.agents.length === 0 && remoteState.agents.length === 0) {
+    if (localResources.agents.length === 0 && devState.agents.length === 0) {
       console.log(chalk.gray('  No agents'))
     } else {
       for (const agent of localResources.agents) {
-        const remote = remoteState.agents.find((a) => a.slug === agent.slug)
-        if (remote) {
-          const statusIcon = remote.hasProdConfig ? chalk.green('●') : chalk.yellow('○')
+        const devRemote = devState.agents.find((a) => a.slug === agent.slug)
+        const prodRemote = prodState?.agents.find((a) => a.slug === agent.slug)
+        if (devRemote) {
+          const statusIcon = prodRemote?.hasConfig ? chalk.green('●') : chalk.yellow('○')
           console.log(`  ${statusIcon} ${chalk.cyan(agent.name)} (${agent.slug}) - v${agent.version}`)
-          if (!remote.hasProdConfig) {
+          if (!prodRemote?.hasConfig) {
             console.log(chalk.gray('      Not deployed to production'))
           }
         } else {
@@ -112,7 +119,7 @@ export const statusCommand = new Command('status')
         }
       }
 
-      for (const remote of remoteState.agents) {
+      for (const remote of devState.agents) {
         if (!localAgentSlugs.has(remote.slug)) {
           console.log(`  ${chalk.red('-')} ${remote.name} (${remote.slug}) - ${chalk.red('will be deleted')}`)
         }
@@ -123,11 +130,11 @@ export const statusCommand = new Command('status')
     console.log(chalk.bold('Entity Types'))
     console.log(chalk.gray('─'.repeat(60)))
 
-    if (localResources.entityTypes.length === 0 && remoteState.entityTypes.length === 0) {
+    if (localResources.entityTypes.length === 0 && devState.entityTypes.length === 0) {
       console.log(chalk.gray('  No entity types'))
     } else {
       for (const et of localResources.entityTypes) {
-        const remote = remoteState.entityTypes.find((r) => r.slug === et.slug)
+        const remote = devState.entityTypes.find((r) => r.slug === et.slug)
         if (remote) {
           console.log(`  ${chalk.green('●')} ${chalk.cyan(et.name)} (${et.slug})`)
         } else {
@@ -135,7 +142,7 @@ export const statusCommand = new Command('status')
         }
       }
 
-      for (const remote of remoteState.entityTypes) {
+      for (const remote of devState.entityTypes) {
         if (!localEntityTypeSlugs.has(remote.slug)) {
           console.log(`  ${chalk.red('-')} ${remote.name} (${remote.slug}) - ${chalk.red('will be deleted')}`)
         }
@@ -146,11 +153,11 @@ export const statusCommand = new Command('status')
     console.log(chalk.bold('Roles'))
     console.log(chalk.gray('─'.repeat(60)))
 
-    if (localResources.roles.length === 0 && remoteState.roles.length === 0) {
+    if (localResources.roles.length === 0 && devState.roles.length === 0) {
       console.log(chalk.gray('  No roles'))
     } else {
       for (const role of localResources.roles) {
-        const remote = remoteState.roles.find((r) => r.name === role.name)
+        const remote = devState.roles.find((r) => r.name === role.name)
         if (remote) {
           console.log(`  ${chalk.green('●')} ${chalk.cyan(role.name)} (${role.policies.length} policies)`)
         } else {
@@ -158,7 +165,7 @@ export const statusCommand = new Command('status')
         }
       }
 
-      for (const remote of remoteState.roles) {
+      for (const remote of devState.roles) {
         if (!localRoleNames.has(remote.name)) {
           console.log(`  ${chalk.red('-')} ${remote.name} - ${chalk.red('will be deleted')}`)
         }
@@ -167,8 +174,9 @@ export const statusCommand = new Command('status')
 
     console.log()
     console.log(chalk.gray('Legend:'))
-    console.log(chalk.gray('  '), chalk.green('●'), 'Synced', chalk.yellow('○'), 'Not deployed', chalk.blue('+'), 'New', chalk.red('-'), 'Will be deleted')
+    console.log(chalk.gray('  '), chalk.green('●'), 'Synced', chalk.yellow('○'), 'Not in production', chalk.blue('+'), 'New', chalk.red('-'), 'Will be deleted')
     console.log()
-    console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to sync changes'))
+    console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to sync to development'))
+    console.log(chalk.gray('Run'), chalk.cyan('struere deploy'), chalk.gray('to deploy to production'))
     console.log()
   })
