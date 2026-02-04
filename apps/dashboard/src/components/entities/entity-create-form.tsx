@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react"
 import { useEntityTypeBySlug, useCreateEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { EntityForm } from "./entity-form"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -11,7 +12,8 @@ interface EntityCreateFormProps {
 }
 
 export function EntityCreateForm({ entityTypeSlug, onSuccess }: EntityCreateFormProps) {
-  const entityType = useEntityTypeBySlug(entityTypeSlug)
+  const { environment } = useEnvironment()
+  const entityType = useEntityTypeBySlug(entityTypeSlug, environment)
   const createEntity = useCreateEntity()
 
   if (entityType === undefined) {
