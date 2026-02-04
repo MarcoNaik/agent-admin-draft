@@ -4,13 +4,15 @@ import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { GraduationCap, Mail, Phone, Loader2 } from "lucide-react"
 import { useEntities } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Doc } from "@convex/_generated/dataModel"
 
 export default function TeacherStudentsPage() {
   const router = useRouter()
-  const students = useEntities("student")
+  const { environment } = useEnvironment()
+  const students = useEntities("student", environment)
 
   const activeStudents = useMemo(() => {
     if (!students) return []
