@@ -5,14 +5,19 @@ import { generateSlug } from "./lib/utils"
 import { buildActorContext, assertCanPerform } from "./lib/permissions"
 
 export const list = query({
-  args: {},
+  args: {
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+  },
   returns: v.array(v.any()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     return await ctx.db
       .query("entityTypes")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
       .collect()
   },
 })
@@ -33,15 +38,19 @@ export const get = query({
 })
 
 export const getBySlug = query({
-  args: { slug: v.string() },
+  args: {
+    slug: v.string(),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+  },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     return await ctx.db
       .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("slug", args.slug)
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("slug", args.slug)
       )
       .first()
   },
