@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style C: Midnight Clarity</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400;500;600;700&f[]=jet-brains-mono@400&display=swap">
+    <style>
+        :root {
+            --bg: #09090b;
+            --bg-surface: #18181b;
+            --bg-elevated: #27272a;
+            --border: #3f3f46;
+            --text: #fafafa;
+            --text-muted: #a1a1aa;
+            --accent: #a78bfa;
+            --accent-dim: rgba(167, 139, 250, 0.1);
+            --green: #4ade80;
+            --font-display: 'General Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-display);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 860px;
+            width: 100%;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--green);
+            padding: 0.35rem 0.85rem;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            border-radius: 100px;
+            background: rgba(74, 222, 128, 0.05);
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+        }
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s ease infinite;
+        }
+        h1 {
+            font-size: clamp(2.8rem, 5.5vw, 4.2rem);
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+        }
+        h1 .highlight {
+            background: linear-gradient(135deg, var(--accent), #c4b5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            max-width: 580px;
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards;
+        }
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+        .card:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        .card-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+        }
+        .card-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .style-label {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+        }
+        @keyframes fadeUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="badge">Architecture Guide</div>
+        <h1>Struere <span class="highlight">Platform</span><br>Architecture</h1>
+        <p class="subtitle">Permission-aware AI agent platform with full environment isolation. Built on Convex real-time backend with Clerk authentication.</p>
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">&#9632;</div>
+                <div class="card-title">Permission Engine</div>
+                <div class="card-desc">RBAC with row-level scope rules and column-level field masks</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#9670;</div>
+                <div class="card-title">Environment Isolation</div>
+                <div class="card-desc">Full dev/prod separation across all data and permission layers</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#9654;</div>
+                <div class="card-title">Agent Execution</div>
+                <div class="card-desc">LLM loop with permission-checked tool calls and actor context</div>
+            </div>
+        </div>
+    </div>
+    <div class="style-label">STYLE C: MIDNIGHT CLARITY</div>
+</body>
+</html>

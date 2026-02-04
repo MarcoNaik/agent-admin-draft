@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style A: Blueprint</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=jet-brains-mono@400&f[]=satoshi@400;500;700&display=swap">
+    <style>
+        :root {
+            --bg: #0b1120;
+            --bg-card: rgba(15, 23, 42, 0.8);
+            --grid: rgba(56, 189, 248, 0.06);
+            --grid-accent: rgba(56, 189, 248, 0.12);
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --accent: #38bdf8;
+            --accent-dim: rgba(56, 189, 248, 0.15);
+            --green: #34d399;
+            --amber: #fbbf24;
+            --font-display: 'Satoshi', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-display);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            overflow: hidden;
+            background-image:
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+                linear-gradient(var(--grid-accent) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-accent) 1px, transparent 1px);
+            background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+            background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            position: relative;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+        }
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
+        }
+        h1 span { color: var(--accent); }
+        .subtitle {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            max-width: 600px;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+        }
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
+        }
+        .chip {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.4rem 0.85rem;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 4px;
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .node {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0;
+            animation: nodeAppear 0.5s ease forwards;
+        }
+        .node::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid var(--accent);
+            opacity: 0.3;
+            animation: ping 2s ease-out infinite;
+        }
+        .node:nth-child(1) { top: 15%; right: 8%; animation-delay: 1s; }
+        .node:nth-child(2) { top: 45%; right: 3%; animation-delay: 1.3s; }
+        .node:nth-child(3) { top: 75%; right: 12%; animation-delay: 1.6s; }
+        .line {
+            position: absolute;
+            right: calc(8% + 3px);
+            top: calc(15% + 8px);
+            width: 1px;
+            height: 0;
+            background: linear-gradient(to bottom, var(--accent), transparent);
+            opacity: 0.2;
+            animation: growLine 1.5s ease 1.2s forwards;
+        }
+        .style-label {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+        }
+        @keyframes fadeUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes nodeAppear {
+            to { opacity: 1; }
+        }
+        @keyframes ping {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+            100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+        }
+        @keyframes growLine {
+            to { height: 60%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="line"></div>
+
+        <div class="tag">architecture overview</div>
+        <h1>Struere <span>Platform</span><br>Architecture</h1>
+        <p class="subtitle">Permission-aware AI agent platform with environment isolation, role-based access control, and real-time data subscriptions.</p>
+        <div class="chips">
+            <span class="chip">Convex</span>
+            <span class="chip">Next.js 14</span>
+            <span class="chip">TypeScript</span>
+            <span class="chip">Clerk Auth</span>
+            <span class="chip">CF Workers</span>
+        </div>
+    </div>
+    <div class="style-label">STYLE A: BLUEPRINT</div>
+</body>
+</html>
