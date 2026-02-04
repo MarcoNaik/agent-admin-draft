@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useSendChatMessage, useThreadWithMessages } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Id } from "@convex/_generated/dataModel"
 
 interface Message {
@@ -34,6 +35,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
+  const { environment } = useEnvironment()
   const sendMessage = useSendChatMessage()
   const [threadId, setThreadId] = useState<Id<"threads"> | null>(null)
   const [input, setInput] = useState("")
@@ -85,7 +87,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
         agentId: agent._id,
         message: userMessage,
         threadId: threadId ?? undefined,
-        environment: "development",
+        environment,
       })
 
       if (!threadId && result.threadId) {
@@ -120,7 +122,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
     setError(null)
   }
 
-  const config = agent.developmentConfig || agent.productionConfig
+  const config = environment === "production" ? agent.productionConfig : agent.developmentConfig
   const modelName = config?.model?.name || "claude-sonnet-4-20250514"
 
   if (!open) return null
