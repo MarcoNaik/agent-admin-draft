@@ -7,6 +7,7 @@ import {
   EntityTypeDefinition,
 } from "../../packs/index"
 import { isUpgrade } from "./version"
+import { Environment } from "../permissions/types"
 
 export interface Customizations {
   entityTypes: string[]
@@ -40,18 +41,20 @@ export function findMigrationPath(
 export async function executeMigration(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   pack: PackDefinition,
   migration: Migration,
   customizations: Customizations
 ): Promise<void> {
   for (const step of migration.steps) {
-    await executeMigrationStep(ctx, organizationId, pack, step, customizations)
+    await executeMigrationStep(ctx, organizationId, environment, pack, step, customizations)
   }
 }
 
 export async function executeMigrationStep(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   pack: PackDefinition,
   step: MigrationStep,
   customizations: Customizations
@@ -64,6 +67,7 @@ export async function executeMigrationStep(
       await addFieldToEntities(
         ctx,
         organizationId,
+        environment,
         step.entityType,
         step.field,
         step.defaultValue
@@ -74,6 +78,7 @@ export async function executeMigrationStep(
       await removeFieldFromEntities(
         ctx,
         organizationId,
+        environment,
         step.entityType,
         step.field
       )
@@ -83,6 +88,7 @@ export async function executeMigrationStep(
       await renameFieldInEntities(
         ctx,
         organizationId,
+        environment,
         step.entityType,
         step.oldField,
         step.newField
@@ -90,7 +96,7 @@ export async function executeMigrationStep(
       break
 
     case "add_entity_type":
-      await createEntityType(ctx, organizationId, step.entityType)
+      await createEntityType(ctx, organizationId, environment, step.entityType)
       break
 
     case "modify_schema":
@@ -100,6 +106,7 @@ export async function executeMigrationStep(
       await updateEntityTypeSchema(
         ctx,
         organizationId,
+        environment,
         step.entityType,
         step.schemaChanges
       )
@@ -117,14 +124,15 @@ export async function executeMigrationStep(
 export async function addFieldToEntities(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   entityTypeSlug: string,
   field: string,
   defaultValue: unknown
 ): Promise<number> {
   const entityType = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", organizationId).eq("slug", entityTypeSlug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("slug", entityTypeSlug)
     )
     .first()
 
@@ -132,8 +140,8 @@ export async function addFieldToEntities(
 
   const entities = await ctx.db
     .query("entities")
-    .withIndex("by_org_type", (q) =>
-      q.eq("organizationId", organizationId).eq("entityTypeId", entityType._id)
+    .withIndex("by_org_env_type", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("entityTypeId", entityType._id)
     )
     .collect()
 
@@ -155,13 +163,14 @@ export async function addFieldToEntities(
 export async function removeFieldFromEntities(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   entityTypeSlug: string,
   field: string
 ): Promise<number> {
   const entityType = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", organizationId).eq("slug", entityTypeSlug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("slug", entityTypeSlug)
     )
     .first()
 
@@ -169,8 +178,8 @@ export async function removeFieldFromEntities(
 
   const entities = await ctx.db
     .query("entities")
-    .withIndex("by_org_type", (q) =>
-      q.eq("organizationId", organizationId).eq("entityTypeId", entityType._id)
+    .withIndex("by_org_env_type", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("entityTypeId", entityType._id)
     )
     .collect()
 
@@ -194,14 +203,15 @@ export async function removeFieldFromEntities(
 export async function renameFieldInEntities(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   entityTypeSlug: string,
   oldField: string,
   newField: string
 ): Promise<number> {
   const entityType = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", organizationId).eq("slug", entityTypeSlug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("slug", entityTypeSlug)
     )
     .first()
 
@@ -209,8 +219,8 @@ export async function renameFieldInEntities(
 
   const entities = await ctx.db
     .query("entities")
-    .withIndex("by_org_type", (q) =>
-      q.eq("organizationId", organizationId).eq("entityTypeId", entityType._id)
+    .withIndex("by_org_env_type", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("entityTypeId", entityType._id)
     )
     .collect()
 
@@ -235,12 +245,13 @@ export async function renameFieldInEntities(
 export async function createEntityType(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   entityType: EntityTypeDefinition
 ): Promise<Id<"entityTypes"> | null> {
   const existing = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", organizationId).eq("slug", entityType.slug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("slug", entityType.slug)
     )
     .first()
 
@@ -249,6 +260,7 @@ export async function createEntityType(
   const now = Date.now()
   return await ctx.db.insert("entityTypes", {
     organizationId,
+    environment,
     name: entityType.name,
     slug: entityType.slug,
     schema: entityType.schema,
@@ -262,13 +274,14 @@ export async function createEntityType(
 export async function updateEntityTypeSchema(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: Environment,
   entityTypeSlug: string,
   schemaChanges: Record<string, unknown>
 ): Promise<boolean> {
   const entityType = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_slug", (q) =>
-      q.eq("organizationId", organizationId).eq("slug", entityTypeSlug)
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("slug", entityTypeSlug)
     )
     .first()
 
