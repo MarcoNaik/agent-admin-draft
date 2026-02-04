@@ -225,16 +225,14 @@ export const getAgentBySlug = query({
       return null
     }
 
-    let devConfig = null
-    let prodConfig = null
-
-    if (agent.developmentConfigId) {
-      devConfig = await ctx.db.get(agent.developmentConfigId)
-    }
-
-    if (agent.productionConfigId) {
-      prodConfig = await ctx.db.get(agent.productionConfigId)
-    }
+    const devConfig = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", "development"))
+      .first()
+    const prodConfig = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", "production"))
+      .first()
 
     return {
       ...agent,

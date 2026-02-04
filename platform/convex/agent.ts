@@ -4,7 +4,9 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { hashApiKey } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
-import { ActorContext, ActorType } from "./lib/permissions/types"
+import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 interface ToolCall {
   id: string
@@ -23,6 +25,7 @@ interface ApiKeyAuth {
   organizationId: Id<"organizations">
   keyPrefix: string
   permissions: string[]
+  environment: Environment
 }
 
 interface ChatResponse {
@@ -41,6 +44,17 @@ interface ToolConfig {
   parameters: unknown
   handlerCode?: string
   isBuiltin: boolean
+}
+
+function serializeActor(actor: ActorContext) {
+  return {
+    organizationId: actor.organizationId,
+    actorType: actor.actorType,
+    actorId: actor.actorId,
+    roleIds: actor.roleIds,
+    isOrgAdmin: actor.isOrgAdmin,
+    environment: actor.environment,
+  }
 }
 
 export const chat = internalAction({
@@ -70,6 +84,8 @@ export const chat = internalAction({
       throw new Error("Invalid API key")
     }
 
+    const environment = auth.environment
+
     const agent = await ctx.runQuery(internal.agent.getAgentInternal, {
       agentId: args.agentId,
       organizationId: auth.organizationId,
@@ -81,13 +97,14 @@ export const chat = internalAction({
 
     const config = await ctx.runQuery(internal.agents.getActiveConfig, {
       agentId: args.agentId,
-      environment: "production",
+      environment,
     })
 
     const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
       organizationId: auth.organizationId,
       agentId: args.agentId,
       externalId: args.externalThreadId,
+      environment,
     })
 
     const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, {
@@ -100,12 +117,13 @@ export const chat = internalAction({
       organizationId: auth.organizationId,
       actorType: "agent",
       actorId: `apikey:${auth.keyPrefix}`,
+      environment,
     })
 
     const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
       ctx.runQuery(internal.organizations.getInternal, { organizationId: auth.organizationId }),
-      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: auth.organizationId }),
-      ctx.runQuery(internal.roles.listInternal, { organizationId: auth.organizationId }),
+      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: auth.organizationId, environment }),
+      ctx.runQuery(internal.roles.listInternal, { organizationId: auth.organizationId, environment }),
     ])
 
     const now = Date.now()
@@ -146,23 +164,14 @@ export const chat = internalAction({
       executeBuiltin: async (name, toolArgs) => {
         const toolIdentity = await ctx.runQuery(
           internal.permissions.getToolIdentityQuery,
-          {
-            actor: {
-              organizationId: actor.organizationId,
-              actorType: actor.actorType,
-              actorId: actor.actorId,
-              roleIds: actor.roleIds,
-              isOrgAdmin: actor.isOrgAdmin,
-            },
-            agentId: args.agentId,
-            toolName: name,
-          }
+          { actor: serializeActor(actor), agentId: args.agentId, toolName: name }
         )
         return executeBuiltinTool(ctx, {
           organizationId: toolIdentity.organizationId,
           actorId: toolIdentity.actorId,
           actorType: toolIdentity.actorType,
           isOrgAdmin: toolIdentity.isOrgAdmin,
+          environment,
           toolName: name,
           args: toolArgs,
         })
@@ -275,17 +284,7 @@ export const chat = internalAction({
 
         const permissionResult = await ctx.runQuery(
           internal.permissions.canUseToolQuery,
-          {
-            actor: {
-              organizationId: actor.organizationId,
-              actorType: actor.actorType,
-              actorId: actor.actorId,
-              roleIds: actor.roleIds,
-              isOrgAdmin: actor.isOrgAdmin,
-            },
-            agentId: args.agentId,
-            toolName: tc.name,
-          }
+          { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
         )
 
         if (!permissionResult.allowed) {
@@ -300,17 +299,7 @@ export const chat = internalAction({
         try {
           const toolIdentity = await ctx.runQuery(
             internal.permissions.getToolIdentityQuery,
-            {
-              actor: {
-                organizationId: actor.organizationId,
-                actorType: actor.actorType,
-                actorId: actor.actorId,
-                roleIds: actor.roleIds,
-                isOrgAdmin: actor.isOrgAdmin,
-              },
-              agentId: args.agentId,
-              toolName: tc.name,
-            }
+            { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
           )
 
           let result: unknown
@@ -321,6 +310,7 @@ export const chat = internalAction({
               actorId: toolIdentity.actorId,
               actorType: toolIdentity.actorType,
               isOrgAdmin: toolIdentity.isOrgAdmin,
+              environment,
               toolName: tc.name,
               args: tc.arguments,
             })
@@ -421,6 +411,7 @@ export const chat = internalAction({
       organizationId: auth.organizationId,
       agentId: args.agentId,
       threadId,
+      environment,
       inputMessage: args.message,
       outputMessage: finalContent,
       toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
@@ -493,7 +484,7 @@ export const chatAuthenticated = internalAction({
     agentId: v.id("agents"),
     message: v.string(),
     threadId: v.optional(v.id("threads")),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(environmentValidator),
   },
   returns: v.object({
     message: v.string(),
@@ -506,7 +497,7 @@ export const chatAuthenticated = internalAction({
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
     const startTime = Date.now()
-    const environment = args.environment ?? "development"
+    const environment: Environment = args.environment ?? "development"
 
     const agent = await ctx.runQuery(internal.agent.getAgentInternal, {
       agentId: args.agentId,
@@ -526,6 +517,7 @@ export const chatAuthenticated = internalAction({
       organizationId: args.organizationId,
       agentId: args.agentId,
       userId: args.userId,
+      environment,
     })
 
     const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, {
@@ -538,12 +530,13 @@ export const chatAuthenticated = internalAction({
       organizationId: args.organizationId,
       actorType: "user",
       actorId: args.userId as unknown as string,
+      environment,
     })
 
     const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
       ctx.runQuery(internal.organizations.getInternal, { organizationId: args.organizationId }),
-      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: args.organizationId }),
-      ctx.runQuery(internal.roles.listInternal, { organizationId: args.organizationId }),
+      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: args.organizationId, environment }),
+      ctx.runQuery(internal.roles.listInternal, { organizationId: args.organizationId, environment }),
     ])
 
     const now = Date.now()
@@ -584,23 +577,14 @@ export const chatAuthenticated = internalAction({
       executeBuiltin: async (name, toolArgs) => {
         const toolIdentity = await ctx.runQuery(
           internal.permissions.getToolIdentityQuery,
-          {
-            actor: {
-              organizationId: actor.organizationId,
-              actorType: actor.actorType,
-              actorId: actor.actorId,
-              roleIds: actor.roleIds,
-              isOrgAdmin: actor.isOrgAdmin,
-            },
-            agentId: args.agentId,
-            toolName: name,
-          }
+          { actor: serializeActor(actor), agentId: args.agentId, toolName: name }
         )
         return executeBuiltinTool(ctx, {
           organizationId: toolIdentity.organizationId,
           actorId: toolIdentity.actorId,
           actorType: toolIdentity.actorType,
           isOrgAdmin: toolIdentity.isOrgAdmin,
+          environment,
           toolName: name,
           args: toolArgs,
         })
@@ -713,17 +697,7 @@ export const chatAuthenticated = internalAction({
 
         const permissionResult = await ctx.runQuery(
           internal.permissions.canUseToolQuery,
-          {
-            actor: {
-              organizationId: actor.organizationId,
-              actorType: actor.actorType,
-              actorId: actor.actorId,
-              roleIds: actor.roleIds,
-              isOrgAdmin: actor.isOrgAdmin,
-            },
-            agentId: args.agentId,
-            toolName: tc.name,
-          }
+          { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
         )
 
         if (!permissionResult.allowed) {
@@ -738,17 +712,7 @@ export const chatAuthenticated = internalAction({
         try {
           const toolIdentity = await ctx.runQuery(
             internal.permissions.getToolIdentityQuery,
-            {
-              actor: {
-                organizationId: actor.organizationId,
-                actorType: actor.actorType,
-                actorId: actor.actorId,
-                roleIds: actor.roleIds,
-                isOrgAdmin: actor.isOrgAdmin,
-              },
-              agentId: args.agentId,
-              toolName: tc.name,
-            }
+            { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
           )
 
           let result: unknown
@@ -759,6 +723,7 @@ export const chatAuthenticated = internalAction({
               actorId: toolIdentity.actorId,
               actorType: toolIdentity.actorType,
               isOrgAdmin: toolIdentity.isOrgAdmin,
+              environment,
               toolName: tc.name,
               args: tc.arguments,
             })
@@ -859,6 +824,7 @@ export const chatAuthenticated = internalAction({
       organizationId: args.organizationId,
       agentId: args.agentId,
       threadId,
+      environment,
       inputMessage: args.message,
       outputMessage: finalContent,
       toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
@@ -885,6 +851,7 @@ export const buildActorContextForAgent = internalQuery({
     organizationId: v.id("organizations"),
     actorType: v.string(),
     actorId: v.string(),
+    environment: environmentValidator,
   },
   returns: v.object({
     organizationId: v.id("organizations"),
@@ -896,13 +863,27 @@ export const buildActorContextForAgent = internalQuery({
     ),
     actorId: v.string(),
     roleIds: v.array(v.id("roles")),
+    isOrgAdmin: v.optional(v.boolean()),
+    environment: environmentValidator,
   }),
   handler: async (ctx, args): Promise<ActorContext> => {
-    const { organizationId, actorType, actorId } = args
+    const { organizationId, actorType, actorId, environment } = args
 
     let roleIds: Id<"roles">[] = []
+    let isOrgAdmin = false
 
     if (actorType === "user") {
+      const membership = await ctx.db
+        .query("userOrganizations")
+        .withIndex("by_user_org", (q) =>
+          q.eq("userId", actorId as Id<"users">).eq("organizationId", organizationId)
+        )
+        .first()
+
+      if (membership && (membership.role === "owner" || membership.role === "admin")) {
+        isOrgAdmin = true
+      }
+
       const userRoles = await ctx.db
         .query("userRoles")
         .withIndex("by_user", (q) => q.eq("userId", actorId as Id<"users">))
@@ -917,18 +898,20 @@ export const buildActorContextForAgent = internalQuery({
       const validRoleIds: Id<"roles">[] = []
       for (const ur of userRoles) {
         const role = await ctx.db.get(ur.roleId)
-        if (role && role.organizationId === organizationId) {
+        if (role && role.organizationId === organizationId && role.environment === environment) {
           validRoleIds.push(ur.roleId)
         }
       }
       roleIds = validRoleIds
     } else if (actorType === "system") {
-      const systemRole = await ctx.db
+      isOrgAdmin = true
+      const systemRoles = await ctx.db
         .query("roles")
         .withIndex("by_org_isSystem", (q) =>
           q.eq("organizationId", organizationId).eq("isSystem", true)
         )
-        .first()
+        .collect()
+      const systemRole = systemRoles.find((r) => r.environment === environment)
 
       if (systemRole) {
         roleIds = [systemRole._id]
@@ -936,8 +919,8 @@ export const buildActorContextForAgent = internalQuery({
     } else if (actorType === "agent") {
       const agentRole = await ctx.db
         .query("roles")
-        .withIndex("by_org_name", (q) =>
-          q.eq("organizationId", organizationId).eq("name", "agent")
+        .withIndex("by_org_env_name", (q) =>
+          q.eq("organizationId", organizationId).eq("environment", environment).eq("name", "agent")
         )
         .first()
 
@@ -951,6 +934,8 @@ export const buildActorContextForAgent = internalQuery({
       actorType: actorType as ActorType,
       actorId,
       roleIds,
+      isOrgAdmin,
+      environment,
     }
   },
 })
@@ -962,6 +947,7 @@ export const validateApiKey = internalQuery({
       organizationId: v.id("organizations"),
       keyPrefix: v.string(),
       permissions: v.array(v.string()),
+      environment: environmentValidator,
     }),
     v.null()
   ),
@@ -983,6 +969,7 @@ export const validateApiKey = internalQuery({
       organizationId: apiKey.organizationId,
       keyPrefix: apiKey.keyPrefix,
       permissions: apiKey.permissions,
+      environment: apiKey.environment as Environment,
     }
   },
 })
@@ -1082,11 +1069,12 @@ async function executeBuiltinTool(
     actorId: string
     actorType: ActorType
     isOrgAdmin?: boolean
+    environment: Environment
     toolName: string
     args: Record<string, unknown>
   }
 ): Promise<unknown> {
-  const { organizationId, actorId, actorType, isOrgAdmin, toolName, args } = params
+  const { organizationId, actorId, actorType, isOrgAdmin, environment, toolName, args } = params
 
   switch (toolName) {
     case "entity.create":
@@ -1096,6 +1084,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         type: args.type as string,
         data: args.data,
         status: args.status as string | undefined,
@@ -1107,6 +1096,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         id: args.id as string,
       })
 
@@ -1116,6 +1106,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         type: args.type as string,
         filters: args.filters,
         status: args.status as string | undefined,
@@ -1129,6 +1120,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         id: args.id as string,
         data: args.data,
         status: args.status as string | undefined,
@@ -1140,6 +1132,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         id: args.id as string,
       })
 
@@ -1151,6 +1144,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         fromId: args.fromId as string,
         toId: args.toId as string,
         relationType: args.relationType as string,
@@ -1165,6 +1159,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         fromId: args.fromId as string,
         toId: args.toId as string,
         relationType: args.relationType as string,
@@ -1176,6 +1171,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         entityId: args.entityId as string | undefined,
         entityTypeSlug: args.entityTypeSlug as string | undefined,
         eventType: args.eventType as string,
@@ -1185,6 +1181,7 @@ async function executeBuiltinTool(
     case "event.query":
       return await ctx.runQuery(internal.tools.events.eventQuery, {
         organizationId,
+        environment,
         entityId: args.entityId as string | undefined,
         eventType: args.eventType as string | undefined,
         since: args.since as number | undefined,
@@ -1197,6 +1194,7 @@ async function executeBuiltinTool(
         organizationId,
         actorId,
         actorType,
+        environment,
         jobType: args.jobType as string,
         payload: args.payload,
         scheduledFor: args.scheduledFor as number | undefined,
