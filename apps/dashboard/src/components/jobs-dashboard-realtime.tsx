@@ -1,6 +1,7 @@
 "use client"
 
 import { useJobs, useJobStats, useRetryJob, useCancelJob } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw, XCircle, Clock, CheckCircle, AlertTriangle, Skull } from "lucide-react"
@@ -20,7 +21,8 @@ const statusConfig: Record<JobStatus, { icon: any; color: string; label: string 
 
 export function JobsDashboardRealtime() {
   const [statusFilter, setStatusFilter] = useState<JobStatus | undefined>(undefined)
-  const jobs = useJobs(statusFilter)
+  const { environment } = useEnvironment()
+  const jobs = useJobs(environment, statusFilter)
   const stats = useJobStats()
   const retryJob = useRetryJob()
   const cancelJob = useCancelJob()
