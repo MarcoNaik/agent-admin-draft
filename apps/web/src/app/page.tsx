@@ -94,7 +94,7 @@ const modeContent = {
     ],
   },
   customer: {
-    hook: "You wake up, check WhatsApp. Bookings, reschedules, complaints. Every single morning.",
+    hook: "no more Bookings, reschedules, complaints.",
     description:
       "You run a team. Clients message to book. You check the spreadsheet, find a slot, reply. Repeat. All day. Every day. Now, what if you never had to touch that spreadsheet again?",
     example: [
