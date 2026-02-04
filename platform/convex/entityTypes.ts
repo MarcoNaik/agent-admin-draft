@@ -55,6 +55,7 @@ export const create = mutation({
     indexMapping: v.optional(v.any()),
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.id("entityTypes"),
   handler: async (ctx, args) => {
@@ -62,7 +63,8 @@ export const create = mutation({
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
-      actorId: auth.userId,
+      actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "create", "entityType")
@@ -71,8 +73,8 @@ export const create = mutation({
 
     const existing = await ctx.db
       .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("slug", slug)
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("slug", slug)
       )
       .first()
 
@@ -83,6 +85,7 @@ export const create = mutation({
     const now = Date.now()
     return await ctx.db.insert("entityTypes", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       name: args.name,
       slug,
       schema: args.schema,
@@ -103,6 +106,7 @@ export const update = mutation({
     indexMapping: v.optional(v.any()),
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
@@ -116,7 +120,8 @@ export const update = mutation({
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
-      actorId: auth.userId,
+      actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "update", "entityType")
@@ -135,7 +140,10 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("entityTypes") },
+  args: {
+    id: v.id("entityTypes"),
+    environment: v.union(v.literal("development"), v.literal("production")),
+  },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -148,7 +156,8 @@ export const remove = mutation({
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
       actorType: auth.actorType,
-      actorId: auth.userId,
+      actorId: auth.userId as unknown as string,
+      environment: args.environment,
     })
 
     await assertCanPerform(ctx, actor, "delete", "entityType")
