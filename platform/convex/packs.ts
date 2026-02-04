@@ -10,9 +10,14 @@ import {
   describeMigrationStep,
   Customizations,
 } from "./lib/packs/migrate"
+import { Environment } from "./lib/permissions/types"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
 export const list = query({
-  args: {},
+  args: {
+    environment: v.optional(environmentValidator),
+  },
   returns: v.array(v.object({
     id: v.string(),
     name: v.string(),
@@ -37,12 +42,15 @@ export const list = query({
       missingRoles: v.array(v.string()),
     })),
   })),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const installedPacks = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
       .collect()
 
     const installedMap = new Map(installedPacks.map((p) => [p.packId, p]))
@@ -98,7 +106,10 @@ export const list = query({
 })
 
 export const get = query({
-  args: { packId: v.string() },
+  args: {
+    packId: v.string(),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.union(
     v.object({
       id: v.string(),
@@ -142,10 +153,11 @@ export const get = query({
     if (!pack) return null
 
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const installed = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
@@ -197,7 +209,10 @@ export const get = query({
 })
 
 export const install = mutation({
-  args: { packId: v.string() },
+  args: {
+    packId: v.string(),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.object({
     success: v.boolean(),
     entityTypesCreated: v.number(),
@@ -205,6 +220,7 @@ export const install = mutation({
   }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const pack = getPackById(args.packId)
 
     if (!pack) {
@@ -213,8 +229,8 @@ export const install = mutation({
 
     const existing = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
@@ -231,8 +247,8 @@ export const install = mutation({
     for (const et of pack.entityTypes) {
       const existingType = await ctx.db
         .query("entityTypes")
-        .withIndex("by_org_slug", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("slug", et.slug)
+        .withIndex("by_org_env_slug", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("slug", et.slug)
         )
         .first()
 
@@ -242,6 +258,7 @@ export const install = mutation({
       } else {
         const id = await ctx.db.insert("entityTypes", {
           organizationId: auth.organizationId,
+          environment,
           name: et.name,
           slug: et.slug,
           schema: et.schema,
@@ -258,8 +275,8 @@ export const install = mutation({
     for (const role of pack.roles) {
       const existingRole = await ctx.db
         .query("roles")
-        .withIndex("by_org_name", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("name", role.name)
+        .withIndex("by_org_env_name", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("name", role.name)
         )
         .first()
 
@@ -269,6 +286,7 @@ export const install = mutation({
       } else {
         roleId = await ctx.db.insert("roles", {
           organizationId: auth.organizationId,
+          environment,
           name: role.name,
           description: role.description,
           isSystem: role.isSystem,
@@ -336,6 +354,7 @@ export const install = mutation({
 
     await ctx.db.insert("installedPacks", {
       organizationId: auth.organizationId,
+      environment,
       packId: args.packId,
       version: pack.version,
       installedAt: now,
@@ -353,6 +372,7 @@ export const install = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       eventType: "pack.installed",
       schemaVersion: 1,
       actorId: auth.userId as unknown as string,
@@ -370,15 +390,19 @@ export const install = mutation({
 })
 
 export const uninstall = mutation({
-  args: { packId: v.string() },
+  args: {
+    packId: v.string(),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const installed = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
@@ -390,6 +414,7 @@ export const uninstall = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       eventType: "pack.uninstalled",
       schemaVersion: 1,
       actorId: auth.userId as unknown as string,
@@ -403,7 +428,10 @@ export const uninstall = mutation({
 })
 
 export const previewUpgrade = query({
-  args: { packId: v.string() },
+  args: {
+    packId: v.string(),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.union(
     v.object({
       canUpgrade: v.boolean(),
@@ -426,13 +454,14 @@ export const previewUpgrade = query({
   ),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const pack = getPackById(args.packId)
     if (!pack) return null
 
     const installed = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
@@ -499,7 +528,10 @@ export const previewUpgrade = query({
 })
 
 export const upgrade = mutation({
-  args: { packId: v.string() },
+  args: {
+    packId: v.string(),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.object({
     success: v.boolean(),
     fromVersion: v.string(),
@@ -508,6 +540,7 @@ export const upgrade = mutation({
   }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const pack = getPackById(args.packId)
 
     if (!pack) {
@@ -516,8 +549,8 @@ export const upgrade = mutation({
 
     const installed = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
@@ -543,7 +576,7 @@ export const upgrade = mutation({
       const migrations = findMigrationPath(pack.migrations, fromVersion, pack.version)
 
       for (const migration of migrations) {
-        await executeMigration(ctx, auth.organizationId, pack, migration, customizations)
+        await executeMigration(ctx, auth.organizationId, environment, pack, migration, customizations)
       }
 
       const now = Date.now()
@@ -567,6 +600,7 @@ export const upgrade = mutation({
 
       await ctx.db.insert("events", {
         organizationId: auth.organizationId,
+        environment,
         eventType: "pack.upgraded",
         schemaVersion: 1,
         actorId: auth.userId as unknown as string,
@@ -594,7 +628,10 @@ export const upgrade = mutation({
 })
 
 export const repair = mutation({
-  args: { packId: v.string() },
+  args: {
+    packId: v.string(),
+    environment: v.optional(environmentValidator),
+  },
   returns: v.object({
     success: v.boolean(),
     entityTypesRepaired: v.number(),
@@ -602,6 +639,7 @@ export const repair = mutation({
   }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
     const pack = getPackById(args.packId)
 
     if (!pack) {
@@ -610,8 +648,8 @@ export const repair = mutation({
 
     const installed = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
@@ -642,8 +680,8 @@ export const repair = mutation({
       if (!entityExists) {
         const existingBySlug = await ctx.db
           .query("entityTypes")
-          .withIndex("by_org_slug", (q) =>
-            q.eq("organizationId", auth.organizationId).eq("slug", et.slug)
+          .withIndex("by_org_env_slug", (q) =>
+            q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("slug", et.slug)
           )
           .first()
 
@@ -652,6 +690,7 @@ export const repair = mutation({
         } else {
           const id = await ctx.db.insert("entityTypes", {
             organizationId: auth.organizationId,
+            environment,
             name: et.name,
             slug: et.slug,
             schema: et.schema,
@@ -685,8 +724,8 @@ export const repair = mutation({
       if (!roleExists) {
         const existingByName = await ctx.db
           .query("roles")
-          .withIndex("by_org_name", (q) =>
-            q.eq("organizationId", auth.organizationId).eq("name", role.name)
+          .withIndex("by_org_env_name", (q) =>
+            q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("name", role.name)
           )
           .first()
 
@@ -697,6 +736,7 @@ export const repair = mutation({
         } else {
           roleId = await ctx.db.insert("roles", {
             organizationId: auth.organizationId,
+            environment,
             name: role.name,
             description: role.description,
             isSystem: role.isSystem,
@@ -771,6 +811,7 @@ export const repair = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment,
       eventType: "pack.repaired",
       schemaVersion: 1,
       actorId: auth.userId as unknown as string,
@@ -794,17 +835,19 @@ export const repair = mutation({
 export const trackCustomization = mutation({
   args: {
     packId: v.string(),
+    environment: v.optional(environmentValidator),
     customizationType: v.union(v.literal("entityType"), v.literal("role"), v.literal("policy")),
     identifier: v.string(),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const environment: Environment = args.environment ?? "development"
 
     const installed = await ctx.db
       .query("installedPacks")
-      .withIndex("by_org_pack", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("packId", args.packId)
+      .withIndex("by_org_env_pack", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("packId", args.packId)
       )
       .first()
 
