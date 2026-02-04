@@ -60,6 +60,7 @@ export async function consumeCredit(
 
   await ctx.db.insert("events", {
     organizationId: entitlement.organizationId,
+    environment: entitlement.environment,
     entityId: entitlementId,
     entityTypeSlug: "entitlement",
     eventType: "entitlement.credit_consumed",
@@ -111,6 +112,7 @@ export async function transitionSessionStatus(
 
   await ctx.db.insert("events", {
     organizationId: session.organizationId,
+    environment: session.environment,
     entityId: sessionId,
     entityTypeSlug: "session",
     eventType: `session.${newStatus}`,
@@ -163,6 +165,7 @@ export async function submitSessionReport(
 
   await ctx.db.insert("events", {
     organizationId: session.organizationId,
+    environment: session.environment,
     entityId: sessionId,
     entityTypeSlug: "session",
     eventType: "session.report_submitted",
@@ -242,6 +245,7 @@ export async function confirmPayment(
 
   await ctx.db.insert("events", {
     organizationId: session.organizationId,
+    environment: session.environment,
     entityId: sessionId,
     entityTypeSlug: "session",
     eventType: "session.payment_confirmed",
