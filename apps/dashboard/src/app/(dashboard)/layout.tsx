@@ -1,4 +1,3 @@
-import { Suspense } from "react"
 import { Header } from "@/components/header"
 import { EnsureUserProvider } from "@/providers/ensure-user"
 import { AgentProvider } from "@/contexts/agent-context"
@@ -16,18 +15,16 @@ export default function DashboardLayout({
     <EnsureUserProvider>
       <RoleProvider>
         <AgentProvider>
-          <Suspense fallback={null}>
-            <EnvironmentProvider>
-              <div className="flex h-screen flex-col">
-                <Header />
-                <div className="scrollbar flex flex-1 flex-col overflow-y-auto">
-                  <div className="flex-1 bg-background-primary">
-                    {children}
-                  </div>
+          <EnvironmentProvider>
+            <div className="flex h-screen flex-col">
+              <Header />
+              <div className="scrollbar flex flex-1 flex-col overflow-y-auto">
+                <div className="flex-1 bg-background-primary">
+                  {children}
                 </div>
               </div>
-            </EnvironmentProvider>
-          </Suspense>
+            </div>
+          </EnvironmentProvider>
         </AgentProvider>
       </RoleProvider>
     </EnsureUserProvider>
