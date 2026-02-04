@@ -410,8 +410,17 @@ export const getUserRoles = query({
 })
 
 export const listInternal = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: {
+    organizationId: v.id("organizations"),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+  },
   handler: async (ctx, args) => {
+    if (args.environment) {
+      return await ctx.db
+        .query("roles")
+        .withIndex("by_org_env", (q) => q.eq("organizationId", args.organizationId).eq("environment", args.environment!))
+        .collect()
+    }
     return await ctx.db
       .query("roles")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
