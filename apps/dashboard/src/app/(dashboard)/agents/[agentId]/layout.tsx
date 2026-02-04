@@ -25,18 +25,6 @@ export default function AgentLayout({ children, params }: AgentLayoutProps) {
         id: agent._id,
         name: agent.name,
         slug: agent.slug,
-        environments: {
-          development: agent.developmentConfig ? {
-            url: `/chat/${agent.slug}`,
-            version: agent.developmentConfig.version,
-            deployedAt: new Date(agent.developmentConfig.createdAt).toISOString(),
-          } : null,
-          production: agent.productionConfig ? {
-            url: `/chat/${agent.slug}`,
-            version: agent.productionConfig.version,
-            deployedAt: new Date(agent.productionConfig.createdAt).toISOString(),
-          } : null,
-        },
       })
     }
     return () => setAgent(null)
