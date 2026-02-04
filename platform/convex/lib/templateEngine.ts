@@ -167,34 +167,27 @@ async function resolveTemplateFunction(
   context: TemplateContext
 ): Promise<unknown> {
   try {
+    const actorPayload = {
+      organizationId: context.actor.organizationId,
+      actorType: context.actor.actorType,
+      actorId: context.actor.actorId,
+      roleIds: context.actor.roleIds,
+      isOrgAdmin: context.actor.isOrgAdmin,
+      environment: context.actor.environment,
+    } as const
+
     if (name === "entity.query") {
       const queryArgs = args as { type: string }
-      const results = await runQuery(internal.permissions.queryEntitiesAsActorQuery, {
-        actor: {
-          organizationId: context.actor.organizationId,
-          actorType: context.actor.actorType,
-          actorId: context.actor.actorId,
-          roleIds: context.actor.roleIds,
-          isOrgAdmin: context.actor.isOrgAdmin,
-        },
-        entityTypeSlug: queryArgs.type,
-      })
+      const queryPayload = { actor: actorPayload, entityTypeSlug: queryArgs.type }
+      // @ts-expect-error Convex type instantiation depth limit
+      const results = await runQuery(internal.permissions.queryEntitiesAsActorQuery, queryPayload)
       return results
     }
 
     if (name === "entity.get") {
       const getArgs = args as { type: string; id: string }
-      const result = await runQuery(internal.permissions.getEntityAsActorQuery, {
-        actor: {
-          organizationId: context.actor.organizationId,
-          actorType: context.actor.actorType,
-          actorId: context.actor.actorId,
-          roleIds: context.actor.roleIds,
-          isOrgAdmin: context.actor.isOrgAdmin,
-        },
-        entityTypeSlug: getArgs.type,
-        entityId: getArgs.id as Id<"entities">,
-      })
+      const getPayload = { actor: actorPayload, entityTypeSlug: getArgs.type, entityId: getArgs.id as Id<"entities"> }
+      const result = await runQuery(internal.permissions.getEntityAsActorQuery, getPayload)
       return result
     }
 
