@@ -2,10 +2,12 @@
 
 import { Database, ArrowRight } from "lucide-react"
 import { useEntityTypes } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Doc } from "@convex/_generated/dataModel"
 
 export default function EntitiesPage() {
-  const entityTypes = useEntityTypes()
+  const { environment } = useEnvironment()
+  const entityTypes = useEntityTypes(environment)
   const totalTypes = entityTypes?.length ?? 0
 
   return (
