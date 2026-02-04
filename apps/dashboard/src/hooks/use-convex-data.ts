@@ -205,24 +205,24 @@ export function useDeleteApiKey() {
   return useMutation(api.apiKeys.remove)
 }
 
-export function useExecutions(agentId?: Id<"agents">) {
-  return useQuery(api.executions.list, { agentId })
+export function useExecutions(agentId?: Id<"agents">, environment?: Environment) {
+  return useQuery(api.executions.list, { agentId, environment })
 }
 
-export function useExecutionStats(agentId?: Id<"agents">, since?: number) {
-  return useQuery(api.executions.getStats, { agentId, since })
+export function useExecutionStats(agentId?: Id<"agents">, environment?: Environment, since?: number) {
+  return useQuery(api.executions.getStats, { agentId, environment, since })
 }
 
-export function useUsageByAgent(since?: number) {
-  return useQuery(api.executions.getUsageByAgent, { since })
+export function useUsageByAgent(environment?: Environment, since?: number) {
+  return useQuery(api.executions.getUsageByAgent, { environment, since })
 }
 
-export function useRecentExecutions(agentId?: Id<"agents">, limit?: number) {
-  return useQuery(api.executions.getRecent, { agentId, limit })
+export function useRecentExecutions(agentId?: Id<"agents">, environment?: Environment, limit?: number) {
+  return useQuery(api.executions.getRecent, { agentId, environment, limit })
 }
 
-export function useThreads(agentId?: Id<"agents">) {
-  return useQuery(api.threads.list, { agentId })
+export function useThreads(agentId?: Id<"agents">, environment?: Environment) {
+  return useQuery(api.threads.list, { agentId, environment })
 }
 
 export function useThread(id: Id<"threads">) {
