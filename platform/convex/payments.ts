@@ -61,6 +61,7 @@ export const createPaymentLink = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: payment.environment,
       entityId: args.paymentId,
       entityTypeSlug: "payment",
       eventType: "payment.link_created",
@@ -115,6 +116,7 @@ export const markAsPaid = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: payment.organizationId,
+      environment: payment.environment,
       entityId: payment._id,
       entityTypeSlug: "payment",
       eventType: "payment.paid",
@@ -145,6 +147,7 @@ export const markAsPaid = internalMutation({
 
           await ctx.db.insert("events", {
             organizationId: payment.organizationId,
+            environment: payment.environment,
             entityId: paymentData.sessionId as Id<"entities">,
             entityTypeSlug: "session",
             eventType: "session.confirmed",
@@ -200,6 +203,7 @@ export const markAsFailed = internalMutation({
 
     await ctx.db.insert("events", {
       organizationId: payment.organizationId,
+      environment: payment.environment,
       entityId: payment._id,
       entityTypeSlug: "payment",
       eventType: "payment.failed",
@@ -384,6 +388,7 @@ export const createPayment = mutation({
     description: v.string(),
     sessionId: v.optional(v.string()),
     guardianId: v.optional(v.string()),
+    environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {
@@ -412,6 +417,7 @@ export const createPayment = mutation({
 
     const paymentId = await ctx.db.insert("entities", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityTypeId: paymentType._id,
       status: "draft",
       data: paymentData,
@@ -421,6 +427,7 @@ export const createPayment = mutation({
 
     await ctx.db.insert("events", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       entityId: paymentId,
       entityTypeSlug: "payment",
       eventType: "payment.created",
