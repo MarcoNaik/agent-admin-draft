@@ -47,7 +47,7 @@ export default function AgentLayout({ children, params }: AgentLayoutProps) {
   }
 
   return (
-    <div className="flex h-full flex-1 overflow-hidden">
+    <div className="flex h-[calc(100dvh-49px)] overflow-hidden">
       <AgentSidebar agentId={agentId} chatOpen={chatOpen} onChatToggle={() => setChatOpen(!chatOpen)} />
       <main className="flex-1 overflow-auto p-6">{children}</main>
       <ChatSidebar
