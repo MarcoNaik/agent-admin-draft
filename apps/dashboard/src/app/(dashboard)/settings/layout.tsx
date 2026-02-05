@@ -68,7 +68,7 @@ export default function SettingsLayout({
   }
 
   return (
-    <div className="flex h-[calc(100vh-49px)]">
+    <div className="flex h-[calc(100dvh-49px)]">
       <aside className="w-56 border-r bg-background-secondary flex flex-col shrink-0">
         <div className="p-3 border-b">
           <div className="flex items-center gap-2">
