@@ -18,10 +18,8 @@ export default function DashboardLayout({
           <EnvironmentProvider>
             <div className="flex h-screen flex-col">
               <Header />
-              <div className="scrollbar flex flex-1 flex-col overflow-y-auto">
-                <div className="flex-1 bg-background-primary">
-                  {children}
-                </div>
+              <div className="scrollbar flex-1 overflow-y-auto bg-background-primary">
+                {children}
               </div>
             </div>
           </EnvironmentProvider>
