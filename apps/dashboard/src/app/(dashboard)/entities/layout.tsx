@@ -56,7 +56,7 @@ export default function EntitiesLayout({
   const currentTypeSlug = pathname.split("/")[2]
 
   return (
-    <div className="flex h-[calc(100vh-49px)]">
+    <div className="flex h-[calc(100dvh-49px)]">
       <aside className="w-64 border-r bg-background-secondary flex flex-col shrink-0">
         <div className="p-3 border-b">
           <h2 className="text-sm font-semibold text-content-primary mb-2">Entities</h2>
