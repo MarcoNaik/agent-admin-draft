@@ -1287,8 +1287,12 @@ async function callLLM(params: {
           ],
         }
       }
+      if (!m.content || (typeof m.content === "string" && !m.content.trim())) {
+        return null
+      }
       return { role: m.role, content: m.content }
     })
+    .filter((m): m is NonNullable<typeof m> => m !== null)
 
   const systemMessage = params.messages.find((m) => m.role === "system")
 
