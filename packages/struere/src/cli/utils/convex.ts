@@ -562,13 +562,17 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
     return { success: false, error }
   }
 
-  const json = await response.json() as { status: string; value: SyncResult }
+  const json = await response.json() as { status: string; value?: SyncResult; errorMessage?: string }
 
   if (json.status === 'success' && json.value) {
     return json.value
   }
 
-  return { success: false, error: 'Unexpected response format' }
+  if (json.status === 'error') {
+    return { success: false, error: json.errorMessage || 'Unknown error from Convex' }
+  }
+
+  return { success: false, error: `Unexpected response: ${JSON.stringify(json)}` }
 }
 
 export interface SyncState {
@@ -604,6 +608,15 @@ export async function getSyncState(organizationId?: string, environment?: 'devel
     return { error }
   }
 
-  const result = await response.json() as { status: string; value?: SyncState }
-  return { state: result.value }
+  const result = await response.json() as { status: string; value?: SyncState; errorMessage?: string }
+
+  if (result.status === 'success') {
+    return { state: result.value }
+  }
+
+  if (result.status === 'error') {
+    return { error: result.errorMessage || 'Unknown error from Convex' }
+  }
+
+  return { error: `Unexpected response: ${JSON.stringify(result)}` }
 }
