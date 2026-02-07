@@ -14,6 +14,8 @@ import type * as apiKeys from "../apiKeys.js";
 import type * as chat from "../chat.js";
 import type * as entities from "../entities.js";
 import type * as entityTypes from "../entityTypes.js";
+import type * as evalRunner from "../evalRunner.js";
+import type * as evals from "../evals.js";
 import type * as events from "../events.js";
 import type * as executions from "../executions.js";
 import type * as http from "../http.js";
@@ -74,6 +76,8 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   entities: typeof entities;
   entityTypes: typeof entityTypes;
+  evalRunner: typeof evalRunner;
+  evals: typeof evals;
   events: typeof events;
   executions: typeof executions;
   http: typeof http;
