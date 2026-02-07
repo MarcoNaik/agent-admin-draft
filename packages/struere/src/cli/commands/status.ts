@@ -64,7 +64,15 @@ export const statusCommand = new Command('status')
     let localResources
     try {
       localResources = await loadAllResources(cwd)
-      spinner.succeed('Local resources loaded')
+      spinner.succeed(`Loaded ${localResources.agents.length} agents, ${localResources.entityTypes.length} entity types, ${localResources.roles.length} roles, ${localResources.customTools.length} custom tools, ${localResources.evalSuites.length} eval suites`)
+
+      for (const err of localResources.errors) {
+        console.log(chalk.red('  ✖'), err)
+      }
+
+      if (localResources.errors.length > 0) {
+        process.exit(1)
+      }
     } catch (error) {
       spinner.fail('Failed to load local resources')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
