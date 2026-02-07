@@ -388,7 +388,7 @@ export const startRun = mutation({
       suiteId: args.suiteId,
       agentId: suite.agentId,
       environment: suite.environment,
-      status: "pending",
+      status: "running",
       triggeredBy: auth.userId,
       triggerSource: args.triggerSource,
       agentConfigSnapshot: agentConfig ? {
@@ -401,6 +401,7 @@ export const startRun = mutation({
       completedCases: 0,
       passedCases: 0,
       failedCases: 0,
+      startedAt: now,
       createdAt: now,
     })
 
@@ -415,7 +416,12 @@ export const startRun = mutation({
       })
     }
 
-    await ctx.scheduler.runAfter(0, internal.evalRunner.executeRun, { runId })
+    for (const c of cases) {
+      await ctx.scheduler.runAfter(0, internal.evalRunner.executeCase, {
+        runId,
+        caseId: c._id,
+      })
+    }
 
     return runId
   },
@@ -436,37 +442,6 @@ export const cancelRun = mutation({
 
     await ctx.db.patch(args.id, { status: "cancelled", completedAt: Date.now() })
     return { success: true }
-  },
-})
-
-export const updateRunProgress = internalMutation({
-  args: {
-    runId: v.id("evalRuns"),
-    status: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("running"),
-      v.literal("completed"),
-      v.literal("failed"),
-      v.literal("cancelled")
-    )),
-    completedCases: v.optional(v.number()),
-    passedCases: v.optional(v.number()),
-    failedCases: v.optional(v.number()),
-    startedAt: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId)
-    if (!run) return
-    if (run.status === "cancelled" || run.status === "completed") return
-
-    const updates: Record<string, unknown> = {}
-    if (args.status !== undefined) updates.status = args.status
-    if (args.completedCases !== undefined) updates.completedCases = args.completedCases
-    if (args.passedCases !== undefined) updates.passedCases = args.passedCases
-    if (args.failedCases !== undefined) updates.failedCases = args.failedCases
-    if (args.startedAt !== undefined) updates.startedAt = args.startedAt
-
-    await ctx.db.patch(args.runId, updates)
   },
 })
 
@@ -543,45 +518,60 @@ export const recordResult = internalMutation({
   },
 })
 
-export const completeRun = internalMutation({
+export const caseCompleted = internalMutation({
   args: {
     runId: v.id("evalRuns"),
+    passed: v.boolean(),
     overallScore: v.optional(v.number()),
-    totalTokens: v.optional(v.object({
-      agent: v.number(),
-      judge: v.number(),
-    })),
-    totalDurationMs: v.optional(v.number()),
-    completedAt: v.number(),
+    agentTokens: v.number(),
+    judgeTokens: v.number(),
   },
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId)
     if (!run) return
-    if (run.status === "cancelled") return
+    if (run.status === "cancelled" || run.status === "completed") return
 
-    await ctx.db.patch(args.runId, {
-      status: "completed",
-      overallScore: args.overallScore,
-      totalTokens: args.totalTokens,
-      totalDurationMs: args.totalDurationMs,
-      completedAt: args.completedAt,
-    })
-  },
-})
+    const completedCases = run.completedCases + 1
+    const passedCases = args.passed ? run.passedCases + 1 : run.passedCases
+    const failedCases = args.passed ? run.failedCases : run.failedCases + 1
 
-export const failRun = internalMutation({
-  args: {
-    runId: v.id("evalRuns"),
-    completedAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId)
-    if (!run) return
-    if (run.status === "completed" || run.status === "cancelled") return
-    await ctx.db.patch(args.runId, {
-      status: "failed",
-      completedAt: args.completedAt,
-    })
+    const prevAgent = run.totalTokens?.agent ?? 0
+    const prevJudge = run.totalTokens?.judge ?? 0
+    const totalTokens = {
+      agent: prevAgent + args.agentTokens,
+      judge: prevJudge + args.judgeTokens,
+    }
+
+    const updates: Record<string, unknown> = {
+      completedCases,
+      passedCases,
+      failedCases,
+      totalTokens,
+    }
+
+    if (completedCases === run.totalCases) {
+      const results = await ctx.db
+        .query("evalResults")
+        .withIndex("by_run", (q) => q.eq("runId", args.runId))
+        .collect()
+
+      const scores = results
+        .map((r) => r.overallScore)
+        .filter((s): s is number => s !== undefined)
+
+      const overallScore = scores.length > 0
+        ? scores.reduce((sum, s) => sum + s, 0) / scores.length
+        : completedCases > 0
+          ? (passedCases / completedCases) * 5
+          : undefined
+
+      updates.status = "completed"
+      updates.overallScore = overallScore
+      updates.totalDurationMs = Date.now() - (run.startedAt ?? run.createdAt)
+      updates.completedAt = Date.now()
+    }
+
+    await ctx.db.patch(args.runId, updates)
   },
 })
 
@@ -599,13 +589,10 @@ export const getSuiteInternal = internalQuery({
   },
 })
 
-export const listCasesInternal = internalQuery({
-  args: { suiteId: v.id("evalSuites") },
+export const getCaseInternal = internalQuery({
+  args: { caseId: v.id("evalCases") },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("evalCases")
-      .withIndex("by_suite_order", (q) => q.eq("suiteId", args.suiteId))
-      .collect()
+    return await ctx.db.get(args.caseId)
   },
 })
 
