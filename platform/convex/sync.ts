@@ -224,3 +224,167 @@ export const getSyncState = query({
     }
   },
 })
+
+export const getPullState = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    environment: environmentValidator,
+    includePackManaged: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
+    const includePackManaged = args.includePackManaged ?? false
+
+    const installedPacks = await ctx.db
+      .query("installedPacks")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const packEntityTypeIds = new Set(
+      installedPacks.flatMap((p) => p.entityTypeIds.map((id) => id.toString()))
+    )
+    const packRoleIds = new Set(
+      installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
+    )
+
+    const entityTypes = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const filteredEntityTypes = entityTypes
+      .filter((et) => includePackManaged || !packEntityTypeIds.has(et._id.toString()))
+      .map((et) => ({
+        name: et.name,
+        slug: et.slug,
+        schema: et.schema,
+        searchFields: et.searchFields,
+        displayConfig: et.displayConfig,
+        isPackManaged: packEntityTypeIds.has(et._id.toString()),
+      }))
+
+    const roles = await ctx.db
+      .query("roles")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const nonSystemRoles = roles.filter((r) => !r.isSystem)
+
+    const filteredRoles = await Promise.all(
+      nonSystemRoles
+        .filter((r) => includePackManaged || !packRoleIds.has(r._id.toString()))
+        .map(async (role) => {
+          const policies = await ctx.db
+            .query("policies")
+            .withIndex("by_role", (q) => q.eq("roleId", role._id))
+            .collect()
+
+          const grouped = new Map<string, { resource: string; actions: string[]; effect: string; priority: number }>()
+
+          for (const policy of policies) {
+            const key = `${policy.resource}:${policy.effect}:${policy.priority}`
+            const existing = grouped.get(key)
+            if (existing) {
+              existing.actions.push(policy.action)
+            } else {
+              grouped.set(key, {
+                resource: policy.resource,
+                actions: [policy.action],
+                effect: policy.effect,
+                priority: policy.priority,
+              })
+            }
+          }
+
+          const scopeRulesSeen = new Set<string>()
+          const scopeRules: Array<{ entityType: string; field: string; operator: string; value: string }> = []
+          const fieldMasksSeen = new Set<string>()
+          const fieldMasks: Array<{ entityType: string; fieldPath: string; maskType: string; maskConfig?: Record<string, unknown> }> = []
+
+          const seenResources = new Set<string>()
+          for (const policy of policies) {
+            if (seenResources.has(policy.resource)) continue
+            seenResources.add(policy.resource)
+
+            const policyScopeRules = await ctx.db
+              .query("scopeRules")
+              .withIndex("by_policy", (q) => q.eq("policyId", policy._id))
+              .collect()
+
+            for (const sr of policyScopeRules) {
+              const srKey = `${policy.resource}:${sr.field}:${sr.operator}:${sr.value}`
+              if (!scopeRulesSeen.has(srKey)) {
+                scopeRulesSeen.add(srKey)
+                scopeRules.push({
+                  entityType: policy.resource,
+                  field: sr.field,
+                  operator: sr.operator,
+                  value: sr.value,
+                })
+              }
+            }
+
+            const policyFieldMasks = await ctx.db
+              .query("fieldMasks")
+              .withIndex("by_policy", (q) => q.eq("policyId", policy._id))
+              .collect()
+
+            for (const fm of policyFieldMasks) {
+              const fmKey = `${policy.resource}:${fm.fieldPath}:${fm.maskType}`
+              if (!fieldMasksSeen.has(fmKey)) {
+                fieldMasksSeen.add(fmKey)
+                fieldMasks.push({
+                  entityType: policy.resource,
+                  fieldPath: fm.fieldPath,
+                  maskType: fm.maskType,
+                  maskConfig: fm.maskConfig as Record<string, unknown> | undefined,
+                })
+              }
+            }
+          }
+
+          return {
+            name: role.name,
+            description: role.description,
+            isPackManaged: packRoleIds.has(role._id.toString()),
+            policies: Array.from(grouped.values()),
+            scopeRules,
+            fieldMasks,
+          }
+        })
+    )
+
+    const agents = await ctx.db
+      .query("agents")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .collect()
+
+    const activeAgents = agents.filter((a) => a.status !== "deleted")
+
+    const agentStates = await Promise.all(
+      activeAgents.map(async (agent) => {
+        const config = await ctx.db
+          .query("agentConfigs")
+          .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", args.environment))
+          .first()
+
+        return {
+          name: config?.name ?? agent.name,
+          slug: agent.slug,
+          description: agent.description,
+          version: config?.version ?? "0.1.0",
+          systemPrompt: config?.systemPrompt ?? "",
+          model: config?.model ?? { provider: "anthropic", name: "claude-haiku-4-5" },
+          tools: config?.tools ?? [],
+          isPackManaged: false,
+        }
+      })
+    )
+
+    return {
+      agents: agentStates,
+      entityTypes: filteredEntityTypes,
+      roles: filteredRoles,
+    }
+  },
+})
