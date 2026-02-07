@@ -9,6 +9,7 @@ import {
   Cpu,
   Wrench,
   MessageSquare,
+  FlaskConical,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -23,6 +24,7 @@ const navItems = [
   { icon: Cpu, label: "Config", href: "/config" },
   { icon: Wrench, label: "Tools", href: "/functions" },
   { icon: ScrollText, label: "Logs", href: "/logs" },
+  { icon: FlaskConical, label: "Evals", href: "/evals" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
 
