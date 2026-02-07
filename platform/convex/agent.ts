@@ -480,7 +480,7 @@ export const chatBySlug = internalAction({
 export const chatAuthenticated = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
     agentId: v.id("agents"),
     message: v.string(),
     threadId: v.optional(v.id("threads")),
@@ -526,10 +526,13 @@ export const chatAuthenticated = internalAction({
 
     const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
 
+    const actorType = args.userId ? "user" : "system"
+    const actorId = args.userId ? (args.userId as unknown as string) : `agent:${args.agentId}`
+
     const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
       organizationId: args.organizationId,
-      actorType: "user",
-      actorId: args.userId as unknown as string,
+      actorType,
+      actorId,
       environment,
     })
 
@@ -558,7 +561,7 @@ export const chatAuthenticated = internalAction({
     const templateContext: TemplateContext = {
       organizationId: args.organizationId,
       organizationName: organization?.name ?? "Unknown Organization",
-      userId: args.userId as unknown as Id<"users">,
+      userId: args.userId,
       threadId,
       agentId: args.agentId,
       actor,
