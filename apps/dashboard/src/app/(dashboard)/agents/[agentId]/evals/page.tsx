@@ -130,7 +130,7 @@ export default function EvalsPage({ params }: EvalsPageProps) {
         </div>
       ) : (
         <div className="space-y-2">
-          {suites.map((suite) => (
+          {suites.map((suite: any) => (
             <SuiteRow key={suite._id} suite={suite} agentId={agentId} />
           ))}
         </div>

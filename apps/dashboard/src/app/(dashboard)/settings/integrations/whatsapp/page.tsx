@@ -243,8 +243,8 @@ export default function WhatsAppSettingsPage() {
               <SelectContent>
                 <SelectItem value="none">No agent (messages stored only)</SelectItem>
                 {(agents ?? [])
-                  .filter((a) => a.status === "active")
-                  .map((agent) => (
+                  .filter((a: any) => a.status === "active")
+                  .map((agent: any) => (
                     <SelectItem key={agent._id} value={agent._id}>
                       {agent.name}
                     </SelectItem>

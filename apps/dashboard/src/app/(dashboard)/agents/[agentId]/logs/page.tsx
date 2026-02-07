@@ -148,7 +148,7 @@ function ExecutionDetails({ execution }: { execution: Doc<"executions"> & { inpu
             )}
             {execution.toolCalls && execution.toolCalls.length > 0 && (
               <div className="pl-4 border-l-2 border-amber-500/30 space-y-2">
-                {execution.toolCalls.slice(0, 5).map((tc, i) => (
+                {execution.toolCalls.slice(0, 5).map((tc: any, i: number) => (
                   <ToolCallBubble key={i} toolCall={tc} />
                 ))}
                 {execution.toolCalls.length > 5 && (

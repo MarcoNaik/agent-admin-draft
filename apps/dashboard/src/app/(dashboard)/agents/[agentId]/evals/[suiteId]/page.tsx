@@ -170,7 +170,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
           </div>
         ) : (
           <div className="space-y-1.5">
-            {cases.map((c, idx) => (
+            {cases.map((c: any, idx: number) => (
               <div
                 key={c._id}
                 className="flex items-center justify-between rounded-md border bg-card px-4 py-3"
@@ -186,7 +186,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                   </div>
                   {c.tags && c.tags.length > 0 && (
                     <div className="flex gap-1 ml-2">
-                      {c.tags.map((tag) => (
+                      {c.tags.map((tag: string) => (
                         <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                       ))}
                     </div>
@@ -231,7 +231,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((run) => {
+                {runs.map((run: any) => {
                   const config = statusConfig[run.status as keyof typeof statusConfig] || statusConfig.pending
                   const StatusIcon = config.icon
                   const passRate = run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"

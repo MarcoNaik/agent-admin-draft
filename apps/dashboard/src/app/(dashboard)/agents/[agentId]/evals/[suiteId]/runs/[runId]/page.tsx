@@ -207,7 +207,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
     )
   }
 
-  const caseMap = new Map(cases.map((c) => [c._id, c]))
+  const caseMap = new Map<string, any>(cases.map((c: any) => [c._id, c]))
   const isRunning = run.status === "pending" || run.status === "running"
 
   return (
@@ -287,7 +287,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
       </div>
 
       <div className="space-y-2">
-        {results.map((result) => {
+        {results.map((result: any) => {
           const evalCase = caseMap.get(result.caseId)
           return (
             <CaseResultRow
