@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { MessageSquare, CreditCard, Video, Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { useIntegrationConfigs } from "@/hooks/use-convex-data"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { MessageSquare, CreditCard, Video, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useIntegrationConfigs, useWhatsAppConnection } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 interface IntegrationCardProps {
@@ -57,8 +58,16 @@ function IntegrationCard({ name, description, href, icon, status }: IntegrationC
 
 export default function IntegrationsPage() {
   const configs = useIntegrationConfigs()
+  const { environment } = useEnvironment()
+  const whatsappConnection = useWhatsAppConnection(environment)
 
   const getStatus = (provider: string): "active" | "inactive" | "error" | null => {
+    if (provider === "whatsapp") {
+      if (whatsappConnection === undefined) return null
+      if (whatsappConnection?.status === "connected") return "active"
+      if (whatsappConnection?.status === "connecting" || whatsappConnection?.status === "qr_ready") return "inactive"
+      return "inactive"
+    }
     if (!configs) return null
     const config = configs.find((c: { provider: string }) => c.provider === provider)
     return config?.status || "inactive"
@@ -89,8 +98,8 @@ export default function IntegrationsPage() {
         <h2 className="text-lg font-medium text-content-primary mb-4">Communication</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <IntegrationCard
-            name="WhatsApp Business"
-            description="Send notifications and reminders via WhatsApp"
+            name="WhatsApp"
+            description="Connect your WhatsApp account for AI-powered conversations"
             href="/settings/integrations/whatsapp"
             icon={<MessageSquare className="h-5 w-5 text-primary" />}
             status={getStatus("whatsapp")}
