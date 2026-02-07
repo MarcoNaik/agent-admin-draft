@@ -4,6 +4,7 @@ import { initCommand } from './commands/init'
 import { devCommand } from './commands/dev'
 import { buildCommand } from './commands/build'
 import { testCommand } from './commands/test'
+import { evalCommand } from './commands/eval'
 import { deployCommand } from './commands/deploy'
 import { validateCommand } from './commands/validate'
 import { logsCommand } from './commands/logs'
@@ -61,6 +62,7 @@ program.addCommand(whoamiCommand)
 program.addCommand(devCommand)
 program.addCommand(buildCommand)
 program.addCommand(testCommand)
+program.addCommand(evalCommand)
 program.addCommand(deployCommand)
 program.addCommand(validateCommand)
 program.addCommand(logsCommand)
