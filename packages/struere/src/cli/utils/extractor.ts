@@ -65,6 +65,37 @@ export interface SyncPayload {
       maskConfig?: Record<string, unknown>
     }>
   }>
+  evalSuites?: Array<{
+    name: string
+    slug: string
+    agentSlug: string
+    description?: string
+    tags?: string[]
+    judgeModel?: {
+      provider: string
+      name: string
+    }
+    cases: Array<{
+      name: string
+      description?: string
+      tags?: string[]
+      turns: Array<{
+        userMessage: string
+        assertions?: Array<{
+          type: 'llm_judge' | 'contains' | 'matches' | 'tool_called' | 'tool_not_called'
+          criteria?: string
+          value?: string
+          weight?: number
+        }>
+      }>
+      finalAssertions?: Array<{
+        type: 'llm_judge' | 'contains' | 'matches' | 'tool_called' | 'tool_not_called'
+        criteria?: string
+        value?: string
+        weight?: number
+      }>
+    }>
+  }>
 }
 
 export function extractSyncPayload(resources: LoadedResources): SyncPayload {
@@ -106,7 +137,30 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
     })),
   }))
 
-  return { agents, entityTypes, roles }
+  const evalSuites = resources.evalSuites.length > 0
+    ? resources.evalSuites.map((suite) => ({
+        name: suite.suite,
+        slug: suite.slug,
+        agentSlug: suite.agent,
+        description: suite.description,
+        tags: suite.tags,
+        judgeModel: suite.judgeModel
+          ? { provider: 'anthropic' as const, name: suite.judgeModel }
+          : undefined,
+        cases: suite.cases.map((c) => ({
+          name: c.name,
+          description: c.description,
+          tags: c.tags,
+          turns: c.turns.map((t) => ({
+            userMessage: t.user,
+            assertions: t.assertions,
+          })),
+          finalAssertions: c.finalAssertions,
+        })),
+      }))
+    : undefined
+
+  return { agents, entityTypes, roles, evalSuites }
 }
 
 function extractAgentPayload(
@@ -138,7 +192,10 @@ function extractAgentPayload(
 
     const customTool = customToolsMap.get(toolName)
     if (!customTool) {
-      throw new Error(`Tool "${toolName}" not found in custom tools`)
+      const available = customToolsMap.size > 0
+        ? `Available custom tools: ${Array.from(customToolsMap.keys()).join(', ')}`
+        : 'No custom tools were loaded from tools/index.ts'
+      throw new Error(`Agent "${agent.name}" references tool "${toolName}" but it was not found. ${available}`)
     }
 
     return {
