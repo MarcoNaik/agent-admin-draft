@@ -82,7 +82,15 @@ export const deployCommand = new Command('deploy')
     let resources
     try {
       resources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles`)
+      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites`)
+
+      for (const err of resources.errors) {
+        console.log(chalk.red('  ✖'), err)
+      }
+
+      if (resources.errors.length > 0) {
+        process.exit(1)
+      }
     } catch (error) {
       spinner.fail('Failed to load resources')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
@@ -115,6 +123,13 @@ export const deployCommand = new Command('deploy')
       console.log('Roles:')
       for (const role of resources.roles) {
         console.log(chalk.gray('  -'), chalk.cyan(role.name))
+      }
+      if (resources.evalSuites.length > 0) {
+        console.log()
+        console.log('Eval suites:')
+        for (const suite of resources.evalSuites) {
+          console.log(chalk.gray('  -'), chalk.cyan(suite.suite), chalk.gray(`(${suite.cases.length} cases)`))
+        }
       }
       console.log()
       return
