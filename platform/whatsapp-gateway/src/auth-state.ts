@@ -1,5 +1,7 @@
-import baileys, { type AuthenticationCreds, type AuthenticationState, type SignalDataTypeMap } from "@whiskeysockets/baileys"
-const { proto, initAuthCreds, BufferJSON } = baileys as any
+import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from "@whiskeysockets/baileys"
+import { createRequire } from "module"
+const require = createRequire(import.meta.url)
+const { proto, initAuthCreds, BufferJSON } = require("@whiskeysockets/baileys")
 import Database from "better-sqlite3"
 import { mkdirSync, existsSync } from "fs"
 import pino from "pino"

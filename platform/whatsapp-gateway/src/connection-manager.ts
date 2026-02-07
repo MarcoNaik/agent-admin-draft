@@ -1,5 +1,7 @@
-import baileys, { type BaileysEventMap, type WASocket, type ConnectionState } from "@whiskeysockets/baileys"
-const { makeWASocket, DisconnectReason, fetchLatestBaileysVersion, jidNormalizedUser, makeCacheableSignalKeyStore } = baileys as any
+import type { BaileysEventMap, WASocket, ConnectionState } from "@whiskeysockets/baileys"
+import { createRequire } from "module"
+const require = createRequire(import.meta.url)
+const { makeWASocket, DisconnectReason, fetchLatestBaileysVersion, jidNormalizedUser, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys")
 import { Boom } from "@hapi/boom"
 import pino from "pino"
 import { makeSQLiteAuthState, hasAuthState, DATA_DIR } from "./auth-state.js"
