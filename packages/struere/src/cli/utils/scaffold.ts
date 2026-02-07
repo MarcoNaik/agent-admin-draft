@@ -20,6 +20,8 @@ import {
   getEntityTypeTs,
   getRoleTs,
   getIndexTs,
+  getExampleEvalYaml,
+  getEvalYamlTemplate,
 } from '../templates'
 
 export interface ScaffoldOptions {
@@ -173,6 +175,7 @@ export function scaffoldProjectV2(cwd: string, options: ScaffoldOptionsV2): Scaf
     'entity-types',
     'roles',
     'tools',
+    'evals',
   ]
 
   for (const dir of directories) {
@@ -194,6 +197,7 @@ export function scaffoldProjectV2(cwd: string, options: ScaffoldOptionsV2): Scaf
     'entity-types/index.ts': getIndexTs('entity-types'),
     'roles/index.ts': getIndexTs('roles'),
     'tools/index.ts': getToolsIndexTs(),
+    'evals/basic-agent-tests.eval.yaml': getExampleEvalYaml('my-agent'),
   }
 
   for (const [relativePath, content] of Object.entries(files)) {
@@ -276,6 +280,35 @@ export function scaffoldRole(cwd: string, name: string): ScaffoldResult {
 
   writeFileSync(filePath, getRoleTs(name))
   result.createdFiles.push(`roles/${fileName}`)
+
+  return result
+}
+
+export function scaffoldEval(cwd: string, name: string, slug: string, agentSlug: string = 'my-agent'): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const evalsDir = join(cwd, 'evals')
+  if (!existsSync(evalsDir)) {
+    mkdirSync(evalsDir, { recursive: true })
+  }
+
+  const fileName = `${slug}.eval.yaml`
+  const filePath = join(evalsDir, fileName)
+
+  if (existsSync(filePath)) {
+    return result
+  }
+
+  const displayName = name
+    .split('-')
+    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+
+  writeFileSync(filePath, getEvalYamlTemplate(displayName, slug, agentSlug))
+  result.createdFiles.push(`evals/${fileName}`)
 
   return result
 }
