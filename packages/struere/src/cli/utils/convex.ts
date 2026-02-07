@@ -622,6 +622,84 @@ export async function getSyncState(organizationId?: string, environment?: 'devel
   return { error: `Unexpected response: ${JSON.stringify(result)}` }
 }
 
+export interface PullStateAgent {
+  name: string
+  slug: string
+  description?: string
+  version: string
+  systemPrompt: string
+  model: { provider: string; name: string; temperature?: number; maxTokens?: number }
+  tools: Array<{ name: string; description: string; parameters: unknown; handlerCode?: string; isBuiltin: boolean }>
+  isPackManaged: boolean
+}
+
+export interface PullStateEntityType {
+  name: string
+  slug: string
+  schema: unknown
+  searchFields?: string[]
+  displayConfig?: unknown
+  isPackManaged: boolean
+}
+
+export interface PullStateRole {
+  name: string
+  description?: string
+  isPackManaged: boolean
+  policies: Array<{ resource: string; actions: string[]; effect: string; priority: number }>
+  scopeRules: Array<{ entityType: string; field: string; operator: string; value: string }>
+  fieldMasks: Array<{ entityType: string; fieldPath: string; maskType: string; maskConfig?: Record<string, unknown> }>
+}
+
+export interface PullState {
+  agents: PullStateAgent[]
+  entityTypes: PullStateEntityType[]
+  roles: PullStateRole[]
+}
+
+export async function getPullState(
+  organizationId?: string,
+  environment: 'development' | 'production' = 'development',
+  includePackManaged: boolean = false
+): Promise<{ state?: PullState; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'sync:getPullState',
+      args: { organizationId, environment, includePackManaged },
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { error }
+  }
+
+  const result = await response.json() as { status: string; value?: PullState; errorMessage?: string }
+
+  if (result.status === 'success') {
+    return { state: result.value }
+  }
+
+  if (result.status === 'error') {
+    return { error: result.errorMessage || 'Unknown error from Convex' }
+  }
+
+  return { error: `Unexpected response: ${JSON.stringify(result)}` }
+}
+
 async function resolveAgentId(agentSlug: string): Promise<string | undefined> {
   const { agents } = await listAgents()
   const agent = agents.find((a) => a.slug === agentSlug || a._id === agentSlug)
