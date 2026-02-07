@@ -1,99 +1,111 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle, XCircle, Loader2, MessageSquare, AlertTriangle } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
+import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, QrCode, Smartphone } from "lucide-react"
 import {
-  useIntegrationConfig,
-  useUpdateIntegrationConfig,
-  useTestIntegrationConnection,
-  useDeleteIntegrationConfig,
+  useWhatsAppConnection,
+  useConnectWhatsApp,
+  useDisconnectWhatsApp,
+  useSetWhatsAppAgent,
+  useAgents,
 } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+function StatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "connected":
+      return (
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <Wifi className="h-3 w-3" />
+          Connected
+        </Badge>
+      )
+    case "qr_ready":
+      return (
+        <Badge className="flex items-center gap-1 bg-amber-500/20 text-amber-500 border-amber-500/30">
+          <QrCode className="h-3 w-3" />
+          Scan QR Code
+        </Badge>
+      )
+    case "connecting":
+      return (
+        <Badge className="flex items-center gap-1 bg-blue-500/20 text-blue-500 border-blue-500/30">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Connecting
+        </Badge>
+      )
+    default:
+      return (
+        <Badge variant="destructive" className="flex items-center gap-1">
+          <WifiOff className="h-3 w-3" />
+          Disconnected
+        </Badge>
+      )
+  }
+}
 
 export default function WhatsAppSettingsPage() {
   const router = useRouter()
-  const config = useIntegrationConfig("whatsapp")
-  const updateConfig = useUpdateIntegrationConfig()
-  const testConnection = useTestIntegrationConnection()
-  const deleteConfig = useDeleteIntegrationConfig()
+  const { environment } = useEnvironment()
+  const connection = useWhatsAppConnection(environment)
+  const agents = useAgents()
+  const connectWhatsApp = useConnectWhatsApp()
+  const disconnectWhatsApp = useDisconnectWhatsApp()
+  const setWhatsAppAgent = useSetWhatsAppAgent()
 
-  const [form, setForm] = useState({
-    phoneNumberId: "",
-    accessToken: "",
-    businessAccountId: "",
-  })
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
 
-  useEffect(() => {
-    if (config) {
-      setForm({
-        phoneNumberId: config.config?.phoneNumberId || "",
-        accessToken: "",
-        businessAccountId: config.config?.businessAccountId || "",
-      })
-    }
-  }, [config])
-
-  const handleSave = async () => {
-    setSaving(true)
-    setTestResult(null)
+  const handleConnect = async () => {
+    setConnecting(true)
     try {
-      const configData: Record<string, string> = {
-        phoneNumberId: form.phoneNumberId,
-        businessAccountId: form.businessAccountId,
-      }
-      if (form.accessToken) {
-        configData.accessToken = form.accessToken
-      }
-      await updateConfig({
-        provider: "whatsapp",
-        config: configData,
-      })
+      await connectWhatsApp({ environment })
     } catch (err) {
-      console.error("Failed to save:", err)
+      console.error("Failed to connect:", err)
     } finally {
-      setSaving(false)
+      setConnecting(false)
     }
   }
 
-  const handleTest = async () => {
-    setTesting(true)
-    setTestResult(null)
+  const handleDisconnect = async () => {
+    if (!confirm("Are you sure you want to disconnect WhatsApp?")) return
+    setDisconnecting(true)
     try {
-      const result = await testConnection({ provider: "whatsapp" })
-      setTestResult(result)
+      await disconnectWhatsApp({ environment })
     } catch (err) {
-      setTestResult({
-        success: false,
-        message: err instanceof Error ? err.message : "Connection test failed",
+      console.error("Failed to disconnect:", err)
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  const handleAgentChange = async (value: string) => {
+    try {
+      await setWhatsAppAgent({
+        agentId: value === "none" ? undefined : (value as any),
+        environment,
       })
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to remove this integration?")) return
-    setDeleting(true)
-    try {
-      await deleteConfig({ provider: "whatsapp" })
-      router.push("/settings/integrations")
     } catch (err) {
-      console.error("Failed to delete:", err)
-    } finally {
-      setDeleting(false)
+      console.error("Failed to set agent:", err)
     }
   }
 
-  if (config === undefined) {
+  const status = connection?.status ?? "disconnected"
+
+  if (connection === undefined) {
     return (
       <div className="mx-auto max-w-3xl p-6">
         <div className="flex items-center justify-center py-12">
@@ -120,150 +132,131 @@ export default function WhatsAppSettingsPage() {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-content-primary">WhatsApp Business</h1>
-            {config?.status === "active" && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Connected
-              </Badge>
-            )}
-            {config?.status === "error" && (
-              <Badge variant="destructive" className="flex items-center gap-1">
-                <XCircle className="h-3 w-3" />
-                Error
-              </Badge>
-            )}
+            <h1 className="text-xl font-semibold text-content-primary">WhatsApp</h1>
+            <StatusBadge status={status} />
           </div>
           <p className="text-content-secondary mt-1">
-            Connect your WhatsApp Business account to send notifications
+            Connect your WhatsApp account to enable AI-powered conversations
           </p>
         </div>
       </div>
 
       <Card className="mb-6 bg-background-secondary">
         <CardHeader>
-          <CardTitle className="text-base text-content-primary">Configuration</CardTitle>
+          <CardTitle className="text-base text-content-primary">Connection</CardTitle>
           <CardDescription className="text-content-secondary">
-            Enter your WhatsApp Business API credentials
+            {status === "connected"
+              ? "Your WhatsApp account is connected and ready to receive messages"
+              : "Scan the QR code with your WhatsApp to connect"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumberId" className="text-content-primary">Phone Number ID</Label>
-            <Input
-              id="phoneNumberId"
-              value={form.phoneNumberId}
-              onChange={(e) => setForm({ ...form, phoneNumberId: e.target.value })}
-              placeholder="Enter your WhatsApp Business Phone Number ID"
-              className="bg-background-tertiary"
-            />
-            <p className="text-xs text-content-tertiary">
-              Found in your WhatsApp Business Platform dashboard
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="accessToken" className="text-content-primary">Access Token</Label>
-            <Input
-              id="accessToken"
-              type="password"
-              value={form.accessToken}
-              onChange={(e) => setForm({ ...form, accessToken: e.target.value })}
-              placeholder={config ? "Enter new token to update (leave blank to keep existing)" : "Enter your access token"}
-              className="bg-background-tertiary"
-            />
-            <p className="text-xs text-content-tertiary">
-              Your permanent access token from Meta for Developers
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="businessAccountId" className="text-content-primary">Business Account ID</Label>
-            <Input
-              id="businessAccountId"
-              value={form.businessAccountId}
-              onChange={(e) => setForm({ ...form, businessAccountId: e.target.value })}
-              placeholder="Enter your WhatsApp Business Account ID"
-              className="bg-background-tertiary"
-            />
-          </div>
-
-          <div className="flex gap-2 pt-4">
-            <Button onClick={handleSave} disabled={saving || !form.phoneNumberId}>
-              {saving ? "Saving..." : "Save Configuration"}
-            </Button>
-            <Button variant="outline" onClick={handleTest} disabled={testing || !config}>
-              {testing ? "Testing..." : "Test Connection"}
-            </Button>
-          </div>
-
-          {testResult && (
-            <div
-              className={`flex items-center gap-2 p-3 rounded-lg ${
-                testResult.success
-                  ? "bg-green-500/10 text-green-600"
-                  : "bg-red-500/10 text-red-600"
-              }`}
-            >
-              {testResult.success ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <XCircle className="h-4 w-4" />
-              )}
-              <span className="text-sm">{testResult.message}</span>
+          {status === "qr_ready" && connection?.qrCode && (
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="rounded-xl bg-white p-4">
+                <QRCodeSVG
+                  value={connection.qrCode}
+                  size={256}
+                  level="M"
+                />
+              </div>
+              <p className="text-sm text-content-secondary text-center max-w-sm">
+                Open WhatsApp on your phone, go to Settings → Linked Devices → Link a Device, then scan this QR code
+              </p>
             </div>
           )}
+
+          {status === "connecting" && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <p className="text-sm text-content-secondary">Connecting to WhatsApp...</p>
+            </div>
+          )}
+
+          {status === "connected" && (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10">
+              <Smartphone className="h-5 w-5 text-green-500" />
+              <div>
+                <p className="text-sm font-medium text-content-primary">
+                  {connection?.phoneNumber ? `+${connection.phoneNumber}` : "Connected"}
+                </p>
+                <p className="text-xs text-content-tertiary">
+                  {connection?.lastConnectedAt
+                    ? `Connected since ${new Date(connection.lastConnectedAt).toLocaleString()}`
+                    : "Active connection"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {status === "disconnected" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <WifiOff className="h-8 w-8 text-content-tertiary" />
+              <p className="text-sm text-content-secondary">No WhatsApp account connected</p>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            {status === "disconnected" && (
+              <Button onClick={handleConnect} disabled={connecting}>
+                {connecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect WhatsApp"
+                )}
+              </Button>
+            )}
+            {status === "connected" && (
+              <Button variant="destructive" onClick={handleDisconnect} disabled={disconnecting}>
+                {disconnecting ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            )}
+            {status === "qr_ready" && (
+              <Button variant="outline" onClick={handleConnect} disabled={connecting}>
+                Refresh QR Code
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       <Card className="mb-6 bg-background-secondary">
         <CardHeader>
-          <CardTitle className="text-base text-content-primary">Webhook Configuration</CardTitle>
+          <CardTitle className="text-base text-content-primary">Agent Configuration</CardTitle>
           <CardDescription className="text-content-secondary">
-            Configure webhook settings in your Meta for Developers dashboard
+            Select which AI agent handles incoming WhatsApp messages
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-content-primary">Webhook URL</Label>
-            <div className="flex gap-2">
-              <Input
-                value="https://your-domain.com/webhook/whatsapp"
-                readOnly
-                className="bg-background-tertiary font-mono text-sm"
-              />
-              <Button
-                variant="outline"
-                onClick={() => navigator.clipboard.writeText("https://your-domain.com/webhook/whatsapp")}
-              >
-                Copy
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10">
-            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-            <p className="text-sm text-amber-600">
-              Make sure to configure the webhook URL in your Meta for Developers dashboard and subscribe to the required webhook fields.
+            <Label className="text-content-primary">Responding Agent</Label>
+            <Select
+              value={connection?.agentId ?? "none"}
+              onValueChange={handleAgentChange}
+            >
+              <SelectTrigger className="bg-background-tertiary">
+                <SelectValue placeholder="Select an agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No agent (messages stored only)</SelectItem>
+                {(agents ?? [])
+                  .filter((a) => a.status === "active")
+                  .map((agent) => (
+                    <SelectItem key={agent._id} value={agent._id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-content-tertiary">
+              When an agent is selected, incoming WhatsApp messages will automatically be routed to the agent for a response
             </p>
           </div>
         </CardContent>
       </Card>
-
-      {config && (
-        <Card className="border-destructive bg-background-secondary">
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription className="text-content-secondary">
-              Remove this integration from your organization
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Removing..." : "Remove Integration"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }
