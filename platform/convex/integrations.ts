@@ -1,15 +1,7 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery } from "./_generated/server"
-import { Id } from "./_generated/dataModel"
+import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { requireAuth } from "./lib/auth"
-
-type Provider = "whatsapp" | "flow" | "google" | "zoom"
-
-interface WhatsAppConfig {
-  phoneNumberId: string
-  accessToken: string
-  businessAccountId: string
-}
 
 interface FlowConfig {
   apiUrl: string
@@ -117,40 +109,6 @@ export const getConfigInternal = internalQuery({
   },
 })
 
-export const getOrgByWhatsAppPhone = internalQuery({
-  args: {
-    phoneNumberId: v.string(),
-  },
-  returns: v.union(
-    v.object({
-      _id: v.id("organizations"),
-      _creationTime: v.number(),
-      name: v.string(),
-      slug: v.string(),
-      clerkOrgId: v.optional(v.string()),
-      plan: v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const whatsappConfigs = await ctx.db
-      .query("integrationConfigs")
-      .withIndex("by_provider", (q) => q.eq("provider", "whatsapp"))
-      .collect()
-
-    for (const config of whatsappConfigs) {
-      const configData = config.config as WhatsAppConfig
-      if (configData.phoneNumberId === args.phoneNumberId) {
-        return await ctx.db.get(config.organizationId)
-      }
-    }
-
-    return null
-  },
-})
-
 export const listFlowConfigs = internalQuery({
   args: {},
   returns: v.array(
@@ -215,7 +173,41 @@ export const updateConfig = mutation({
   },
 })
 
-export const testConnection = mutation({
+export const getConfigForTest = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("provider", args.provider)
+      )
+      .first()
+  },
+})
+
+export const patchConfigStatus = internalMutation({
+  args: {
+    configId: v.id("integrationConfigs"),
+    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
+    lastVerifiedAt: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const patch: Record<string, unknown> = {
+      status: args.status,
+      updatedAt: Date.now(),
+    }
+    if (args.lastVerifiedAt !== undefined) patch.lastVerifiedAt = args.lastVerifiedAt
+    await ctx.db.patch(args.configId, patch)
+    return null
+  },
+})
+
+export const testConnection = action({
   args: {
     provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
   },
@@ -224,14 +216,15 @@ export const testConnection = mutation({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    if (!auth) {
+      throw new Error("Not authenticated")
+    }
 
-    const config = await ctx.db
-      .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
-      )
-      .first()
+    const config = await ctx.runQuery(internal.integrations.getConfigForTest, {
+      organizationId: auth.organizationId,
+      provider: args.provider,
+    })
 
     if (!config) {
       return { success: false, message: "Integration not configured" }
@@ -241,35 +234,30 @@ export const testConnection = mutation({
 
     try {
       if (args.provider === "whatsapp") {
-        const whatsappConfig = config.config as WhatsAppConfig
-        if (!whatsappConfig.phoneNumberId || !whatsappConfig.accessToken) {
-          return { success: false, message: "Missing required WhatsApp configuration" }
+        const gatewayUrl = process.env.WHATSAPP_GATEWAY_URL
+        if (!gatewayUrl) {
+          return { success: false, message: "WhatsApp Gateway URL not configured" }
         }
 
-        const response = await fetch(
-          `https://graph.facebook.com/v18.0/${whatsappConfig.phoneNumberId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${whatsappConfig.accessToken}`,
-            },
-          }
-        )
+        const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
+        const response = await fetch(`${gatewayUrl}/health`, {
+          headers: gatewaySecret ? { "X-Gateway-Secret": gatewaySecret } : {},
+        })
 
         if (!response.ok) {
-          const error = await response.text()
-          await ctx.db.patch(config._id, {
+          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            configId: config._id,
             status: "error",
-            updatedAt: now,
           })
-          return { success: false, message: `WhatsApp API error: ${error}` }
+          return { success: false, message: "WhatsApp Gateway is not reachable" }
         }
 
-        await ctx.db.patch(config._id, {
+        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          configId: config._id,
           status: "active",
           lastVerifiedAt: now,
-          updatedAt: now,
         })
-        return { success: true, message: "WhatsApp connection verified" }
+        return { success: true, message: "WhatsApp Gateway is reachable" }
       }
 
       if (args.provider === "flow") {
@@ -278,10 +266,10 @@ export const testConnection = mutation({
           return { success: false, message: "Missing required Flow configuration" }
         }
 
-        await ctx.db.patch(config._id, {
+        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          configId: config._id,
           status: "active",
           lastVerifiedAt: now,
-          updatedAt: now,
         })
         return { success: true, message: "Flow configuration saved" }
       }
@@ -292,10 +280,10 @@ export const testConnection = mutation({
           return { success: false, message: "Missing required Google configuration" }
         }
 
-        await ctx.db.patch(config._id, {
+        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          configId: config._id,
           status: "active",
           lastVerifiedAt: now,
-          updatedAt: now,
         })
         return { success: true, message: "Google configuration saved" }
       }
@@ -306,10 +294,10 @@ export const testConnection = mutation({
           return { success: false, message: "Missing required Zoom configuration" }
         }
 
-        await ctx.db.patch(config._id, {
+        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          configId: config._id,
           status: "active",
           lastVerifiedAt: now,
-          updatedAt: now,
         })
         return { success: true, message: "Zoom configuration saved" }
       }
@@ -317,9 +305,9 @@ export const testConnection = mutation({
       return { success: false, message: "Unknown provider" }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
-      await ctx.db.patch(config._id, {
+      await ctx.runMutation(internal.integrations.patchConfigStatus, {
+        configId: config._id,
         status: "error",
-        updatedAt: now,
       })
       return { success: false, message }
     }
