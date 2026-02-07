@@ -366,62 +366,34 @@ export default defineSchema({
     .index("by_org_env", ["organizationId", "environment"])
     .index("by_org_env_pack", ["organizationId", "environment", "packId"]),
 
-  whatsappConversations: defineTable({
+  whatsappConnections: defineTable({
     organizationId: v.id("organizations"),
-    phoneNumber: v.string(),
-    whatsappId: v.string(),
-    entityType: v.union(v.literal("guardian"), v.literal("teacher"), v.null()),
-    entityId: v.union(v.id("entities"), v.null()),
-    lastInboundAt: v.union(v.number(), v.null()),
-    lastOutboundAt: v.union(v.number(), v.null()),
-    windowExpiresAt: v.union(v.number(), v.null()),
+    status: v.union(
+      v.literal("disconnected"),
+      v.literal("connecting"),
+      v.literal("qr_ready"),
+      v.literal("connected")
+    ),
+    phoneNumber: v.optional(v.string()),
+    qrCode: v.optional(v.string()),
+    agentId: v.optional(v.id("agents")),
+    environment: environmentValidator,
+    lastConnectedAt: v.optional(v.number()),
+    lastDisconnectedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_phone", ["organizationId", "phoneNumber"]),
-
-  whatsappTemplates: defineTable({
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    language: v.string(),
-    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
-    category: v.union(v.literal("UTILITY"), v.literal("MARKETING"), v.literal("AUTHENTICATION")),
-    components: v.object({
-      header: v.optional(v.object({
-        type: v.union(v.literal("text"), v.literal("image"), v.literal("document")),
-        text: v.optional(v.string()),
-      })),
-      body: v.object({
-        text: v.string(),
-        variables: v.array(v.string()),
-      }),
-      footer: v.optional(v.object({
-        text: v.string(),
-      })),
-      buttons: v.optional(v.array(v.object({
-        type: v.union(v.literal("url"), v.literal("quick_reply")),
-        text: v.string(),
-        url: v.optional(v.string()),
-      }))),
-    }),
-    metaTemplateId: v.union(v.string(), v.null()),
-    approvedAt: v.union(v.number(), v.null()),
-    rejectedReason: v.union(v.string(), v.null()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_org_name", ["organizationId", "name"]),
+    .index("by_org_env", ["organizationId", "environment"]),
 
   whatsappMessages: defineTable({
     organizationId: v.id("organizations"),
     direction: v.union(v.literal("inbound"), v.literal("outbound")),
     phoneNumber: v.string(),
-    templateName: v.optional(v.string()),
     messageId: v.string(),
     type: v.optional(v.string()),
     text: v.optional(v.string()),
+    threadId: v.optional(v.id("threads")),
     status: v.union(v.literal("sent"), v.literal("delivered"), v.literal("read"), v.literal("failed"), v.literal("received")),
     createdAt: v.number(),
   })
@@ -442,4 +414,152 @@ export default defineSchema({
     .index("by_org_provider", ["organizationId", "provider"])
     .index("by_provider", ["provider"])
     .index("by_provider_status", ["provider", "status"]),
+
+  evalSuites: defineTable({
+    organizationId: v.id("organizations"),
+    agentId: v.id("agents"),
+    environment: environmentValidator,
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    judgeModel: v.optional(v.object({
+      provider: v.string(),
+      name: v.string(),
+    })),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_agent_env", ["agentId", "environment"])
+    .index("by_org_env_slug", ["organizationId", "environment", "slug"]),
+
+  evalCases: defineTable({
+    organizationId: v.id("organizations"),
+    suiteId: v.id("evalSuites"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    turns: v.array(v.object({
+      userMessage: v.string(),
+      assertions: v.optional(v.array(v.object({
+        type: v.union(
+          v.literal("llm_judge"),
+          v.literal("contains"),
+          v.literal("matches"),
+          v.literal("tool_called"),
+          v.literal("tool_not_called")
+        ),
+        criteria: v.optional(v.string()),
+        value: v.optional(v.string()),
+        weight: v.optional(v.number()),
+      }))),
+    })),
+    finalAssertions: v.optional(v.array(v.object({
+      type: v.union(
+        v.literal("llm_judge"),
+        v.literal("contains"),
+        v.literal("matches"),
+        v.literal("tool_called"),
+        v.literal("tool_not_called")
+      ),
+      criteria: v.optional(v.string()),
+      value: v.optional(v.string()),
+      weight: v.optional(v.number()),
+    }))),
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_suite", ["suiteId"])
+    .index("by_suite_order", ["suiteId", "order"]),
+
+  evalRuns: defineTable({
+    organizationId: v.id("organizations"),
+    suiteId: v.id("evalSuites"),
+    agentId: v.id("agents"),
+    environment: environmentValidator,
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    triggeredBy: v.optional(v.id("users")),
+    triggerSource: v.union(v.literal("dashboard"), v.literal("cli")),
+    agentConfigSnapshot: v.optional(v.any()),
+    totalCases: v.number(),
+    completedCases: v.number(),
+    passedCases: v.number(),
+    failedCases: v.number(),
+    overallScore: v.optional(v.number()),
+    totalTokens: v.optional(v.object({
+      agent: v.number(),
+      judge: v.number(),
+    })),
+    totalDurationMs: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_suite", ["suiteId"])
+    .index("by_agent_env", ["agentId", "environment"])
+    .index("by_org_env", ["organizationId", "environment"]),
+
+  evalResults: defineTable({
+    organizationId: v.id("organizations"),
+    runId: v.id("evalRuns"),
+    caseId: v.id("evalCases"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("passed"),
+      v.literal("failed"),
+      v.literal("error")
+    ),
+    threadId: v.optional(v.id("threads")),
+    turnResults: v.optional(v.array(v.object({
+      turnIndex: v.number(),
+      userMessage: v.string(),
+      assistantResponse: v.string(),
+      toolCalls: v.optional(v.array(v.object({
+        name: v.string(),
+        arguments: v.any(),
+        result: v.optional(v.any()),
+      }))),
+      assertionResults: v.optional(v.array(v.object({
+        type: v.string(),
+        passed: v.boolean(),
+        score: v.optional(v.number()),
+        reason: v.optional(v.string()),
+        criteria: v.optional(v.string()),
+      }))),
+      durationMs: v.number(),
+      agentTokens: v.optional(v.object({
+        input: v.number(),
+        output: v.number(),
+      })),
+    }))),
+    finalAssertionResults: v.optional(v.array(v.object({
+      type: v.string(),
+      passed: v.boolean(),
+      score: v.optional(v.number()),
+      reason: v.optional(v.string()),
+      criteria: v.optional(v.string()),
+    }))),
+    overallPassed: v.boolean(),
+    overallScore: v.optional(v.number()),
+    totalDurationMs: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    judgeTokens: v.optional(v.object({
+      input: v.number(),
+      output: v.number(),
+    })),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_run", ["runId"])
+    .index("by_run_case", ["runId", "caseId"]),
 })
