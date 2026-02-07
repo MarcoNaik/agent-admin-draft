@@ -3,24 +3,6 @@ import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 
-interface WhatsAppWebhookEntry {
-  changes: Array<{
-    field: string
-    value: {
-      metadata: {
-        phone_number_id: string
-      }
-      messages?: Array<{
-        from: string
-        id: string
-        timestamp: string
-        type: string
-        text?: { body: string }
-      }>
-    }
-  }>
-}
-
 const http = httpRouter()
 
 http.route({
@@ -266,61 +248,92 @@ http.route({
 })
 
 http.route({
-  path: "/webhook/whatsapp",
-  method: "GET",
+  path: "/webhook/whatsapp/inbound",
+  method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const url = new URL(request.url)
-    const mode = url.searchParams.get("hub.mode")
-    const token = url.searchParams.get("hub.verify_token")
-    const challenge = url.searchParams.get("hub.challenge")
-
-    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN
-
-    if (mode === "subscribe" && token === verifyToken) {
-      return new Response(challenge, { status: 200 })
+    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
+    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
+      return new Response("Forbidden", { status: 403 })
     }
 
-    return new Response("Forbidden", { status: 403 })
+    const body = await request.json() as {
+      orgId: string
+      from: string
+      messageId: string
+      type: string
+      text?: string
+      timestamp: number
+    }
+
+    const org = await ctx.runQuery(internal.organizations.getInternal, {
+      organizationId: body.orgId as Id<"organizations">,
+    })
+
+    if (!org) {
+      return new Response("Organization not found", { status: 404 })
+    }
+
+    const isNew = await ctx.runMutation(internal.whatsapp.processInboundMessage, {
+      organizationId: body.orgId as Id<"organizations">,
+      from: body.from,
+      messageId: body.messageId,
+      timestamp: body.timestamp,
+      type: body.type,
+      text: body.text,
+    })
+
+    if (isNew && body.text && body.type === "text") {
+      await ctx.runMutation(internal.whatsapp.scheduleAgentRouting, {
+        organizationId: body.orgId as Id<"organizations">,
+        phoneNumber: body.from,
+        text: body.text,
+      })
+    }
+
+    return new Response("OK", { status: 200 })
   }),
 })
 
 http.route({
-  path: "/webhook/whatsapp",
+  path: "/webhook/whatsapp/qr",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = await request.json() as { object: string; entry?: WhatsAppWebhookEntry[] }
-
-    if (body.object !== "whatsapp_business_account") {
-      return new Response("OK", { status: 200 })
+    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
+    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
+      return new Response("Forbidden", { status: 403 })
     }
 
-    for (const entry of body.entry || []) {
-      for (const change of entry.changes || []) {
-        if (change.field === "messages") {
-          const phoneNumberId = change.value.metadata.phone_number_id
+    const { orgId, qrCode } = await request.json() as { orgId: string; qrCode: string }
 
-          const org = await ctx.runQuery(internal.integrations.getOrgByWhatsAppPhone, {
-            phoneNumberId,
-          })
+    await ctx.runMutation(internal.whatsapp.updateQRCode, {
+      organizationId: orgId as Id<"organizations">,
+      qrCode,
+    })
 
-          if (!org) {
-            console.warn("Unknown WhatsApp phone number:", phoneNumberId)
-            continue
-          }
+    return new Response("OK", { status: 200 })
+  }),
+})
 
-          for (const message of change.value.messages || []) {
-            await ctx.runMutation(internal.whatsapp.processInboundMessage, {
-              organizationId: org._id,
-              from: message.from,
-              messageId: message.id,
-              timestamp: parseInt(message.timestamp) * 1000,
-              type: message.type,
-              text: message.text?.body,
-            })
-          }
-        }
-      }
+http.route({
+  path: "/webhook/whatsapp/status",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
+    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
+      return new Response("Forbidden", { status: 403 })
     }
+
+    const { orgId, status, phoneNumber } = await request.json() as {
+      orgId: string
+      status: "disconnected" | "connecting" | "qr_ready" | "connected"
+      phoneNumber?: string
+    }
+
+    await ctx.runMutation(internal.whatsapp.updateConnectionStatus, {
+      organizationId: orgId as Id<"organizations">,
+      status,
+      phoneNumber,
+    })
 
     return new Response("OK", { status: 200 })
   }),
