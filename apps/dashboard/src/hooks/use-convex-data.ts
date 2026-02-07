@@ -318,7 +318,7 @@ export function useUpdateIntegrationConfig() {
 }
 
 export function useTestIntegrationConnection() {
-  return useMutation(api.integrations.testConnection)
+  return useAction(api.integrations.testConnection)
 }
 
 export function useDeleteIntegrationConfig() {
@@ -327,6 +327,22 @@ export function useDeleteIntegrationConfig() {
 
 export function useSetIntegrationStatus() {
   return useMutation(api.integrations.setConfigStatus)
+}
+
+export function useWhatsAppConnection(environment: Environment) {
+  return useQuery(api.whatsapp.getConnection, { environment })
+}
+
+export function useConnectWhatsApp() {
+  return useMutation(api.whatsapp.connectWhatsApp)
+}
+
+export function useDisconnectWhatsApp() {
+  return useMutation(api.whatsapp.disconnectWhatsApp)
+}
+
+export function useSetWhatsAppAgent() {
+  return useMutation(api.whatsapp.setWhatsAppAgent)
 }
 
 export function useAgentBySlug(slug: string) {
@@ -339,4 +355,68 @@ export function useSendChatMessage() {
 
 export function useSendChatMessageBySlug() {
   return useAction(api.chat.sendBySlug)
+}
+
+export function useEvalSuites(agentId: Id<"agents">, environment?: Environment) {
+  return useQuery(api.evals.listSuites, { agentId, environment })
+}
+
+export function useEvalSuite(id: Id<"evalSuites"> | undefined) {
+  return useQuery(api.evals.getSuite, id ? { id } : "skip")
+}
+
+export function useEvalCase(id: Id<"evalCases"> | undefined) {
+  return useQuery(api.evals.getCase, id ? { id } : "skip")
+}
+
+export function useEvalCases(suiteId: Id<"evalSuites"> | undefined) {
+  return useQuery(api.evals.listCases, suiteId ? { suiteId } : "skip")
+}
+
+export function useEvalRuns(suiteId: Id<"evalSuites"> | undefined, limit?: number) {
+  return useQuery(api.evals.listRuns, suiteId ? { suiteId, limit } : "skip")
+}
+
+export function useEvalRun(id: Id<"evalRuns"> | undefined) {
+  return useQuery(api.evals.getRun, id ? { id } : "skip")
+}
+
+export function useEvalRunResults(runId: Id<"evalRuns"> | undefined) {
+  return useQuery(api.evals.getRunResults, runId ? { runId } : "skip")
+}
+
+export function useCreateEvalSuite() {
+  return useMutation(api.evals.createSuite)
+}
+
+export function useUpdateEvalSuite() {
+  return useMutation(api.evals.updateSuite)
+}
+
+export function useDeleteEvalSuite() {
+  return useMutation(api.evals.deleteSuite)
+}
+
+export function useCreateEvalCase() {
+  return useMutation(api.evals.createCase)
+}
+
+export function useUpdateEvalCase() {
+  return useMutation(api.evals.updateCase)
+}
+
+export function useDeleteEvalCase() {
+  return useMutation(api.evals.deleteCase)
+}
+
+export function useStartEvalRun() {
+  return useMutation(api.evals.startRun)
+}
+
+export function useCancelEvalRun() {
+  return useMutation(api.evals.cancelRun)
+}
+
+export function useReorderEvalCases() {
+  return useMutation(api.evals.reorderCases)
 }
