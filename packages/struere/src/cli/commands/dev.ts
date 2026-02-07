@@ -142,6 +142,9 @@ export const devCommand = new Command('dev')
 
     const performSync = async (): Promise<boolean> => {
       const resources = await loadAllResources(cwd)
+      if (resources.errors.length > 0) {
+        throw new Error(resources.errors.join('\n'))
+      }
       const payload = extractSyncPayload(resources)
       const result = await syncOrganization({
         ...payload,
@@ -156,54 +159,63 @@ export const devCommand = new Command('dev')
       return true
     }
 
+    let initialSyncOk = false
+
     spinner.start('Loading resources')
 
     try {
       const resources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles`)
+      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites`)
+
+      for (const err of resources.errors) {
+        console.log(chalk.red('  ✖'), err)
+      }
+
+      if (resources.errors.length === 0) {
+        initialSyncOk = true
+      }
     } catch (error) {
       spinner.fail('Failed to load resources')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      process.exit(1)
     }
 
-    spinner.start('Syncing to Convex')
+    if (initialSyncOk) {
+      spinner.start('Syncing to Convex')
 
-    try {
-      await performSync()
-      spinner.succeed('Synced to development')
-    } catch (error) {
-      if (isAuthError(error)) {
-        spinner.fail('Session expired - re-authenticating...')
-        clearCredentials()
-        credentials = await performLogin()
-        if (!credentials) {
-          console.log(chalk.red('Authentication failed'))
+      try {
+        await performSync()
+        spinner.succeed('Synced to development')
+      } catch (error) {
+        if (isAuthError(error)) {
+          spinner.fail('Session expired - re-authenticating...')
+          clearCredentials()
+          credentials = await performLogin()
+          if (!credentials) {
+            console.log(chalk.red('Authentication failed'))
+            process.exit(1)
+          }
+          spinner.start('Syncing to Convex')
+          try {
+            await performSync()
+            spinner.succeed('Synced to development')
+          } catch (retryError) {
+            spinner.fail('Sync failed')
+            console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
+          }
+        } else if (isOrgAccessError(error)) {
+          spinner.fail('Organization access denied')
+          console.log()
+          console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
+          console.log()
+          console.log(chalk.gray('To fix this:'))
+          console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
+          console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
+          console.log()
           process.exit(1)
-        }
-        spinner.start('Syncing to Convex')
-        try {
-          await performSync()
-          spinner.succeed('Synced to development')
-        } catch (retryError) {
+        } else {
           spinner.fail('Sync failed')
-          console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
-          process.exit(1)
+          console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
         }
-      } else if (isOrgAccessError(error)) {
-        spinner.fail('Organization access denied')
-        console.log()
-        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
-        console.log()
-        console.log(chalk.gray('To fix this:'))
-        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
-        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
-        console.log()
-        process.exit(1)
-      } else {
-        spinner.fail('Sync failed')
-        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-        process.exit(1)
       }
     }
 
@@ -217,6 +229,7 @@ export const devCommand = new Command('dev')
       dirs.entityTypes,
       dirs.roles,
       dirs.tools,
+      dirs.evals,
       join(cwd, 'struere.config.ts'),
     ].filter((p) => existsSync(p))
 
