@@ -5,6 +5,7 @@ import {
   syncEntityTypes,
   syncRoles,
   syncAgents,
+  syncEvalSuites,
 } from "./lib/sync"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
@@ -80,6 +81,59 @@ export const syncOrganization = mutation({
         ),
       })
     ),
+    evalSuites: v.optional(v.array(
+      v.object({
+        name: v.string(),
+        slug: v.string(),
+        agentSlug: v.string(),
+        description: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
+        judgeModel: v.optional(v.object({
+          provider: v.string(),
+          name: v.string(),
+        })),
+        cases: v.array(
+          v.object({
+            name: v.string(),
+            description: v.optional(v.string()),
+            tags: v.optional(v.array(v.string())),
+            turns: v.array(
+              v.object({
+                userMessage: v.string(),
+                assertions: v.optional(v.array(
+                  v.object({
+                    type: v.union(
+                      v.literal("llm_judge"),
+                      v.literal("contains"),
+                      v.literal("matches"),
+                      v.literal("tool_called"),
+                      v.literal("tool_not_called")
+                    ),
+                    criteria: v.optional(v.string()),
+                    value: v.optional(v.string()),
+                    weight: v.optional(v.number()),
+                  })
+                )),
+              })
+            ),
+            finalAssertions: v.optional(v.array(
+              v.object({
+                type: v.union(
+                  v.literal("llm_judge"),
+                  v.literal("contains"),
+                  v.literal("matches"),
+                  v.literal("tool_called"),
+                  v.literal("tool_not_called")
+                ),
+                criteria: v.optional(v.string()),
+                value: v.optional(v.string()),
+                weight: v.optional(v.number()),
+              })
+            )),
+          })
+        ),
+      })
+    )),
     preservePackResources: v.optional(v.boolean()),
     preserveUnmanagedAgents: v.optional(v.boolean()),
   },
@@ -123,11 +177,22 @@ export const syncOrganization = mutation({
       args.preserveUnmanagedAgents !== false
     )
 
+    let evalSuitesResult
+    if (args.evalSuites && args.evalSuites.length > 0) {
+      evalSuitesResult = await syncEvalSuites(
+        ctx,
+        auth.organizationId,
+        args.evalSuites,
+        args.environment
+      )
+    }
+
     return {
       success: true,
       entityTypes: entityTypeResult,
       roles: roleResult,
       agents: agentResult,
+      evalSuites: evalSuitesResult,
       packResourcesPreserved: installedPacks.length > 0,
     }
   },
@@ -201,6 +266,13 @@ export const getSyncState = query({
       installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
     )
 
+    const evalSuites = await ctx.db
+      .query("evalSuites")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const activeEvalSuites = evalSuites.filter((s) => s.status === "active")
+
     return {
       agents: agentStates,
       entityTypes: entityTypes.map((t) => ({
@@ -215,6 +287,11 @@ export const getSyncState = query({
           isPackManaged: role ? packRoleIds.has(role._id.toString()) : false,
         }
       }),
+      evalSuites: activeEvalSuites.map((s) => ({
+        slug: s.slug,
+        name: s.name,
+        agentId: s.agentId,
+      })),
       installedPacks: installedPacks.map((p) => ({
         packId: p.packId,
         version: p.version,
@@ -312,6 +389,7 @@ export const getPullState = query({
               .collect()
 
             for (const sr of policyScopeRules) {
+              if (!sr.field || !sr.operator || !sr.value) continue
               const srKey = `${policy.resource}:${sr.field}:${sr.operator}:${sr.value}`
               if (!scopeRulesSeen.has(srKey)) {
                 scopeRulesSeen.add(srKey)
