@@ -116,7 +116,7 @@ apps/                        packages/                   platform/
 | **Jobs** | jobs (env-scoped, with actorContext) |
 | **RBAC** | roles (env-scoped), policies, scopeRules, fieldMasks, toolPermissions |
 | **Packs** | installedPacks (env-scoped, with customizations, upgradeHistory) |
-| **Integrations** | integrationConfigs, whatsappConversations, whatsappTemplates, whatsappMessages |
+| **Integrations** | integrationConfigs, whatsappConnections, whatsappMessages |
 
 ### Environment-Aware Indexes
 
