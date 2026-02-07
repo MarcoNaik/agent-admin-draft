@@ -6,3 +6,6 @@ export type { RoleInput, PolicyInput, ScopeRuleInput, FieldMaskInput } from "./r
 
 export { syncAgents, getAgentSlugs } from "./agents"
 export type { AgentInput } from "./agents"
+
+export { syncEvalSuites } from "./evalSuites"
+export type { EvalSuiteInput } from "./evalSuites"
