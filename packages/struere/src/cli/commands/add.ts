@@ -1,12 +1,12 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import { hasProject, getProjectVersion } from '../utils/project'
-import { scaffoldAgent, scaffoldEntityType, scaffoldRole } from '../utils/scaffold'
+import { scaffoldAgent, scaffoldEntityType, scaffoldRole, scaffoldEval } from '../utils/scaffold'
 import { runInit } from './init'
 
 export const addCommand = new Command('add')
   .description('Scaffold a new resource')
-  .argument('<type>', 'Resource type: agent, entity-type, or role')
+  .argument('<type>', 'Resource type: agent, entity-type, role, or eval')
   .argument('<name>', 'Resource name')
   .action(async (type: string, name: string) => {
     const cwd = process.cwd()
@@ -78,6 +78,21 @@ export const addCommand = new Command('add')
         }
         break
 
+      case 'eval':
+      case 'suite':
+        result = scaffoldEval(cwd, displayName, slug)
+        if (result.createdFiles.length > 0) {
+          console.log(chalk.green('✓'), `Created eval suite "${displayName}"`)
+          for (const file of result.createdFiles) {
+            console.log(chalk.gray('  →'), file)
+          }
+          console.log()
+          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere eval'), chalk.gray('to execute'))
+        } else {
+          console.log(chalk.yellow('Eval suite already exists:'), `evals/${slug}.eval.yaml`)
+        }
+        break
+
       default:
         console.log(chalk.red('Unknown resource type:'), type)
         console.log()
@@ -85,6 +100,7 @@ export const addCommand = new Command('add')
         console.log(chalk.gray('  -'), chalk.cyan('agent'), '- Create an AI agent')
         console.log(chalk.gray('  -'), chalk.cyan('entity-type'), '- Create an entity type schema')
         console.log(chalk.gray('  -'), chalk.cyan('role'), '- Create a role with permissions')
+        console.log(chalk.gray('  -'), chalk.cyan('eval'), '- Create an eval suite (YAML)')
         console.log()
         process.exit(1)
     }
