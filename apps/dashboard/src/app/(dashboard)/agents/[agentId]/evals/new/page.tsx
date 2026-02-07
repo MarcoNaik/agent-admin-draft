@@ -1,0 +1,177 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Loader2, ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { useCreateEvalSuite } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
+import { Id } from "@convex/_generated/dataModel"
+
+interface NewSuitePageProps {
+  params: { agentId: string }
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
+export default function NewSuitePage({ params }: NewSuitePageProps) {
+  const { agentId } = params
+  const router = useRouter()
+  const { environment } = useEnvironment()
+  const createSuite = useCreateEvalSuite()
+
+  const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
+  const [slugManual, setSlugManual] = useState(false)
+  const [description, setDescription] = useState("")
+  const [tags, setTags] = useState("")
+  const [judgeProvider, setJudgeProvider] = useState("anthropic")
+  const [judgeModel, setJudgeModel] = useState("claude-haiku-4-5-20251001")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleNameChange = (value: string) => {
+    setName(value)
+    if (!slugManual) {
+      setSlug(slugify(value))
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || !slug.trim()) return
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      const suiteId = await createSuite({
+        agentId: agentId as Id<"agents">,
+        name: name.trim(),
+        slug: slug.trim(),
+        description: description.trim() || undefined,
+        tags: tags.trim() ? tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
+        judgeModel: { provider: judgeProvider, name: judgeModel },
+        environment,
+      })
+      router.push(`/agents/${agentId}/evals/${suiteId}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create suite")
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className="flex items-center gap-3">
+        <Link
+          href={`/agents/${agentId}/evals`}
+          className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 text-content-secondary" />
+        </Link>
+        <div>
+          <h2 className="text-xl font-semibold text-content-primary">New Eval Suite</h2>
+          <p className="text-sm text-content-secondary mt-0.5">Create a collection of test cases</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            placeholder="Booking Flow Tests"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Slug</label>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => { setSlug(e.target.value); setSlugManual(true) }}
+            placeholder="booking-flow-tests"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Tests for the booking workflow..."
+            rows={3}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Tags</label>
+          <input
+            type="text"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="booking, scheduling, happy-path"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <p className="text-xs text-content-tertiary">Comma-separated</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Judge Model</label>
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={judgeProvider}
+              onChange={(e) => setJudgeProvider(e.target.value)}
+              className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI</option>
+            </select>
+            <input
+              type="text"
+              value={judgeModel}
+              onChange={(e) => setJudgeModel(e.target.value)}
+              placeholder="claude-haiku-4-5-20251001"
+              className="rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <p className="text-xs text-content-tertiary">Model used for LLM judge assertions</p>
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={!name.trim() || !slug.trim() || saving}
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Create Suite
+          </button>
+          <Link
+            href={`/agents/${agentId}/evals`}
+            className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
+          >
+            Cancel
+          </Link>
+        </div>
+      </form>
+    </div>
+  )
+}
