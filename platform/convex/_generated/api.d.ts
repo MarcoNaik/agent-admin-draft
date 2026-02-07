@@ -38,6 +38,7 @@ import type * as lib_permissions_types from "../lib/permissions/types.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_sync_agents from "../lib/sync/agents.js";
 import type * as lib_sync_entityTypes from "../lib/sync/entityTypes.js";
+import type * as lib_sync_evalSuites from "../lib/sync/evalSuites.js";
 import type * as lib_sync_index from "../lib/sync/index.js";
 import type * as lib_sync_roles from "../lib/sync/roles.js";
 import type * as lib_templateEngine from "../lib/templateEngine.js";
@@ -100,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   "lib/scheduling": typeof lib_scheduling;
   "lib/sync/agents": typeof lib_sync_agents;
   "lib/sync/entityTypes": typeof lib_sync_entityTypes;
+  "lib/sync/evalSuites": typeof lib_sync_evalSuites;
   "lib/sync/index": typeof lib_sync_index;
   "lib/sync/roles": typeof lib_sync_roles;
   "lib/templateEngine": typeof lib_templateEngine;
