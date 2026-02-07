@@ -17,7 +17,7 @@ function getGatewaySecret(): string {
 async function postToConvex(path: string, body: Record<string, unknown>): Promise<void> {
   const url = `${getConvexUrl()}${path}`
   try {
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -25,6 +25,10 @@ async function postToConvex(path: string, body: Record<string, unknown>): Promis
       },
       body: JSON.stringify(body),
     })
+    if (!response.ok) {
+      const text = await response.text()
+      logger.error({ url, status: response.status, text }, "Convex request failed")
+    }
   } catch (error) {
     logger.error({ url, error }, "Convex request error")
   }
