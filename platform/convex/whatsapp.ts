@@ -1,12 +1,269 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation } from "./_generated/server"
-import { Id } from "./_generated/dataModel"
+import { query, mutation, internalMutation, internalAction } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { requireAuth } from "./lib/auth"
 import {
-  sendTemplateMessage,
-  canSendFreeform,
-  sendFreeformMessage,
+  connectViaGateway,
+  disconnectViaGateway,
+  sendViaGateway,
 } from "./lib/integrations/whatsapp"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
+export const connect = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.whatsapp.upsertConnection, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      status: "connecting",
+    })
+    try {
+      const result = await connectViaGateway(args.organizationId as string)
+      if (result.status === "connected") {
+        await ctx.runMutation(internal.whatsapp.upsertConnection, {
+          organizationId: args.organizationId,
+          environment: args.environment,
+          status: "connected",
+          phoneNumber: result.phoneNumber,
+        })
+      }
+    } catch (err) {
+      await ctx.runMutation(internal.whatsapp.upsertConnection, {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        status: "disconnected",
+      })
+      throw err
+    }
+    return null
+  },
+})
+
+export const disconnect = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await disconnectViaGateway(args.organizationId as string)
+    await ctx.runMutation(internal.whatsapp.upsertConnection, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      status: "disconnected",
+    })
+    return null
+  },
+})
+
+export const connectWhatsApp = mutation({
+  args: {
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    await ctx.scheduler.runAfter(0, internal.whatsapp.connect, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+    })
+    return null
+  },
+})
+
+export const disconnectWhatsApp = mutation({
+  args: {
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    await ctx.scheduler.runAfter(0, internal.whatsapp.disconnect, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+    })
+    return null
+  },
+})
+
+export const setWhatsAppAgent = mutation({
+  args: {
+    agentId: v.optional(v.id("agents")),
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+
+    const connection = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
+      )
+      .first()
+
+    if (connection) {
+      await ctx.db.patch(connection._id, {
+        agentId: args.agentId,
+        updatedAt: Date.now(),
+      })
+    } else {
+      await ctx.db.insert("whatsappConnections", {
+        organizationId: auth.organizationId,
+        status: "disconnected",
+        agentId: args.agentId,
+        environment: args.environment,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    }
+
+    return null
+  },
+})
+
+export const getConnection = query({
+  args: {
+    environment: environmentValidator,
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    return await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
+      )
+      .first()
+  },
+})
+
+export const upsertConnection = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    status: v.union(
+      v.literal("disconnected"),
+      v.literal("connecting"),
+      v.literal("qr_ready"),
+      v.literal("connected")
+    ),
+    phoneNumber: v.optional(v.string()),
+    qrCode: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment)
+      )
+      .first()
+
+    const now = Date.now()
+
+    if (existing) {
+      const patch: Record<string, unknown> = {
+        status: args.status,
+        updatedAt: now,
+      }
+      if (args.phoneNumber !== undefined) patch.phoneNumber = args.phoneNumber
+      if (args.qrCode !== undefined) patch.qrCode = args.qrCode
+      if (args.status === "connected") patch.lastConnectedAt = now
+      if (args.status === "disconnected") patch.lastDisconnectedAt = now
+      if (args.status === "connected") patch.qrCode = undefined
+      await ctx.db.patch(existing._id, patch)
+    } else {
+      await ctx.db.insert("whatsappConnections", {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        status: args.status,
+        phoneNumber: args.phoneNumber,
+        qrCode: args.qrCode,
+        lastConnectedAt: args.status === "connected" ? now : undefined,
+        lastDisconnectedAt: args.status === "disconnected" ? now : undefined,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    return null
+  },
+})
+
+export const updateQRCode = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    qrCode: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+
+    for (const conn of connections) {
+      if (conn.status === "connecting" || conn.status === "qr_ready") {
+        await ctx.db.patch(conn._id, {
+          qrCode: args.qrCode,
+          status: "qr_ready",
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    return null
+  },
+})
+
+export const updateConnectionStatus = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    status: v.union(
+      v.literal("disconnected"),
+      v.literal("connecting"),
+      v.literal("qr_ready"),
+      v.literal("connected")
+    ),
+    phoneNumber: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+
+    const now = Date.now()
+
+    for (const conn of connections) {
+      if (conn.status === "disconnected" && args.status !== "connecting") continue
+
+      const patch: Record<string, unknown> = {
+        status: args.status,
+        updatedAt: now,
+      }
+      if (args.phoneNumber) patch.phoneNumber = args.phoneNumber
+      if (args.status === "connected") {
+        patch.lastConnectedAt = now
+        patch.qrCode = undefined
+      }
+      if (args.status === "disconnected") {
+        patch.lastDisconnectedAt = now
+        patch.qrCode = undefined
+      }
+      await ctx.db.patch(conn._id, patch)
+    }
+
+    return null
+  },
+})
 
 export const processInboundMessage = internalMutation({
   args: {
@@ -17,37 +274,15 @@ export const processInboundMessage = internalMutation({
     type: v.string(),
     text: v.optional(v.string()),
   },
-  returns: v.null(),
+  returns: v.boolean(),
   handler: async (ctx, args) => {
-    const conversation = await ctx.db
-      .query("whatsappConversations")
-      .withIndex("by_org_phone", (q) =>
-        q.eq("organizationId", args.organizationId).eq("phoneNumber", args.from)
-      )
+    const existing = await ctx.db
+      .query("whatsappMessages")
+      .withIndex("by_message_id", (q) => q.eq("messageId", args.messageId))
       .first()
 
-    const now = args.timestamp
-    const windowExpiry = now + 24 * 60 * 60 * 1000
-
-    if (conversation) {
-      await ctx.db.patch(conversation._id, {
-        lastInboundAt: now,
-        windowExpiresAt: windowExpiry,
-        updatedAt: now,
-      })
-    } else {
-      await ctx.db.insert("whatsappConversations", {
-        organizationId: args.organizationId,
-        phoneNumber: args.from,
-        whatsappId: args.from,
-        entityType: null,
-        entityId: null,
-        lastInboundAt: now,
-        lastOutboundAt: null,
-        windowExpiresAt: windowExpiry,
-        createdAt: now,
-        updatedAt: now,
-      })
+    if (existing) {
+      return false
     }
 
     await ctx.db.insert("whatsappMessages", {
@@ -58,186 +293,124 @@ export const processInboundMessage = internalMutation({
       type: args.type,
       text: args.text,
       status: "received",
-      createdAt: now,
+      createdAt: args.timestamp,
     })
+    return true
+  },
+})
+
+export const storeOutboundMessage = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    phoneNumber: v.string(),
+    messageId: v.string(),
+    text: v.string(),
+    threadId: v.optional(v.id("threads")),
+    status: v.optional(v.union(v.literal("sent"), v.literal("failed"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("whatsappMessages", {
+      organizationId: args.organizationId,
+      direction: "outbound",
+      phoneNumber: args.phoneNumber,
+      messageId: args.messageId,
+      type: "text",
+      text: args.text,
+      threadId: args.threadId,
+      status: args.status ?? "sent",
+      createdAt: Date.now(),
+    })
+    return null
+  },
+})
+
+export const scheduleAgentRouting = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    phoneNumber: v.string(),
+    text: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+
+    for (const conn of connections) {
+      if (conn.agentId && conn.status === "connected") {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.routeInboundToAgent, {
+          organizationId: args.organizationId,
+          phoneNumber: args.phoneNumber,
+          text: args.text,
+          environment: conn.environment,
+          agentId: conn.agentId,
+        })
+        break
+      }
+    }
 
     return null
   },
 })
 
-export const sendTemplate = mutation({
+export const routeInboundToAgent = internalAction({
   args: {
-    toPhoneNumber: v.string(),
-    templateName: v.string(),
-    languageCode: v.string(),
-    variables: v.any(),
-    environment: v.union(v.literal("development"), v.literal("production")),
-  },
-  returns: v.object({ messageId: v.string() }),
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-
-    const result = await sendTemplateMessage(ctx, {
-      organizationId: auth.organizationId,
-      toPhoneNumber: args.toPhoneNumber,
-      templateName: args.templateName,
-      languageCode: args.languageCode,
-      variables: args.variables as Record<string, string>,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: auth.organizationId,
-      environment: args.environment,
-      entityId: undefined,
-      entityTypeSlug: undefined,
-      eventType: "whatsapp.template_sent",
-      schemaVersion: 1,
-      actorId: auth.userId as unknown as string,
-      actorType: auth.actorType,
-      payload: {
-        toPhoneNumber: args.toPhoneNumber,
-        templateName: args.templateName,
-        messageId: result.messageId,
-      },
-      timestamp: Date.now(),
-    })
-
-    return result
-  },
-})
-
-export const sendMessage = mutation({
-  args: {
-    toPhoneNumber: v.string(),
+    organizationId: v.id("organizations"),
+    phoneNumber: v.string(),
     text: v.string(),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: environmentValidator,
+    agentId: v.id("agents"),
   },
-  returns: v.object({ messageId: v.string() }),
+  returns: v.null(),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const externalThreadId = `whatsapp:${args.phoneNumber}`
 
-    const result = await sendFreeformMessage(
-      ctx,
-      auth.organizationId,
-      args.toPhoneNumber,
-      args.text
-    )
-
-    await ctx.db.insert("events", {
-      organizationId: auth.organizationId,
+    const threadId = await ctx.runMutation(internal.threads.getOrCreate, {
+      organizationId: args.organizationId,
+      agentId: args.agentId,
+      externalId: externalThreadId,
       environment: args.environment,
-      entityId: undefined,
-      entityTypeSlug: undefined,
-      eventType: "whatsapp.message_sent",
-      schemaVersion: 1,
-      actorId: auth.userId as unknown as string,
-      actorType: auth.actorType,
-      payload: {
-        toPhoneNumber: args.toPhoneNumber,
-        messageId: result.messageId,
-      },
-      timestamp: Date.now(),
     })
 
-    return result
-  },
-})
-
-export const getConversation = query({
-  args: {
-    phoneNumber: v.string(),
-  },
-  returns: v.union(
-    v.object({
-      _id: v.id("whatsappConversations"),
-      organizationId: v.id("organizations"),
-      phoneNumber: v.string(),
-      whatsappId: v.string(),
-      entityType: v.union(v.literal("guardian"), v.literal("teacher"), v.null()),
-      entityId: v.union(v.id("entities"), v.null()),
-      lastInboundAt: v.union(v.number(), v.null()),
-      lastOutboundAt: v.union(v.number(), v.null()),
-      windowExpiresAt: v.union(v.number(), v.null()),
-      canSendFreeform: v.boolean(),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-
-    const conversation = await ctx.db
-      .query("whatsappConversations")
-      .withIndex("by_org_phone", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("phoneNumber", args.phoneNumber)
-      )
-      .first()
-
-    if (!conversation) {
-      return null
-    }
-
-    const canSend = await canSendFreeform(ctx, auth.organizationId, args.phoneNumber)
-    const { _creationTime, ...rest } = conversation
-
-    return {
-      ...rest,
-      canSendFreeform: canSend,
-    }
-  },
-})
-
-export const listConversations = query({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(v.any()),
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-
-    const conversations = await ctx.db
-      .query("whatsappConversations")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .take(args.limit ?? 50)
-
-    return conversations
-  },
-})
-
-export const linkConversationToEntity = mutation({
-  args: {
-    phoneNumber: v.string(),
-    entityType: v.union(v.literal("guardian"), v.literal("teacher")),
-    entityId: v.id("entities"),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-
-    const conversation = await ctx.db
-      .query("whatsappConversations")
-      .withIndex("by_org_phone", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("phoneNumber", args.phoneNumber)
-      )
-      .first()
-
-    if (!conversation) {
-      throw new Error("Conversation not found")
-    }
-
-    const entity = await ctx.db.get(args.entityId)
-    if (!entity || entity.organizationId !== auth.organizationId) {
-      throw new Error("Entity not found")
-    }
-
-    await ctx.db.patch(conversation._id, {
-      entityType: args.entityType,
-      entityId: args.entityId,
-      updatedAt: Date.now(),
+    const result = await ctx.runAction(internal.agent.chatAuthenticated, {
+      organizationId: args.organizationId,
+      agentId: args.agentId,
+      message: args.text,
+      threadId,
+      environment: args.environment,
     })
 
-    return { success: true }
+    const responseText = result.message
+
+    if (responseText) {
+      let messageId = `failed_${Date.now()}`
+      let status: "sent" | "failed" = "sent"
+
+      try {
+        const sendResult = await sendViaGateway(
+          args.organizationId as string,
+          args.phoneNumber,
+          responseText
+        )
+        messageId = sendResult.messageId
+      } catch (err) {
+        console.error("Failed to send via WhatsApp gateway:", err)
+        status = "failed"
+      }
+
+      await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+        organizationId: args.organizationId,
+        phoneNumber: args.phoneNumber,
+        messageId,
+        text: responseText,
+        threadId: result.threadId,
+        status,
+      })
+    }
+
+    return null
   },
 })
 
@@ -262,81 +435,32 @@ export const getConversationMessages = query({
   },
 })
 
-export const listTemplates = query({
+export const listConversations = query({
   args: {
-    status: v.optional(v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"))),
+    limit: v.optional(v.number()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
-    let templates = await ctx.db
-      .query("whatsappTemplates")
+    const messages = await ctx.db
+      .query("whatsappMessages")
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .collect()
+      .order("desc")
+      .take(500)
 
-    if (args.status) {
-      templates = templates.filter((t) => t.status === args.status)
+    const phoneMap = new Map<string, { phoneNumber: string; lastMessage: string | undefined; lastMessageAt: number; direction: string }>()
+    for (const msg of messages) {
+      if (!phoneMap.has(msg.phoneNumber)) {
+        phoneMap.set(msg.phoneNumber, {
+          phoneNumber: msg.phoneNumber,
+          lastMessage: msg.text,
+          lastMessageAt: msg.createdAt,
+          direction: msg.direction,
+        })
+      }
     }
 
-    return templates
-  },
-})
-
-export const createTemplate = mutation({
-  args: {
-    name: v.string(),
-    language: v.string(),
-    category: v.union(v.literal("UTILITY"), v.literal("MARKETING"), v.literal("AUTHENTICATION")),
-    components: v.object({
-      header: v.optional(v.object({
-        type: v.union(v.literal("text"), v.literal("image"), v.literal("document")),
-        text: v.optional(v.string()),
-      })),
-      body: v.object({
-        text: v.string(),
-        variables: v.array(v.string()),
-      }),
-      footer: v.optional(v.object({
-        text: v.string(),
-      })),
-      buttons: v.optional(v.array(v.object({
-        type: v.union(v.literal("url"), v.literal("quick_reply")),
-        text: v.string(),
-        url: v.optional(v.string()),
-      }))),
-    }),
-  },
-  returns: v.id("whatsappTemplates"),
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-
-    const existing = await ctx.db
-      .query("whatsappTemplates")
-      .withIndex("by_org_name", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("name", args.name)
-      )
-      .first()
-
-    if (existing) {
-      throw new Error(`Template with name "${args.name}" already exists`)
-    }
-
-    const now = Date.now()
-    const templateId = await ctx.db.insert("whatsappTemplates", {
-      organizationId: auth.organizationId,
-      name: args.name,
-      language: args.language,
-      status: "pending",
-      category: args.category,
-      components: args.components,
-      metaTemplateId: null,
-      approvedAt: null,
-      rejectedReason: null,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    return templateId
+    return Array.from(phoneMap.values()).slice(0, args.limit ?? 50)
   },
 })
