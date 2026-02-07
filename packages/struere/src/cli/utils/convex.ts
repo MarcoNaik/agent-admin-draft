@@ -1,4 +1,5 @@
 import { loadCredentials, getApiKey } from './credentials'
+import type { EvalSuiteDefinition, EvalRunStatus, EvalResultSummary } from '../../types'
 
 const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
 
@@ -619,4 +620,323 @@ export async function getSyncState(organizationId?: string, environment?: 'devel
   }
 
   return { error: `Unexpected response: ${JSON.stringify(result)}` }
+}
+
+async function resolveAgentId(agentSlug: string): Promise<string | undefined> {
+  const { agents } = await listAgents()
+  const agent = agents.find((a) => a.slug === agentSlug || a._id === agentSlug)
+  return agent?._id
+}
+
+export async function syncEvalSuites(
+  suites: EvalSuiteDefinition[]
+): Promise<{ suiteIds?: Record<string, string>; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const suiteIds: Record<string, string> = {}
+
+  for (const suite of suites) {
+    const agentId = await resolveAgentId(suite.agent)
+    if (!agentId) {
+      return { error: `Agent "${suite.agent}" not found. Make sure the agent exists before syncing evals.` }
+    }
+
+    const listResponse = await fetch(`${CONVEX_URL}/api/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        path: 'evals:listAllSuites',
+        args: { environment: 'development' },
+      }),
+    })
+
+    let existingSuiteId: string | undefined
+
+    if (listResponse.ok) {
+      const listResult = await listResponse.json() as { status: string; value?: Array<{ _id: string; slug: string }> }
+      const existing = (listResult.value || []).find((s) => s.slug === suite.slug)
+      if (existing) {
+        existingSuiteId = existing._id
+      }
+    }
+
+    if (!existingSuiteId) {
+      const createResponse = await fetch(`${CONVEX_URL}/api/mutation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          path: 'evals:createSuite',
+          args: {
+            agentId,
+            name: suite.suite,
+            slug: suite.slug,
+            description: suite.description,
+            tags: suite.tags,
+            judgeModel: suite.judgeModel
+              ? { provider: 'anthropic', name: suite.judgeModel }
+              : undefined,
+            environment: 'development',
+          },
+        }),
+      })
+
+      if (!createResponse.ok) {
+        const error = await createResponse.text()
+        return { error: `Failed to create suite "${suite.suite}": ${error}` }
+      }
+
+      const createResult = await createResponse.json() as { status: string; value?: string }
+      existingSuiteId = createResult.value
+    } else {
+      const updateResponse = await fetch(`${CONVEX_URL}/api/mutation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          path: 'evals:updateSuite',
+          args: {
+            id: existingSuiteId,
+            name: suite.suite,
+            description: suite.description,
+            tags: suite.tags,
+            judgeModel: suite.judgeModel
+              ? { provider: 'anthropic', name: suite.judgeModel }
+              : undefined,
+          },
+        }),
+      })
+
+      if (!updateResponse.ok) {
+        const error = await updateResponse.text()
+        return { error: `Failed to update suite "${suite.suite}": ${error}` }
+      }
+
+      const deleteResponse = await fetch(`${CONVEX_URL}/api/mutation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          path: 'evals:deleteCasesBySuite',
+          args: { suiteId: existingSuiteId },
+        }),
+      })
+
+      if (!deleteResponse.ok) {
+        const error = await deleteResponse.text()
+        return { error: `Failed to clear cases for suite "${suite.suite}": ${error}` }
+      }
+    }
+
+    if (existingSuiteId) {
+      suiteIds[suite.slug] = existingSuiteId
+
+      for (let i = 0; i < suite.cases.length; i++) {
+        const c = suite.cases[i]
+        const turns = c.turns.map((t) => ({
+          userMessage: t.user,
+          assertions: t.assertions?.map((a) => ({
+            type: a.type,
+            ...(a.criteria ? { criteria: a.criteria } : {}),
+            ...(a.value ? { value: a.value } : {}),
+            ...(a.weight ? { weight: a.weight } : {}),
+          })),
+        }))
+
+        const finalAssertions = c.finalAssertions?.map((a) => ({
+          type: a.type,
+          ...(a.criteria ? { criteria: a.criteria } : {}),
+          ...(a.value ? { value: a.value } : {}),
+          ...(a.weight ? { weight: a.weight } : {}),
+        }))
+
+        const caseResponse = await fetch(`${CONVEX_URL}/api/mutation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            path: 'evals:createCase',
+            args: {
+              suiteId: existingSuiteId,
+              name: c.name,
+              description: c.description,
+              tags: c.tags,
+              turns,
+              finalAssertions,
+            },
+          }),
+        })
+
+        if (!caseResponse.ok) {
+          const error = await caseResponse.text()
+          return { error: `Failed to create case "${c.name}": ${error}` }
+        }
+      }
+    }
+  }
+
+  return { suiteIds }
+}
+
+export async function startEvalRun(
+  suiteSlug: string
+): Promise<{ runId?: string; suiteId?: string; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const listResponse = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'evals:listAllSuites',
+      args: { environment: 'development' },
+    }),
+  })
+
+  if (!listResponse.ok) {
+    return { error: 'Failed to list suites' }
+  }
+
+  const listResult = await listResponse.json() as { status: string; value?: Array<{ _id: string; slug: string }> }
+  const suite = (listResult.value || []).find((s) => s.slug === suiteSlug)
+
+  if (!suite) {
+    return { error: `Suite "${suiteSlug}" not found` }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/mutation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'evals:startRun',
+      args: {
+        suiteId: suite._id,
+        triggerSource: 'cli',
+      },
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { error }
+  }
+
+  const result = await response.json() as { status: string; value?: string }
+  return { runId: result.value, suiteId: suite._id }
+}
+
+export async function pollEvalRun(
+  runId: string,
+  onProgress?: (status: EvalRunStatus) => void
+): Promise<{ run?: EvalRunStatus; error?: string }> {
+  const maxAttempts = 300
+  const pollInterval = 2000
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const currentCredentials = loadCredentials()
+    const currentApiKey = getApiKey()
+    const token = currentApiKey || currentCredentials?.token
+
+    if (!token) {
+      return { error: 'Authentication expired. Please run "struere login" again.' }
+    }
+
+    const response = await fetch(`${CONVEX_URL}/api/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        path: 'evals:getRun',
+        args: { id: runId },
+      }),
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return { error: 'Authentication expired. Please run "struere login" again.' }
+      }
+      return { error: `Failed to poll run status (HTTP ${response.status})` }
+    }
+
+    const result = await response.json() as { status: string; value?: EvalRunStatus }
+    const run = result.value
+
+    if (!run) {
+      return { error: 'Run not found' }
+    }
+
+    if (onProgress) {
+      onProgress(run)
+    }
+
+    if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
+      return { run }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval))
+  }
+
+  return { error: 'Run timed out after 10 minutes' }
+}
+
+export async function getEvalRunResults(
+  runId: string
+): Promise<{ results?: EvalResultSummary[]; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+  const token = apiKey || credentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'evals:getRunResults',
+      args: { runId },
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    return { error }
+  }
+
+  const result = await response.json() as { status: string; value?: EvalResultSummary[] }
+  return { results: result.value || [] }
 }

@@ -124,6 +124,71 @@ export interface TestAssertion {
   value: string | Record<string, unknown>
 }
 
+export interface EvalAssertion {
+  type: 'llm_judge' | 'contains' | 'matches' | 'tool_called' | 'tool_not_called'
+  criteria?: string
+  value?: string
+  weight?: number
+}
+
+export interface EvalTurn {
+  user: string
+  assertions?: EvalAssertion[]
+}
+
+export interface EvalCaseDefinition {
+  name: string
+  description?: string
+  tags?: string[]
+  turns: EvalTurn[]
+  finalAssertions?: EvalAssertion[]
+}
+
+export interface EvalSuiteDefinition {
+  suite: string
+  slug: string
+  agent: string
+  description?: string
+  tags?: string[]
+  judgeModel?: string
+  cases: EvalCaseDefinition[]
+}
+
+export interface EvalRunStatus {
+  _id: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  totalCases: number
+  completedCases: number
+  passedCases: number
+  failedCases: number
+  overallScore?: number
+  totalTokens?: { agent: number; judge: number }
+  totalDurationMs?: number
+}
+
+export interface EvalResultSummary {
+  _id: string
+  caseId: string
+  status: 'pending' | 'running' | 'passed' | 'failed' | 'error'
+  overallPassed: boolean
+  overallScore?: number
+  totalDurationMs?: number
+  errorMessage?: string
+  turnResults?: Array<{
+    turnIndex: number
+    userMessage: string
+    assistantResponse: string
+    assertionResults?: Array<{
+      type: string
+      passed: boolean
+      score?: number
+      reason?: string
+      criteria?: string
+    }>
+    durationMs: number
+  }>
+}
+
 export interface DeployConfig {
   environment: 'staging' | 'production'
   region?: string
