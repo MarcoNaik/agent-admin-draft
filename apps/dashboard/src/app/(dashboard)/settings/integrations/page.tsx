@@ -20,18 +20,16 @@ function IntegrationCard({ name, description, href, icon, status }: IntegrationC
     <Link href={href}>
       <Card className="bg-background-secondary cursor-pointer hover:bg-background-tertiary transition-colors h-full">
         <CardContent className="p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                {icon}
-              </div>
-              <div>
-                <h3 className="font-medium text-content-primary">{name}</h3>
-                <p className="text-sm text-content-secondary mt-1">{description}</p>
-              </div>
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
+              {icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-content-primary">{name}</h3>
+              <p className="text-sm text-content-secondary mt-0.5">{description}</p>
             </div>
             {status && (
-              <div>
+              <div className="shrink-0">
                 {status === "active" && (
                   <Badge variant="secondary" className="flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />
@@ -88,40 +86,36 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-content-primary">Integrations</h1>
-        <p className="text-sm text-content-secondary">Connect external services to your platform</p>
+        <p className="text-sm text-content-secondary mt-1">Connect external services to your platform</p>
       </div>
 
-      <div>
-        <h2 className="text-lg font-medium text-content-primary mb-4">Communication</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <IntegrationCard
-            name="WhatsApp"
-            description="Connect your WhatsApp account for AI-powered conversations"
-            href="/settings/integrations/whatsapp"
-            icon={<MessageSquare className="h-5 w-5 text-primary" />}
-            status={getStatus("whatsapp")}
-          />
-        </div>
+      <div className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Communication</h2>
+        <IntegrationCard
+          name="WhatsApp"
+          description="Connect your WhatsApp account for AI-powered conversations"
+          href="/settings/integrations/whatsapp"
+          icon={<MessageSquare className="h-5 w-5 text-primary" />}
+          status={getStatus("whatsapp")}
+        />
       </div>
 
-      <div>
-        <h2 className="text-lg font-medium text-content-primary mb-4">Payments</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <IntegrationCard
-            name="Flow Payment"
-            description="Accept payments from parents and guardians"
-            href="/settings/integrations/payments"
-            icon={<CreditCard className="h-5 w-5 text-primary" />}
-            status={getStatus("flow")}
-          />
-        </div>
+      <div className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Payments</h2>
+        <IntegrationCard
+          name="Flow Payment"
+          description="Accept payments from parents and guardians"
+          href="/settings/integrations/payments"
+          icon={<CreditCard className="h-5 w-5 text-primary" />}
+          status={getStatus("flow")}
+        />
       </div>
 
-      <div>
-        <h2 className="text-lg font-medium text-content-primary mb-4">Video Conferencing</h2>
+      <div className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Video Conferencing</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <IntegrationCard
             name="Google Meet"
