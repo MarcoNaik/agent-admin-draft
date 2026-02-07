@@ -1,21 +1,30 @@
-import { existsSync, readdirSync } from 'fs'
+import { existsSync, readdirSync, readFileSync } from 'fs'
 import { join, basename } from 'path'
-import type { AgentConfigV2, EntityTypeConfig, RoleConfig, ToolReference } from '../../types'
+import YAML from 'yaml'
+import type { AgentConfigV2, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition } from '../../types'
 
 export interface LoadedResources {
   agents: AgentConfigV2[]
   entityTypes: EntityTypeConfig[]
   roles: RoleConfig[]
   customTools: ToolReference[]
+  evalSuites: EvalSuiteDefinition[]
+  errors: string[]
 }
 
 export async function loadAllResources(cwd: string): Promise<LoadedResources> {
+  const errors: string[] = []
   const agents = await loadAllAgents(join(cwd, 'agents'))
   const entityTypes = await loadAllEntityTypes(join(cwd, 'entity-types'))
   const roles = await loadAllRoles(join(cwd, 'roles'))
-  const customTools = await loadCustomTools(join(cwd, 'tools'))
+  const { tools: customTools, error: toolsError } = await loadCustomTools(join(cwd, 'tools'))
+  if (toolsError) {
+    errors.push(toolsError)
+  }
+  const { suites: evalSuites, errors: evalErrors } = loadAllEvalSuites(join(cwd, 'evals'))
+  errors.push(...evalErrors)
 
-  return { agents, entityTypes, roles, customTools }
+  return { agents, entityTypes, roles, customTools, evalSuites, errors }
 }
 
 export async function loadAllAgents(dir: string): Promise<AgentConfigV2[]> {
@@ -57,27 +66,28 @@ export async function loadAllRoles(dir: string): Promise<RoleConfig[]> {
   return loadFromDirectory<RoleConfig>(dir)
 }
 
-export async function loadCustomTools(dir: string): Promise<ToolReference[]> {
+export async function loadCustomTools(dir: string): Promise<{ tools: ToolReference[]; error?: string }> {
   if (!existsSync(dir)) {
-    return []
+    return { tools: [] }
   }
 
   const indexPath = join(dir, 'index.ts')
   if (!existsSync(indexPath)) {
-    return []
+    return { tools: [] }
   }
 
   try {
     const module = await import(`${indexPath}?update=${Date.now()}`)
     if (Array.isArray(module.default)) {
-      return module.default
+      return { tools: module.default }
     }
     if (module.tools && Array.isArray(module.tools)) {
-      return module.tools
+      return { tools: module.tools }
     }
-    return []
-  } catch {
-    return []
+    return { tools: [], error: `tools/index.ts was loaded but does not export a tools array (expected default export or named "tools" export)` }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { tools: [], error: `Failed to load tools/index.ts: ${message}` }
   }
 }
 
@@ -126,17 +136,44 @@ async function loadFromDirectory<T>(dir: string): Promise<T[]> {
   return items
 }
 
+export function loadAllEvalSuites(dir: string): { suites: EvalSuiteDefinition[]; errors: string[] } {
+  const suites: EvalSuiteDefinition[] = []
+  const errors: string[] = []
+
+  if (!existsSync(dir)) {
+    return { suites, errors }
+  }
+
+  const files = readdirSync(dir).filter(
+    (f) => f.endsWith('.eval.yaml') || f.endsWith('.eval.yml')
+  )
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(dir, file), 'utf-8')
+      const parsed = YAML.parse(content) as EvalSuiteDefinition
+      suites.push(parsed)
+    } catch (err) {
+      errors.push(`Failed to parse ${file}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  return { suites, errors }
+}
+
 export function getResourceDirectories(cwd: string): {
   agents: string
   entityTypes: string
   roles: string
   tools: string
+  evals: string
 } {
   return {
     agents: join(cwd, 'agents'),
     entityTypes: join(cwd, 'entity-types'),
     roles: join(cwd, 'roles'),
     tools: join(cwd, 'tools'),
+    evals: join(cwd, 'evals'),
   }
 }
 
