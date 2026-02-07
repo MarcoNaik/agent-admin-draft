@@ -174,6 +174,84 @@ conversation:
 `
 }
 
+export function getExampleEvalYaml(agentSlug: string): string {
+  return `suite: "Basic Agent Tests"
+slug: "basic-agent-tests"
+agent: "${agentSlug}"
+description: "Verify agent responds correctly and uses tools appropriately"
+tags: ["smoke-test"]
+judgeModel: "claude-haiku-4-5-20251001"
+
+cases:
+  - name: "Greeting test"
+    description: "Agent should introduce itself politely"
+    turns:
+      - user: "Hello, who are you?"
+        assertions:
+          - type: llm_judge
+            criteria: "Response is polite, introduces itself, and offers to help"
+            weight: 3
+          - type: contains
+            value: "help"
+
+  - name: "Entity query test"
+    description: "Agent should use entity.query to look up data"
+    turns:
+      - user: "Show me all active records"
+        assertions:
+          - type: tool_called
+            value: "entity.query"
+          - type: llm_judge
+            criteria: "Response presents the query results or explains there are no results"
+
+  - name: "Multi-turn conversation"
+    description: "Agent should maintain context across turns"
+    turns:
+      - user: "My name is Alex"
+        assertions:
+          - type: llm_judge
+            criteria: "Agent acknowledges the user's name"
+      - user: "What is my name?"
+        assertions:
+          - type: contains
+            value: "Alex"
+          - type: llm_judge
+            criteria: "Agent correctly recalls the name from the previous turn"
+            weight: 4
+
+  - name: "Tool restriction test"
+    description: "Agent should not call tools unnecessarily"
+    turns:
+      - user: "What is 2 + 2?"
+        assertions:
+          - type: tool_not_called
+            value: "entity.create"
+          - type: llm_judge
+            criteria: "Response correctly answers 4 without creating any entities"
+`
+}
+
+export function getEvalYamlTemplate(suiteName: string, slug: string, agentSlug: string): string {
+  return `suite: "${suiteName}"
+slug: "${slug}"
+agent: "${agentSlug}"
+description: "TODO: Describe what this eval suite tests"
+tags: []
+judgeModel: "claude-haiku-4-5-20251001"
+
+cases:
+  - name: "Example test case"
+    description: "TODO: Describe expected behavior"
+    turns:
+      - user: "Hello"
+        assertions:
+          - type: llm_judge
+            criteria: "Response is helpful and relevant"
+          - type: contains
+            value: "hello"
+`
+}
+
 export function getEnvExample(): string {
   return `# Anthropic API Key (default provider)
 ANTHROPIC_API_KEY=your_api_key_here
@@ -434,10 +512,11 @@ Struere is a framework for building production AI agents with Convex as the real
 \`\`\`
 ┌─────────────────────────────────────────────────────────────────┐
 │  Your Project (this folder)                                     │
-│  ├── agents/*.ts      → Agent configs synced to Convex          │
-│  ├── entity-types/*.ts → Schema definitions synced to Convex    │
-│  ├── roles/*.ts        → RBAC policies synced to Convex         │
-│  └── tools/index.ts    → Custom tools (handlers run on CF Worker)│
+│  ├── agents/*.ts        → Agent configs synced to Convex        │
+│  ├── entity-types/*.ts  → Schema definitions synced to Convex   │
+│  ├── roles/*.ts         → RBAC policies synced to Convex        │
+│  ├── tools/index.ts     → Custom tools (run on CF Worker)       │
+│  └── evals/*.eval.yaml  → Test suites (synced + executed)       │
 └─────────────────────┬───────────────────────────────────────────┘
                       │ struere dev (watches & syncs)
                       ▼
@@ -477,6 +556,10 @@ roles/               # RBAC: who can do what
 tools/               # Custom tools shared by all agents
 └── index.ts         # defineTools([...])
 
+evals/               # Eval suites (YAML test definitions)
+├── basic.eval.yaml  # One file per suite
+└── tools.eval.yaml
+
 struere.json         # Organization ID (don't edit)
 struere.config.ts    # Local dev settings (port, CORS)
 \`\`\`
@@ -510,6 +593,9 @@ export default defineConfig({
 | \`struere add agent <name>\` | Create agents/name.ts with template |
 | \`struere add entity-type <name>\` | Create entity-types/name.ts |
 | \`struere add role <name>\` | Create roles/name.ts |
+| \`struere add eval <name>\` | Create evals/name.eval.yaml with template |
+| \`struere eval\` | Run all eval suites |
+| \`struere eval --suite <name>\` | Run a specific eval suite |
 | \`struere status\` | Show what's synced vs local-only |
 
 ## Defining Agents
@@ -824,6 +910,116 @@ curl -X POST https://your-convex-url.convex.cloud/v1/agents/support/chat \\
 4. Test via dashboard or curl
 5. \`struere deploy\` - Push to production
 
+## Evaluations (Evals)
+
+Evals let you test agent behavior with automated assertions and LLM-as-judge scoring. Define test suites in YAML, run them via CLI or dashboard.
+
+### Project Structure
+
+\`\`\`
+evals/                           # Eval suite definitions
+├── basic-agent-tests.eval.yaml  # One file per suite
+├── tool-usage.eval.yaml
+└── edge-cases.eval.yaml
+\`\`\`
+
+### YAML Format
+
+\`\`\`yaml
+suite: "My Test Suite"           # Display name
+slug: "my-test-suite"            # Unique identifier
+agent: "my-agent-slug"           # Agent to test (by slug)
+description: "What this tests"
+tags: ["regression", "tools"]
+judgeModel: "claude-haiku-4-5-20251001"  # LLM judge model
+
+cases:
+  - name: "Greeting test"
+    description: "Agent introduces itself"
+    turns:
+      - user: "Hello, who are you?"
+        assertions:
+          - type: llm_judge
+            criteria: "Response is polite and offers help"
+            weight: 3
+          - type: contains
+            value: "help"
+
+  - name: "Tool usage test"
+    turns:
+      - user: "Show me all customers"
+        assertions:
+          - type: tool_called
+            value: "entity.query"
+          - type: tool_not_called
+            value: "entity.delete"
+
+  - name: "Multi-turn context"
+    turns:
+      - user: "My name is Alex"
+        assertions:
+          - type: llm_judge
+            criteria: "Acknowledges the name"
+      - user: "What is my name?"
+        assertions:
+          - type: contains
+            value: "Alex"
+    finalAssertions:
+      - type: llm_judge
+        criteria: "Agent maintained context across the conversation"
+\`\`\`
+
+### Assertion Types
+
+| Type | Field | Description |
+|------|-------|-------------|
+| \`llm_judge\` | \`criteria\` | LLM evaluates response against criteria (1-5 score, pass >= 3) |
+| \`contains\` | \`value\` | Response contains substring (case-insensitive) |
+| \`matches\` | \`value\` | Response matches regex pattern |
+| \`tool_called\` | \`value\` | Specific tool was called during this turn |
+| \`tool_not_called\` | \`value\` | Specific tool was NOT called during this turn |
+
+Each assertion can have an optional \`weight\` (1-5, default 1) that affects the overall score.
+
+### CLI Commands
+
+\`\`\`bash
+# Run all eval suites
+struere eval
+
+# Run a specific suite
+struere eval --suite my-test-suite
+
+# Dry run (parse only, no execution)
+struere eval --dry-run
+
+# Verbose output (shows judge reasoning on failures)
+struere eval --verbose
+
+# JSON output (for CI/CD)
+struere eval --json
+
+# Skip syncing (use already-synced suites)
+struere eval --no-sync
+\`\`\`
+
+### Scaffold a new eval suite
+
+\`\`\`bash
+struere add eval my-new-suite
+\`\`\`
+
+Creates \`evals/my-new-suite.eval.yaml\` with a starter template.
+
+### Writing Good Evals
+
+1. **Be specific in \`llm_judge\` criteria** — "Response mentions the order status and delivery date" is better than "Good response"
+2. **Use \`contains\`/\`matches\` for exact checks** — When you need a specific word or pattern, don't rely on the judge
+3. **Use \`tool_called\`/\`tool_not_called\` for tool behavior** — Verify agents use the right tools
+4. **Multi-turn tests** catch context loss — Test that the agent remembers info from earlier turns
+5. **Use \`weight\`** to prioritize critical assertions — A weight-5 assertion matters 5x more than weight-1
+6. **Use \`finalAssertions\`** to evaluate the overall conversation after all turns complete
+
 ## Common Patterns
 
 ### Customer Support Agent
@@ -1067,44 +1263,72 @@ Example job operations:
 { "id": "job_abc123" }
 \`\`\`
 
-## Testing
+## Evaluations (Evals)
 
-Write YAML-based conversation tests in \`tests/\`:
+Evals test agent behavior with automated assertions and LLM-as-judge scoring.
+
+### Eval File Format
+
+Create YAML files in \`evals/\` (or \`tests/\` for legacy):
 
 \`\`\`yaml
-name: Order flow test
-description: Test the complete order flow
+suite: "Order Flow Tests"
+slug: "order-flow-tests"
+agent: "my-agent-slug"
+description: "Test the complete order flow"
+judgeModel: "claude-haiku-4-5-20251001"
 
-conversation:
-  - role: user
-    content: I want to order a pizza
-  - role: assistant
-    assertions:
-      - type: contains
-        value: size
-      - type: toolCalled
-        value: get_menu
+cases:
+  - name: "Order initiation"
+    turns:
+      - user: "I want to order a pizza"
+        assertions:
+          - type: llm_judge
+            criteria: "Agent asks about pizza size or toppings"
+            weight: 3
+          - type: contains
+            value: "size"
+          - type: tool_called
+            value: "entity.query"
 
-  - role: user
-    content: Large pepperoni please
-  - role: assistant
-    assertions:
-      - type: toolCalled
-        value: entity.create
+  - name: "Order completion"
+    turns:
+      - user: "Large pepperoni please"
+        assertions:
+          - type: tool_called
+            value: "entity.create"
+          - type: tool_not_called
+            value: "entity.delete"
+          - type: llm_judge
+            criteria: "Agent confirms the order details"
 \`\`\`
 
 ### Assertion Types
 
-| Type | Description |
-|------|-------------|
-| \`contains\` | Response contains substring |
-| \`matches\` | Response matches regex |
-| \`toolCalled\` | Specific tool was called |
-| \`noToolCalled\` | No tools were called |
+| Type | Field | Description |
+|------|-------|-------------|
+| \`llm_judge\` | \`criteria\` | LLM evaluates response against criteria (1-5 score, pass >= 3) |
+| \`contains\` | \`value\` | Response contains substring (case-insensitive) |
+| \`matches\` | \`value\` | Response matches regex pattern |
+| \`tool_called\` | \`value\` | Specific tool was called during this turn |
+| \`tool_not_called\` | \`value\` | Specific tool was NOT called during this turn |
 
-Run tests with:
+Each assertion supports optional \`weight\` (1-5, default 1) for score weighting.
+
+### Running Evals
+
 \`\`\`bash
-bun run test
+struere eval                    # Run all suites
+struere eval --suite order-flow # Run specific suite
+struere eval --verbose          # Show judge reasoning
+struere eval --dry-run          # Parse only
+struere eval --json             # JSON output for CI/CD
+\`\`\`
+
+### Scaffold a new eval
+
+\`\`\`bash
+struere add eval my-suite
 \`\`\`
 
 ## CLI Commands
@@ -1114,7 +1338,8 @@ bun run test
 | \`struere dev\` | Start development mode (live sync to Convex) |
 | \`struere build\` | Validate agent configuration |
 | \`struere deploy\` | Deploy agent to production |
-| \`struere test\` | Run YAML conversation tests |
+| \`struere eval\` | Run eval suites with LLM judge |
+| \`struere add eval <name>\` | Scaffold a new eval YAML file |
 | \`struere logs\` | View recent execution logs |
 | \`struere state\` | Inspect conversation thread state |
 
