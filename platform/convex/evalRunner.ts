@@ -501,7 +501,7 @@ Evaluate the assistant's response against the criteria. Respond with JSON only.`
     messages: [{ role: "user", content: userPrompt }],
     maxRetries: 2,
     temperature: 0,
-    maxOutputTokens: 512,
+    maxOutputTokens: 1024,
   })
 
   const inputTokens = result.usage.inputTokens ?? 0
@@ -521,6 +521,19 @@ Evaluate the assistant's response against the criteria. Respond with JSON only.`
       outputTokens,
     }
   } catch {
+    const partialMatch = textContent.match(/"passed"\s*:\s*(true|false)/)
+    const scoreMatch = textContent.match(/"score"\s*:\s*(\d)/)
+    if (partialMatch) {
+      const passed = partialMatch[1] === "true"
+      const score = scoreMatch ? parseInt(scoreMatch[1]) : (passed ? 4 : 2)
+      return {
+        passed,
+        score: Math.min(5, Math.max(1, score)),
+        reason: "Judge response was truncated",
+        inputTokens,
+        outputTokens,
+      }
+    }
     return {
       passed: false,
       score: 1,
