@@ -75,6 +75,55 @@ function formatValue(value: unknown): string {
   return JSON.stringify(value)
 }
 
+function FieldValue({ value }: { value: unknown }) {
+  if (value === null || value === undefined) return <span className="text-content-tertiary">—</span>
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return <span className="text-content-primary break-all">{String(value)}</span>
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-content-tertiary italic">empty</span>
+    const allPrimitives = value.every((v) => typeof v !== "object" || v === null)
+    if (allPrimitives) {
+      return <span className="text-content-primary break-all">{value.map((v) => formatValue(v)).join(", ")}</span>
+    }
+    return (
+      <div className="space-y-1 mt-0.5">
+        {value.map((item, i) => (
+          <div key={i} className="rounded bg-black/10 px-2 py-1 space-y-0.5">
+            {typeof item === "object" && item !== null ? (
+              Object.entries(item).map(([k, v]) => (
+                <div key={k} className="flex gap-1.5">
+                  <span className="font-mono text-content-tertiary shrink-0">{k}:</span>
+                  <span className="text-content-primary break-all">{formatValue(v)}</span>
+                </div>
+              ))
+            ) : (
+              <span className="text-content-primary">{formatValue(item)}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (typeof value === "object") {
+    return (
+      <div className="space-y-0.5 mt-0.5">
+        {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
+          <div key={k} className="flex gap-1.5">
+            <span className="font-mono text-content-tertiary shrink-0">{k}:</span>
+            <span className="text-content-primary break-all">{formatValue(v)}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return <span className="text-content-secondary">{formatValue(value)}</span>
+}
+
 function ObjectCard({ data, index }: { data: Record<string, unknown>; index?: number }) {
   const entries = Object.entries(data).filter(([, v]) => v !== undefined && v !== null)
   return (
@@ -83,18 +132,17 @@ function ObjectCard({ data, index }: { data: Record<string, unknown>; index?: nu
         <div className="text-[10px] font-mono text-content-tertiary mb-1.5">#{index + 1}</div>
       )}
       {entries.map(([key, value]) => (
-        <div key={key} className="flex gap-2 text-xs">
-          <span className="font-mono text-content-tertiary shrink-0">{key}:</span>
-          {Array.isArray(value) ? (
-            <span className="font-mono text-content-secondary break-all">
-              {value.map((v) => formatValue(v)).join(", ")}
-            </span>
-          ) : typeof value === "object" && value !== null ? (
-            <span className="font-mono text-content-secondary break-all">
-              {JSON.stringify(value)}
-            </span>
-          ) : (
-            <span className="text-content-primary break-all">{formatValue(value)}</span>
+        <div key={key} className="text-xs">
+          <div className="flex gap-2">
+            <span className="font-mono text-content-tertiary shrink-0">{key}:</span>
+            {(typeof value !== "object" || value === null || (Array.isArray(value) && value.every((v) => typeof v !== "object" || v === null))) && (
+              <FieldValue value={value} />
+            )}
+          </div>
+          {typeof value === "object" && value !== null && !(Array.isArray(value) && value.every((v) => typeof v !== "object" || v === null)) && (
+            <div className="ml-3 mt-0.5">
+              <FieldValue value={value} />
+            </div>
           )}
         </div>
       ))}
@@ -102,8 +150,20 @@ function ObjectCard({ data, index }: { data: Record<string, unknown>; index?: nu
   )
 }
 
-function ToolDataView({ data, label }: { data: unknown; label: string }) {
-  if (data === undefined || data === null) return null
+function parseData(data: unknown): unknown {
+  if (typeof data === "string") {
+    const trimmed = data.trim()
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      try { return JSON.parse(trimmed) } catch { return data }
+    }
+  }
+  return data
+}
+
+function ToolDataView({ data: rawData, label }: { data: unknown; label: string }) {
+  if (rawData === undefined || rawData === null) return null
+
+  const data = parseData(rawData)
 
   if (typeof data === "string" || typeof data === "number" || typeof data === "boolean") {
     return (
