@@ -1,7 +1,9 @@
 import { v } from "convex/values"
-import { internalAction } from "./_generated/server"
+import { internalAction, internalMutation } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+import { generateText } from "ai"
+import { createModel } from "./lib/llm"
 
 interface AssertionDef {
   type: "llm_judge" | "contains" | "matches" | "tool_called" | "tool_not_called"
@@ -34,12 +36,55 @@ interface ChatResponse {
   usage: { inputTokens: number; outputTokens: number; totalTokens: number }
 }
 
+interface CaseState {
+  turnResults: TurnResult[]
+  allAssertionsPassed: boolean
+  judgeInputTokens: number
+  judgeOutputTokens: number
+  totalAgentTokens: number
+  caseStartTime: number
+  messageCountBeforeTurn?: number
+  chatCompletedForCurrentTurn?: boolean
+  pendingTurnUsage?: { inputTokens: number; outputTokens: number; durationMs: number }
+}
+
+const MAX_TURN_RETRIES = 5
+
+export const scheduleCaseTurn = internalMutation({
+  args: {
+    delayMs: v.number(),
+    runId: v.id("evalRuns"),
+    caseId: v.id("evalCases"),
+    turnIndex: v.number(),
+    threadId: v.optional(v.id("threads")),
+    state: v.optional(v.any()),
+    retryCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(args.delayMs, internal.evalRunner.executeCase, {
+      runId: args.runId,
+      caseId: args.caseId,
+      turnIndex: args.turnIndex,
+      threadId: args.threadId,
+      state: args.state,
+      retryCount: args.retryCount,
+    })
+  },
+})
+
 export const executeCase = internalAction({
   args: {
     runId: v.id("evalRuns"),
     caseId: v.id("evalCases"),
+    turnIndex: v.optional(v.number()),
+    threadId: v.optional(v.id("threads")),
+    state: v.optional(v.any()),
+    retryCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const turnIndex = args.turnIndex ?? 0
+    const retryCount = args.retryCount ?? 0
+
     const run = await ctx.runQuery(internal.evals.getRunInternal, { runId: args.runId })
     if (!run) throw new Error("Run not found")
     if (run.status === "cancelled") return
@@ -50,29 +95,59 @@ export const executeCase = internalAction({
     const evalCase = await ctx.runQuery(internal.evals.getCaseInternal, { caseId: args.caseId })
     if (!evalCase) throw new Error("Case not found")
 
-    const caseStartTime = Date.now()
-    let caseJudgeInputTokens = 0
-    let caseJudgeOutputTokens = 0
-    let totalAgentTokens = 0
+    const state: CaseState = args.state ?? {
+      turnResults: [],
+      allAssertionsPassed: true,
+      judgeInputTokens: 0,
+      judgeOutputTokens: 0,
+      totalAgentTokens: 0,
+      caseStartTime: Date.now(),
+    }
+
+    let threadId = args.threadId as Id<"threads"> | undefined
 
     try {
-      const externalId = `eval:${args.runId}:${args.caseId}`
-      const threadId: Id<"threads"> = await ctx.runMutation(internal.threads.getOrCreate, {
-        organizationId: run.organizationId,
-        agentId: run.agentId,
-        externalId,
-        environment: run.environment,
-      })
+      if (!threadId) {
+        const externalId = `eval:${args.runId}:${args.caseId}`
+        threadId = await ctx.runMutation(internal.threads.getOrCreate, {
+          organizationId: run.organizationId,
+          agentId: run.agentId,
+          externalId,
+          environment: run.environment,
+        })
+      }
 
-      const turnResults: TurnResult[] = []
-      let allAssertionsPassed = true
-      let previousMessageCount = 0
+      const turn = evalCase.turns[turnIndex]
 
-      for (let i = 0; i < evalCase.turns.length; i++) {
-        const currentRun = await ctx.runQuery(internal.evals.getRunInternal, { runId: args.runId })
-        if (currentRun?.status === "cancelled") return
+      const existingThreadMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
 
-        const turn = evalCase.turns[i]
+      if (state.messageCountBeforeTurn === undefined) {
+        state.messageCountBeforeTurn = existingThreadMessages.length
+      }
+
+      const messageCountBefore = state.messageCountBeforeTurn
+      let chatResultMessage: string
+      let turnToolCalls: Array<{ name: string; arguments: unknown; result?: unknown }> = []
+      let turnAgentTokens: { input: number; output: number } | undefined
+      let turnDurationMs: number
+
+      if (state.chatCompletedForCurrentTurn && existingThreadMessages.length > messageCountBefore) {
+        const newMessages = existingThreadMessages.slice(messageCountBefore)
+
+        chatResultMessage = ""
+        for (let i = newMessages.length - 1; i >= 0; i--) {
+          if (newMessages[i].role === "assistant") {
+            chatResultMessage = newMessages[i].content || ""
+            break
+          }
+        }
+
+        turnToolCalls = extractToolCalls(newMessages)
+        turnAgentTokens = state.pendingTurnUsage
+          ? { input: state.pendingTurnUsage.inputTokens, output: state.pendingTurnUsage.outputTokens }
+          : undefined
+        turnDurationMs = state.pendingTurnUsage?.durationMs ?? 0
+      } else {
         const turnStartTime = Date.now()
 
         const chatResult: ChatResponse = await ctx.runAction(internal.agent.chatAuthenticated, {
@@ -83,74 +158,79 @@ export const executeCase = internalAction({
           environment: run.environment,
         })
 
-        totalAgentTokens += chatResult.usage.totalTokens
-        const turnDurationMs = Date.now() - turnStartTime
+        turnDurationMs = Date.now() - turnStartTime
+        chatResultMessage = chatResult.message
+        state.totalAgentTokens += chatResult.usage.totalTokens
+        turnAgentTokens = { input: chatResult.usage.inputTokens, output: chatResult.usage.outputTokens }
 
-        const threadMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
-        const newMessages = threadMessages.slice(previousMessageCount)
-        previousMessageCount = threadMessages.length
-
-        const toolCallMessages = newMessages.filter(
-          (m: { role: string; toolCalls?: unknown[] }) => m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0
-        )
-        const toolCalls: Array<{ name: string; arguments: unknown; result?: unknown }> = []
-        for (const msg of toolCallMessages) {
-          if (msg.toolCalls) {
-            for (const tc of msg.toolCalls as Array<{ id: string; name: string; arguments: unknown }>) {
-              const toolResultMsg = newMessages.find(
-                (m: { role: string; toolCallId?: string }) => m.role === "tool" && m.toolCallId === tc.id
-              )
-              toolCalls.push({
-                name: tc.name,
-                arguments: tc.arguments,
-                result: toolResultMsg ? safeJsonParse(toolResultMsg.content) : undefined,
-              })
-            }
-          }
-        }
-
-        let assertionResults: AssertionResult[] = []
-        if (turn.assertions && turn.assertions.length > 0) {
-          assertionResults = await evaluateAssertions(
-            turn.assertions,
-            chatResult.message,
-            toolCalls,
-            suite.judgeModel
-          )
-          caseJudgeInputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
-          caseJudgeOutputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeOutputTokens || 0), 0)
-
-          assertionResults = assertionResults.map(({ ...r }) => {
-            delete (r as any)._judgeInputTokens
-            delete (r as any)._judgeOutputTokens
-            return r
-          })
-
-          if (assertionResults.some((r) => !r.passed)) {
-            allAssertionsPassed = false
-          }
-        }
-
-        turnResults.push({
-          turnIndex: i,
-          userMessage: turn.userMessage,
-          assistantResponse: chatResult.message,
-          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-          assertionResults: assertionResults.length > 0 ? assertionResults : undefined,
+        state.chatCompletedForCurrentTurn = true
+        state.pendingTurnUsage = {
+          inputTokens: chatResult.usage.inputTokens,
+          outputTokens: chatResult.usage.outputTokens,
           durationMs: turnDurationMs,
-          agentTokens: {
-            input: chatResult.usage.inputTokens,
-            output: chatResult.usage.outputTokens,
-          },
+        }
+
+        const updatedThreadMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
+        const newMessages = updatedThreadMessages.slice(messageCountBefore)
+        turnToolCalls = extractToolCalls(newMessages)
+      }
+
+      let assertionResults: AssertionResult[] = []
+      if (turn.assertions && turn.assertions.length > 0) {
+        assertionResults = await evaluateAssertions(
+          turn.assertions,
+          chatResultMessage,
+          turnToolCalls,
+          suite.judgeModel
+        )
+
+        state.judgeInputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
+        state.judgeOutputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeOutputTokens || 0), 0)
+
+        assertionResults = assertionResults.map(({ ...r }) => {
+          delete (r as any)._judgeInputTokens
+          delete (r as any)._judgeOutputTokens
+          return r
         })
+
+        if (assertionResults.some((r) => !r.passed)) {
+          state.allAssertionsPassed = false
+        }
+      }
+
+      state.turnResults.push({
+        turnIndex,
+        userMessage: turn.userMessage,
+        assistantResponse: chatResultMessage,
+        toolCalls: turnToolCalls.length > 0 ? turnToolCalls : undefined,
+        assertionResults: assertionResults.length > 0 ? assertionResults : undefined,
+        durationMs: turnDurationMs,
+        agentTokens: turnAgentTokens,
+      })
+
+      state.messageCountBeforeTurn = undefined
+      state.chatCompletedForCurrentTurn = undefined
+      state.pendingTurnUsage = undefined
+
+      if (turnIndex < evalCase.turns.length - 1) {
+        await ctx.runMutation(internal.evalRunner.scheduleCaseTurn, {
+          delayMs: 0,
+          runId: args.runId,
+          caseId: args.caseId,
+          turnIndex: turnIndex + 1,
+          threadId,
+          state,
+          retryCount: 0,
+        })
+        return
       }
 
       let finalAssertionResults: AssertionResult[] | undefined
       if (evalCase.finalAssertions && evalCase.finalAssertions.length > 0) {
-        const lastResponse = turnResults.length > 0
-          ? turnResults[turnResults.length - 1].assistantResponse
+        const lastResponse = state.turnResults.length > 0
+          ? state.turnResults[state.turnResults.length - 1].assistantResponse
           : ""
-        const allToolCalls = turnResults.flatMap((t) => t.toolCalls || [])
+        const allToolCalls = state.turnResults.flatMap((t) => t.toolCalls || [])
 
         finalAssertionResults = await evaluateAssertions(
           evalCase.finalAssertions,
@@ -159,8 +239,8 @@ export const executeCase = internalAction({
           suite.judgeModel
         )
 
-        caseJudgeInputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
-        caseJudgeOutputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeOutputTokens || 0), 0)
+        state.judgeInputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
+        state.judgeOutputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeOutputTokens || 0), 0)
 
         finalAssertionResults = finalAssertionResults.map(({ ...r }) => {
           delete (r as any)._judgeInputTokens
@@ -169,14 +249,14 @@ export const executeCase = internalAction({
         })
 
         if (finalAssertionResults.some((r) => !r.passed)) {
-          allAssertionsPassed = false
+          state.allAssertionsPassed = false
         }
       }
 
       const allTurnAssertionDefs = evalCase.turns.flatMap((t) => t.assertions || [])
       const allAssertionDefs = [...allTurnAssertionDefs, ...(evalCase.finalAssertions || [])]
       const allResults = [
-        ...turnResults.flatMap((t) => t.assertionResults || []),
+        ...state.turnResults.flatMap((t) => t.assertionResults || []),
         ...(finalAssertionResults || []),
       ]
 
@@ -195,10 +275,10 @@ export const executeCase = internalAction({
           : undefined
       }
 
-      const caseDurationMs = Date.now() - caseStartTime
-      const casePassed = allAssertionsPassed
-      const judgeTokens = (caseJudgeInputTokens + caseJudgeOutputTokens) > 0
-        ? { input: caseJudgeInputTokens, output: caseJudgeOutputTokens }
+      const caseDurationMs = Date.now() - state.caseStartTime
+      const casePassed = state.allAssertionsPassed
+      const judgeTokens = (state.judgeInputTokens + state.judgeOutputTokens) > 0
+        ? { input: state.judgeInputTokens, output: state.judgeOutputTokens }
         : undefined
 
       await ctx.runMutation(internal.evals.recordResult, {
@@ -206,7 +286,7 @@ export const executeCase = internalAction({
         caseId: args.caseId,
         status: casePassed ? "passed" : "failed",
         threadId,
-        turnResults: truncateTurnResults(turnResults),
+        turnResults: truncateTurnResults(state.turnResults),
         finalAssertionResults,
         overallPassed: casePassed,
         overallScore,
@@ -218,11 +298,25 @@ export const executeCase = internalAction({
         runId: args.runId,
         passed: casePassed,
         overallScore,
-        agentTokens: totalAgentTokens,
-        judgeTokens: caseJudgeInputTokens + caseJudgeOutputTokens,
+        agentTokens: state.totalAgentTokens,
+        judgeTokens: state.judgeInputTokens + state.judgeOutputTokens,
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const isRateLimit = errorMessage.includes("429") || errorMessage.includes("rate") || errorMessage.includes("Too Many")
+
+      if (isRateLimit && retryCount < MAX_TURN_RETRIES) {
+        await ctx.runMutation(internal.evalRunner.scheduleCaseTurn, {
+          delayMs: 30000,
+          runId: args.runId,
+          caseId: args.caseId,
+          turnIndex,
+          threadId,
+          state,
+          retryCount: retryCount + 1,
+        })
+        return
+      }
 
       await ctx.runMutation(internal.evals.recordResult, {
         runId: args.runId,
@@ -230,18 +324,42 @@ export const executeCase = internalAction({
         status: "error",
         overallPassed: false,
         errorMessage,
-        totalDurationMs: Date.now() - caseStartTime,
+        totalDurationMs: Date.now() - state.caseStartTime,
       })
 
       await ctx.runMutation(internal.evals.caseCompleted, {
         runId: args.runId,
         passed: false,
-        agentTokens: totalAgentTokens,
-        judgeTokens: caseJudgeInputTokens + caseJudgeOutputTokens,
+        agentTokens: state.totalAgentTokens,
+        judgeTokens: state.judgeInputTokens + state.judgeOutputTokens,
       })
     }
   },
 })
+
+function extractToolCalls(
+  messages: Array<{ role: string; content: string; toolCalls?: Array<{ id: string; name: string; arguments: unknown }>; toolCallId?: string }>
+): Array<{ name: string; arguments: unknown; result?: unknown }> {
+  const toolCalls: Array<{ name: string; arguments: unknown; result?: unknown }> = []
+  const toolCallMessages = messages.filter(
+    (m) => m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0
+  )
+  for (const msg of toolCallMessages) {
+    if (msg.toolCalls) {
+      for (const tc of msg.toolCalls) {
+        const toolResultMsg = messages.find(
+          (m) => m.role === "tool" && m.toolCallId === tc.id
+        )
+        toolCalls.push({
+          name: tc.name,
+          arguments: tc.arguments,
+          result: toolResultMsg ? safeJsonParse(toolResultMsg.content) : undefined,
+        })
+      }
+    }
+  }
+  return toolCalls
+}
 
 async function evaluateAssertions(
   assertions: AssertionDef[],
@@ -356,11 +474,6 @@ async function judgeResponse(args: {
   inputTokens: number
   outputTokens: number
 }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured")
-
-  const modelName = args.model?.name || "claude-haiku-4-5-20251001"
-
   const toolCallsText = args.toolCalls.length > 0
     ? `\n\nTool calls made:\n${args.toolCalls.map((tc) =>
         `- ${tc.name}(${JSON.stringify(tc.arguments)})${tc.result ? ` → ${JSON.stringify(tc.result)}` : ""}`
@@ -379,39 +492,21 @@ ${args.criteria}
 
 Evaluate the assistant's response against the criteria. Respond with JSON only.`
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: modelName,
-      max_tokens: 512,
-      temperature: 0,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+  const result = await generateText({
+    model: createModel({
+      provider: args.model?.provider || "anthropic",
+      name: args.model?.name || "claude-haiku-4-5-20251001",
     }),
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+    maxRetries: 2,
+    temperature: 0,
+    maxOutputTokens: 512,
   })
 
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Judge API error: ${error}`)
-  }
-
-  const result = await response.json() as {
-    content: Array<{ type: string; text?: string }>
-    usage?: { input_tokens: number; output_tokens: number }
-  }
-
-  const textContent = result.content
-    .filter((c) => c.type === "text")
-    .map((c) => c.text)
-    .join("")
-
-  const inputTokens = result.usage?.input_tokens ?? 0
-  const outputTokens = result.usage?.output_tokens ?? 0
+  const inputTokens = result.usage.inputTokens ?? 0
+  const outputTokens = result.usage.outputTokens ?? 0
+  const textContent = result.text
 
   try {
     const jsonMatch = textContent.match(/\{[\s\S]*\}/)
