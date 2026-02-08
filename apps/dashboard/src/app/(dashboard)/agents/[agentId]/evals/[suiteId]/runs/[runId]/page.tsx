@@ -68,6 +68,100 @@ function AssertionBadge({ result }: { result: { type: string; passed: boolean; s
   )
 }
 
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return "—"
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") return String(value)
+  return JSON.stringify(value)
+}
+
+function ObjectCard({ data, index }: { data: Record<string, unknown>; index?: number }) {
+  const entries = Object.entries(data).filter(([, v]) => v !== undefined && v !== null)
+  return (
+    <div className="rounded border border-border/50 bg-black/10 p-2.5 space-y-1">
+      {index !== undefined && (
+        <div className="text-[10px] font-mono text-content-tertiary mb-1.5">#{index + 1}</div>
+      )}
+      {entries.map(([key, value]) => (
+        <div key={key} className="flex gap-2 text-xs">
+          <span className="font-mono text-content-tertiary shrink-0">{key}:</span>
+          {Array.isArray(value) ? (
+            <span className="font-mono text-content-secondary break-all">
+              {value.map((v) => formatValue(v)).join(", ")}
+            </span>
+          ) : typeof value === "object" && value !== null ? (
+            <span className="font-mono text-content-secondary break-all">
+              {JSON.stringify(value)}
+            </span>
+          ) : (
+            <span className="text-content-primary break-all">{formatValue(value)}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ToolDataView({ data, label }: { data: unknown; label: string }) {
+  if (data === undefined || data === null) return null
+
+  if (typeof data === "string" || typeof data === "number" || typeof data === "boolean") {
+    return (
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">{label}</div>
+        <div className="text-xs text-content-primary bg-black/10 rounded px-2 py-1.5 break-all">{String(data)}</div>
+      </div>
+    )
+  }
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">{label}</div>
+          <div className="text-xs text-content-tertiary italic">Empty array</div>
+        </div>
+      )
+    }
+
+    const allObjects = data.every((item) => typeof item === "object" && item !== null && !Array.isArray(item))
+    if (allObjects) {
+      return (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">
+            {label} ({data.length} {data.length === 1 ? "item" : "items"})
+          </div>
+          <div className="space-y-1.5 max-h-80 overflow-y-auto">
+            {data.map((item: Record<string, unknown>, i: number) => (
+              <ObjectCard key={i} data={item} index={i} />
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">{label}</div>
+        <pre className="text-xs font-mono bg-black/10 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </div>
+    )
+  }
+
+  if (typeof data === "object") {
+    return (
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">{label}</div>
+        <ObjectCard data={data as Record<string, unknown>} />
+      </div>
+    )
+  }
+
+  return null
+}
+
 function CaseResultRow({ result, caseName }: { result: any; caseName: string }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -138,22 +232,8 @@ function CaseResultRow({ result, caseName }: { result: any; caseName: string }) 
                         <Wrench className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                         <span className="text-xs font-mono text-amber-600">{tc.name}</span>
                       </div>
-                      {tc.arguments && (
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Arguments</div>
-                          <pre className="text-xs font-mono bg-black/20 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
-                            {JSON.stringify(tc.arguments, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-                      {tc.result !== undefined && (
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Result</div>
-                          <pre className="text-xs font-mono bg-black/20 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
-                            {typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result, null, 2)}
-                          </pre>
-                        </div>
-                      )}
+                      <ToolDataView data={tc.arguments} label="Arguments" />
+                      <ToolDataView data={tc.result} label="Result" />
                     </div>
                   ))}
                 </div>
