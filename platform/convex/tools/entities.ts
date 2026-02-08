@@ -266,8 +266,38 @@ export const entityQuery = internalQuery({
     if (args.filters) {
       filtered = filtered.filter((e) => {
         for (const [key, value] of Object.entries(args.filters)) {
-          if (e.data[key] !== value) {
-            return false
+          const fieldVal = e.data[key]
+          if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+            const ops = value as Record<string, unknown>
+            for (const [op, opVal] of Object.entries(ops)) {
+              switch (op) {
+                case "_op_in":
+                  if (!Array.isArray(opVal) || !opVal.includes(fieldVal)) return false
+                  break
+                case "_op_nin":
+                  if (Array.isArray(opVal) && opVal.includes(fieldVal)) return false
+                  break
+                case "_op_ne":
+                  if (fieldVal === opVal) return false
+                  break
+                case "_op_gt":
+                  if (typeof fieldVal !== "number" || typeof opVal !== "number" || fieldVal <= opVal) return false
+                  break
+                case "_op_gte":
+                  if (typeof fieldVal !== "number" || typeof opVal !== "number" || fieldVal < opVal) return false
+                  break
+                case "_op_lt":
+                  if (typeof fieldVal !== "number" || typeof opVal !== "number" || fieldVal >= opVal) return false
+                  break
+                case "_op_lte":
+                  if (typeof fieldVal !== "number" || typeof opVal !== "number" || fieldVal > opVal) return false
+                  break
+                default:
+                  break
+              }
+            }
+          } else {
+            if (fieldVal !== value) return false
           }
         }
         return true
