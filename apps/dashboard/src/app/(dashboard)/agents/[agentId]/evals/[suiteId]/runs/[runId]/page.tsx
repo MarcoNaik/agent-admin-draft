@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Link from "next/link"
 import {
   Loader2,
@@ -15,6 +15,8 @@ import {
   Wrench,
   Ban,
   Clock,
+  ClipboardCopy,
+  Check,
 } from "lucide-react"
 import {
   useEvalRun,
@@ -184,12 +186,141 @@ function CaseResultRow({ result, caseName }: { result: any; caseName: string }) 
   )
 }
 
+function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>): string {
+  const lines: string[] = []
+
+  lines.push(`# Eval Run Results`)
+  lines.push("")
+  lines.push(`| Metric | Value |`)
+  lines.push(`|--------|-------|`)
+  lines.push(`| **Status** | ${run.status} |`)
+  lines.push(`| **Pass Rate** | ${run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"} |`)
+  lines.push(`| **Score** | ${run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"} |`)
+  lines.push(`| **Duration** | ${run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"} |`)
+  if (run.totalTokens) {
+    lines.push(`| **Tokens** | ${(run.totalTokens.agent + run.totalTokens.judge).toLocaleString()} (Agent: ${run.totalTokens.agent.toLocaleString()}, Judge: ${run.totalTokens.judge.toLocaleString()}) |`)
+  } else {
+    lines.push(`| **Tokens** | — |`)
+  }
+  if (run.startedAt) {
+    lines.push(`| **Started** | ${new Date(run.startedAt).toLocaleString()} |`)
+  }
+  if (run.completedAt) {
+    lines.push(`| **Completed** | ${new Date(run.completedAt).toLocaleString()} |`)
+  }
+  lines.push("")
+
+  lines.push(`## Case Results`)
+  lines.push("")
+
+  for (const result of results) {
+    const evalCase = caseMap.get(result.caseId)
+    const caseName = evalCase?.name || "Unknown Case"
+    const statusEmoji = result.status === "passed" ? "✅" : result.status === "failed" ? "❌" : result.status === "error" ? "⚠️" : "⏱️"
+
+    lines.push(`### ${statusEmoji} ${caseName}`)
+    lines.push("")
+    lines.push(`- **Status:** ${result.status}`)
+    lines.push(`- **Passed:** ${result.overallPassed ? "Yes" : "No"}`)
+    if (result.overallScore !== undefined) {
+      lines.push(`- **Score:** ${result.overallScore.toFixed(1)}/5`)
+    }
+    if (result.totalDurationMs) {
+      lines.push(`- **Duration:** ${formatDuration(result.totalDurationMs)}`)
+    }
+    if (result.judgeTokens) {
+      lines.push(`- **Judge Tokens:** ${(result.judgeTokens.input + result.judgeTokens.output).toLocaleString()}`)
+    }
+    lines.push("")
+
+    if (result.errorMessage) {
+      lines.push(`> **Error:** ${result.errorMessage}`)
+      lines.push("")
+    }
+
+    if (result.turnResults) {
+      for (const turn of result.turnResults) {
+        lines.push(`#### Turn ${turn.turnIndex + 1}`)
+        lines.push("")
+        lines.push(`**User:**`)
+        lines.push("```")
+        lines.push(turn.userMessage)
+        lines.push("```")
+        lines.push("")
+
+        if (turn.toolCalls && turn.toolCalls.length > 0) {
+          lines.push(`**Tool Calls:**`)
+          for (const tc of turn.toolCalls) {
+            lines.push(`- \`${tc.name}\``)
+            if (tc.arguments) {
+              lines.push(`  - Args: \`${JSON.stringify(tc.arguments)}\``)
+            }
+            if (tc.result !== undefined) {
+              lines.push(`  - Result: \`${JSON.stringify(tc.result)}\``)
+            }
+          }
+          lines.push("")
+        }
+
+        lines.push(`**Assistant:**`)
+        lines.push("```")
+        lines.push(turn.assistantResponse)
+        lines.push("```")
+        lines.push("")
+
+        if (turn.agentTokens) {
+          lines.push(`*${formatDuration(turn.durationMs)} · ${(turn.agentTokens.input + turn.agentTokens.output).toLocaleString()} tokens*`)
+          lines.push("")
+        }
+
+        if (turn.assertionResults && turn.assertionResults.length > 0) {
+          lines.push(`**Assertions:**`)
+          lines.push("")
+          lines.push(`| Type | Passed | Score | Criteria | Reason |`)
+          lines.push(`|------|--------|-------|----------|--------|`)
+          for (const ar of turn.assertionResults) {
+            lines.push(`| ${ar.type} | ${ar.passed ? "✅" : "❌"} | ${ar.score !== undefined ? `${ar.score}/5` : "—"} | ${ar.criteria || "—"} | ${ar.reason || "—"} |`)
+          }
+          lines.push("")
+        }
+      }
+    }
+
+    if (result.finalAssertionResults && result.finalAssertionResults.length > 0) {
+      lines.push(`#### Final Assertions`)
+      lines.push("")
+      lines.push(`| Type | Passed | Score | Criteria | Reason |`)
+      lines.push(`|------|--------|-------|----------|--------|`)
+      for (const ar of result.finalAssertionResults) {
+        lines.push(`| ${ar.type} | ${ar.passed ? "✅" : "❌"} | ${ar.score !== undefined ? `${ar.score}/5` : "—"} | ${ar.criteria || "—"} | ${ar.reason || "—"} |`)
+      }
+      lines.push("")
+    }
+
+    lines.push("---")
+    lines.push("")
+  }
+
+  return lines.join("\n")
+}
+
 export default function RunResultsPage({ params }: RunResultsPageProps) {
   const { agentId, suiteId, runId } = params
   const run = useEvalRun(runId as Id<"evalRuns">)
   const results = useEvalRunResults(runId as Id<"evalRuns">)
   const cases = useEvalCases(suiteId as Id<"evalSuites">)
   const cancelRun = useCancelEvalRun()
+  const [copied, setCopied] = useState(false)
+
+  const caseMap = new Map<string, any>((cases || []).map((c: any) => [c._id, c]))
+
+  const handleCopyMarkdown = useCallback(async () => {
+    if (!run || !results) return
+    const markdown = generateRunMarkdown(run, results, caseMap)
+    await navigator.clipboard.writeText(markdown)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [run, results, caseMap])
 
   if (run === undefined || results === undefined || cases === undefined) {
     return (
@@ -207,7 +338,6 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
     )
   }
 
-  const caseMap = new Map<string, any>(cases.map((c: any) => [c._id, c]))
   const isRunning = run.status === "pending" || run.status === "running"
 
   return (
@@ -236,15 +366,26 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
             </p>
           </div>
         </div>
-        {isRunning && (
-          <button
-            onClick={() => cancelRun({ id: run._id })}
-            className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <Ban className="h-4 w-4" />
-            Cancel
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!isRunning && (
+            <button
+              onClick={handleCopyMarkdown}
+              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
+            >
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <ClipboardCopy className="h-4 w-4" />}
+              {copied ? "Copied!" : "Copy to Markdown"}
+            </button>
+          )}
+          {isRunning && (
+            <button
+              onClick={() => cancelRun({ id: run._id })}
+              className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Ban className="h-4 w-4" />
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
