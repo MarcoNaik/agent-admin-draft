@@ -1,6 +1,12 @@
 import type { LoadedResources } from './loader'
 import type { AgentConfigV2, ToolReference } from '../../types'
 
+function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' {
+  if (modelName.startsWith('gpt-') || modelName.startsWith('o1') || modelName.startsWith('o3') || modelName.startsWith('o4')) return 'openai'
+  if (modelName.startsWith('gemini')) return 'google'
+  return 'anthropic'
+}
+
 const BUILTIN_TOOLS = [
   'entity.create',
   'entity.get',
@@ -145,7 +151,7 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
         description: suite.description,
         tags: suite.tags,
         judgeModel: suite.judgeModel
-          ? { provider: 'anthropic' as const, name: suite.judgeModel }
+          ? { provider: inferProvider(suite.judgeModel), name: suite.judgeModel }
           : undefined,
         cases: suite.cases.map((c) => ({
           name: c.name,
