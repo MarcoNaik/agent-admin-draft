@@ -355,6 +355,7 @@ export const startRun = mutation({
   args: {
     suiteId: v.id("evalSuites"),
     triggerSource: v.union(v.literal("dashboard"), v.literal("cli")),
+    caseIds: v.optional(v.array(v.id("evalCases"))),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -367,10 +368,18 @@ export const startRun = mutation({
       throw new Error("Cannot run an archived suite")
     }
 
-    const cases = await ctx.db
+    let cases = await ctx.db
       .query("evalCases")
       .withIndex("by_suite", (q) => q.eq("suiteId", args.suiteId))
       .collect()
+
+    if (args.caseIds) {
+      const requestedIds = new Set(args.caseIds)
+      cases = cases.filter((c) => requestedIds.has(c._id))
+      if (cases.length !== args.caseIds.length) {
+        throw new Error("One or more case IDs do not belong to this suite")
+      }
+    }
 
     if (cases.length === 0) {
       throw new Error("Suite has no cases")
