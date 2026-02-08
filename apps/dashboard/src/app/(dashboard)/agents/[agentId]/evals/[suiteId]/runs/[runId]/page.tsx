@@ -133,11 +133,27 @@ function CaseResultRow({ result, caseName }: { result: any; caseName: string }) 
               {turn.toolCalls && turn.toolCalls.length > 0 && (
                 <div className="pl-4 border-l-2 border-amber-500/30 space-y-1.5">
                   {turn.toolCalls.map((tc: any, i: number) => (
-                    <div key={i} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2.5">
+                    <div key={i} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2.5 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Wrench className="h-3.5 w-3.5 text-amber-500" />
+                        <Wrench className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                         <span className="text-xs font-mono text-amber-600">{tc.name}</span>
                       </div>
+                      {tc.arguments && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Arguments</div>
+                          <pre className="text-xs font-mono bg-black/20 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
+                            {JSON.stringify(tc.arguments, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      {tc.result !== undefined && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Result</div>
+                          <pre className="text-xs font-mono bg-black/20 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
+                            {typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result, null, 2)}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
