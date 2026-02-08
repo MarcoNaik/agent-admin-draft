@@ -5,6 +5,8 @@ import { Id } from "./_generated/dataModel"
 import { hashApiKey } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
+import { generateText, tool, jsonSchema, stepCountIs } from "ai"
+import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps } from "./lib/llm"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -57,6 +59,242 @@ function serializeActor(actor: ActorContext) {
   }
 }
 
+interface ExecuteChatParams {
+  ctx: any
+  organizationId: Id<"organizations">
+  agentId: Id<"agents">
+  message: string
+  threadId: Id<"threads">
+  environment: Environment
+  actor: ActorContext
+  agent: { name: string; slug: string }
+  config: any
+  thread: any
+  userId?: Id<"users">
+}
+
+async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
+  const { ctx, organizationId, agentId, message, threadId, environment, actor, agent, config, thread, userId } = params
+  const startTime = Date.now()
+
+  const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
+
+  const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
+    ctx.runQuery(internal.organizations.getInternal, { organizationId }),
+    ctx.runQuery(internal.entityTypes.listInternal, { organizationId, environment }),
+    ctx.runQuery(internal.roles.listInternal, { organizationId, environment }),
+  ])
+
+  const now = Date.now()
+  const currentTimeStr = new Date(now).toISOString()
+
+  const entityTypes: EntityTypeContext[] = (entityTypesRaw || []).map((et: { name: string; slug: string; description?: string; schema: Record<string, unknown>; searchFields?: string[] }) => ({
+    name: et.name,
+    slug: et.slug,
+    description: et.description,
+    schema: et.schema as Record<string, unknown>,
+    searchFields: et.searchFields,
+  }))
+
+  const roles = (rolesRaw || []).map((r: { name: string; description?: string }) => ({
+    name: r.name,
+    description: r.description,
+  }))
+
+  const templateContext: TemplateContext = {
+    organizationId,
+    organizationName: organization?.name ?? "Unknown Organization",
+    userId,
+    threadId,
+    agentId,
+    actor,
+    agent: { name: agent.name, slug: agent.slug },
+    agentName: agent.name,
+    thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
+    message,
+    timestamp: now,
+    datetime: currentTimeStr,
+    currentTime: currentTimeStr,
+    entityTypes,
+    roles,
+  }
+
+  const toolExecutor: ToolExecutor = {
+    executeBuiltin: async (name, toolArgs) => {
+      const toolIdentity = await ctx.runQuery(
+        internal.permissions.getToolIdentityQuery,
+        { actor: serializeActor(actor), agentId, toolName: name }
+      )
+      return executeBuiltinTool(ctx, {
+        organizationId: toolIdentity.organizationId,
+        actorId: toolIdentity.actorId,
+        actorType: toolIdentity.actorType,
+        isOrgAdmin: toolIdentity.isOrgAdmin,
+        environment,
+        toolName: name,
+        args: toolArgs,
+      })
+    },
+    executeCustom: (toolName, toolArgs) =>
+      ctx.runAction(internal.agent.executeCustomTool, {
+        toolName,
+        args: toolArgs,
+        context: {
+          organizationId: actor.organizationId,
+          actorId: actor.actorId,
+          actorType: actor.actorType,
+        },
+      }),
+  }
+
+  const processedSystemPrompt = await processTemplates(
+    config.systemPrompt,
+    templateContext,
+    config.tools,
+    toolExecutor,
+    ctx.runQuery
+  )
+
+  const historyMessages: Message[] = existingMessages.map((m: { role: string; content: string; toolCalls?: unknown; toolCallId?: string }) => ({
+    role: m.role as Message["role"],
+    content: m.content,
+    toolCalls: m.toolCalls as ToolCall[] | undefined,
+    toolCallId: m.toolCallId,
+  }))
+
+  const aiTools: Record<string, any> = {}
+  for (const t of config.tools as ToolConfig[]) {
+    const sanitized = sanitizeToolName(t.name)
+    aiTools[sanitized] = tool<Record<string, unknown>, unknown>({
+      description: t.description,
+      inputSchema: jsonSchema<Record<string, unknown>>(t.parameters as any),
+      execute: async (args) => {
+        const originalName = desanitizeToolName(sanitized)
+        const toolConfig = config.tools.find((tc: ToolConfig) => tc.name === originalName)
+
+        const permissionResult = await ctx.runQuery(
+          internal.permissions.canUseToolQuery,
+          { actor: serializeActor(actor), agentId, toolName: originalName }
+        )
+
+        if (!permissionResult.allowed) {
+          return { error: `Permission denied: ${permissionResult.reason}` }
+        }
+
+        try {
+          const toolIdentity = await ctx.runQuery(
+            internal.permissions.getToolIdentityQuery,
+            { actor: serializeActor(actor), agentId, toolName: originalName }
+          )
+
+          if (toolConfig?.isBuiltin) {
+            return await executeBuiltinTool(ctx, {
+              organizationId: toolIdentity.organizationId,
+              actorId: toolIdentity.actorId,
+              actorType: toolIdentity.actorType,
+              isOrgAdmin: toolIdentity.isOrgAdmin,
+              environment,
+              toolName: originalName,
+              args,
+            })
+          } else if (toolConfig?.handlerCode) {
+            return await ctx.runAction(internal.agent.executeCustomTool, {
+              toolName: originalName,
+              args,
+              context: {
+                organizationId: toolIdentity.organizationId,
+                actorId: toolIdentity.actorId,
+                actorType: toolIdentity.actorType,
+              },
+            })
+          }
+
+          return { error: "Tool has no handler" }
+        } catch (error) {
+          return { error: error instanceof Error ? error.message : "Tool execution failed" }
+        }
+      },
+    })
+  }
+
+  const result = await generateText({
+    model: createModel(config.model),
+    system: processedSystemPrompt,
+    messages: toAIMessages([
+      ...historyMessages,
+      { role: "user", content: message },
+    ]),
+    tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
+    stopWhen: stepCountIs(10),
+    maxRetries: 2,
+    temperature: config.model.temperature ?? 0.7,
+    maxOutputTokens: config.model.maxTokens ?? 4096,
+  })
+
+  const stepsMessages = fromSteps(result.steps as any)
+  const finalContent = result.text ?? ""
+
+  const lastMsg = stepsMessages[stepsMessages.length - 1]
+  const lastIsTextOnly = lastMsg?.role === "assistant" && !lastMsg.toolCalls?.length
+
+  const newMessages: Message[] = [
+    { role: "user", content: message },
+    ...stepsMessages,
+  ]
+
+  if (!lastIsTextOnly) {
+    newMessages.push({ role: "assistant", content: finalContent })
+  }
+
+  await ctx.runMutation(internal.threads.appendMessages, {
+    threadId,
+    messages: newMessages,
+  })
+
+  const durationMs = Date.now() - startTime
+  const totalInputTokens = result.totalUsage.inputTokens ?? 0
+  const totalOutputTokens = result.totalUsage.outputTokens ?? 0
+
+  const executedToolCalls = newMessages
+    .filter(m => m.role === "tool")
+    .map(m => {
+      const assistantMsg = newMessages.find(
+        am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
+      )
+      const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
+      return toolCall ? {
+        name: toolCall.name,
+        arguments: toolCall.arguments,
+        result: JSON.parse(m.content),
+      } : null
+    })
+    .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
+
+  await ctx.runMutation(internal.executions.record, {
+    organizationId,
+    agentId,
+    threadId,
+    environment,
+    inputMessage: message,
+    outputMessage: finalContent,
+    toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
+    durationMs,
+    status: "success",
+  })
+
+  return {
+    threadId,
+    message: finalContent,
+    usage: {
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      totalTokens: totalInputTokens + totalOutputTokens,
+    },
+  }
+}
+
 export const chat = internalAction({
   args: {
     apiKey: v.string(),
@@ -75,8 +313,6 @@ export const chat = internalAction({
     }),
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
-    const startTime = Date.now()
-
     const keyHash = await hashApiKey(args.apiKey)
     const auth: ApiKeyAuth | null = await ctx.runQuery(internal.agent.validateApiKey, { keyHash })
 
@@ -107,10 +343,6 @@ export const chat = internalAction({
       environment,
     })
 
-    const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, {
-      threadId,
-    })
-
     const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
 
     const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
@@ -120,316 +352,18 @@ export const chat = internalAction({
       environment,
     })
 
-    const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
-      ctx.runQuery(internal.organizations.getInternal, { organizationId: auth.organizationId }),
-      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: auth.organizationId, environment }),
-      ctx.runQuery(internal.roles.listInternal, { organizationId: auth.organizationId, environment }),
-    ])
-
-    const now = Date.now()
-    const currentTimeStr = new Date(now).toISOString()
-
-    const entityTypes: EntityTypeContext[] = (entityTypesRaw || []).map((et: { name: string; slug: string; description?: string; schema: Record<string, unknown>; searchFields?: string[] }) => ({
-      name: et.name,
-      slug: et.slug,
-      description: et.description,
-      schema: et.schema as Record<string, unknown>,
-      searchFields: et.searchFields,
-    }))
-
-    const roles = (rolesRaw || []).map((r: { name: string; description?: string }) => ({
-      name: r.name,
-      description: r.description,
-    }))
-
-    const templateContext: TemplateContext = {
+    return executeChat({
+      ctx,
       organizationId: auth.organizationId,
-      organizationName: organization?.name ?? "Unknown Organization",
-      userId: thread?.userId,
-      threadId,
       agentId: args.agentId,
-      actor,
-      agent: { name: agent.name, slug: agent.slug },
-      agentName: agent.name,
-      thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
       message: args.message,
-      timestamp: now,
-      datetime: currentTimeStr,
-      currentTime: currentTimeStr,
-      entityTypes,
-      roles,
-    }
-
-    const toolExecutor: ToolExecutor = {
-      executeBuiltin: async (name, toolArgs) => {
-        const toolIdentity = await ctx.runQuery(
-          internal.permissions.getToolIdentityQuery,
-          { actor: serializeActor(actor), agentId: args.agentId, toolName: name }
-        )
-        return executeBuiltinTool(ctx, {
-          organizationId: toolIdentity.organizationId,
-          actorId: toolIdentity.actorId,
-          actorType: toolIdentity.actorType,
-          isOrgAdmin: toolIdentity.isOrgAdmin,
-          environment,
-          toolName: name,
-          args: toolArgs,
-        })
-      },
-      executeCustom: (handlerCode, toolArgs) =>
-        ctx.runAction(internal.agent.executeCustomTool, {
-          handlerCode,
-          args: toolArgs,
-          context: {
-            organizationId: actor.organizationId,
-            actorId: actor.actorId,
-            actorType: actor.actorType,
-          },
-        }),
-    }
-
-    const processedSystemPrompt = await processTemplates(
-      config.systemPrompt,
-      templateContext,
-      config.tools,
-      toolExecutor,
-      ctx.runQuery
-    )
-
-    const messages: Message[] = [
-      { role: "system", content: processedSystemPrompt },
-      ...existingMessages.map((m: { role: string; content: string; toolCalls?: unknown; toolCallId?: string }) => ({
-        role: m.role as Message["role"],
-        content: m.content,
-        toolCalls: m.toolCalls as ToolCall[] | undefined,
-        toolCallId: m.toolCallId,
-      })),
-      { role: "user", content: args.message },
-    ]
-
-    const llmMessages = messages.map((m) => {
-      if (m.role === "assistant" && m.toolCalls) {
-        return {
-          role: m.role,
-          content: m.content,
-          tool_calls: m.toolCalls.map((tc) => ({
-            id: tc.id,
-            type: "function" as const,
-            function: {
-              name: tc.name,
-              arguments: JSON.stringify(tc.arguments),
-            },
-          })),
-        }
-      }
-      if (m.role === "tool") {
-        return {
-          role: m.role,
-          content: m.content,
-          tool_call_id: m.toolCallId,
-        }
-      }
-      return { role: m.role, content: m.content }
-    })
-
-    const tools = config.tools.map((t: ToolConfig) => ({
-      type: "function" as const,
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: t.parameters,
-      },
-    }))
-
-    let response = await callLLM({
-      model: config.model,
-      messages: llmMessages,
-      tools: tools.length > 0 ? tools : undefined,
-    })
-
-    let totalInputTokens = response.usage?.prompt_tokens ?? 0
-    let totalOutputTokens = response.usage?.completion_tokens ?? 0
-
-    const newMessages: Message[] = [{ role: "user", content: args.message }]
-
-    let iterations = 0
-    const maxIterations = 10
-
-    while (response.choices[0]?.message?.tool_calls && iterations < maxIterations) {
-      iterations++
-
-      const assistantMessage = response.choices[0].message
-      const toolCalls: ToolCall[] = (assistantMessage.tool_calls ?? []).map((tc: { id: string; function: { name: string; arguments: string } }) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments),
-      }))
-
-      newMessages.push({
-        role: "assistant",
-        content: assistantMessage.content ?? "",
-        toolCalls,
-      })
-
-      for (const tc of toolCalls) {
-        const toolConfig = config.tools.find((t: ToolConfig) => t.name === tc.name)
-        if (!toolConfig) {
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }),
-            toolCallId: tc.id,
-          })
-          continue
-        }
-
-        const permissionResult = await ctx.runQuery(
-          internal.permissions.canUseToolQuery,
-          { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
-        )
-
-        if (!permissionResult.allowed) {
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify({ error: `Permission denied: ${permissionResult.reason}` }),
-            toolCallId: tc.id,
-          })
-          continue
-        }
-
-        try {
-          const toolIdentity = await ctx.runQuery(
-            internal.permissions.getToolIdentityQuery,
-            { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
-          )
-
-          let result: unknown
-
-          if (toolConfig.isBuiltin) {
-            result = await executeBuiltinTool(ctx, {
-              organizationId: toolIdentity.organizationId,
-              actorId: toolIdentity.actorId,
-              actorType: toolIdentity.actorType,
-              isOrgAdmin: toolIdentity.isOrgAdmin,
-              environment,
-              toolName: tc.name,
-              args: tc.arguments,
-            })
-          } else if (toolConfig.handlerCode) {
-            result = await ctx.runAction(internal.agent.executeCustomTool, {
-              handlerCode: toolConfig.handlerCode,
-              args: tc.arguments,
-              context: {
-                organizationId: toolIdentity.organizationId,
-                actorId: toolIdentity.actorId,
-                actorType: toolIdentity.actorType,
-              },
-            })
-          } else {
-            result = { error: "Tool has no handler" }
-          }
-
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify(result),
-            toolCallId: tc.id,
-          })
-        } catch (error) {
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify({
-              error: error instanceof Error ? error.message : "Tool execution failed",
-            }),
-            toolCallId: tc.id,
-          })
-        }
-      }
-
-      const updatedMessages = [
-        ...llmMessages,
-        ...newMessages.map((m) => {
-          if (m.role === "assistant" && m.toolCalls) {
-            return {
-              role: m.role,
-              content: m.content,
-              tool_calls: m.toolCalls.map((tc) => ({
-                id: tc.id,
-                type: "function" as const,
-                function: {
-                  name: tc.name,
-                  arguments: JSON.stringify(tc.arguments),
-                },
-              })),
-            }
-          }
-          if (m.role === "tool") {
-            return {
-              role: m.role,
-              content: m.content,
-              tool_call_id: m.toolCallId,
-            }
-          }
-          return { role: m.role, content: m.content }
-        }),
-      ]
-
-      response = await callLLM({
-        model: config.model,
-        messages: updatedMessages,
-        tools: tools.length > 0 ? tools : undefined,
-      })
-
-      totalInputTokens += response.usage?.prompt_tokens ?? 0
-      totalOutputTokens += response.usage?.completion_tokens ?? 0
-    }
-
-    const finalContent = response.choices[0]?.message?.content ?? ""
-    newMessages.push({ role: "assistant", content: finalContent })
-
-    await ctx.runMutation(internal.threads.appendMessages, {
-      threadId,
-      messages: newMessages,
-    })
-
-    const durationMs = Date.now() - startTime
-
-    const executedToolCalls = newMessages
-      .filter(m => m.role === "tool")
-      .map(m => {
-        const assistantMsg = newMessages.find(
-          am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
-        )
-        const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
-        return toolCall ? {
-          name: toolCall.name,
-          arguments: toolCall.arguments,
-          result: JSON.parse(m.content),
-        } : null
-      })
-      .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
-
-    await ctx.runMutation(internal.executions.record, {
-      organizationId: auth.organizationId,
-      agentId: args.agentId,
       threadId,
       environment,
-      inputMessage: args.message,
-      outputMessage: finalContent,
-      toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
-      inputTokens: totalInputTokens,
-      outputTokens: totalOutputTokens,
-      durationMs,
-      status: "success",
+      actor,
+      agent: { name: agent.name, slug: agent.slug },
+      config,
+      thread,
     })
-
-    return {
-      threadId,
-      message: finalContent,
-      usage: {
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-        totalTokens: totalInputTokens + totalOutputTokens,
-      },
-    }
   },
 })
 
@@ -496,7 +430,6 @@ export const chatAuthenticated = internalAction({
     }),
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
-    const startTime = Date.now()
     const environment: Environment = args.environment ?? "development"
 
     const agent = await ctx.runQuery(internal.agent.getAgentInternal, {
@@ -520,10 +453,6 @@ export const chatAuthenticated = internalAction({
       environment,
     })
 
-    const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, {
-      threadId,
-    })
-
     const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
 
     const actorType = args.userId ? "user" : "system"
@@ -536,316 +465,19 @@ export const chatAuthenticated = internalAction({
       environment,
     })
 
-    const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
-      ctx.runQuery(internal.organizations.getInternal, { organizationId: args.organizationId }),
-      ctx.runQuery(internal.entityTypes.listInternal, { organizationId: args.organizationId, environment }),
-      ctx.runQuery(internal.roles.listInternal, { organizationId: args.organizationId, environment }),
-    ])
-
-    const now = Date.now()
-    const currentTimeStr = new Date(now).toISOString()
-
-    const entityTypes: EntityTypeContext[] = (entityTypesRaw || []).map((et: { name: string; slug: string; description?: string; schema: Record<string, unknown>; searchFields?: string[] }) => ({
-      name: et.name,
-      slug: et.slug,
-      description: et.description,
-      schema: et.schema as Record<string, unknown>,
-      searchFields: et.searchFields,
-    }))
-
-    const roles = (rolesRaw || []).map((r: { name: string; description?: string }) => ({
-      name: r.name,
-      description: r.description,
-    }))
-
-    const templateContext: TemplateContext = {
+    return executeChat({
+      ctx,
       organizationId: args.organizationId,
-      organizationName: organization?.name ?? "Unknown Organization",
-      userId: args.userId,
-      threadId,
       agentId: args.agentId,
-      actor,
-      agent: { name: agent.name, slug: agent.slug },
-      agentName: agent.name,
-      thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
       message: args.message,
-      timestamp: now,
-      datetime: currentTimeStr,
-      currentTime: currentTimeStr,
-      entityTypes,
-      roles,
-    }
-
-    const toolExecutor: ToolExecutor = {
-      executeBuiltin: async (name, toolArgs) => {
-        const toolIdentity = await ctx.runQuery(
-          internal.permissions.getToolIdentityQuery,
-          { actor: serializeActor(actor), agentId: args.agentId, toolName: name }
-        )
-        return executeBuiltinTool(ctx, {
-          organizationId: toolIdentity.organizationId,
-          actorId: toolIdentity.actorId,
-          actorType: toolIdentity.actorType,
-          isOrgAdmin: toolIdentity.isOrgAdmin,
-          environment,
-          toolName: name,
-          args: toolArgs,
-        })
-      },
-      executeCustom: (handlerCode, toolArgs) =>
-        ctx.runAction(internal.agent.executeCustomTool, {
-          handlerCode,
-          args: toolArgs,
-          context: {
-            organizationId: actor.organizationId,
-            actorId: actor.actorId,
-            actorType: actor.actorType,
-          },
-        }),
-    }
-
-    const processedSystemPrompt = await processTemplates(
-      config.systemPrompt,
-      templateContext,
-      config.tools,
-      toolExecutor,
-      ctx.runQuery
-    )
-
-    const messages: Message[] = [
-      { role: "system", content: processedSystemPrompt },
-      ...existingMessages.map((m: { role: string; content: string; toolCalls?: unknown; toolCallId?: string }) => ({
-        role: m.role as Message["role"],
-        content: m.content,
-        toolCalls: m.toolCalls as ToolCall[] | undefined,
-        toolCallId: m.toolCallId,
-      })),
-      { role: "user", content: args.message },
-    ]
-
-    const llmMessages = messages.map((m) => {
-      if (m.role === "assistant" && m.toolCalls) {
-        return {
-          role: m.role,
-          content: m.content,
-          tool_calls: m.toolCalls.map((tc) => ({
-            id: tc.id,
-            type: "function" as const,
-            function: {
-              name: tc.name,
-              arguments: JSON.stringify(tc.arguments),
-            },
-          })),
-        }
-      }
-      if (m.role === "tool") {
-        return {
-          role: m.role,
-          content: m.content,
-          tool_call_id: m.toolCallId,
-        }
-      }
-      return { role: m.role, content: m.content }
-    })
-
-    const tools = config.tools.map((t: ToolConfig) => ({
-      type: "function" as const,
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: t.parameters,
-      },
-    }))
-
-    let response = await callLLM({
-      model: config.model,
-      messages: llmMessages,
-      tools: tools.length > 0 ? tools : undefined,
-    })
-
-    let totalInputTokens = response.usage?.prompt_tokens ?? 0
-    let totalOutputTokens = response.usage?.completion_tokens ?? 0
-
-    const newMessages: Message[] = [{ role: "user", content: args.message }]
-
-    let iterations = 0
-    const maxIterations = 10
-
-    while (response.choices[0]?.message?.tool_calls && iterations < maxIterations) {
-      iterations++
-
-      const assistantMessage = response.choices[0].message
-      const toolCalls: ToolCall[] = (assistantMessage.tool_calls ?? []).map((tc: { id: string; function: { name: string; arguments: string } }) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments),
-      }))
-
-      newMessages.push({
-        role: "assistant",
-        content: assistantMessage.content ?? "",
-        toolCalls,
-      })
-
-      for (const tc of toolCalls) {
-        const toolConfig = config.tools.find((t: ToolConfig) => t.name === tc.name)
-        if (!toolConfig) {
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }),
-            toolCallId: tc.id,
-          })
-          continue
-        }
-
-        const permissionResult = await ctx.runQuery(
-          internal.permissions.canUseToolQuery,
-          { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
-        )
-
-        if (!permissionResult.allowed) {
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify({ error: `Permission denied: ${permissionResult.reason}` }),
-            toolCallId: tc.id,
-          })
-          continue
-        }
-
-        try {
-          const toolIdentity = await ctx.runQuery(
-            internal.permissions.getToolIdentityQuery,
-            { actor: serializeActor(actor), agentId: args.agentId, toolName: tc.name }
-          )
-
-          let result: unknown
-
-          if (toolConfig.isBuiltin) {
-            result = await executeBuiltinTool(ctx, {
-              organizationId: toolIdentity.organizationId,
-              actorId: toolIdentity.actorId,
-              actorType: toolIdentity.actorType,
-              isOrgAdmin: toolIdentity.isOrgAdmin,
-              environment,
-              toolName: tc.name,
-              args: tc.arguments,
-            })
-          } else if (toolConfig.handlerCode) {
-            result = await ctx.runAction(internal.agent.executeCustomTool, {
-              handlerCode: toolConfig.handlerCode,
-              args: tc.arguments,
-              context: {
-                organizationId: toolIdentity.organizationId,
-                actorId: toolIdentity.actorId,
-                actorType: toolIdentity.actorType,
-              },
-            })
-          } else {
-            result = { error: "Tool has no handler" }
-          }
-
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify(result),
-            toolCallId: tc.id,
-          })
-        } catch (error) {
-          newMessages.push({
-            role: "tool",
-            content: JSON.stringify({
-              error: error instanceof Error ? error.message : "Tool execution failed",
-            }),
-            toolCallId: tc.id,
-          })
-        }
-      }
-
-      const updatedMessages = [
-        ...llmMessages,
-        ...newMessages.map((m) => {
-          if (m.role === "assistant" && m.toolCalls) {
-            return {
-              role: m.role,
-              content: m.content,
-              tool_calls: m.toolCalls.map((tc) => ({
-                id: tc.id,
-                type: "function" as const,
-                function: {
-                  name: tc.name,
-                  arguments: JSON.stringify(tc.arguments),
-                },
-              })),
-            }
-          }
-          if (m.role === "tool") {
-            return {
-              role: m.role,
-              content: m.content,
-              tool_call_id: m.toolCallId,
-            }
-          }
-          return { role: m.role, content: m.content }
-        }),
-      ]
-
-      response = await callLLM({
-        model: config.model,
-        messages: updatedMessages,
-        tools: tools.length > 0 ? tools : undefined,
-      })
-
-      totalInputTokens += response.usage?.prompt_tokens ?? 0
-      totalOutputTokens += response.usage?.completion_tokens ?? 0
-    }
-
-    const finalContent = response.choices[0]?.message?.content ?? ""
-    newMessages.push({ role: "assistant", content: finalContent })
-
-    await ctx.runMutation(internal.threads.appendMessages, {
-      threadId,
-      messages: newMessages,
-    })
-
-    const durationMs = Date.now() - startTime
-
-    const executedToolCalls = newMessages
-      .filter(m => m.role === "tool")
-      .map(m => {
-        const assistantMsg = newMessages.find(
-          am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
-        )
-        const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
-        return toolCall ? {
-          name: toolCall.name,
-          arguments: toolCall.arguments,
-          result: JSON.parse(m.content),
-        } : null
-      })
-      .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
-
-    await ctx.runMutation(internal.executions.record, {
-      organizationId: args.organizationId,
-      agentId: args.agentId,
       threadId,
       environment,
-      inputMessage: args.message,
-      outputMessage: finalContent,
-      toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
-      inputTokens: totalInputTokens,
-      outputTokens: totalOutputTokens,
-      durationMs,
-      status: "success",
+      actor,
+      agent: { name: agent.name, slug: agent.slug },
+      config,
+      thread,
+      userId: args.userId,
     })
-
-    return {
-      threadId,
-      message: finalContent,
-      usage: {
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-        totalTokens: totalInputTokens + totalOutputTokens,
-      },
-    }
   },
 })
 
@@ -1024,7 +656,7 @@ export const getThreadMessages = internalQuery({
 
 export const executeCustomTool = internalAction({
   args: {
-    handlerCode: v.string(),
+    toolName: v.string(),
     args: v.any(),
     context: v.optional(
       v.object({
@@ -1036,34 +668,156 @@ export const executeCustomTool = internalAction({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const toolExecutorUrl = process.env.TOOL_EXECUTOR_URL
-    const toolExecutorSecret = process.env.TOOL_EXECUTOR_SECRET
+    const allowedDomains = [
+      "api.openai.com",
+      "api.anthropic.com",
+      "api.stripe.com",
+      "api.sendgrid.com",
+      "api.twilio.com",
+      "hooks.slack.com",
+      "discord.com",
+      "api.github.com",
+    ]
 
-    if (!toolExecutorUrl || !toolExecutorSecret) {
-      throw new Error("Tool executor not configured")
+    const sandboxedFetch = async (url: string, options?: RequestInit) => {
+      const urlObj = new URL(url)
+      const isAllowed = allowedDomains.some(
+        (domain) =>
+          urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+      )
+      if (!isAllowed) {
+        throw new Error(
+          `Fetch to ${urlObj.hostname} is not allowed. Allowed domains: ${allowedDomains.join(", ")}`
+        )
+      }
+      return fetch(url, options)
     }
 
-    const response = await fetch(`${toolExecutorUrl}/execute`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${toolExecutorSecret}`,
-      },
-      body: JSON.stringify({
-        handlerCode: args.handlerCode,
-        args: args.args,
-        context: args.context ?? {},
-      }),
-    })
+    const toolContext = args.context ?? {}
+    const toolArgs = args.args as Record<string, any>
+    const handler = customToolHandlers[args.toolName]
 
-    if (!response.ok) {
-      throw new Error(`Tool execution failed: ${response.statusText}`)
+    if (!handler) {
+      throw new Error(`Unknown custom tool: ${args.toolName}`)
     }
 
-    const result = await response.json()
-    return result.result
+    return await handler(toolArgs, toolContext, sandboxedFetch)
   },
 })
+
+const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: string, options?: RequestInit) => Promise<Response>) => Promise<any>> = {
+  send_whatsapp_message: async (args, context, fetch) => {
+    const response = await fetch("https://api.twilio.com/2010-04-01/Accounts/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: `whatsapp:${args.to}`,
+        body: args.body,
+        templateName: args.templateName,
+        organizationId: context.organizationId,
+      }),
+    })
+    return await response.json()
+  },
+
+  generate_flow_payment_link: async (args, context, fetch) => {
+    return {
+      method: "bank_transfer",
+      bankDetails: {
+        name: "Educaland Spa",
+        rut: "77.528.846-9",
+        bank: "Banco Crédito e Inversión (BCI)",
+        account: "Cta Cte 63542501",
+        email: "Educalandspa@gmail.com",
+      },
+      amount: args.amount,
+      description: args.description,
+      referenceEmail: args.email,
+      paymentId: args.paymentId,
+    }
+  },
+
+  notify_admin: async (args, context, fetch) => {
+    const response = await fetch("https://hooks.slack.com/services/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: `[${args.type.toUpperCase()}] ${args.message}`,
+        attachments: [{
+          fields: [
+            { title: "Guardian", value: args.guardianPhone || "N/A", short: true },
+            { title: "Context", value: args.context || "N/A", short: false },
+            { title: "Org", value: context.organizationId, short: true },
+          ],
+        }],
+      }),
+    })
+    return { success: response.ok, status: response.status }
+  },
+
+  get_current_time: async (args, context, fetch) => {
+    const timezone = args.timezone || "America/Santiago"
+    const now = new Date()
+    return {
+      iso: now.toISOString(),
+      local: now.toLocaleString("es-CL", { timeZone: timezone }),
+      timezone,
+      timestamp: now.getTime(),
+    }
+  },
+
+  format_teacher_schedule: async (args, context, fetch) => {
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    const fmt = (h: number) => {
+      const hr = Math.floor(h)
+      const min = Math.round((h - hr) * 60)
+      const suffix = hr >= 12 ? "PM" : "AM"
+      const display = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr)
+      return `${display}:${String(min).padStart(2, "0")} ${suffix}`
+    }
+
+    const results = args.teachers.map((teacher: any) => {
+      const name = teacher.name || (teacher.data && teacher.data.name) || "Unknown"
+      const availability = teacher.availability || (teacher.data && teacher.data.availability)
+      const id = teacher._id || teacher.id || ""
+      const schedule: Record<string, string[]> = {}
+
+      if (Array.isArray(availability)) {
+        for (const s of availability) {
+          const day = dayNames[s.dayOfWeek]
+          if (!day) continue
+          const slots: string[] = []
+          for (let h = s.startHour; h < s.endHour; h++) slots.push(fmt(h))
+          schedule[day] = (schedule[day] || []).concat(slots)
+        }
+      } else if (availability && typeof availability === "object") {
+        const keyMap: Record<string, string> = {
+          monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
+          thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
+        }
+        for (const [key, dayName] of Object.entries(keyMap)) {
+          if (availability[key] && availability[key].length > 0) {
+            schedule[dayName] = availability[key].map((h: number) => fmt(h))
+          }
+        }
+      }
+
+      let text = ""
+      for (const day of dayOrder) {
+        if (schedule[day] && schedule[day].length > 0) {
+          text += `  ${day}: ${schedule[day].join(", ")}\n`
+        }
+      }
+
+      return { name, id, formattedSchedule: text || "  No availability\n", slotsByDay: schedule }
+    })
+
+    const markdown = results.map((r: any) => `**${r.name}**\n${r.formattedSchedule}`).join("\n")
+    return { markdown, teachers: results }
+  },
+}
 
 async function executeBuiltinTool(
   ctx: any,
@@ -1111,7 +865,7 @@ async function executeBuiltinTool(
         actorType,
         environment,
         type: args.type as string,
-        filters: args.filters,
+        filters: args.filters ? sanitizeFilters(args.filters) : undefined,
         status: args.status as string | undefined,
         limit: args.limit as number | undefined,
       })
@@ -1219,145 +973,13 @@ async function executeBuiltinTool(
   }
 }
 
-const BUILTIN_PREFIXES = ["entity", "event", "job"]
-
-function toApiToolName(name: string): string {
-  return name.replace(/\./g, "_")
-}
-
-function fromApiToolName(name: string): string {
-  for (const prefix of BUILTIN_PREFIXES) {
-    if (name.startsWith(`${prefix}_`)) {
-      return name.replace(`${prefix}_`, `${prefix}.`)
-    }
+function sanitizeFilters(obj: unknown): unknown {
+  if (obj === null || obj === undefined || typeof obj !== "object") return obj
+  if (Array.isArray(obj)) return obj.map(sanitizeFilters)
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const safeKey = key.startsWith("$") ? `_op_${key.slice(1)}` : key
+    result[safeKey] = sanitizeFilters(value)
   }
-  return name
-}
-
-async function callLLM(params: {
-  model: { provider: string; name: string; temperature?: number; maxTokens?: number }
-  messages: Array<{ role: string; content: string; [key: string]: unknown }>
-  tools?: Array<{
-    type: "function"
-    function: { name: string; description: string; parameters: unknown }
-  }>
-}): Promise<{
-  choices: Array<{
-    message: {
-      role: string
-      content: string | null
-      tool_calls?: Array<{
-        id: string
-        type: "function"
-        function: { name: string; arguments: string }
-      }>
-    }
-  }>
-  usage?: { prompt_tokens: number; completion_tokens: number }
-}> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured")
-  }
-
-  const anthropicMessages = params.messages
-    .filter((m) => m.role !== "system")
-    .map((m) => {
-      if (m.role === "tool") {
-        return {
-          role: "user",
-          content: [
-            {
-              type: "tool_result",
-              tool_use_id: m.tool_call_id,
-              content: m.content,
-            },
-          ],
-        }
-      }
-      if (m.role === "assistant" && m.tool_calls) {
-        return {
-          role: "assistant",
-          content: [
-            ...(m.content ? [{ type: "text", text: m.content }] : []),
-            ...((m.tool_calls as any[]) || []).map((tc: any) => ({
-              type: "tool_use",
-              id: tc.id,
-              name: toApiToolName(tc.function.name),
-              input: JSON.parse(tc.function.arguments),
-            })),
-          ],
-        }
-      }
-      if (!m.content || (typeof m.content === "string" && !m.content.trim())) {
-        return null
-      }
-      return { role: m.role, content: m.content }
-    })
-    .filter((m): m is NonNullable<typeof m> => m !== null)
-
-  const systemMessage = params.messages.find((m) => m.role === "system")
-
-  const anthropicTools = params.tools?.map((t) => ({
-    name: toApiToolName(t.function.name),
-    description: t.function.description,
-    input_schema: t.function.parameters,
-  }))
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: params.model.name,
-      max_tokens: params.model.maxTokens ?? 4096,
-      system: systemMessage?.content,
-      messages: anthropicMessages,
-      tools: anthropicTools,
-      temperature: params.model.temperature ?? 0.7,
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Anthropic API error: ${error}`)
-  }
-
-  const result = await response.json()
-
-  const toolCalls = result.content
-    .filter((c: any) => c.type === "tool_use")
-    .map((c: any) => ({
-      id: c.id,
-      type: "function",
-      function: {
-        name: fromApiToolName(c.name),
-        arguments: JSON.stringify(c.input),
-      },
-    }))
-
-  const textContent = result.content
-    .filter((c: any) => c.type === "text")
-    .map((c: any) => c.text)
-    .join("")
-
-  return {
-    choices: [
-      {
-        message: {
-          role: "assistant",
-          content: textContent || null,
-          tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-        },
-      },
-    ],
-    usage: {
-      prompt_tokens: result.usage?.input_tokens ?? 0,
-      completion_tokens: result.usage?.output_tokens ?? 0,
-    },
-  }
+  return result
 }
