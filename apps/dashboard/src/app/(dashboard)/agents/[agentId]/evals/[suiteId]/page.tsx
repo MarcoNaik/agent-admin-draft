@@ -63,6 +63,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   const deleteCase = useDeleteEvalCase()
   const deleteSuite = useDeleteEvalSuite()
   const [starting, setStarting] = useState(false)
+  const [startingCaseId, setStartingCaseId] = useState<Id<"evalCases"> | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
 
   if (suite === undefined || cases === undefined || runs === undefined) {
@@ -107,6 +108,19 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
       await deleteCase({ id: caseId })
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Failed to delete case")
+    }
+  }
+
+  const handleRunCase = async (caseId: Id<"evalCases">) => {
+    setStartingCaseId(caseId)
+    setRunError(null)
+    try {
+      const runId = await startRun({ suiteId: suite._id, triggerSource: "dashboard", caseIds: [caseId] })
+      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${runId}`)
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Failed to start run")
+    } finally {
+      setStartingCaseId(null)
     }
   }
 
@@ -193,6 +207,13 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                   )}
                 </Link>
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleRunCase(c._id)}
+                    disabled={startingCaseId === c._id}
+                    className="rounded p-1 text-content-tertiary hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                  >
+                    {startingCaseId === c._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  </button>
                   <button
                     onClick={() => handleDeleteCase(c._id)}
                     className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
