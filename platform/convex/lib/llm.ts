@@ -65,7 +65,7 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
     if (m.role === "system") continue
 
     if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
-      const parts: Array<{ type: "text"; text: string } | { type: "tool-call"; toolCallId: string; toolName: string; args: unknown }> = []
+      const parts: Array<{ type: "text"; text: string } | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }> = []
       if (m.content) {
         parts.push({ type: "text", text: m.content })
       }
@@ -76,7 +76,7 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
           type: "tool-call",
           toolCallId: tc.id,
           toolName: sanitized,
-          args: tc.arguments,
+          input: tc.arguments,
         })
       }
       result.push({ role: "assistant", content: parts } as ModelMessage)
@@ -85,11 +85,12 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
 
     if (m.role === "tool" && m.toolCallId) {
       const toolName = toolNameMap.get(m.toolCallId) ?? "unknown"
-      let parsedResult: unknown
+      let output: { type: "json"; value: unknown } | { type: "text"; value: string }
       try {
-        parsedResult = JSON.parse(m.content)
+        const parsed = JSON.parse(m.content)
+        output = { type: "json", value: parsed }
       } catch {
-        parsedResult = m.content
+        output = { type: "text", value: m.content }
       }
       result.push({
         role: "tool",
@@ -97,7 +98,7 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
           type: "tool-result",
           toolCallId: m.toolCallId,
           toolName,
-          output: parsedResult,
+          output,
         }],
       } as ModelMessage)
       continue
