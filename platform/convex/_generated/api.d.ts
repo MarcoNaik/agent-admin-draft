@@ -26,6 +26,7 @@ import type * as jobs_sessionReminder from "../jobs/sessionReminder.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_integrations_flow from "../lib/integrations/flow.js";
 import type * as lib_integrations_whatsapp from "../lib/integrations/whatsapp.js";
+import type * as lib_llm from "../lib/llm.js";
 import type * as lib_packs_migrate from "../lib/packs/migrate.js";
 import type * as lib_packs_version from "../lib/packs/version.js";
 import type * as lib_permissions_context from "../lib/permissions/context.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/integrations/flow": typeof lib_integrations_flow;
   "lib/integrations/whatsapp": typeof lib_integrations_whatsapp;
+  "lib/llm": typeof lib_llm;
   "lib/packs/migrate": typeof lib_packs_migrate;
   "lib/packs/version": typeof lib_packs_version;
   "lib/permissions/context": typeof lib_permissions_context;
