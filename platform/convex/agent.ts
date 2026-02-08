@@ -767,6 +767,9 @@ const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: 
   },
 
   format_teacher_schedule: async (args, context, fetch) => {
+    if (!args.teachers || !Array.isArray(args.teachers) || args.teachers.length === 0) {
+      return { error: "REQUIRED: Pass the full teachers array from entity.query({type: 'teacher'}). Example: format_teacher_schedule({teachers: <array>, names: [\"Carolina\"]})", markdown: "", teachers: [] }
+    }
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -778,7 +781,16 @@ const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: 
       return `${display}:${String(min).padStart(2, "0")} ${suffix}`
     }
 
-    const results = args.teachers.map((teacher: any) => {
+    let filtered = args.teachers
+    if (args.names && args.names.length > 0) {
+      const lowerNames = args.names.map((n: string) => n.toLowerCase())
+      filtered = args.teachers.filter((t: any) => {
+        const tName = (t.name || (t.data && t.data.name) || "").toLowerCase()
+        return lowerNames.some((n: string) => tName.includes(n) || n.includes(tName))
+      })
+    }
+
+    const results = filtered.map((teacher: any) => {
       const name = teacher.name || (teacher.data && teacher.data.name) || "Unknown"
       const availability = teacher.availability || (teacher.data && teacher.data.availability)
       const id = teacher._id || teacher.id || ""
