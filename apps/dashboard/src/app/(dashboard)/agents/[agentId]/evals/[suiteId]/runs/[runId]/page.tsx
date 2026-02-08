@@ -467,8 +467,13 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
   const cases = useEvalCases(suiteId as Id<"evalSuites">)
   const cancelRun = useCancelEvalRun()
   const [copied, setCopied] = useState(false)
+  const [copiedErrors, setCopiedErrors] = useState(false)
 
   const caseMap = new Map<string, any>((cases || []).map((c: any) => [c._id, c]))
+
+  const errorResults = (results || []).filter(
+    (r: any) => r.status === "failed" || r.status === "error" || !r.overallPassed
+  )
 
   const handleCopyMarkdown = useCallback(async () => {
     if (!run || !results) return
@@ -477,6 +482,14 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [run, results, caseMap])
+
+  const handleCopyErrors = useCallback(async () => {
+    if (!run || !errorResults.length) return
+    const markdown = generateRunMarkdown(run, errorResults, caseMap)
+    await navigator.clipboard.writeText(markdown)
+    setCopiedErrors(true)
+    setTimeout(() => setCopiedErrors(false), 2000)
+  }, [run, errorResults, caseMap])
 
   if (run === undefined || results === undefined || cases === undefined) {
     return (
@@ -524,13 +537,24 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
         </div>
         <div className="flex items-center gap-2">
           {!isRunning && (
-            <button
-              onClick={handleCopyMarkdown}
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
-            >
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <ClipboardCopy className="h-4 w-4" />}
-              {copied ? "Copied!" : "Copy to Markdown"}
-            </button>
+            <>
+              {errorResults.length > 0 && (
+                <button
+                  onClick={handleCopyErrors}
+                  className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  {copiedErrors ? <Check className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4" />}
+                  {copiedErrors ? "Copied!" : "Copy Errors"}
+                </button>
+              )}
+              <button
+                onClick={handleCopyMarkdown}
+                className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
+              >
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <ClipboardCopy className="h-4 w-4" />}
+                {copied ? "Copied!" : "Copy to Markdown"}
+              </button>
+            </>
           )}
           {isRunning && (
             <button
