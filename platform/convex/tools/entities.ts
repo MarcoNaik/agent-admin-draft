@@ -185,7 +185,7 @@ export const entityGet = internalQuery({
       id: entity._id,
       type: entityType.slug,
       status: maskedEntity.status,
-      data: maskedEntity.data,
+      data: JSON.parse(JSON.stringify(maskedEntity.data)),
       createdAt: maskedEntity.createdAt,
       updatedAt: maskedEntity.updatedAt,
     }
@@ -319,7 +319,7 @@ export const entityQuery = internalQuery({
       id: e._id,
       type: args.type,
       status: e.status,
-      data: e.data,
+      data: JSON.parse(JSON.stringify(e.data)),
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     }))
@@ -338,6 +338,7 @@ export const entityUpdate = internalMutation({
     ),
     environment: environmentValidator,
     id: v.string(),
+    type: v.optional(v.string()),
     data: v.any(),
     status: v.optional(v.string()),
   },
@@ -356,6 +357,10 @@ export const entityUpdate = internalMutation({
     const entityType = await ctx.db.get(entity.entityTypeId)
     if (!entityType) {
       throw new Error("Entity type not found")
+    }
+
+    if (args.type && entityType.slug !== args.type) {
+      throw new Error(`Entity ${args.id} is type '${entityType.slug}', not '${args.type}'`)
     }
 
     const actor = await buildActorContext(ctx, {
