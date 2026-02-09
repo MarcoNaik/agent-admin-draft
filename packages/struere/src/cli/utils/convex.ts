@@ -528,6 +528,7 @@ export interface SyncPayload {
       provider: string
       name: string
     }
+    judgeContext?: string
     cases: Array<{
       name: string
       description?: string
