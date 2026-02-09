@@ -12,6 +12,7 @@ export interface EvalSuiteInput {
     name: string
   }
   judgeContext?: string
+  judgePrompt?: string
   cases: Array<{
     name: string
     description?: string
@@ -80,6 +81,7 @@ export async function syncEvalSuites(
         tags: suite.tags,
         judgeModel: suite.judgeModel,
         judgeContext: suite.judgeContext,
+        judgePrompt: suite.judgePrompt,
         updatedAt: now,
       })
 
@@ -120,6 +122,7 @@ export async function syncEvalSuites(
         tags: suite.tags,
         judgeModel: suite.judgeModel,
         judgeContext: suite.judgeContext,
+        judgePrompt: suite.judgePrompt,
         status: "active",
         createdAt: now,
         updatedAt: now,

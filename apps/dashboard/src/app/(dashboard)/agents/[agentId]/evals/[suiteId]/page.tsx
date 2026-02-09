@@ -72,6 +72,8 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   const [runError, setRunError] = useState<string | null>(null)
   const [editingContext, setEditingContext] = useState(false)
   const [judgeContextDraft, setJudgeContextDraft] = useState("")
+  const [editingPrompt, setEditingPrompt] = useState(false)
+  const [judgePromptDraft, setJudgePromptDraft] = useState("")
 
   if (suite === undefined || cases === undefined || runs === undefined) {
     return (
@@ -137,6 +139,15 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
       setEditingContext(false)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Failed to update judge context")
+    }
+  }
+
+  const handleSaveJudgePrompt = async () => {
+    try {
+      await updateSuite({ id: suite._id, judgePrompt: judgePromptDraft.trim() })
+      setEditingPrompt(false)
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Failed to update judge prompt")
     }
   }
 
@@ -230,6 +241,58 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
           </pre>
         ) : (
           <p className="text-xs text-content-tertiary">No judge context configured. Click Edit to add reference data for the judge.</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-content-primary">Judge Prompt</h3>
+          {!editingPrompt ? (
+            <button
+              onClick={() => { setJudgePromptDraft(suite.judgePrompt ?? ""); setEditingPrompt(true) }}
+              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleSaveJudgePrompt}
+                className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Check className="h-3 w-3" />
+                Save
+              </button>
+              <button
+                onClick={() => setEditingPrompt(false)}
+                className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+        {editingPrompt ? (
+          <div className="space-y-1.5">
+            <textarea
+              value={judgePromptDraft}
+              onChange={(e) => setJudgePromptDraft(e.target.value)}
+              placeholder={"Be extremely strict. Any factual error is an automatic score of 1."}
+              rows={4}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+            <p className="text-xs text-content-tertiary">
+              Custom instructions prepended to the judge system prompt. Controls strictness and focus areas.
+            </p>
+          </div>
+        ) : suite.judgePrompt ? (
+          <pre className="rounded-md border bg-background-secondary px-3 py-2 text-xs font-mono text-content-secondary whitespace-pre-wrap overflow-x-auto">
+            {suite.judgePrompt}
+          </pre>
+        ) : (
+          <p className="text-xs text-content-tertiary">No judge prompt configured. Click Edit to add custom judge instructions.</p>
         )}
       </div>
 

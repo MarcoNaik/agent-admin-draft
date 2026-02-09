@@ -141,6 +141,7 @@ export const createSuite = mutation({
       name: v.string(),
     })),
     judgeContext: v.optional(v.string()),
+    judgePrompt: v.optional(v.string()),
     environment: v.optional(environmentValidator),
   },
   handler: async (ctx, args) => {
@@ -174,6 +175,7 @@ export const createSuite = mutation({
       tags: args.tags,
       judgeModel: args.judgeModel,
       judgeContext: args.judgeContext,
+      judgePrompt: args.judgePrompt,
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -192,6 +194,7 @@ export const updateSuite = mutation({
       name: v.string(),
     })),
     judgeContext: v.optional(v.string()),
+    judgePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -206,6 +209,7 @@ export const updateSuite = mutation({
     if (args.tags !== undefined) updates.tags = args.tags
     if (args.judgeModel !== undefined) updates.judgeModel = args.judgeModel
     if (args.judgeContext !== undefined) updates.judgeContext = args.judgeContext
+    if (args.judgePrompt !== undefined) updates.judgePrompt = args.judgePrompt
 
     await ctx.db.patch(args.id, updates)
     return await ctx.db.get(args.id)

@@ -261,7 +261,7 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
             <span className="text-xs text-content-tertiary font-mono">{formatDuration(result.totalDurationMs)}</span>
           )}
           <Badge
-            variant={result.overallPassed ? "success" : result.status === "error" ? "outline" : "destructive"}
+            variant={result.overallPassed ? "success" : (result.status === "pending" || result.status === "running") ? "outline" : result.status === "error" ? "outline" : "destructive"}
             className="text-xs"
           >
             {result.status}

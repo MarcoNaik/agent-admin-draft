@@ -181,6 +181,7 @@ agent: "${agentSlug}"
 description: "Verify agent responds correctly and uses tools appropriately"
 tags: ["smoke-test"]
 judgeModel: "claude-haiku-4-5-20251001"
+judgePrompt: "Evaluate whether the agent responds correctly and uses appropriate tools. Be lenient on phrasing but strict on factual accuracy."
 
 cases:
   - name: "Greeting test"
@@ -238,6 +239,7 @@ agent: "${agentSlug}"
 description: "TODO: Describe what this eval suite tests"
 tags: []
 judgeModel: "claude-haiku-4-5-20251001"
+judgePrompt: "TODO: Custom instructions for the judge (e.g. strictness level, focus areas)"
 
 cases:
   - name: "Example test case"
@@ -932,6 +934,7 @@ agent: "my-agent-slug"           # Agent to test (by slug)
 description: "What this tests"
 tags: ["regression", "tools"]
 judgeModel: "claude-haiku-4-5-20251001"  # LLM judge model
+judgePrompt: "Be strict on factual accuracy but lenient on phrasing."  # Custom judge instructions
 
 cases:
   - name: "Greeting test"
@@ -1019,6 +1022,7 @@ Creates \`evals/my-new-suite.eval.yaml\` with a starter template.
 4. **Multi-turn tests** catch context loss — Test that the agent remembers info from earlier turns
 5. **Use \`weight\`** to prioritize critical assertions — A weight-5 assertion matters 5x more than weight-1
 6. **Use \`finalAssertions\`** to evaluate the overall conversation after all turns complete
+7. **Use \`judgePrompt\`** to customize judge behavior per suite — e.g. strict for safety tests, lenient for quality tests
 
 ## Common Patterns
 
@@ -1277,6 +1281,7 @@ slug: "order-flow-tests"
 agent: "my-agent-slug"
 description: "Test the complete order flow"
 judgeModel: "claude-haiku-4-5-20251001"
+judgePrompt: "Focus on workflow correctness. Penalize wrong tool usage or missing steps."
 
 cases:
   - name: "Order initiation"

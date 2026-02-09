@@ -215,7 +215,8 @@ export const executeCase = internalAction({
           suite.judgeModel,
           state.resolvedJudgeContext,
           state.resolvedAgentPrompt,
-          state.turnResults
+          state.turnResults,
+          suite.judgePrompt
         )
 
         state.judgeInputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
@@ -272,7 +273,9 @@ export const executeCase = internalAction({
           allToolCalls,
           suite.judgeModel,
           state.resolvedJudgeContext,
-          state.resolvedAgentPrompt
+          state.resolvedAgentPrompt,
+          undefined,
+          suite.judgePrompt
         )
 
         state.judgeInputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
@@ -404,7 +407,8 @@ async function evaluateAssertions(
   judgeModel?: { provider: string; name: string },
   judgeContext?: string,
   agentPrompt?: string,
-  priorTurns?: TurnResult[]
+  priorTurns?: TurnResult[],
+  suiteJudgePrompt?: string
 ): Promise<(AssertionResult & { _judgeInputTokens?: number; _judgeOutputTokens?: number })[]> {
   const results: (AssertionResult & { _judgeInputTokens?: number; _judgeOutputTokens?: number })[] = []
 
@@ -486,6 +490,7 @@ async function evaluateAssertions(
           referenceContext: judgeContext,
           agentSystemPrompt: agentPrompt,
           priorTurns,
+          suiteJudgePrompt,
         })
         results.push({
           type: "llm_judge",
@@ -512,6 +517,7 @@ async function judgeResponse(args: {
   referenceContext?: string
   agentSystemPrompt?: string
   priorTurns?: TurnResult[]
+  suiteJudgePrompt?: string
 }): Promise<{
   passed: boolean
   score: number
@@ -525,7 +531,11 @@ async function judgeResponse(args: {
       ).join("\n")}`
     : ""
 
-  const systemPrompt = `You are an evaluation judge for a multi-turn conversation. Evaluate STRICTLY and ONLY against the criteria provided — do NOT invent additional requirements, penalize presentation style, or judge methodology unless the criteria explicitly asks for it.
+  const suiteInstructions = args.suiteJudgePrompt
+    ? `${args.suiteJudgePrompt}\n\n`
+    : ""
+
+  const systemPrompt = `${suiteInstructions}You are an evaluation judge for a multi-turn conversation. Evaluate STRICTLY and ONLY against the criteria provided — do NOT invent additional requirements, penalize presentation style, or judge methodology unless the criteria explicitly asks for it.
 
 Context tags:
 - <assistant_response>: The current turn response being evaluated.

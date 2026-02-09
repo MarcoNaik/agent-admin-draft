@@ -33,6 +33,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
   const [judgeProvider, setJudgeProvider] = useState("anthropic")
   const [judgeModel, setJudgeModel] = useState("claude-haiku-4-5-20251001")
   const [judgeContext, setJudgeContext] = useState("")
+  const [judgePrompt, setJudgePrompt] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,6 +60,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
         tags: tags.trim() ? tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
         judgeModel: { provider: judgeProvider, name: judgeModel },
         judgeContext: judgeContext.trim() || undefined,
+        judgePrompt: judgePrompt.trim() || undefined,
         environment,
       })
       router.push(`/agents/${agentId}/evals/${suiteId}`)
@@ -162,6 +164,20 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
           />
           <p className="text-xs text-content-tertiary">
             Reference data for the judge. Supports template variables: {"{{entity.query(...)}}"}, {"{{format_teacher_schedule({})}}"}, {"{{entityTypes}}"}, etc.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Judge Prompt</label>
+          <textarea
+            value={judgePrompt}
+            onChange={(e) => setJudgePrompt(e.target.value)}
+            placeholder={"Be extremely strict. Any factual error is an automatic score of 1."}
+            rows={4}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+          <p className="text-xs text-content-tertiary">
+            Custom instructions prepended to the judge system prompt. Use this to control strictness and focus areas.
           </p>
         </div>
 

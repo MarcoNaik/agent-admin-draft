@@ -153,6 +153,7 @@ export interface EvalSuiteDefinition {
   tags?: string[]
   judgeModel?: string
   judgeContext?: string
+  judgePrompt?: string
   cases: EvalCaseDefinition[]
 }
 

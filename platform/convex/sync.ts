@@ -93,6 +93,7 @@ export const syncOrganization = mutation({
           name: v.string(),
         })),
         judgeContext: v.optional(v.string()),
+        judgePrompt: v.optional(v.string()),
         cases: v.array(
           v.object({
             name: v.string(),

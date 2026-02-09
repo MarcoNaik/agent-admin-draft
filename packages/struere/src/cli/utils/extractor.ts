@@ -82,6 +82,7 @@ export interface SyncPayload {
       name: string
     }
     judgeContext?: string
+    judgePrompt?: string
     cases: Array<{
       name: string
       description?: string
@@ -155,6 +156,7 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
           ? { provider: inferProvider(suite.judgeModel), name: suite.judgeModel }
           : undefined,
         judgeContext: suite.judgeContext,
+        judgePrompt: suite.judgePrompt,
         cases: suite.cases.map((c) => ({
           name: c.name,
           description: c.description,
