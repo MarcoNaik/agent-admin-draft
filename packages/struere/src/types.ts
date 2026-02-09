@@ -22,6 +22,7 @@ export interface ToolReference {
   description: string
   parameters: ToolParameters
   handler: ToolHandler
+  _originalHandler?: ToolHandler
 }
 
 export interface ToolParameters {
@@ -151,6 +152,7 @@ export interface EvalSuiteDefinition {
   description?: string
   tags?: string[]
   judgeModel?: string
+  judgeContext?: string
   cases: EvalCaseDefinition[]
 }
 
