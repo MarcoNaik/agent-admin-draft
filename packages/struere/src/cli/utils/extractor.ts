@@ -81,6 +81,7 @@ export interface SyncPayload {
       provider: string
       name: string
     }
+    judgeContext?: string
     cases: Array<{
       name: string
       description?: string
@@ -153,6 +154,7 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
         judgeModel: suite.judgeModel
           ? { provider: inferProvider(suite.judgeModel), name: suite.judgeModel }
           : undefined,
+        judgeContext: suite.judgeContext,
         cases: suite.cases.map((c) => ({
           name: c.name,
           description: c.description,
@@ -208,7 +210,7 @@ function extractAgentPayload(
       name: customTool.name,
       description: customTool.description,
       parameters: customTool.parameters || { type: 'object', properties: {} },
-      handlerCode: extractHandlerCode(customTool.handler),
+      handlerCode: extractHandlerCode(customTool._originalHandler || customTool.handler),
       isBuiltin: false,
     }
   })
@@ -278,10 +280,11 @@ function getBuiltinToolParameters(name: string): unknown {
       type: 'object',
       properties: {
         id: { type: 'string', description: 'The entity ID to update' },
+        type: { type: 'string', description: 'The entity type slug (e.g., "session", "teacher"). Must match the actual type of the entity being updated.' },
         data: { type: 'object', description: 'The fields to update (merged with existing data)' },
         status: { type: 'string', description: 'Optional new status' },
       },
-      required: ['id', 'data'],
+      required: ['id', 'type', 'data'],
     },
     'entity.delete': {
       type: 'object',
@@ -355,16 +358,17 @@ function getBuiltinToolParameters(name: string): unknown {
 function extractHandlerCode(handler: Function): string {
   const code = handler.toString()
 
-  const arrowMatch = code.match(/(?:async\s*)?\([^)]*\)\s*=>\s*\{?([\s\S]*)\}?$/)
-  if (arrowMatch) {
-    let body = arrowMatch[1].trim()
-    if (body.startsWith('{') && body.endsWith('}')) {
-      body = body.slice(1, -1).trim()
-    }
-    return body
+  const arrowBlockMatch = code.match(/(?:async\s*)?\([^)]*\)\s*=>\s*\{([\s\S]*)\}\s*$/)
+  if (arrowBlockMatch) {
+    return arrowBlockMatch[1].trim()
   }
 
-  const funcMatch = code.match(/(?:async\s*)?function[^(]*\([^)]*\)\s*\{([\s\S]*)\}$/)
+  const arrowExprMatch = code.match(/(?:async\s*)?\([^)]*\)\s*=>\s*(.+)$/)
+  if (arrowExprMatch) {
+    return `return ${arrowExprMatch[1].trim()}`
+  }
+
+  const funcMatch = code.match(/(?:async\s*)?function[^(]*\([^)]*\)\s*\{([\s\S]*)\}\s*$/)
   if (funcMatch) {
     return funcMatch[1].trim()
   }
