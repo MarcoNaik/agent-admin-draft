@@ -92,6 +92,7 @@ export const syncOrganization = mutation({
           provider: v.string(),
           name: v.string(),
         })),
+        judgeContext: v.optional(v.string()),
         cases: v.array(
           v.object({
             name: v.string(),
