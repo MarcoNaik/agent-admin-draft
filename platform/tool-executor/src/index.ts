@@ -1,21 +1,18 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
+import { serve } from "@hono/node-server"
 
-type Bindings = {
-  TOOL_EXECUTOR_SECRET: string
-}
-
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono()
 
 app.use("*", cors())
 
 app.get("/health", (c) => {
-  return c.json({ status: "ok", timestamp: Date.now() })
+  return c.json({ status: "ok", service: "tool-executor", timestamp: Date.now() })
 })
 
 app.post("/execute", async (c) => {
   const auth = c.req.header("Authorization")
-  const expectedAuth = `Bearer ${c.env.TOOL_EXECUTOR_SECRET}`
+  const expectedAuth = `Bearer ${process.env.TOOL_EXECUTOR_SECRET}`
 
   if (auth !== expectedAuth) {
     return c.json({ error: "Unauthorized" }, 401)
@@ -44,18 +41,18 @@ app.post("/execute", async (c) => {
 
     const handler = new AsyncFunction("args", "context", "fetch", wrappedCode)
 
-    const sandboxedFetch = async (url: string, options?: RequestInit) => {
-      const allowedDomains = [
-        "api.openai.com",
-        "api.anthropic.com",
-        "api.stripe.com",
-        "api.sendgrid.com",
-        "api.twilio.com",
-        "hooks.slack.com",
-        "discord.com",
-        "api.github.com",
-      ]
+    const allowedDomains = [
+      "api.openai.com",
+      "api.anthropic.com",
+      "api.stripe.com",
+      "api.sendgrid.com",
+      "api.twilio.com",
+      "hooks.slack.com",
+      "discord.com",
+      "api.github.com",
+    ]
 
+    const sandboxedFetch = async (url: string, options?: RequestInit) => {
       const urlObj = new URL(url)
       const isAllowed = allowedDomains.some(
         (domain) =>
@@ -92,7 +89,7 @@ app.post("/execute", async (c) => {
 
 app.post("/validate", async (c) => {
   const auth = c.req.header("Authorization")
-  const expectedAuth = `Bearer ${c.env.TOOL_EXECUTOR_SECRET}`
+  const expectedAuth = `Bearer ${process.env.TOOL_EXECUTOR_SECRET}`
 
   if (auth !== expectedAuth) {
     return c.json({ error: "Unauthorized" }, 401)
@@ -123,4 +120,6 @@ app.post("/validate", async (c) => {
   }
 })
 
-export default app
+const port = parseInt(process.env.PORT || "3002")
+console.log(`Tool executor listening on port ${port}`)
+serve({ fetch: app.fetch, port })
