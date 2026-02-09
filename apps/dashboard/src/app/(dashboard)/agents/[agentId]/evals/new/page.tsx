@@ -32,6 +32,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
   const [tags, setTags] = useState("")
   const [judgeProvider, setJudgeProvider] = useState("anthropic")
   const [judgeModel, setJudgeModel] = useState("claude-haiku-4-5-20251001")
+  const [judgeContext, setJudgeContext] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,6 +58,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
         description: description.trim() || undefined,
         tags: tags.trim() ? tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
         judgeModel: { provider: judgeProvider, name: judgeModel },
+        judgeContext: judgeContext.trim() || undefined,
         environment,
       })
       router.push(`/agents/${agentId}/evals/${suiteId}`)
@@ -147,6 +149,20 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             />
           </div>
           <p className="text-xs text-content-tertiary">Model used for LLM judge assertions</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Judge Context</label>
+          <textarea
+            value={judgeContext}
+            onChange={(e) => setJudgeContext(e.target.value)}
+            placeholder={"{{format_teacher_schedule({})}}\n{{entity.query({\"type\": \"student\"})}}"}
+            rows={5}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+          <p className="text-xs text-content-tertiary">
+            Reference data for the judge. Supports template variables: {"{{entity.query(...)}}"}, {"{{format_teacher_schedule({})}}"}, {"{{entityTypes}}"}, etc.
+          </p>
         </div>
 
         {error && (
