@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   XCircle,
   Ban,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react"
 import {
   useEvalSuite,
@@ -22,6 +25,7 @@ import {
   useStartEvalRun,
   useDeleteEvalCase,
   useDeleteEvalSuite,
+  useUpdateEvalSuite,
 } from "@/hooks/use-convex-data"
 import { Badge } from "@/components/ui/badge"
 import { Id } from "@convex/_generated/dataModel"
@@ -62,9 +66,12 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   const startRun = useStartEvalRun()
   const deleteCase = useDeleteEvalCase()
   const deleteSuite = useDeleteEvalSuite()
+  const updateSuite = useUpdateEvalSuite()
   const [starting, setStarting] = useState(false)
   const [startingCaseId, setStartingCaseId] = useState<Id<"evalCases"> | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
+  const [editingContext, setEditingContext] = useState(false)
+  const [judgeContextDraft, setJudgeContextDraft] = useState("")
 
   if (suite === undefined || cases === undefined || runs === undefined) {
     return (
@@ -124,6 +131,15 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
     }
   }
 
+  const handleSaveJudgeContext = async () => {
+    try {
+      await updateSuite({ id: suite._id, judgeContext: judgeContextDraft.trim() })
+      setEditingContext(false)
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Failed to update judge context")
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -164,6 +180,58 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
           {runError}
         </div>
       )}
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-content-primary">Judge Context</h3>
+          {!editingContext ? (
+            <button
+              onClick={() => { setJudgeContextDraft(suite.judgeContext ?? ""); setEditingContext(true) }}
+              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleSaveJudgeContext}
+                className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Check className="h-3 w-3" />
+                Save
+              </button>
+              <button
+                onClick={() => setEditingContext(false)}
+                className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+        {editingContext ? (
+          <div className="space-y-1.5">
+            <textarea
+              value={judgeContextDraft}
+              onChange={(e) => setJudgeContextDraft(e.target.value)}
+              placeholder={"{{format_teacher_schedule({})}}\n{{entity.query({\"type\": \"student\"})}}"}
+              rows={5}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+            <p className="text-xs text-content-tertiary">
+              Reference data passed to the judge as {"<reference_data>"}. Supports templates: {"{{entity.query(...)}}"}, {"{{format_teacher_schedule({})}}"}, {"{{entityTypes}}"}, etc.
+            </p>
+          </div>
+        ) : suite.judgeContext ? (
+          <pre className="rounded-md border bg-background-secondary px-3 py-2 text-xs font-mono text-content-secondary whitespace-pre-wrap overflow-x-auto">
+            {suite.judgeContext}
+          </pre>
+        ) : (
+          <p className="text-xs text-content-tertiary">No judge context configured. Click Edit to add reference data for the judge.</p>
+        )}
+      </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
