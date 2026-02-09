@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Loader2,
   ArrowLeft,
@@ -17,12 +18,15 @@ import {
   Clock,
   ClipboardCopy,
   Check,
+  Play,
+  RotateCcw,
 } from "lucide-react"
 import {
   useEvalRun,
   useEvalRunResults,
   useEvalCases,
   useCancelEvalRun,
+  useStartEvalRun,
 } from "@/hooks/use-convex-data"
 import { Badge } from "@/components/ui/badge"
 import { Id } from "@convex/_generated/dataModel"
@@ -222,7 +226,7 @@ function ToolDataView({ data: rawData, label }: { data: unknown; label: string }
   return null
 }
 
-function CaseResultRow({ result, caseName }: { result: any; caseName: string }) {
+function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }: { result: any; caseName: string; onRerun?: () => void; isRerunning?: boolean; rerunDisabled?: boolean }) {
   const [expanded, setExpanded] = useState(false)
 
   const statusIcon = {
@@ -262,6 +266,15 @@ function CaseResultRow({ result, caseName }: { result: any; caseName: string }) 
           >
             {result.status}
           </Badge>
+          {onRerun && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRerun() }}
+              disabled={isRerunning || rerunDisabled}
+              className="rounded p-1 text-content-tertiary hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              {isRerunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            </button>
+          )}
         </div>
       </button>
 
@@ -462,12 +475,16 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
 
 export default function RunResultsPage({ params }: RunResultsPageProps) {
   const { agentId, suiteId, runId } = params
+  const router = useRouter()
   const run = useEvalRun(runId as Id<"evalRuns">)
   const results = useEvalRunResults(runId as Id<"evalRuns">)
   const cases = useEvalCases(suiteId as Id<"evalSuites">)
   const cancelRun = useCancelEvalRun()
+  const startRun = useStartEvalRun()
   const [copied, setCopied] = useState(false)
   const [copiedErrors, setCopiedErrors] = useState(false)
+  const [startingCaseId, setStartingCaseId] = useState<string | null>(null)
+  const [startingFailed, setStartingFailed] = useState(false)
 
   const caseMap = new Map<string, any>((cases || []).map((c: any) => [c._id, c]))
 
@@ -490,6 +507,29 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
     setCopiedErrors(true)
     setTimeout(() => setCopiedErrors(false), 2000)
   }, [run, errorResults, caseMap])
+
+  const handleRerunCase = useCallback(async (caseId: string) => {
+    setStartingCaseId(caseId)
+    try {
+      const newRunId = await startRun({ suiteId: suiteId as Id<"evalSuites">, triggerSource: "dashboard", caseIds: [caseId as Id<"evalCases">] })
+      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${newRunId}`)
+    } catch {
+    } finally {
+      setStartingCaseId(null)
+    }
+  }, [startRun, suiteId, agentId, router])
+
+  const handleRunFailed = useCallback(async () => {
+    setStartingFailed(true)
+    try {
+      const failedCaseIds = errorResults.map((r: any) => r.caseId as Id<"evalCases">)
+      const newRunId = await startRun({ suiteId: suiteId as Id<"evalSuites">, triggerSource: "dashboard", caseIds: failedCaseIds })
+      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${newRunId}`)
+    } catch {
+    } finally {
+      setStartingFailed(false)
+    }
+  }, [startRun, suiteId, agentId, errorResults, router])
 
   if (run === undefined || results === undefined || cases === undefined) {
     return (
@@ -539,13 +579,23 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
           {!isRunning && (
             <>
               {errorResults.length > 0 && (
-                <button
-                  onClick={handleCopyErrors}
-                  className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  {copiedErrors ? <Check className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4" />}
-                  {copiedErrors ? "Copied!" : "Copy Errors"}
-                </button>
+                <>
+                  <button
+                    onClick={handleRunFailed}
+                    disabled={startingFailed}
+                    className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {startingFailed ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                    Run Failed ({errorResults.length})
+                  </button>
+                  <button
+                    onClick={handleCopyErrors}
+                    className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    {copiedErrors ? <Check className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4" />}
+                    {copiedErrors ? "Copied!" : "Copy Errors"}
+                  </button>
+                </>
               )}
               <button
                 onClick={handleCopyMarkdown}
@@ -615,6 +665,9 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
               key={result._id}
               result={result}
               caseName={evalCase?.name || "Unknown Case"}
+              onRerun={() => handleRerunCase(result.caseId)}
+              isRerunning={startingCaseId === result.caseId}
+              rerunDisabled={isRunning}
             />
           )
         })}
