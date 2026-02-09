@@ -70,7 +70,7 @@ http.route({
 })
 
 http.route({
-  path: "/v1/agents/:slug/chat",
+  pathPrefix: "/v1/agents/",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const apiKey = request.headers.get("Authorization")?.replace("Bearer ", "")
