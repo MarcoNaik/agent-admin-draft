@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { generateApiKey, hashApiKey } from "./lib/utils"
 
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
