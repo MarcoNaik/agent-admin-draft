@@ -62,7 +62,11 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
           )}
           {scoreDisplay && (
             <Badge
-              variant={lastRun.passedCases === lastRun.totalCases ? "success" : "destructive"}
+              variant={
+                lastRun.status === "completed"
+                  ? lastRun.passedCases === lastRun.totalCases ? "success" : "destructive"
+                  : "outline"
+              }
               className="text-xs font-mono"
             >
               {scoreDisplay}
