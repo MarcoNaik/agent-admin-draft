@@ -140,6 +140,7 @@ export const createSuite = mutation({
       provider: v.string(),
       name: v.string(),
     })),
+    judgeContext: v.optional(v.string()),
     environment: v.optional(environmentValidator),
   },
   handler: async (ctx, args) => {
@@ -172,6 +173,7 @@ export const createSuite = mutation({
       description: args.description,
       tags: args.tags,
       judgeModel: args.judgeModel,
+      judgeContext: args.judgeContext,
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -189,6 +191,7 @@ export const updateSuite = mutation({
       provider: v.string(),
       name: v.string(),
     })),
+    judgeContext: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -202,6 +205,7 @@ export const updateSuite = mutation({
     if (args.description !== undefined) updates.description = args.description
     if (args.tags !== undefined) updates.tags = args.tags
     if (args.judgeModel !== undefined) updates.judgeModel = args.judgeModel
+    if (args.judgeContext !== undefined) updates.judgeContext = args.judgeContext
 
     await ctx.db.patch(args.id, updates)
     return await ctx.db.get(args.id)
@@ -602,6 +606,61 @@ export const getCaseInternal = internalQuery({
   args: { caseId: v.id("evalCases") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.caseId)
+  },
+})
+
+export const getOrgName = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId)
+    return org?.name ?? null
+  },
+})
+
+export const getAgentInternal = internalQuery({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.agentId)
+  },
+})
+
+export const getAgentConfig = internalQuery({
+  args: {
+    agentId: v.id("agents"),
+    environment: environmentValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId).eq("environment", args.environment))
+      .first()
+  },
+})
+
+export const getEntityTypes = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", args.organizationId).eq("environment", args.environment))
+      .collect()
+  },
+})
+
+export const getRoles = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  handler: async (ctx, args) => {
+    const roles = await ctx.db
+      .query("roles")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", args.organizationId).eq("environment", args.environment))
+      .collect()
+    return roles.filter((r) => !r.isSystem)
   },
 })
 
