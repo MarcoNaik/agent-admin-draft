@@ -234,6 +234,89 @@ async function executeTemplateFunction(
     }
   }
 
+  if (runQuery && name === "format_teacher_schedule") {
+    try {
+      const actorPayload = {
+        organizationId: context.actor.organizationId,
+        actorType: context.actor.actorType,
+        actorId: context.actor.actorId,
+        roleIds: context.actor.roleIds,
+        isOrgAdmin: context.actor.isOrgAdmin,
+        environment: context.actor.environment,
+      } as const
+      const teachers = await runQuery(
+        internal.permissions.queryEntitiesAsActorQuery,
+        { actor: actorPayload, entityTypeSlug: "teacher" }
+      ) as Array<{ _id?: string; data?: { name?: string; availability?: unknown; subjects?: string[] } }>
+
+      let filtered = teachers
+      const filterNames = (args as { names?: string[] }).names
+      if (filterNames && filterNames.length > 0) {
+        const lower = filterNames.map((n: string) => n.toLowerCase())
+        filtered = teachers.filter((t) => {
+          const tName = (t.data?.name ?? "").toLowerCase()
+          return lower.some((n) => tName.includes(n) || n.includes(tName))
+        })
+      }
+
+      const dayNameMap = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+      const keyMap: Record<string, string> = {
+        monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
+        thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
+      }
+
+      const fmt = (h: number) => {
+        const hr = Math.floor(h)
+        const min = Math.round((h - hr) * 60)
+        const suffix = hr >= 12 ? "PM" : "AM"
+        const display = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr)
+        return `${display}:${String(min).padStart(2, "0")} ${suffix}`
+      }
+
+      const lines = filtered.map((teacher) => {
+        const tName = teacher.data?.name ?? "Unknown"
+        const tId = teacher._id ?? ""
+        const subjects = teacher.data?.subjects ?? []
+        const availability = teacher.data?.availability as unknown
+        const schedule: Record<string, string[]> = {}
+
+        if (Array.isArray(availability)) {
+          for (const s of availability as Array<{ dayOfWeek: number; startHour: number; endHour: number }>) {
+            const day = dayNameMap[s.dayOfWeek]
+            if (!day) continue
+            const slots: string[] = []
+            for (let h = s.startHour; h < s.endHour; h++) slots.push(fmt(h))
+            schedule[day] = (schedule[day] ?? []).concat(slots)
+          }
+        } else if (availability && typeof availability === "object") {
+          for (const [key, dayName] of Object.entries(keyMap)) {
+            const slots = (availability as Record<string, number[]>)[key]
+            if (slots && slots.length > 0) {
+              schedule[dayName] = slots.map((h: number) => fmt(h))
+            }
+          }
+        }
+
+        let text = `${tName} [id:${tId}] (${subjects.join(", ") || "no subjects"}):\n`
+        for (const day of dayOrder) {
+          if (schedule[day] && schedule[day].length > 0) {
+            text += `  ${day}: ${schedule[day].join(", ")}\n`
+          }
+        }
+        return text
+      })
+
+      return lines.join("\n")
+    } catch (error) {
+      if (error instanceof PermissionError) {
+        return "[No teacher data available]"
+      }
+      const message = error instanceof Error ? error.message : "execution failed"
+      return `[TEMPLATE_ERROR: ${name} - ${message}]`
+    }
+  }
+
   const tool = tools.find((t) => t.name === name)
 
   if (!tool) {
