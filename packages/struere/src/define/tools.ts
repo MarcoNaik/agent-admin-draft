@@ -30,6 +30,7 @@ function validateTool(tool: ToolDefinition): ToolReference {
     description: tool.description,
     parameters: tool.parameters,
     handler: wrapHandler(tool.name, tool.handler),
+    _originalHandler: tool.handler,
   }
 }
 
