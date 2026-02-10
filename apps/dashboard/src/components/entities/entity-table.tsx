@@ -45,8 +45,17 @@ interface EntityTableProps {
   onRowClick?: (entity: Entity) => void
 }
 
-function formatFieldValue(value: unknown, field?: EntityTypeField): string {
-  if (value === null || value === undefined || value === "") return "-"
+function formatSimpleValue(value: unknown): string {
+  if (value === null || value === undefined) return "—"
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") return String(value)
+  return JSON.stringify(value)
+}
+
+function CellValue({ value, field }: { value: unknown; field?: EntityTypeField }): React.ReactNode {
+  if (value === null || value === undefined || value === "") {
+    return <span className="text-muted-foreground">—</span>
+  }
 
   if (field) {
     switch (field.type) {
@@ -63,33 +72,36 @@ function formatFieldValue(value: unknown, field?: EntityTypeField): string {
       case "phone":
         return String(value)
       case "json":
-        return typeof value === "object" ? JSON.stringify(value) : String(value)
-      default:
-        return String(value)
+        if (typeof value !== "object") return String(value)
     }
   }
 
-  if (typeof value === "object") {
-    if (Array.isArray(value)) {
-      if (value.length === 0) return "-"
-      if (value.every((v) => typeof v === "string" || typeof v === "number"))
-        return value.join(", ")
-      return `${value.length} items`
+  if (typeof value !== "object") return <span className="break-all">{String(value)}</span>
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground italic text-xs">empty</span>
+    if (value.every((v) => typeof v !== "object" || v === null)) {
+      return <span className="break-all">{value.map((v) => formatSimpleValue(v)).join(", ")}</span>
     }
-    const entries = Object.entries(value as Record<string, unknown>)
-    if (entries.length === 0) return "-"
-    const summary = entries
-      .map(([k, v]) => {
-        if (Array.isArray(v) && v.every((x) => typeof x === "string" || typeof x === "number"))
-          return `${k}: ${v.join(",")}`
-        if (typeof v === "object" && v !== null) return `${k}: {...}`
-        return `${k}: ${v}`
-      })
-      .join(" | ")
-    return summary.length > 80 ? summary.slice(0, 77) + "..." : summary
+    return <span className="text-muted-foreground text-xs">{value.length} items</span>
   }
 
-  return String(value)
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length === 0) return <span className="text-muted-foreground italic text-xs">empty</span>
+
+  return (
+    <div className="space-y-0.5">
+      {entries.slice(0, 3).map(([k, v]) => (
+        <div key={k} className="flex gap-1.5 text-xs">
+          <span className="font-mono text-muted-foreground shrink-0">{k}:</span>
+          <span className="break-all">{formatSimpleValue(v)}</span>
+        </div>
+      ))}
+      {entries.length > 3 && (
+        <span className="text-xs text-muted-foreground">+{entries.length - 3} more</span>
+      )}
+    </div>
+  )
 }
 
 function formatFieldName(name: string): string {
@@ -168,7 +180,7 @@ export function EntityTable({ entityType, entities, onRowClick }: EntityTablePro
                 const field = schemaFields.find((f) => f.name === col)
                 return (
                   <td key={col} className="px-4 py-3 text-sm">
-                    {formatFieldValue(entity.data?.[col], field)}
+                    <CellValue value={entity.data?.[col]} field={field} />
                   </td>
                 )
               })}

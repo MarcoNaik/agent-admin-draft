@@ -44,8 +44,87 @@ interface EntityDetailProps {
   entity: Entity
 }
 
+function formatSimpleValue(value: unknown): string {
+  if (value === null || value === undefined) return "—"
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") return String(value)
+  return JSON.stringify(value)
+}
+
+function FieldValue({ value }: { value: unknown }): React.ReactNode {
+  if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return <span className="break-all">{String(value)}</span>
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground italic">empty</span>
+    const allPrimitives = value.every((v) => typeof v !== "object" || v === null)
+    if (allPrimitives) {
+      return <span className="break-all">{value.map((v) => formatSimpleValue(v)).join(", ")}</span>
+    }
+    return (
+      <div className="space-y-1 mt-0.5">
+        {value.map((item, i) => (
+          <div key={i} className="rounded bg-black/10 px-2 py-1 space-y-0.5">
+            {typeof item === "object" && item !== null ? (
+              Object.entries(item).map(([k, v]) => (
+                <div key={k} className="flex gap-1.5">
+                  <span className="font-mono text-muted-foreground shrink-0">{k}:</span>
+                  <span className="break-all">{formatSimpleValue(v)}</span>
+                </div>
+              ))
+            ) : (
+              <span>{formatSimpleValue(item)}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (typeof value === "object") {
+    return (
+      <div className="space-y-0.5 mt-0.5">
+        {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
+          <div key={k} className="flex gap-1.5">
+            <span className="font-mono text-muted-foreground shrink-0">{k}:</span>
+            <span className="break-all">{formatSimpleValue(v)}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return <span>{formatSimpleValue(value)}</span>
+}
+
+function ObjectCard({ data }: { data: Record<string, unknown> }): React.ReactNode {
+  const entries = Object.entries(data).filter(([, v]) => v !== undefined && v !== null)
+  return (
+    <div className="rounded border border-border/50 bg-black/10 p-2.5 space-y-1">
+      {entries.map(([key, value]) => (
+        <div key={key} className="text-xs">
+          <div className="flex gap-2">
+            <span className="font-mono text-muted-foreground shrink-0">{key}:</span>
+            {(typeof value !== "object" || value === null || (Array.isArray(value) && value.every((v) => typeof v !== "object" || v === null))) && (
+              <FieldValue value={value} />
+            )}
+          </div>
+          {typeof value === "object" && value !== null && !(Array.isArray(value) && value.every((v) => typeof v !== "object" || v === null)) && (
+            <div className="ml-3 mt-0.5">
+              <FieldValue value={value} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function formatFieldValue(value: unknown, field?: EntityTypeField): React.ReactNode {
-  if (value === null || value === undefined || value === "") return <span className="text-muted-foreground">-</span>
+  if (value === null || value === undefined || value === "") return <span className="text-muted-foreground">—</span>
 
   if (field) {
     switch (field.type) {
@@ -74,73 +153,27 @@ function formatFieldValue(value: unknown, field?: EntityTypeField): React.ReactN
             {String(value)}
           </a>
         )
-      case "json":
-        return (
-          <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
-            {JSON.stringify(value, null, 2)}
-          </pre>
-        )
-      default:
-        return String(value)
     }
   }
 
-  if (typeof value === "object") {
-    if (Array.isArray(value)) {
-      if (value.length === 0) return <span className="text-muted-foreground">-</span>
-      if (value.every((v) => typeof v === "string" || typeof v === "number"))
-        return (
-          <div className="flex flex-wrap gap-1.5">
-            {value.map((v, i) => (
-              <Badge key={i} variant="secondary" className="text-xs font-normal">
-                {String(v)}
-              </Badge>
-            ))}
-          </div>
-        )
+  if (typeof value !== "object") return <span className="break-all">{String(value)}</span>
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground italic text-xs">empty</span>
+    const allObjects = value.every((item) => typeof item === "object" && item !== null && !Array.isArray(item))
+    if (allObjects) {
       return (
-        <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
-          {JSON.stringify(value, null, 2)}
-        </pre>
-      )
-    }
-    const entries = Object.entries(value as Record<string, unknown>)
-    if (entries.length === 0) return <span className="text-muted-foreground">-</span>
-    const isSimple = entries.every(
-      ([, v]) => typeof v !== "object" || v === null ||
-        (Array.isArray(v) && v.every((x) => typeof x === "string" || typeof x === "number"))
-    )
-    if (isSimple)
-      return (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-          {entries.map(([k, v]) => (
-            <div key={k} className="contents">
-              <dt className="text-xs font-medium text-muted-foreground">{formatFieldName(k)}</dt>
-              <dd className="text-xs">
-                {Array.isArray(v) ? (
-                  <div className="flex flex-wrap gap-1">
-                    {v.map((item, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs font-normal">
-                        {String(item)}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  String(v ?? "-")
-                )}
-              </dd>
-            </div>
+        <div className="space-y-1.5 max-h-80 overflow-y-auto">
+          {value.map((item: Record<string, unknown>, i: number) => (
+            <ObjectCard key={i} data={item} />
           ))}
-        </dl>
+        </div>
       )
-    return (
-      <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
-        {JSON.stringify(value, null, 2)}
-      </pre>
-    )
+    }
+    return <FieldValue value={value} />
   }
 
-  return String(value)
+  return <ObjectCard data={value as Record<string, unknown>} />
 }
 
 function formatFieldName(name: string): string {
