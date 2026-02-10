@@ -20,14 +20,15 @@ export const tutoringPack: PackDefinition = {
           phone: { type: "string" },
           subjects: { type: "array", items: { type: "string" } },
           availability: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                dayOfWeek: { type: "number", minimum: 0, maximum: 6 },
-                startHour: { type: "number", minimum: 0, maximum: 23 },
-                endHour: { type: "number", minimum: 0, maximum: 23 },
-              },
+            type: "object",
+            properties: {
+              monday: { type: "array", items: { type: "number" } },
+              tuesday: { type: "array", items: { type: "number" } },
+              wednesday: { type: "array", items: { type: "number" } },
+              thursday: { type: "array", items: { type: "number" } },
+              friday: { type: "array", items: { type: "number" } },
+              saturday: { type: "array", items: { type: "number" } },
+              sunday: { type: "array", items: { type: "number" } },
             },
           },
           hourlyRate: { type: "number" },
