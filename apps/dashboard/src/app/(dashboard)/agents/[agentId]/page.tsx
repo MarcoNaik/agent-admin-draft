@@ -2,7 +2,7 @@
 
 import { Loader2, ExternalLink, Copy, Check, Activity, Clock, Zap, TrendingUp } from "lucide-react"
 import { useState } from "react"
-import { useAgentWithConfig, useExecutionStats, useRecentExecutions } from "@/hooks/use-convex-data"
+import { useAgentWithConfig, useExecutionStats, useRecentExecutions, useCurrentOrganization } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -59,6 +59,7 @@ function timeAgo(timestamp: number): string {
 export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
   const { agentId } = params
   const { environment } = useEnvironment()
+  const org = useCurrentOrganization()
   const agent = useAgentWithConfig(agentId as Id<"agents">)
   const stats = useExecutionStats(agentId as Id<"agents">, environment)
   const executions = useRecentExecutions(agentId as Id<"agents">, environment, 10)
@@ -81,7 +82,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
 
   const config = environment === "production" ? agent.productionConfig : agent.developmentConfig
   const isDeployed = !!config
-  const chatUrl = `/chat/${agent.slug}`
+  const chatUrl = `/chat/${org?.slug ?? "..."}/${agent.slug}`
   const apiEndpoint = `${process.env.NEXT_PUBLIC_CONVEX_URL}/v1/agents/${agent.slug}/chat`
 
   const totalExecutions = stats?.total ?? 0
