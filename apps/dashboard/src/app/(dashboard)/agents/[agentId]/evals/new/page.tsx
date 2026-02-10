@@ -6,10 +6,37 @@ import { Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useCreateEvalSuite } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+} from "@/components/ui/select"
 import { Id } from "@convex/_generated/dataModel"
 
 interface NewSuitePageProps {
   params: { agentId: string }
+}
+
+const modelOptions: Record<string, { label: string; models: { value: string; label: string }[] }> = {
+  anthropic: {
+    label: "Anthropic",
+    models: [
+      { value: "claude-haiku-4-5-20251001", label: "claude-haiku-4-5-20251001" },
+      { value: "claude-sonnet-4-20250514", label: "claude-sonnet-4-20250514" },
+    ],
+  },
+  openai: {
+    label: "OpenAI",
+    models: [
+      { value: "gpt-4o", label: "gpt-4o" },
+      { value: "gpt-4o-mini", label: "gpt-4o-mini" },
+    ],
+  },
 }
 
 function slugify(text: string): string {
@@ -32,6 +59,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
   const [tags, setTags] = useState("")
   const [judgeProvider, setJudgeProvider] = useState("anthropic")
   const [judgeModel, setJudgeModel] = useState("claude-haiku-4-5-20251001")
+  const [customModel, setCustomModel] = useState(false)
   const [judgeContext, setJudgeContext] = useState("")
   const [judgePrompt, setJudgePrompt] = useState("")
   const [saving, setSaving] = useState(false)
@@ -41,6 +69,22 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
     setName(value)
     if (!slugManual) {
       setSlug(slugify(value))
+    }
+  }
+
+  const handleModelSelect = (value: string) => {
+    if (value === "__custom__") {
+      setCustomModel(true)
+      setJudgeModel("")
+      return
+    }
+    setCustomModel(false)
+    for (const [provider, group] of Object.entries(modelOptions)) {
+      if (group.models.some((m) => m.value === value)) {
+        setJudgeProvider(provider)
+        setJudgeModel(value)
+        return
+      }
     }
   }
 
@@ -133,23 +177,54 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-content-primary">Judge Model</label>
-          <div className="grid grid-cols-2 gap-3">
-            <select
-              value={judgeProvider}
-              onChange={(e) => setJudgeProvider(e.target.value)}
-              className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="anthropic">Anthropic</option>
-              <option value="openai">OpenAI</option>
-            </select>
-            <input
-              type="text"
-              value={judgeModel}
-              onChange={(e) => setJudgeModel(e.target.value)}
-              placeholder="claude-haiku-4-5-20251001"
-              className="rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {!customModel ? (
+            <Select value={judgeModel} onValueChange={handleModelSelect}>
+              <SelectTrigger className="w-full font-mono text-sm">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(modelOptions).map(([provider, group]) => (
+                  <SelectGroup key={provider}>
+                    <SelectLabel>{group.label}</SelectLabel>
+                    {group.models.map((model) => (
+                      <SelectItem key={model.value} value={model.value} className="font-mono">
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+                <SelectSeparator />
+                <SelectItem value="__custom__">Custom model...</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                value={judgeProvider}
+                onChange={(e) => setJudgeProvider(e.target.value)}
+                className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="anthropic">Anthropic</option>
+                <option value="openai">OpenAI</option>
+              </select>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={judgeModel}
+                  onChange={(e) => setJudgeModel(e.target.value)}
+                  placeholder="model-name"
+                  className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setCustomModel(false); setJudgeModel("claude-haiku-4-5-20251001"); setJudgeProvider("anthropic") }}
+                  className="rounded-md border px-2.5 py-2 text-xs text-content-secondary hover:bg-background-tertiary transition-colors"
+                >
+                  Presets
+                </button>
+              </div>
+            </div>
+          )}
           <p className="text-xs text-content-tertiary">Model used for LLM judge assertions</p>
         </div>
 

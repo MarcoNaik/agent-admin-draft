@@ -8,15 +8,9 @@ import {
   Plus,
   Play,
   ArrowLeft,
-  Trash2,
   ChevronRight,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Ban,
-  Pencil,
-  Check,
-  X,
+  MoreVertical,
+  Trash2,
 } from "lucide-react"
 import {
   useEvalSuite,
@@ -25,36 +19,22 @@ import {
   useStartEvalRun,
   useDeleteEvalCase,
   useDeleteEvalSuite,
-  useUpdateEvalSuite,
 } from "@/hooks/use-convex-data"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import { RunStatusBadge } from "@/components/evals/eval-status"
+import { formatDuration, formatTime } from "@/lib/format"
 import { Id } from "@convex/_generated/dataModel"
 
 interface SuiteDetailPageProps {
   params: { agentId: string; suiteId: string }
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-  return `${(ms / 60000).toFixed(1)}m`
-}
-
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-const statusConfig = {
-  pending: { icon: Clock, color: "text-content-tertiary", badge: "outline" as const },
-  running: { icon: Loader2, color: "text-primary", badge: "default" as const },
-  completed: { icon: CheckCircle2, color: "text-green-500", badge: "success" as const },
-  failed: { icon: XCircle, color: "text-red-500", badge: "destructive" as const },
-  cancelled: { icon: Ban, color: "text-content-tertiary", badge: "secondary" as const },
 }
 
 export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
@@ -66,14 +46,9 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   const startRun = useStartEvalRun()
   const deleteCase = useDeleteEvalCase()
   const deleteSuite = useDeleteEvalSuite()
-  const updateSuite = useUpdateEvalSuite()
   const [starting, setStarting] = useState(false)
   const [startingCaseId, setStartingCaseId] = useState<Id<"evalCases"> | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
-  const [editingContext, setEditingContext] = useState(false)
-  const [judgeContextDraft, setJudgeContextDraft] = useState("")
-  const [editingPrompt, setEditingPrompt] = useState(false)
-  const [judgePromptDraft, setJudgePromptDraft] = useState("")
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
 
   const allSelected = useMemo(
@@ -173,23 +148,11 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
     }
   }
 
-  const handleSaveJudgeContext = async () => {
-    try {
-      await updateSuite({ id: suite._id, judgeContext: judgeContextDraft.trim() })
-      setEditingContext(false)
-    } catch (err) {
-      setRunError(err instanceof Error ? err.message : "Failed to update judge context")
-    }
-  }
-
-  const handleSaveJudgePrompt = async () => {
-    try {
-      await updateSuite({ id: suite._id, judgePrompt: judgePromptDraft.trim() })
-      setEditingPrompt(false)
-    } catch (err) {
-      setRunError(err instanceof Error ? err.message : "Failed to update judge prompt")
-    }
-  }
+  const judgeInfo = [
+    suite.judgeModel ? `${suite.judgeModel.provider}/${suite.judgeModel.name}` : null,
+    suite.judgeContext ? "Context configured" : null,
+    suite.judgePrompt ? "Custom prompt configured" : null,
+  ].filter(Boolean)
 
   return (
     <div className="space-y-6">
@@ -206,6 +169,11 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
             {suite.description && (
               <p className="text-sm text-content-secondary mt-0.5">{suite.description}</p>
             )}
+            {judgeInfo.length > 0 && (
+              <p className="text-xs text-content-tertiary mt-1">
+                Judge: {judgeInfo.join("  ·  ")}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -217,12 +185,22 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
             {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run Suite
           </button>
-          <button
-            onClick={handleDeleteSuite}
-            className="rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="rounded-md border px-2 py-2 text-content-secondary hover:bg-background-tertiary transition-colors">
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleDeleteSuite}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Suite
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -232,277 +210,178 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
         </div>
       )}
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-content-primary">Judge Context</h3>
-          {!editingContext ? (
-            <button
-              onClick={() => { setJudgeContextDraft(suite.judgeContext ?? ""); setEditingContext(true) }}
-              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5">
+      <Tabs defaultValue="cases">
+        <TabsList>
+          <TabsTrigger value="cases">Cases ({cases.length})</TabsTrigger>
+          <TabsTrigger value="runs">Run History ({runs.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cases" className="space-y-3 mt-4">
+          {selectedCases.size > 0 && (
+            <div className="flex items-center gap-3 rounded-md border bg-primary/5 border-primary/20 px-4 py-2.5">
+              <span className="text-sm font-medium text-content-primary">{selectedCases.size} selected</span>
               <button
-                onClick={handleSaveJudgeContext}
-                className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                onClick={toggleAll}
+                className="text-xs text-primary hover:text-primary/80 transition-colors"
               >
-                <Check className="h-3 w-3" />
-                Save
+                {allSelected ? "Deselect All" : "Select All"}
               </button>
               <button
-                onClick={() => setEditingContext(false)}
-                className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+                onClick={() => setSelectedCases(new Set())}
+                className="text-xs text-content-tertiary hover:text-content-secondary transition-colors"
               >
-                <X className="h-3 w-3" />
-                Cancel
+                Clear
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={handleRunSelected}
+                disabled={starting}
+                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {starting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                Run Selected
               </button>
             </div>
           )}
-        </div>
-        {editingContext ? (
-          <div className="space-y-1.5">
-            <textarea
-              value={judgeContextDraft}
-              onChange={(e) => setJudgeContextDraft(e.target.value)}
-              placeholder={"{{format_teacher_schedule({})}}\n{{entity.query({\"type\": \"student\"})}}"}
-              rows={5}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-            />
-            <p className="text-xs text-content-tertiary">
-              Reference data passed to the judge as {"<reference_data>"}. Supports templates: {"{{entity.query(...)}}"}, {"{{format_teacher_schedule({})}}"}, {"{{entityTypes}}"}, etc.
-            </p>
-          </div>
-        ) : suite.judgeContext ? (
-          <pre className="rounded-md border bg-background-secondary px-3 py-2 text-xs font-mono text-content-secondary whitespace-pre-wrap overflow-x-auto">
-            {suite.judgeContext}
-          </pre>
-        ) : (
-          <p className="text-xs text-content-tertiary">No judge context configured. Click Edit to add reference data for the judge.</p>
-        )}
-      </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-content-primary">Judge Prompt</h3>
-          {!editingPrompt ? (
-            <button
-              onClick={() => { setJudgePromptDraft(suite.judgePrompt ?? ""); setEditingPrompt(true) }}
-              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+          <div className="flex items-center justify-end">
+            <Link
+              href={`/agents/${agentId}/evals/${suiteId}/cases/new`}
+              className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
             >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleSaveJudgePrompt}
-                className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                <Check className="h-3 w-3" />
-                Save
-              </button>
-              <button
-                onClick={() => setEditingPrompt(false)}
-                className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
-              >
-                <X className="h-3 w-3" />
-                Cancel
-              </button>
+              <Plus className="h-3 w-3" />
+              Add Case
+            </Link>
+          </div>
+
+          {cases.length === 0 ? (
+            <div className="rounded-md border bg-card p-8 text-center">
+              <p className="text-sm text-content-secondary">No test cases yet</p>
+              <p className="text-xs text-content-tertiary mt-1">Add cases to define what to test</p>
             </div>
-          )}
-        </div>
-        {editingPrompt ? (
-          <div className="space-y-1.5">
-            <textarea
-              value={judgePromptDraft}
-              onChange={(e) => setJudgePromptDraft(e.target.value)}
-              placeholder={"Be extremely strict. Any factual error is an automatic score of 1."}
-              rows={4}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-            />
-            <p className="text-xs text-content-tertiary">
-              Custom instructions prepended to the judge system prompt. Controls strictness and focus areas.
-            </p>
-          </div>
-        ) : suite.judgePrompt ? (
-          <pre className="rounded-md border bg-background-secondary px-3 py-2 text-xs font-mono text-content-secondary whitespace-pre-wrap overflow-x-auto">
-            {suite.judgePrompt}
-          </pre>
-        ) : (
-          <p className="text-xs text-content-tertiary">No judge prompt configured. Click Edit to add custom judge instructions.</p>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm font-medium text-content-primary">Cases ({cases.length})</h3>
-            {selectedCases.size > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-content-tertiary">{selectedCases.size} selected</span>
-                <button
-                  onClick={handleRunSelected}
-                  disabled={starting}
-                  className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          ) : (
+            <div className="space-y-1.5">
+              {cases.map((c: any, idx: number) => (
+                <div
+                  key={c._id}
+                  className={`flex items-center justify-between rounded-md border bg-card px-4 py-3 ${selectedCases.has(c._id) ? "border-primary/40 bg-primary/5" : ""}`}
                 >
-                  {starting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                  Run Selected
-                </button>
-                <button
-                  onClick={() => setSelectedCases(new Set())}
-                  className="rounded-md px-2 py-1 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-          </div>
-          <Link
-            href={`/agents/${agentId}/evals/${suiteId}/cases/new`}
-            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-            Add Case
-          </Link>
-        </div>
-
-        {cases.length === 0 ? (
-          <div className="rounded-md border bg-card p-8 text-center">
-            <p className="text-sm text-content-secondary">No test cases yet</p>
-            <p className="text-xs text-content-tertiary mt-1">Add cases to define what to test</p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {cases.length > 1 && (
-              <label className="flex items-center gap-2 px-4 py-1 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                />
-                <span className="text-xs text-content-tertiary">Select all</span>
-              </label>
-            )}
-            {cases.map((c: any, idx: number) => (
-              <div
-                key={c._id}
-                className={`flex items-center justify-between rounded-md border bg-card px-4 py-3 ${selectedCases.has(c._id) ? "border-primary/40 bg-primary/5" : ""}`}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <input
-                    type="checkbox"
-                    checked={selectedCases.has(c._id)}
-                    onChange={() => toggleCase(c._id)}
-                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer shrink-0"
-                  />
-                  <Link
-                    href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
-                    className="flex items-center gap-3 min-w-0 flex-1"
-                  >
-                    <span className="text-xs text-content-tertiary font-mono w-5">{idx + 1}</span>
-                    <div className="min-w-0">
-                      <span className="text-sm text-content-primary">{c.name}</span>
-                      <span className="text-xs text-content-tertiary ml-2">{c.turns.length} turn{c.turns.length !== 1 ? "s" : ""}</span>
-                    </div>
-                    {c.tags && c.tags.length > 0 && (
-                      <div className="flex gap-1 ml-2">
-                        {c.tags.map((tag: string) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                        ))}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedCases.has(c._id)}
+                      onChange={() => toggleCase(c._id)}
+                      className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer shrink-0"
+                    />
+                    <Link
+                      href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
+                      className="flex items-center gap-3 min-w-0 flex-1"
+                    >
+                      <span className="text-xs text-content-tertiary font-mono w-5">{idx + 1}</span>
+                      <div className="min-w-0">
+                        <span className="text-sm text-content-primary">{c.name}</span>
+                        <span className="text-xs text-content-tertiary ml-2">{c.turns.length} turn{c.turns.length !== 1 ? "s" : ""}</span>
                       </div>
-                    )}
-                  </Link>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handleRunCase(c._id)}
-                    disabled={startingCaseId === c._id}
-                    className="rounded p-1 text-content-tertiary hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                  >
-                    {startingCaseId === c._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCase(c._id)}
-                    className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                  <Link href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}>
-                    <ChevronRight className="h-4 w-4 text-content-tertiary" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-content-primary">Run History</h3>
-
-        {runs.length === 0 ? (
-          <div className="rounded-md border bg-card p-8 text-center">
-            <p className="text-sm text-content-secondary">No runs yet</p>
-            <p className="text-xs text-content-tertiary mt-1">Click &quot;Run Suite&quot; to execute all cases</p>
-          </div>
-        ) : (
-          <div className="rounded-md border bg-card overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-background-secondary border-b">
-                <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Started</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Pass Rate</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Score</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Duration</th>
-                  <th className="px-4 py-2.5 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {runs.map((run: any) => {
-                  const config = statusConfig[run.status as keyof typeof statusConfig] || statusConfig.pending
-                  const StatusIcon = config.icon
-                  const passRate = run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"
-
-                  return (
-                    <tr key={run._id} className="border-b hover:bg-background-secondary transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <StatusIcon className={`h-4 w-4 ${config.color} ${run.status === "running" ? "animate-spin" : ""}`} />
-                          <Badge variant={config.badge} className="text-xs capitalize">
-                            {run.status}
-                          </Badge>
+                      {c.tags && c.tags.length > 0 && (
+                        <div className="flex gap-1 ml-2">
+                          {c.tags.map((tag: string) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                          ))}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-content-secondary">
-                        {run.startedAt ? formatTime(run.startedAt) : formatTime(run.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
-                        {passRate}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
-                        {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
-                        {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link href={`/agents/${agentId}/evals/${suiteId}/runs/${run._id}`}>
+                      )}
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="rounded p-1.5 text-content-tertiary hover:bg-background-tertiary transition-colors">
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleRunCase(c._id)}
+                          disabled={startingCaseId === c._id}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Run
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteCase(c._id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Link href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}>
+                      <ChevronRight className="h-4 w-4 text-content-tertiary" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="runs" className="mt-4">
+          {runs.length === 0 ? (
+            <div className="rounded-md border bg-card p-8 text-center">
+              <p className="text-sm text-content-secondary">No runs yet</p>
+              <p className="text-xs text-content-tertiary mt-1">Click &quot;Run Suite&quot; to execute all cases</p>
+            </div>
+          ) : (
+            <div className="rounded-md border bg-card overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-background-secondary border-b">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Started</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Pass Rate</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Score</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Duration</th>
+                    <th className="px-4 py-2.5 w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {runs.map((run: any) => {
+                    const passRate = run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"
+
+                    return (
+                      <tr
+                        key={run._id}
+                        onClick={() => router.push(`/agents/${agentId}/evals/${suiteId}/runs/${run._id}`)}
+                        className="border-b hover:bg-background-secondary transition-colors cursor-pointer"
+                      >
+                        <td className="px-4 py-3">
+                          <RunStatusBadge status={run.status} />
+                        </td>
+                        <td className="px-4 py-3 text-sm text-content-secondary">
+                          {run.startedAt ? formatTime(run.startedAt) : formatTime(run.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+                          {passRate}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+                          {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+                          {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"}
+                        </td>
+                        <td className="px-4 py-3">
                           <ChevronRight className="h-4 w-4 text-content-tertiary" />
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

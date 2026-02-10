@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -29,16 +29,11 @@ import {
   useStartEvalRun,
 } from "@/hooks/use-convex-data"
 import { Badge } from "@/components/ui/badge"
+import { formatDuration } from "@/lib/format"
 import { Id } from "@convex/_generated/dataModel"
 
 interface RunResultsPageProps {
   params: { agentId: string; suiteId: string; runId: string }
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-  return `${(ms / 60000).toFixed(1)}m`
 }
 
 function AssertionBadge({ result }: { result: { type: string; passed: boolean; score?: number; reason?: string; criteria?: string } }) {
@@ -227,7 +222,7 @@ function ToolDataView({ data: rawData, label }: { data: unknown; label: string }
 }
 
 function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }: { result: any; caseName: string; onRerun?: () => void; isRerunning?: boolean; rerunDisabled?: boolean }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(result.status !== "passed")
 
   const statusIcon = {
     passed: <CheckCircle2 className="h-4 w-4 text-green-500" />,
@@ -473,6 +468,8 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
   return lines.join("\n")
 }
 
+type FilterStatus = "all" | "passed" | "failed" | "error"
+
 export default function RunResultsPage({ params }: RunResultsPageProps) {
   const { agentId, suiteId, runId } = params
   const router = useRouter()
@@ -486,12 +483,28 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
   const [copiedErrors, setCopiedErrors] = useState(false)
   const [startingCaseId, setStartingCaseId] = useState<string | null>(null)
   const [startingFailed, setStartingFailed] = useState(false)
+  const [filter, setFilter] = useState<FilterStatus>("all")
 
   const caseMap = new Map<string, any>((cases || []).map((c: any) => [c._id, c]))
 
   const errorResults = (results || []).filter(
     (r: any) => r.status === "failed" || r.status === "error" || !r.overallPassed
   )
+
+  const filterCounts = useMemo(() => {
+    if (!results) return { all: 0, passed: 0, failed: 0, error: 0 }
+    return {
+      all: results.length,
+      passed: results.filter((r: any) => r.status === "passed").length,
+      failed: results.filter((r: any) => r.status === "failed").length,
+      error: results.filter((r: any) => r.status === "error").length,
+    }
+  }, [results])
+
+  const filteredResults = useMemo(() => {
+    if (!results || filter === "all") return results || []
+    return results.filter((r: any) => r.status === filter)
+  }, [results, filter])
 
   const handleCopyMarkdown = useCallback(async () => {
     if (!run || !results) return
@@ -551,6 +564,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
   }
 
   const isRunning = run.status === "pending" || run.status === "running"
+  const progressPct = run.totalCases > 0 ? (run.completedCases / run.totalCases) * 100 : 0
 
   return (
     <div className="space-y-6">
@@ -621,30 +635,45 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
         </div>
       </div>
 
+      {isRunning && run.totalCases > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-content-tertiary">
+            <span>Running... {run.completedCases}/{run.totalCases} cases</span>
+            <span>{Math.round(progressPct)}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-background-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500 animate-pulse"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="rounded-md border bg-card p-3">
+        <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Status</div>
           <div className="text-lg font-semibold text-content-primary capitalize mt-0.5">{run.status}</div>
         </div>
-        <div className="rounded-md border bg-card p-3">
+        <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Pass Rate</div>
           <div className="text-lg font-semibold text-content-primary mt-0.5">
             {run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"}
           </div>
         </div>
-        <div className="rounded-md border bg-card p-3">
+        <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Score</div>
           <div className="text-lg font-semibold text-content-primary mt-0.5">
             {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"}
           </div>
         </div>
-        <div className="rounded-md border bg-card p-3">
+        <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Duration</div>
           <div className="text-lg font-semibold text-content-primary mt-0.5">
             {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"}
           </div>
         </div>
-        <div className="rounded-md border bg-card p-3">
+        <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Tokens</div>
           <div className="text-lg font-semibold text-content-primary mt-0.5">
             {run.totalTokens
@@ -660,8 +689,29 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
         </div>
       </div>
 
+      <div className="flex items-center gap-2">
+        {(["all", "passed", "failed", "error"] as FilterStatus[]).map((status) => {
+          const count = filterCounts[status]
+          if (status !== "all" && count === 0) return null
+          const isActive = filter === status
+          return (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background-secondary text-content-secondary hover:bg-background-tertiary"
+              }`}
+            >
+              {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)} ({count})
+            </button>
+          )
+        })}
+      </div>
+
       <div className="space-y-2">
-        {results.map((result: any) => {
+        {filteredResults.map((result: any) => {
           const evalCase = caseMap.get(result.caseId)
           return (
             <CaseResultRow

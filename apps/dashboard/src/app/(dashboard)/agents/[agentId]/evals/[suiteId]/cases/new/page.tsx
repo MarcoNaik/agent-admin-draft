@@ -5,19 +5,11 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Loader2, ArrowLeft, Plus, Trash2 } from "lucide-react"
 import { useCreateEvalCase } from "@/hooks/use-convex-data"
+import { AssertionRow, type AssertionType, type AssertionForm } from "@/components/evals/assertion-row"
 import { Id } from "@convex/_generated/dataModel"
 
 interface NewCasePageProps {
   params: { agentId: string; suiteId: string }
-}
-
-type AssertionType = "llm_judge" | "contains" | "matches" | "tool_called" | "tool_not_called"
-
-interface AssertionForm {
-  type: AssertionType
-  criteria?: string
-  value?: string
-  weight?: number
 }
 
 interface TurnForm {
@@ -212,7 +204,7 @@ export default function NewCasePage({ params }: NewCasePageProps) {
                   value={turn.userMessage}
                   onChange={(e) => updateTurnMessage(turnIdx, e.target.value)}
                   placeholder="Book a session for tomorrow at 3pm"
-                  rows={2}
+                  rows={3}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
@@ -288,63 +280,6 @@ export default function NewCasePage({ params }: NewCasePageProps) {
           </Link>
         </div>
       </form>
-    </div>
-  )
-}
-
-function AssertionRow({
-  assertion,
-  onUpdate,
-  onRemove,
-}: {
-  assertion: AssertionForm
-  onUpdate: (field: string, value: string | number) => void
-  onRemove: () => void
-}) {
-  const needsCriteria = assertion.type === "llm_judge"
-  const needsValue = ["contains", "matches", "tool_called", "tool_not_called"].includes(assertion.type)
-
-  return (
-    <div className="flex items-start gap-2 rounded-md border bg-background p-2.5">
-      <select
-        value={assertion.type}
-        onChange={(e) => onUpdate("type", e.target.value)}
-        className="rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-      >
-        <option value="contains">contains</option>
-        <option value="matches">matches</option>
-        <option value="tool_called">tool_called</option>
-        <option value="tool_not_called">tool_not_called</option>
-        <option value="llm_judge">llm_judge</option>
-      </select>
-
-      {needsCriteria && (
-        <input
-          type="text"
-          value={assertion.criteria || ""}
-          onChange={(e) => onUpdate("criteria", e.target.value)}
-          placeholder="Agent should acknowledge and ask for details"
-          className="flex-1 rounded border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-      )}
-
-      {needsValue && (
-        <input
-          type="text"
-          value={assertion.value || ""}
-          onChange={(e) => onUpdate("value", e.target.value)}
-          placeholder={assertion.type.includes("tool") ? "entity.query" : "expected text"}
-          className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-      )}
-
-      <button
-        type="button"
-        onClick={onRemove}
-        className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { Loader2, Plus, Play, FlaskConical, ChevronRight } from "lucide-react"
 import { useEvalSuites, useEvalRuns, useStartEvalRun } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
+import { formatRelativeTime } from "@/lib/format"
 import { Id } from "@convex/_generated/dataModel"
 
 interface EvalsPageProps {
@@ -49,6 +50,9 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
             <div className="font-medium text-content-primary truncate">{suite.name}</div>
             {suite.description && (
               <div className="text-xs text-content-tertiary mt-0.5 truncate">{suite.description}</div>
+            )}
+            {lastRun && lastRun.startedAt && (
+              <div className="text-xs text-content-tertiary mt-0.5">{formatRelativeTime(lastRun.startedAt)}</div>
             )}
           </div>
         </div>
