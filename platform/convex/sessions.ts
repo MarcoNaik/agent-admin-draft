@@ -35,11 +35,7 @@ interface SessionData {
 interface TeacherData {
   name: string
   email?: string
-  availability?: Array<{
-    dayOfWeek: number
-    startHour: number
-    endHour: number
-  }>
+  availability?: Record<string, number[]>
   userId?: string
 }
 
