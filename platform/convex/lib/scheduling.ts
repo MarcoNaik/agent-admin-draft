@@ -4,14 +4,8 @@ import { Id } from "../_generated/dataModel"
 const MIN_BOOKING_LEAD_TIME_MS = 24 * 60 * 60 * 1000
 const RESCHEDULE_CUTOFF_MS = 2 * 60 * 60 * 1000
 
-interface AvailabilitySlot {
-  dayOfWeek: number
-  startHour: number
-  endHour: number
-}
-
 interface TeacherData {
-  availability?: AvailabilitySlot[]
+  availability?: Record<string, number[]>
 }
 
 interface SessionData {
@@ -39,28 +33,23 @@ export function validateReschedule(session: { data: SessionData }): void {
   }
 }
 
+const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+
 export function validateTeacherAvailability(
   teacher: { data: TeacherData },
   startTime: number,
   duration: number
 ): void {
-  if (!teacher.data.availability || teacher.data.availability.length === 0) {
+  if (!teacher.data.availability || Object.keys(teacher.data.availability).length === 0) {
     return
   }
 
   const date = new Date(startTime)
-  const dayOfWeek = date.getDay()
+  const dayName = dayNames[date.getDay()]
   const startHour = date.getHours()
-  const endHour = startHour + Math.ceil(duration / 60)
+  const slots = teacher.data.availability[dayName]
 
-  const availableSlot = teacher.data.availability.find(
-    (slot) =>
-      slot.dayOfWeek === dayOfWeek &&
-      slot.startHour <= startHour &&
-      slot.endHour >= endHour
-  )
-
-  if (!availableSlot) {
+  if (!slots || !slots.includes(startHour)) {
     throw new Error("Teacher is not available at this time")
   }
 }
