@@ -686,7 +686,7 @@ export default defineEntityType({
       name: { type: "string" },
       email: { type: "string", format: "email" },
       plan: { type: "string", enum: ["free", "pro", "enterprise"] },
-      metadata: { type: "object" },
+      metadata: { type: "object", properties: { source: { type: "string" }, tags: { type: "array", items: { type: "string" } } } },
     },
     required: ["name", "email"],
   },
