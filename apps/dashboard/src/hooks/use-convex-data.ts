@@ -349,6 +349,14 @@ export function useAgentBySlug(slug: string) {
   return useQuery(api.chat.getAgentBySlug, { slug })
 }
 
+export function usePublicAgent(orgSlug: string, agentSlug: string) {
+  return useQuery(api.publicChat.getPublicAgent, { orgSlug, agentSlug })
+}
+
+export function useSendPublicChat() {
+  return useAction(api.publicChat.sendPublicChat)
+}
+
 export function useSendChatMessage() {
   return useAction(api.chat.send)
 }
