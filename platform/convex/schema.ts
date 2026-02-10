@@ -514,6 +514,7 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     runId: v.id("evalRuns"),
     caseId: v.id("evalCases"),
+    caseName: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
       v.literal("running"),
