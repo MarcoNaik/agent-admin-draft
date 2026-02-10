@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -74,6 +74,30 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   const [judgeContextDraft, setJudgeContextDraft] = useState("")
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [judgePromptDraft, setJudgePromptDraft] = useState("")
+  const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
+
+  const allSelected = useMemo(
+    () => cases !== undefined && cases.length > 0 && selectedCases.size === cases.length,
+    [cases, selectedCases]
+  )
+
+  const toggleCase = (caseId: string) => {
+    setSelectedCases((prev) => {
+      const next = new Set(prev)
+      if (next.has(caseId)) next.delete(caseId)
+      else next.add(caseId)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    if (!cases) return
+    if (allSelected) {
+      setSelectedCases(new Set())
+    } else {
+      setSelectedCases(new Set(cases.map((c: any) => c._id)))
+    }
+  }
 
   if (suite === undefined || cases === undefined || runs === undefined) {
     return (
@@ -96,6 +120,22 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
     setRunError(null)
     try {
       await startRun({ suiteId: suite._id, triggerSource: "dashboard" })
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Failed to start run")
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const handleRunSelected = async () => {
+    if (selectedCases.size === 0) return
+    setStarting(true)
+    setRunError(null)
+    try {
+      const caseIds = Array.from(selectedCases) as Id<"evalCases">[]
+      const runId = await startRun({ suiteId: suite._id, triggerSource: "dashboard", caseIds })
+      setSelectedCases(new Set())
+      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${runId}`)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Failed to start run")
     } finally {
@@ -298,7 +338,28 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-content-primary">Cases ({cases.length})</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-medium text-content-primary">Cases ({cases.length})</h3>
+            {selectedCases.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-content-tertiary">{selectedCases.size} selected</span>
+                <button
+                  onClick={handleRunSelected}
+                  disabled={starting}
+                  className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {starting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  Run Selected
+                </button>
+                <button
+                  onClick={() => setSelectedCases(new Set())}
+                  className="rounded-md px-2 py-1 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
           <Link
             href={`/agents/${agentId}/evals/${suiteId}/cases/new`}
             className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
@@ -315,28 +376,47 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
           </div>
         ) : (
           <div className="space-y-1.5">
+            {cases.length > 1 && (
+              <label className="flex items-center gap-2 px-4 py-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                />
+                <span className="text-xs text-content-tertiary">Select all</span>
+              </label>
+            )}
             {cases.map((c: any, idx: number) => (
               <div
                 key={c._id}
-                className="flex items-center justify-between rounded-md border bg-card px-4 py-3"
+                className={`flex items-center justify-between rounded-md border bg-card px-4 py-3 ${selectedCases.has(c._id) ? "border-primary/40 bg-primary/5" : ""}`}
               >
-                <Link
-                  href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
-                  className="flex items-center gap-3 min-w-0 flex-1"
-                >
-                  <span className="text-xs text-content-tertiary font-mono w-5">{idx + 1}</span>
-                  <div className="min-w-0">
-                    <span className="text-sm text-content-primary">{c.name}</span>
-                    <span className="text-xs text-content-tertiary ml-2">{c.turns.length} turn{c.turns.length !== 1 ? "s" : ""}</span>
-                  </div>
-                  {c.tags && c.tags.length > 0 && (
-                    <div className="flex gap-1 ml-2">
-                      {c.tags.map((tag: string) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                      ))}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedCases.has(c._id)}
+                    onChange={() => toggleCase(c._id)}
+                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer shrink-0"
+                  />
+                  <Link
+                    href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
+                    className="flex items-center gap-3 min-w-0 flex-1"
+                  >
+                    <span className="text-xs text-content-tertiary font-mono w-5">{idx + 1}</span>
+                    <div className="min-w-0">
+                      <span className="text-sm text-content-primary">{c.name}</span>
+                      <span className="text-xs text-content-tertiary ml-2">{c.turns.length} turn{c.turns.length !== 1 ? "s" : ""}</span>
                     </div>
-                  )}
-                </Link>
+                    {c.tags && c.tags.length > 0 && (
+                      <div className="flex gap-1 ml-2">
+                        {c.tags.map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleRunCase(c._id)}
