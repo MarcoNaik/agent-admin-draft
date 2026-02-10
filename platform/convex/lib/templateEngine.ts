@@ -259,7 +259,6 @@ async function executeTemplateFunction(
         })
       }
 
-      const dayNameMap = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
       const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
       const keyMap: Record<string, string> = {
         monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
@@ -281,15 +280,7 @@ async function executeTemplateFunction(
         const availability = teacher.data?.availability as unknown
         const schedule: Record<string, string[]> = {}
 
-        if (Array.isArray(availability)) {
-          for (const s of availability as Array<{ dayOfWeek: number; startHour: number; endHour: number }>) {
-            const day = dayNameMap[s.dayOfWeek]
-            if (!day) continue
-            const slots: string[] = []
-            for (let h = s.startHour; h < s.endHour; h++) slots.push(fmt(h))
-            schedule[day] = (schedule[day] ?? []).concat(slots)
-          }
-        } else if (availability && typeof availability === "object") {
+        if (availability && typeof availability === "object" && !Array.isArray(availability)) {
           for (const [key, dayName] of Object.entries(keyMap)) {
             const slots = (availability as Record<string, number[]>)[key]
             if (slots && slots.length > 0) {
