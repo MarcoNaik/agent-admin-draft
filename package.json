@@ -21,7 +21,7 @@
     "clean": "turbo run clean && rm -rf node_modules/.cache",
     "deploy": "turbo run deploy",
     "deploy:convex": "cd platform/convex && npx convex deploy",
-    "deploy:tool-executor": "cd platform/tool-executor && wrangler deploy"
+    "deploy:tool-executor": "cd platform/tool-executor && flyctl deploy"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
