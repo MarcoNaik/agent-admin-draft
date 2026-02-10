@@ -384,7 +384,7 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
 
   for (const result of results) {
     const evalCase = caseMap.get(result.caseId)
-    const caseName = evalCase?.name || "Unknown Case"
+    const caseName = result.caseName || evalCase?.name || "Unknown Case"
     const statusEmoji = result.status === "passed" ? "✅" : result.status === "failed" ? "❌" : result.status === "error" ? "⚠️" : "⏱️"
 
     lines.push(`### ${statusEmoji} ${caseName}`)
@@ -478,7 +478,8 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
   const router = useRouter()
   const run = useEvalRun(runId as Id<"evalRuns">)
   const results = useEvalRunResults(runId as Id<"evalRuns">)
-  const cases = useEvalCases(suiteId as Id<"evalSuites">)
+  const effectiveSuiteId = run?.suiteId ?? suiteId as Id<"evalSuites">
+  const cases = useEvalCases(effectiveSuiteId)
   const cancelRun = useCancelEvalRun()
   const startRun = useStartEvalRun()
   const [copied, setCopied] = useState(false)
@@ -509,27 +510,29 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
   }, [run, errorResults, caseMap])
 
   const handleRerunCase = useCallback(async (caseId: string) => {
+    if (!run) return
     setStartingCaseId(caseId)
     try {
-      const newRunId = await startRun({ suiteId: suiteId as Id<"evalSuites">, triggerSource: "dashboard", caseIds: [caseId as Id<"evalCases">] })
-      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${newRunId}`)
+      const newRunId = await startRun({ suiteId: run.suiteId, triggerSource: "dashboard", caseIds: [caseId as Id<"evalCases">] })
+      router.push(`/agents/${agentId}/evals/${run.suiteId}/runs/${newRunId}`)
     } catch {
     } finally {
       setStartingCaseId(null)
     }
-  }, [startRun, suiteId, agentId, router])
+  }, [startRun, run, agentId, router])
 
   const handleRunFailed = useCallback(async () => {
+    if (!run) return
     setStartingFailed(true)
     try {
       const failedCaseIds = errorResults.map((r: any) => r.caseId as Id<"evalCases">)
-      const newRunId = await startRun({ suiteId: suiteId as Id<"evalSuites">, triggerSource: "dashboard", caseIds: failedCaseIds })
-      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${newRunId}`)
+      const newRunId = await startRun({ suiteId: run.suiteId, triggerSource: "dashboard", caseIds: failedCaseIds })
+      router.push(`/agents/${agentId}/evals/${run.suiteId}/runs/${newRunId}`)
     } catch {
     } finally {
       setStartingFailed(false)
     }
-  }, [startRun, suiteId, agentId, errorResults, router])
+  }, [startRun, run, agentId, errorResults, router])
 
   if (run === undefined || results === undefined || cases === undefined) {
     return (
@@ -554,7 +557,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
-            href={`/agents/${agentId}/evals/${suiteId}`}
+            href={`/agents/${agentId}/evals/${effectiveSuiteId}`}
             className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors"
           >
             <ArrowLeft className="h-4 w-4 text-content-secondary" />
@@ -664,7 +667,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
             <CaseResultRow
               key={result._id}
               result={result}
-              caseName={evalCase?.name || "Unknown Case"}
+              caseName={result.caseName || evalCase?.name || "Unknown Case"}
               onRerun={() => handleRerunCase(result.caseId)}
               isRerunning={startingCaseId === result.caseId}
               rerunDisabled={isRunning}
