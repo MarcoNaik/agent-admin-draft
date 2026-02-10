@@ -1,4 +1,26 @@
-import type { EntityTypeConfig } from '../types'
+import type { EntityTypeConfig, JSONSchemaProperty } from '../types'
+
+function validateObjectProperties(
+  schema: JSONSchemaProperty,
+  path: string
+): void {
+  if (schema.type === 'object' && !schema.properties) {
+    throw new Error(
+      `Schema field "${path}" has type "object" but is missing "properties". All object fields must declare their properties.`
+    )
+  }
+
+  if (schema.properties) {
+    for (const [key, value] of Object.entries(schema.properties)) {
+      const childPath = path ? `${path}.${key}` : key
+      validateObjectProperties(value, childPath)
+    }
+  }
+
+  if (schema.items) {
+    validateObjectProperties(schema.items, `${path}[]`)
+  }
+}
 
 export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig {
   if (!config.name) {
@@ -12,6 +34,12 @@ export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig {
   }
   if (config.schema.type !== 'object') {
     throw new Error('Entity type schema must be an object type')
+  }
+
+  if (config.schema.properties) {
+    for (const [key, value] of Object.entries(config.schema.properties)) {
+      validateObjectProperties(value, key)
+    }
   }
 
   return {
