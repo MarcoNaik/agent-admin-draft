@@ -82,7 +82,9 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
 
   const config = environment === "production" ? agent.productionConfig : agent.developmentConfig
   const isDeployed = !!config
-  const chatUrl = `/chat/${org?.slug ?? "..."}/${agent.slug}`
+  const chatUrl = environment === "production"
+    ? `/chat/${org?.slug ?? "..."}/${agent.slug}`
+    : `/dev-chat/${agent.slug}`
   const apiEndpoint = `${process.env.NEXT_PUBLIC_CONVEX_URL}/v1/agents/${agent.slug}/chat`
 
   const totalExecutions = stats?.total ?? 0

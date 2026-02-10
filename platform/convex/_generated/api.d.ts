@@ -53,6 +53,7 @@ import type * as packs_index from "../packs/index.js";
 import type * as packs_tutoring from "../packs/tutoring.js";
 import type * as payments from "../payments.js";
 import type * as permissions from "../permissions.js";
+import type * as publicChat from "../publicChat.js";
 import type * as roles from "../roles.js";
 import type * as sessions from "../sessions.js";
 import type * as sync from "../sync.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   "packs/tutoring": typeof packs_tutoring;
   payments: typeof payments;
   permissions: typeof permissions;
+  publicChat: typeof publicChat;
   roles: typeof roles;
   sessions: typeof sessions;
   sync: typeof sync;
