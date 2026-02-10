@@ -427,6 +427,7 @@ export const startRun = mutation({
         organizationId: auth.organizationId,
         runId,
         caseId: c._id,
+        caseName: c.name,
         status: "pending",
         overallPassed: false,
         createdAt: now,
