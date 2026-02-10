@@ -26,6 +26,7 @@ export default function PublicChatPage() {
     <ChatInterface
       agent={agent}
       sendMessage={sendMessage}
+      orgName={agent?.orgName}
     />
   )
 }

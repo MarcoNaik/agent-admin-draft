@@ -40,6 +40,7 @@ export const getPublicAgent = query({
       slug: agent.slug,
       description: agent.description,
       model: { name: prodConfig.model.name },
+      orgName: org.name,
     }
   },
 })

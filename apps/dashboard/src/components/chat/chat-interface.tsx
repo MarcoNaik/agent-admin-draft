@@ -18,10 +18,11 @@ interface Message {
 interface ChatInterfaceProps {
   agent: { name: string; model?: { name?: string } } | null | undefined
   sendMessage: (args: { message: string; threadId?: Id<"threads"> }) => Promise<{ message: string; threadId: Id<"threads"> }>
+  orgName?: string
   environmentLabel?: string
 }
 
-export function ChatInterface({ agent, sendMessage, environmentLabel }: ChatInterfaceProps) {
+export function ChatInterface({ agent, sendMessage, orgName, environmentLabel }: ChatInterfaceProps) {
   const [threadId, setThreadId] = useState<Id<"threads"> | null>(null)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -120,6 +121,7 @@ export function ChatInterface({ agent, sendMessage, environmentLabel }: ChatInte
         <div>
           <h1 className="font-semibold text-content-primary">{agent.name}</h1>
           <p className="text-xs text-content-secondary">
+            {orgName && <>{orgName} · </>}
             {agent.model?.name || "claude-sonnet-4-20250514"}
             {environmentLabel && ` · ${environmentLabel}`}
           </p>

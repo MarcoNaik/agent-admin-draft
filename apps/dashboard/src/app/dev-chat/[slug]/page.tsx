@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useAgentBySlug, useSendChatMessageBySlug } from "@/hooks/use-convex-data"
+import { useAgentBySlug, useSendChatMessageBySlug, useCurrentOrganization } from "@/hooks/use-convex-data"
 import { ChatInterface } from "@/components/chat/chat-interface"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -10,6 +10,7 @@ export default function DevChatPage() {
   const slug = params.slug as string
 
   const agent = useAgentBySlug(slug)
+  const org = useCurrentOrganization()
   const sendBySlug = useSendChatMessageBySlug()
 
   const agentDisplay = agent
@@ -29,6 +30,7 @@ export default function DevChatPage() {
     <ChatInterface
       agent={agentDisplay}
       sendMessage={sendMessage}
+      orgName={org?.name}
       environmentLabel="development"
     />
   )
