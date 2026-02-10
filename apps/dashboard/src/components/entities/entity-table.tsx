@@ -70,7 +70,23 @@ function formatFieldValue(value: unknown, field?: EntityTypeField): string {
   }
 
   if (typeof value === "object") {
-    return JSON.stringify(value)
+    if (Array.isArray(value)) {
+      if (value.length === 0) return "-"
+      if (value.every((v) => typeof v === "string" || typeof v === "number"))
+        return value.join(", ")
+      return `${value.length} items`
+    }
+    const entries = Object.entries(value as Record<string, unknown>)
+    if (entries.length === 0) return "-"
+    const summary = entries
+      .map(([k, v]) => {
+        if (Array.isArray(v) && v.every((x) => typeof x === "string" || typeof x === "number"))
+          return `${k}: ${v.join(",")}`
+        if (typeof v === "object" && v !== null) return `${k}: {...}`
+        return `${k}: ${v}`
+      })
+      .join(" | ")
+    return summary.length > 80 ? summary.slice(0, 77) + "..." : summary
   }
 
   return String(value)

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardCopy, Check } from "lucide-react"
 import { useEntityTypeBySlug, useEntities } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
@@ -39,6 +39,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
+  const [csvCopied, setCsvCopied] = useState(false)
   const { environment } = useEnvironment()
 
   const entityType = useEntityTypeBySlug(typeSlug, environment)
@@ -86,6 +87,38 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     displayConfig: entityType.displayConfig,
   }
 
+  const schemaProperties = (entityType.schema as { properties?: Record<string, unknown> })?.properties || {}
+  const allSchemaFields = Object.keys(schemaProperties)
+
+  const escapeCsvCell = (val: unknown): string => {
+    if (val === null || val === undefined) return ""
+    const str = typeof val === "object" ? JSON.stringify(val) : String(val)
+    if (str.includes(",") || str.includes('"') || str.includes("\n"))
+      return `"${str.replace(/"/g, '""')}"`
+    return str
+  }
+
+  const handleCopyCsv = async () => {
+    const columns = ["id", ...allSchemaFields, "status", "createdAt", "updatedAt"]
+    const header = columns.join(",")
+    const rows = entities.map((e: Doc<"entities">) => {
+      const data = e.data || {}
+      return columns
+        .map((col) => {
+          if (col === "id") return escapeCsvCell(e._id)
+          if (col === "status") return escapeCsvCell(e.status || "active")
+          if (col === "createdAt") return escapeCsvCell(e.createdAt ? new Date(e.createdAt).toISOString() : "")
+          if (col === "updatedAt") return escapeCsvCell(e.updatedAt ? new Date(e.updatedAt).toISOString() : "")
+          return escapeCsvCell(data[col])
+        })
+        .join(",")
+    })
+    const csv = [header, ...rows].join("\n")
+    await navigator.clipboard.writeText(csv)
+    setCsvCopied(true)
+    setTimeout(() => setCsvCopied(false), 2000)
+  }
+
   const mappedEntities = filteredEntities.map((e: Doc<"entities">) => ({
     id: e._id,
     status: e.status || "active",
@@ -120,6 +153,20 @@ export default function EntityListPage({ params }: EntityListPageProps) {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={handleCopyCsv}
+            disabled={!entities || entities.length === 0}
+          >
+            {csvCopied ? (
+              <Check className="mr-1.5 h-3.5 w-3.5 text-green-500" />
+            ) : (
+              <ClipboardCopy className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {csvCopied ? "Copied" : "CSV"}
+          </Button>
           <Button
             size="sm"
             className="h-8"

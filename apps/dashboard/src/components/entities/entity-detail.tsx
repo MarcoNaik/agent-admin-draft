@@ -86,6 +86,53 @@ function formatFieldValue(value: unknown, field?: EntityTypeField): React.ReactN
   }
 
   if (typeof value === "object") {
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <span className="text-muted-foreground">-</span>
+      if (value.every((v) => typeof v === "string" || typeof v === "number"))
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {value.map((v, i) => (
+              <Badge key={i} variant="secondary" className="text-xs font-normal">
+                {String(v)}
+              </Badge>
+            ))}
+          </div>
+        )
+      return (
+        <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      )
+    }
+    const entries = Object.entries(value as Record<string, unknown>)
+    if (entries.length === 0) return <span className="text-muted-foreground">-</span>
+    const isSimple = entries.every(
+      ([, v]) => typeof v !== "object" || v === null ||
+        (Array.isArray(v) && v.every((x) => typeof x === "string" || typeof x === "number"))
+    )
+    if (isSimple)
+      return (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+          {entries.map(([k, v]) => (
+            <div key={k} className="contents">
+              <dt className="text-xs font-medium text-muted-foreground">{formatFieldName(k)}</dt>
+              <dd className="text-xs">
+                {Array.isArray(v) ? (
+                  <div className="flex flex-wrap gap-1">
+                    {v.map((item, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs font-normal">
+                        {String(item)}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  String(v ?? "-")
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )
     return (
       <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
         {JSON.stringify(value, null, 2)}
