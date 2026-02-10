@@ -770,7 +770,6 @@ const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: 
     if (!args.teachers || !Array.isArray(args.teachers) || args.teachers.length === 0) {
       return { error: "REQUIRED: Pass the full teachers array from entity.query({type: 'teacher'}). Example: format_teacher_schedule({teachers: <array>, names: [\"Carolina\"]})", markdown: "", teachers: [] }
     }
-    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     const fmt = (h: number) => {
@@ -796,15 +795,7 @@ const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: 
       const id = teacher._id || teacher.id || ""
       const schedule: Record<string, string[]> = {}
 
-      if (Array.isArray(availability)) {
-        for (const s of availability) {
-          const day = dayNames[s.dayOfWeek]
-          if (!day) continue
-          const slots: string[] = []
-          for (let h = s.startHour; h < s.endHour; h++) slots.push(fmt(h))
-          schedule[day] = (schedule[day] || []).concat(slots)
-        }
-      } else if (availability && typeof availability === "object") {
+      if (availability && typeof availability === "object" && !Array.isArray(availability)) {
         const keyMap: Record<string, string> = {
           monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
           thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
