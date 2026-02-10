@@ -529,6 +529,7 @@ export interface SyncPayload {
       name: string
     }
     judgeContext?: string
+    judgePrompt?: string
     cases: Array<{
       name: string
       description?: string
@@ -601,7 +602,7 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
 
   const text = await response.text()
 
-  let json: { status?: string; value?: SyncResult; errorMessage?: string; message?: string }
+  let json: { status?: string; value?: SyncResult; errorMessage?: string; message?: string; errorData?: { message?: string; code?: string }; code?: string }
   try {
     json = JSON.parse(text)
   } catch {
@@ -609,7 +610,7 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
   }
 
   if (!response.ok) {
-    const msg = json.errorMessage || json.message || text
+    const msg = json.errorData?.message || json.message || json.errorMessage || text
     return { success: false, error: msg }
   }
 
