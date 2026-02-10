@@ -20,16 +20,17 @@ interface ChatInterfaceProps {
   sendMessage: (args: { message: string; threadId?: Id<"threads"> }) => Promise<{ message: string; threadId: Id<"threads"> }>
   orgName?: string
   environmentLabel?: string
+  authenticated?: boolean
 }
 
-export function ChatInterface({ agent, sendMessage, orgName, environmentLabel }: ChatInterfaceProps) {
+export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, authenticated }: ChatInterfaceProps) {
   const [threadId, setThreadId] = useState<Id<"threads"> | null>(null)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [localMessages, setLocalMessages] = useState<Message[]>([])
 
-  const thread = useThreadWithMessages(threadId)
+  const thread = useThreadWithMessages(authenticated ? threadId : undefined)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
