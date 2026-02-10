@@ -199,8 +199,8 @@ http.route({
             slug: membershipData.organization.slug,
           })
 
-          const role = membershipData.role === "org:admin" ? "admin" as const
-            : membershipData.role === "org:owner" ? "owner" as const
+          const role = membershipData.role === "org:admin" || membershipData.role === "org:owner"
+            ? "admin" as const
             : "member" as const
 
           const userName = [

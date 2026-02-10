@@ -23,7 +23,7 @@ export function useCurrentRole(): CurrentRoleResult {
     return { role: "member", isLoading: false, userId: null }
   }
 
-  if (currentUser.role === "owner" || currentUser.role === "admin") {
+  if (currentUser.role === "admin") {
     return { role: "admin", isLoading: false, userId: currentUser._id }
   }
 

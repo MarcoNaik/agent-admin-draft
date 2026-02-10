@@ -24,7 +24,7 @@ export async function buildActorContext(
       )
       .first()
 
-    if (membership && (membership.role === "owner" || membership.role === "admin")) {
+    if (membership && membership.role === "admin") {
       isOrgAdmin = true
     }
 

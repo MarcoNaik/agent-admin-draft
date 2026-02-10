@@ -106,7 +106,7 @@ export const update = mutation({
   args: {
     id: v.id("users"),
     name: v.optional(v.string()),
-    role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
+    role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -128,6 +128,18 @@ export const update = mutation({
     }
 
     if (args.role !== undefined) {
+      if (args.role === "member" && membership.role === "admin") {
+        const adminCount = await ctx.db
+          .query("userOrganizations")
+          .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+          .filter((q) => q.eq(q.field("role"), "admin"))
+          .collect()
+
+        if (adminCount.length <= 1) {
+          throw new Error("Cannot demote the last admin")
+        }
+      }
+
       await ctx.db.patch(membership._id, {
         role: args.role,
         updatedAt: Date.now(),

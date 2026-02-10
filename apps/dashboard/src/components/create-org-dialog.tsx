@@ -31,7 +31,7 @@ export function CreateOrgDialog({ open, onOpenChange, onSuccess }: CreateOrgDial
     try {
       const org = await createOrganization({ name: name.trim() })
       if (user?.id) {
-        await org.updateMember({ userId: user.id, role: "org:owner" })
+        await org.updateMember({ userId: user.id, role: "org:admin" })
       }
       await setActive?.({ organization: org.id })
       setName("")

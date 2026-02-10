@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Shield, User, Crown } from "lucide-react"
+import { Loader2, Shield, User } from "lucide-react"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
@@ -42,7 +42,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
   const userRoles = useUserRoles(user._id)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleOrgRoleChange = async (newRole: "owner" | "admin" | "member") => {
+  const handleOrgRoleChange = async (newRole: "admin" | "member") => {
     setIsUpdating(true)
     try {
       await updateUser({ id: user._id, role: newRole })
@@ -65,15 +65,13 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
     }
   }
 
-  const roleIcon = user.role === "owner" ? Crown : user.role === "admin" ? Shield : User
+  const roleIcon = user.role === "admin" ? Shield : User
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background-tertiary p-4">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          {roleIcon === Crown ? (
-            <Crown className="h-5 w-5 text-yellow-500" />
-          ) : roleIcon === Shield ? (
+          {roleIcon === Shield ? (
             <Shield className="h-5 w-5 text-primary" />
           ) : (
             <User className="h-5 w-5 text-content-secondary" />
@@ -98,7 +96,6 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
               </SelectContent>
@@ -188,8 +185,7 @@ export default function UsersPage() {
           <div>
             <h4 className="font-medium text-content-primary">Organization Roles</h4>
             <ul className="mt-1 list-inside list-disc space-y-1">
-              <li><strong>Owner</strong> - Full access to all features including billing and danger zone</li>
-              <li><strong>Admin</strong> - Full access to business data, entities, and team management</li>
+              <li><strong>Admin</strong> - Full access to all features including billing and danger zone</li>
               <li><strong>Member</strong> - Limited access based on assigned pack roles</li>
             </ul>
           </div>

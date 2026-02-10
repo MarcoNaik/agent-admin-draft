@@ -187,7 +187,7 @@ async function syncPoliciesForRole(
   }
 }
 
-async function deleteRoleWithRelations(
+export async function deleteRoleWithRelations(
   ctx: MutationCtx,
   roleId: Id<"roles">
 ): Promise<void> {

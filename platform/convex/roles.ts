@@ -34,14 +34,18 @@ export const get = query({
 })
 
 export const getByName = query({
-  args: { name: v.string() },
+  args: {
+    name: v.string(),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+  },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
 
     return await ctx.db
       .query("roles")
-      .withIndex("by_org_name", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("name", args.name)
+      .withIndex("by_org_env_name", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("name", args.name)
       )
       .first()
   },
@@ -164,12 +168,12 @@ export const remove = mutation({
       throw new Error("Cannot delete system roles")
     }
 
-    const userRoles = await ctx.db
+    const existingUserRoles = await ctx.db
       .query("userRoles")
       .withIndex("by_role", (q) => q.eq("roleId", args.id))
-      .first()
+      .collect()
 
-    if (userRoles) {
+    if (existingUserRoles.length > 0) {
       throw new Error("Cannot delete role with assigned users")
     }
 

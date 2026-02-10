@@ -11,6 +11,7 @@ import {
   Customizations,
 } from "./lib/packs/migrate"
 import { Environment } from "./lib/permissions/types"
+import { deleteRoleWithRelations } from "./lib/sync/roles"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -408,6 +409,17 @@ export const uninstall = mutation({
 
     if (!installed) {
       throw new Error(`Pack ${args.packId} is not installed`)
+    }
+
+    for (const roleId of installed.roleIds) {
+      await deleteRoleWithRelations(ctx, roleId)
+    }
+
+    for (const entityTypeId of installed.entityTypeIds) {
+      const et = await ctx.db.get(entityTypeId)
+      if (et) {
+        await ctx.db.delete(entityTypeId)
+      }
     }
 
     await ctx.db.delete(installed._id)

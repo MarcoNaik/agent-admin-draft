@@ -24,7 +24,7 @@ export default function CreateOrganizationPage() {
     try {
       const org = await createOrganization({ name: name.trim() })
       if (user?.id) {
-        await org.updateMember({ userId: user.id, role: "org:owner" })
+        await org.updateMember({ userId: user.id, role: "org:admin" })
       }
       await setActive?.({ organization: org.id })
       window.location.href = "/agents"

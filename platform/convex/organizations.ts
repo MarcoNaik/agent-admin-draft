@@ -238,7 +238,7 @@ export const syncMembership = internalMutation({
     clerkOrgId: v.string(),
     clerkUserId: v.string(),
     clerkMembershipId: v.string(),
-    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    role: v.union(v.literal("admin"), v.literal("member")),
     userEmail: v.optional(v.string()),
     userName: v.optional(v.string()),
   },
@@ -330,6 +330,15 @@ export const removeMembership = internalMutation({
 
     if (membership) {
       await ctx.db.delete(membership._id)
+
+      const userRoles = await ctx.db
+        .query("userRoles")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect()
+
+      for (const ur of userRoles) {
+        await ctx.db.delete(ur._id)
+      }
     }
   },
 })

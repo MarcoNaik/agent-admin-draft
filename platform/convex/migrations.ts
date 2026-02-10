@@ -69,7 +69,7 @@ export const manualSyncClerkOrg = internalMutation({
     name: v.string(),
     slug: v.string(),
     clerkUserId: v.string(),
-    userRole: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    userRole: v.union(v.literal("admin"), v.literal("member")),
     userEmail: v.optional(v.string()),
     userName: v.optional(v.string()),
   },
@@ -172,5 +172,22 @@ export const cleanupLegacyOrganizations = internalMutation({
     }
 
     return { deleted }
+  },
+})
+
+export const migrateOwnerToAdmin = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const memberships = await ctx.db.query("userOrganizations").collect()
+    let updated = 0
+
+    for (const membership of memberships) {
+      if ((membership as unknown as { role: string }).role === "owner") {
+        await ctx.db.patch(membership._id, { role: "admin" as const })
+        updated++
+      }
+    }
+
+    return { updated }
   },
 })
