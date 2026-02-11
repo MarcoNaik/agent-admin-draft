@@ -152,7 +152,7 @@ function EnvironmentSelector() {
 
 export function Header() {
   const pathname = usePathname()
-  const { role: userRole } = useCurrentRole()
+  const { role: userRole, isOrgAdmin } = useCurrentRole()
   const { agent } = useAgentContext()
   const roleNavigation = getNavigationForRole(userRole)
 
@@ -209,7 +209,7 @@ export function Header() {
                   )
                 })}
 
-                {hasEntitiesItems && userRole !== "member" && (
+                {hasEntitiesItems && isOrgAdmin && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -247,7 +247,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2 px-3">
-          {userRole !== "member" && <EnvironmentSelector />}
+          {isOrgAdmin && <EnvironmentSelector />}
           <div className="flex items-center">
             <button
               type="button"

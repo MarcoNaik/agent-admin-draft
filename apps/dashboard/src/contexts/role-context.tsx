@@ -1,14 +1,16 @@
 "use client"
 
 import { createContext, useContext, ReactNode } from "react"
-import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
+import { useCurrentRole, UserRole, PackRole } from "@/hooks/use-current-role"
 import { Id } from "@convex/_generated/dataModel"
 
 interface RoleContextValue {
   role: UserRole
   isLoading: boolean
   userId: Id<"users"> | null
+  isOrgAdmin: boolean
   isAdmin: boolean
+  packRole: PackRole
   isTeacher: boolean
   isGuardian: boolean
 }
@@ -16,15 +18,17 @@ interface RoleContextValue {
 const RoleContext = createContext<RoleContextValue | null>(null)
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const { role, isLoading, userId } = useCurrentRole()
+  const { role, isOrgAdmin, packRole, isLoading, userId } = useCurrentRole()
 
   const value: RoleContextValue = {
     role,
     isLoading,
     userId,
-    isAdmin: role === "admin",
-    isTeacher: role === "teacher",
-    isGuardian: role === "guardian",
+    isOrgAdmin,
+    isAdmin: isOrgAdmin,
+    packRole,
+    isTeacher: packRole === "teacher",
+    isGuardian: packRole === "guardian",
   }
 
   return (
@@ -41,7 +45,9 @@ export function useRoleContext(): RoleContextValue {
       role: "member",
       isLoading: true,
       userId: null,
+      isOrgAdmin: false,
       isAdmin: false,
+      packRole: null,
       isTeacher: false,
       isGuardian: false,
     }
