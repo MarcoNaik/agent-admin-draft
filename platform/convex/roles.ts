@@ -298,6 +298,10 @@ export const assignToUser = mutation({
       throw new Error("Role not found")
     }
 
+    if (membership.role === "admin") {
+      throw new Error("Admins have full access and cannot be assigned pack roles")
+    }
+
     const existing = await ctx.db
       .query("userRoles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
