@@ -2,6 +2,98 @@ import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
+export const listWithPreviews = query({
+  args: {
+    agentId: v.optional(v.id("agents")),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+
+    let threads
+    if (args.agentId) {
+      threads = await ctx.db
+        .query("threads")
+        .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
+        .order("desc")
+        .take(args.limit ?? 50)
+    } else {
+      threads = await ctx.db
+        .query("threads")
+        .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
+        .order("desc")
+        .take(args.limit ?? 50)
+    }
+
+    const agentCache = new Map<string, string>()
+    const userCache = new Map<string, { name?: string; email: string }>()
+
+    const results = []
+    for (const thread of threads) {
+      let agentName = "Unknown Agent"
+      const agentKey = thread.agentId
+      if (agentCache.has(agentKey)) {
+        agentName = agentCache.get(agentKey)!
+      } else {
+        const agent = await ctx.db.get(thread.agentId)
+        if (agent) {
+          agentName = agent.name
+          agentCache.set(agentKey, agent.name)
+        }
+      }
+
+      let participantName = "Unknown"
+      let participantType: "user" | "whatsapp" | "unknown" = "unknown"
+
+      if (thread.userId) {
+        const userKey = thread.userId
+        if (userCache.has(userKey)) {
+          const cached = userCache.get(userKey)!
+          participantName = cached.name || cached.email
+          participantType = "user"
+        } else {
+          const user = await ctx.db.get(thread.userId)
+          if (user) {
+            userCache.set(userKey, { name: user.name, email: user.email })
+            participantName = user.name || user.email
+            participantType = "user"
+          }
+        }
+      } else if (thread.externalId) {
+        const match = thread.externalId.match(/^whatsapp:(.+)$/)
+        if (match) {
+          participantName = match[1]
+          participantType = "whatsapp"
+        } else {
+          participantName = thread.externalId
+        }
+      }
+
+      const lastMessageDoc = await ctx.db
+        .query("messages")
+        .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
+        .order("desc")
+        .first()
+
+      const lastMessage = lastMessageDoc
+        ? { content: lastMessageDoc.content, role: lastMessageDoc.role, createdAt: lastMessageDoc.createdAt }
+        : null
+
+      results.push({
+        ...thread,
+        agentName,
+        participantName,
+        participantType,
+        lastMessage,
+      })
+    }
+
+    return results
+  },
+})
+
 export const list = query({
   args: {
     agentId: v.optional(v.id("agents")),
