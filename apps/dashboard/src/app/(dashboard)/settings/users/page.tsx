@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Shield, User } from "lucide-react"
+import { Loader2, Shield, User, UserPlus } from "lucide-react"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Doc, Id } from "@convex/_generated/dataModel"
+import { InviteUserDialog } from "@/components/invite-user-dialog"
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
 
@@ -134,17 +135,25 @@ export default function UsersPage() {
   const { environment } = useEnvironment()
   const users = useUsers()
   const roles = useRoles(environment)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   if (users === undefined || roles === undefined) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-content-primary">Users</h1>
-          <p className="text-sm text-content-secondary">Manage team members and their roles</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-content-primary">Users</h1>
+            <p className="text-sm text-content-secondary">Manage team members and their roles</p>
+          </div>
+          <Button onClick={() => setInviteOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
+        <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
       </div>
     )
   }
@@ -153,9 +162,15 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-content-primary">Users</h1>
-        <p className="text-sm text-content-secondary">Manage team members and their roles</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-content-primary">Users</h1>
+          <p className="text-sm text-content-secondary">Manage team members and their roles</p>
+        </div>
+        <Button onClick={() => setInviteOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Invite User
+        </Button>
       </div>
 
       <Card className="bg-background-secondary">
@@ -198,6 +213,8 @@ export default function UsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
     </div>
   )
 }
