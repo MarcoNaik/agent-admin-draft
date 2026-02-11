@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { useCurrentRole } from "@/hooks/use-current-role"
 import { Doc } from "@convex/_generated/dataModel"
 import {
   Popover,
@@ -69,13 +68,12 @@ export function OrgSwitcher() {
   const [createOrgOpen, setCreateOrgOpen] = useState(false)
 
   const { user, isLoaded: userLoaded } = useUser()
-  const { organization: clerkOrg, isLoaded: orgLoaded } = useOrganization()
+  const { organization: clerkOrg, membership, isLoaded: orgLoaded } = useOrganization()
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   })
   const convexOrg = useCurrentOrganization()
-  const { role } = useCurrentRole()
-  const isAdmin = role === "admin"
+  const isAdmin = membership?.role === "org:admin"
   const agents = useQuery(api.agents.list, isAdmin ? {} : "skip")
 
   const isLoaded = userLoaded && orgLoaded
