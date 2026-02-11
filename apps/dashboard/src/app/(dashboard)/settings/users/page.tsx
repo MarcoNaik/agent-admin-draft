@@ -81,7 +81,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
         <div>
           <div className="font-medium text-content-primary">{user.name || "Unnamed User"}</div>
           <div className="text-sm text-content-secondary">{user.email}</div>
-          <UserRoleBadges userId={user._id} />
+          {user.role !== "admin" && <UserRoleBadges userId={user._id} />}
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -102,7 +102,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
               </SelectContent>
             </Select>
           </div>
-          {roles.length > 0 && (
+          {roles.length > 0 && user.role !== "admin" && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-content-secondary">Pack Roles:</span>
               <div className="flex flex-wrap gap-1">
