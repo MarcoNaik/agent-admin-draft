@@ -157,9 +157,25 @@ async function startSocket(orgId: string): Promise<void> {
     }
 
     if (connection === "open") {
-      conn.status = "connected"
       const normalizedJid = socket.user?.id ? jidNormalizedUser(socket.user.id) : undefined
       const phoneNumber = normalizedJid?.split("@")[0]
+
+      if (phoneNumber) {
+        for (const [existingOrgId, existingConn] of connections.entries()) {
+          if (existingOrgId !== orgId && existingConn.phoneNumber === phoneNumber && existingConn.status === "connected") {
+            logger.info({ orgId: existingOrgId, phoneNumber }, "Disconnecting duplicate phone connection")
+            existingConn.socket.ev.removeAllListeners("creds.update")
+            existingConn.socket.ev.removeAllListeners("connection.update")
+            existingConn.socket.ev.removeAllListeners("messages.upsert")
+            connections.delete(existingOrgId)
+            try { existingConn.socket.end(undefined) } catch {}
+            try { existingConn.closeDb() } catch {}
+            await sendStatusToConvex(existingOrgId, "disconnected")
+          }
+        }
+      }
+
+      conn.status = "connected"
       conn.phoneNumber = phoneNumber
       logger.info({ orgId, phoneNumber }, "Connected")
       await sendStatusToConvex(orgId, "connected", phoneNumber)
