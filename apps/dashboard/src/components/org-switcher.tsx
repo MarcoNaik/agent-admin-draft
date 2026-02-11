@@ -14,7 +14,9 @@ import {
   Bot,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAgents, useCurrentOrganization } from "@/hooks/use-convex-data"
+import { useCurrentOrganization } from "@/hooks/use-convex-data"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { Doc } from "@convex/_generated/dataModel"
 import {
@@ -71,10 +73,10 @@ export function OrgSwitcher() {
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   })
-  const agents = useAgents()
   const convexOrg = useCurrentOrganization()
   const { role } = useCurrentRole()
   const isMember = role === "member"
+  const agents = useQuery(api.agents.list, isMember ? "skip" : {})
 
   const isLoaded = userLoaded && orgLoaded
   const orgName = convexOrg?.name || clerkOrg?.name || user?.firstName || "Personal"
