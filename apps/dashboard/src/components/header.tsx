@@ -69,7 +69,7 @@ const guardianNavigation: NavItem[] = [
 
 const memberNavigation: NavItem[] = [
   { name: "Entities", href: "/entities", icon: Database },
-  { name: "Chat", href: "/chat", icon: MessageSquare },
+  { name: "Chat", href: "/conversations", icon: MessageSquare },
   { name: "Profile", href: "/profile", icon: User },
 ]
 
