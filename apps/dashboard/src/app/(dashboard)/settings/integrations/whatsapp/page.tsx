@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { QRCodeSVG } from "qrcode.react"
-import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, QrCode, Smartphone } from "lucide-react"
+import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, QrCode, Smartphone, RefreshCw } from "lucide-react"
 import {
   useWhatsAppConnection,
   useConnectWhatsApp,
   useDisconnectWhatsApp,
+  useReconnectWhatsApp,
   useSetWhatsAppAgent,
   useAgents,
 } from "@/hooks/use-convex-data"
@@ -64,10 +65,12 @@ export default function WhatsAppSettingsPage() {
   const agents = useAgents()
   const connectWhatsApp = useConnectWhatsApp()
   const disconnectWhatsApp = useDisconnectWhatsApp()
+  const reconnectWhatsApp = useReconnectWhatsApp()
   const setWhatsAppAgent = useSetWhatsAppAgent()
 
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
 
   const handleConnect = async () => {
     setConnecting(true)
@@ -89,6 +92,18 @@ export default function WhatsAppSettingsPage() {
       console.error("Failed to disconnect:", err)
     } finally {
       setDisconnecting(false)
+    }
+  }
+
+  const handleReconnect = async () => {
+    if (!confirm("This will reset your WhatsApp connection and require a new QR code scan. Continue?")) return
+    setReconnecting(true)
+    try {
+      await reconnectWhatsApp({ environment })
+    } catch (err) {
+      console.error("Failed to reconnect:", err)
+    } finally {
+      setReconnecting(false)
     }
   }
 
@@ -210,9 +225,24 @@ export default function WhatsAppSettingsPage() {
               </Button>
             )}
             {status === "connected" && (
-              <Button variant="destructive" onClick={handleDisconnect} disabled={disconnecting}>
-                {disconnecting ? "Disconnecting..." : "Disconnect"}
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleReconnect} disabled={reconnecting}>
+                  {reconnecting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reset Connection
+                    </>
+                  )}
+                </Button>
+                <Button variant="destructive" onClick={handleDisconnect} disabled={disconnecting}>
+                  {disconnecting ? "Disconnecting..." : "Disconnect"}
+                </Button>
+              </>
             )}
             {status === "qr_ready" && (
               <Button variant="outline" onClick={handleConnect} disabled={connecting}>

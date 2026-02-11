@@ -15,7 +15,7 @@ export function handleMessages(
     if (!msg.message) continue
 
     const remoteJid = msg.key.remoteJid
-    if (!remoteJid || remoteJid.endsWith("@g.us") || remoteJid.endsWith("@lid")) continue
+    if (!remoteJid || remoteJid.endsWith("@g.us") || remoteJid.endsWith("@broadcast")) continue
 
     const from = remoteJid.split("@")[0]
     const messageId = msg.key.id || `${Date.now()}`

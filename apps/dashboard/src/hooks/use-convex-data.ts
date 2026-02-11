@@ -345,6 +345,10 @@ export function useDisconnectWhatsApp() {
   return useMutation(api.whatsapp.disconnectWhatsApp)
 }
 
+export function useReconnectWhatsApp() {
+  return useMutation(api.whatsapp.reconnectWhatsApp)
+}
+
 export function useSetWhatsAppAgent() {
   return useMutation(api.whatsapp.setWhatsAppAgent)
 }

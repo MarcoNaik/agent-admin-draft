@@ -61,6 +61,58 @@ export const disconnect = internalAction({
   },
 })
 
+export const reconnect = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      await disconnectViaGateway(args.organizationId as string)
+    } catch (_) {}
+    await ctx.runMutation(internal.whatsapp.upsertConnection, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      status: "connecting",
+    })
+    try {
+      const result = await connectViaGateway(args.organizationId as string)
+      if (result.status === "connected") {
+        await ctx.runMutation(internal.whatsapp.upsertConnection, {
+          organizationId: args.organizationId,
+          environment: args.environment,
+          status: "connected",
+          phoneNumber: result.phoneNumber,
+        })
+      }
+    } catch (err) {
+      await ctx.runMutation(internal.whatsapp.upsertConnection, {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        status: "disconnected",
+      })
+      throw err
+    }
+    return null
+  },
+})
+
+export const reconnectWhatsApp = mutation({
+  args: {
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    await ctx.scheduler.runAfter(0, internal.whatsapp.reconnect, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+    })
+    return null
+  },
+})
+
 export const connectWhatsApp = mutation({
   args: {
     environment: environmentValidator,
