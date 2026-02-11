@@ -29,6 +29,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const agents = await ctx.db
       .query("agents")
@@ -47,6 +48,7 @@ export const get = query({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
@@ -61,6 +63,7 @@ export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     return await ctx.db
       .query("agents")
@@ -75,6 +78,7 @@ export const getWithConfig = query({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {

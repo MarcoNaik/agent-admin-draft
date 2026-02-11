@@ -3,13 +3,12 @@
 import { useState, useRef, useEffect } from "react"
 import { Bot, Loader2, MessageSquare, User, Phone, Send, AlertCircle } from "lucide-react"
 import {
-  useAgents,
   useThreadsWithPreviews,
   useThreadWithMessages,
   useReplyToThread,
 } from "@/hooks/use-convex-data"
 import { cn } from "@/lib/utils"
-import { Doc, Id } from "@convex/_generated/dataModel"
+import { Id } from "@convex/_generated/dataModel"
 import {
   Select,
   SelectContent,
@@ -39,7 +38,6 @@ function truncate(str: string, max: number) {
 }
 
 export default function ChatPage() {
-  const agents = useAgents()
   const [agentFilter, setAgentFilter] = useState<string>("all")
   const [selectedThreadId, setSelectedThreadId] = useState<Id<"threads"> | null>(null)
 
@@ -86,7 +84,7 @@ export default function ChatPage() {
     }
   }
 
-  if (agents === undefined || threads === undefined) {
+  if (threads === undefined) {
     return (
       <div className="flex h-[calc(100dvh-49px)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
@@ -94,7 +92,12 @@ export default function ChatPage() {
     )
   }
 
-  const activeAgents = agents.filter((a: Doc<"agents">) => a.status === "active")
+  const agentOptions = new Map<string, string>()
+  for (const t of threads) {
+    if (!agentOptions.has(t.agentId)) {
+      agentOptions.set(t.agentId, t.agentName)
+    }
+  }
 
   const visibleMessages = selectedThread?.messages?.filter(
     (m: { role: string }) => m.role === "user" || m.role === "assistant"
@@ -113,9 +116,9 @@ export default function ChatPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All agents</SelectItem>
-              {activeAgents.map((agent: Doc<"agents">) => (
-                <SelectItem key={agent._id} value={agent._id}>
-                  {agent.name}
+              {Array.from(agentOptions.entries()).map(([id, name]) => (
+                <SelectItem key={id} value={id}>
+                  {name}
                 </SelectItem>
               ))}
             </SelectContent>
