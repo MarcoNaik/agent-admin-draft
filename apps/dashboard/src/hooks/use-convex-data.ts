@@ -225,6 +225,10 @@ export function useThreads(agentId?: Id<"agents">, environment?: Environment) {
   return useQuery(api.threads.list, { agentId, environment })
 }
 
+export function useThreadsWithPreviews(agentId?: Id<"agents">, environment?: Environment) {
+  return useQuery(api.threads.listWithPreviews, { agentId, environment })
+}
+
 export function useThread(id: Id<"threads">) {
   return useQuery(api.threads.get, { id })
 }
@@ -355,6 +359,10 @@ export function usePublicAgent(orgSlug: string, agentSlug: string) {
 
 export function useSendPublicChat() {
   return useAction(api.publicChat.sendPublicChat)
+}
+
+export function useReplyToThread() {
+  return useAction(api.chat.replyToThread)
 }
 
 export function useSendChatMessage() {
