@@ -75,8 +75,8 @@ export function OrgSwitcher() {
   })
   const convexOrg = useCurrentOrganization()
   const { role } = useCurrentRole()
-  const isMember = role === "member"
-  const agents = useQuery(api.agents.list, isMember ? "skip" : {})
+  const isAdmin = role === "admin"
+  const agents = useQuery(api.agents.list, isAdmin ? {} : "skip")
 
   const isLoaded = userLoaded && orgLoaded
   const orgName = convexOrg?.name || clerkOrg?.name || user?.firstName || "Personal"
@@ -154,7 +154,7 @@ export function OrgSwitcher() {
                   </span>
                   <ChevronsUpDown className="h-3 w-3 text-content-tertiary" />
                 </button>
-                {!isMember && (
+                {isAdmin && (
                   <Link
                     href="/settings"
                     onClick={() => setOpen(false)}
@@ -165,7 +165,7 @@ export function OrgSwitcher() {
                 )}
               </div>
 
-              {!isMember && (
+              {isAdmin && (
                 <>
                   <div className="p-2 border-b border-border/50">
                     <div className="relative">
