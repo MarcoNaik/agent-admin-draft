@@ -144,6 +144,17 @@ export const update = mutation({
         role: args.role,
         updatedAt: Date.now(),
       })
+
+      if (args.role === "admin") {
+        const userRoles = await ctx.db
+          .query("userRoles")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect()
+
+        for (const ur of userRoles) {
+          await ctx.db.delete(ur._id)
+        }
+      }
     }
 
     const userUpdates: Record<string, unknown> = { updatedAt: Date.now() }
