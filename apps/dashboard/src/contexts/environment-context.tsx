@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useCallback, useState, useEffect, ReactNode } from "react"
+import { useRoleContext } from "@/contexts/role-context"
 
 type Environment = "development" | "production"
 
@@ -21,6 +22,7 @@ const EnvironmentContext = createContext<EnvironmentContextValue | null>(null)
 
 export function EnvironmentProvider({ children }: { children: ReactNode }) {
   const [environment, setEnvironmentState] = useState<Environment>(getStoredEnvironment)
+  const { isAdmin } = useRoleContext()
 
   useEffect(() => {
     const stored = getStoredEnvironment()
@@ -34,8 +36,10 @@ export function EnvironmentProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, env)
   }, [])
 
+  const resolvedEnvironment: Environment = isAdmin ? environment : "production"
+
   return (
-    <EnvironmentContext.Provider value={{ environment, setEnvironment }}>
+    <EnvironmentContext.Provider value={{ environment: resolvedEnvironment, setEnvironment }}>
       {children}
     </EnvironmentContext.Provider>
   )
@@ -44,7 +48,7 @@ export function EnvironmentProvider({ children }: { children: ReactNode }) {
 export function useEnvironment() {
   const context = useContext(EnvironmentContext)
   if (!context) {
-    return { environment: "development" as Environment, setEnvironment: () => {} }
+    return { environment: "production" as Environment, setEnvironment: () => {} }
   }
   return context
 }
