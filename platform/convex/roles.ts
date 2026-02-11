@@ -302,17 +302,24 @@ export const assignToUser = mutation({
       throw new Error("Admins have full access and cannot be assigned pack roles")
     }
 
-    const existing = await ctx.db
+    let existingQuery = ctx.db
       .query("userRoles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("roleId"), args.roleId),
-          q.eq(q.field("resourceType"), args.resourceType ?? null),
-          q.eq(q.field("resourceId"), args.resourceId ?? null)
-        )
+      .filter((q) => q.eq(q.field("roleId"), args.roleId))
+
+    if (args.resourceType !== undefined) {
+      existingQuery = existingQuery.filter((q) =>
+        q.eq(q.field("resourceType"), args.resourceType)
       )
-      .first()
+    }
+
+    if (args.resourceId !== undefined) {
+      existingQuery = existingQuery.filter((q) =>
+        q.eq(q.field("resourceId"), args.resourceId)
+      )
+    }
+
+    const existing = await existingQuery.first()
 
     if (existing) {
       throw new Error("User already has this role")
@@ -340,17 +347,24 @@ export const removeFromUser = mutation({
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
-    const userRole = await ctx.db
+    let userRoleQuery = ctx.db
       .query("userRoles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("roleId"), args.roleId),
-          q.eq(q.field("resourceType"), args.resourceType ?? null),
-          q.eq(q.field("resourceId"), args.resourceId ?? null)
-        )
+      .filter((q) => q.eq(q.field("roleId"), args.roleId))
+
+    if (args.resourceType !== undefined) {
+      userRoleQuery = userRoleQuery.filter((q) =>
+        q.eq(q.field("resourceType"), args.resourceType)
       )
-      .first()
+    }
+
+    if (args.resourceId !== undefined) {
+      userRoleQuery = userRoleQuery.filter((q) =>
+        q.eq(q.field("resourceId"), args.resourceId)
+      )
+    }
+
+    const userRole = await userRoleQuery.first()
 
     if (!userRole) {
       throw new Error("User role assignment not found")
