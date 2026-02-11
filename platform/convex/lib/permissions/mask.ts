@@ -10,6 +10,10 @@ export async function getFieldMask(
     return { allowedFields: [], isWildcard: true }
   }
 
+  if (actor.roleIds.length === 0 && actor.actorType === "user") {
+    return { allowedFields: [], isWildcard: true }
+  }
+
   const entityType = await ctx.db
     .query("entityTypes")
     .withIndex("by_org_env_slug", (q) =>
