@@ -16,7 +16,7 @@ const roleDefaultRoutes: Record<UserRole, string> = {
   admin: "/agents",
   teacher: "/teacher/sessions",
   guardian: "/guardian/sessions",
-  member: "/entities",
+  member: "/conversations",
 }
 
 export function RoleRedirect({ allowedRoles, redirectTo, children }: RoleRedirectProps) {
