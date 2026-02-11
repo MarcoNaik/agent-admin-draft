@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAgents, useCurrentOrganization } from "@/hooks/use-convex-data"
+import { useCurrentRole } from "@/hooks/use-current-role"
 import { Doc } from "@convex/_generated/dataModel"
 import {
   Popover,
@@ -72,6 +73,8 @@ export function OrgSwitcher() {
   })
   const agents = useAgents()
   const convexOrg = useCurrentOrganization()
+  const { role } = useCurrentRole()
+  const isMember = role === "member"
 
   const isLoaded = userLoaded && orgLoaded
   const orgName = convexOrg?.name || clerkOrg?.name || user?.firstName || "Personal"
@@ -149,71 +152,77 @@ export function OrgSwitcher() {
                   </span>
                   <ChevronsUpDown className="h-3 w-3 text-content-tertiary" />
                 </button>
-                <Link
-                  href="/settings"
-                  onClick={() => setOpen(false)}
-                  className="p-1.5 rounded-md hover:bg-background-tertiary transition-colors"
-                >
-                  <Settings className="h-4 w-4 text-content-secondary" />
-                </Link>
+                {!isMember && (
+                  <Link
+                    href="/settings"
+                    onClick={() => setOpen(false)}
+                    className="p-1.5 rounded-md hover:bg-background-tertiary transition-colors"
+                  >
+                    <Settings className="h-4 w-4 text-content-secondary" />
+                  </Link>
+                )}
               </div>
 
-              <div className="p-2 border-b border-border/50">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-content-tertiary" />
-                  <Input
-                    placeholder="Search agents..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 bg-background-tertiary border-border/50 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="p-1">
-                <div className="px-2 py-1.5 text-xs font-medium text-content-tertiary uppercase tracking-wider">
-                  Agents
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {agents === undefined ? (
-                    <div className="px-2 py-4 text-center text-sm text-content-secondary">
-                      Loading...
+              {!isMember && (
+                <>
+                  <div className="p-2 border-b border-border/50">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-content-tertiary" />
+                      <Input
+                        placeholder="Search agents..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-8 h-8 bg-background-tertiary border-border/50 text-sm"
+                      />
                     </div>
-                  ) : filteredAgents.length === 0 ? (
-                    <div className="px-2 py-4 text-center text-sm text-content-secondary">
-                      {searchQuery ? "No agents found" : "No agents yet"}
-                    </div>
-                  ) : (
-                    filteredAgents.map((agent: Doc<"agents">) => (
-                      <button
-                        key={agent._id}
-                        type="button"
-                        onClick={() => handleAgentSelect(agent._id)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors cursor-pointer text-left"
-                      >
-                        <Bot className="h-4 w-4 text-content-tertiary shrink-0" />
-                        <span className="text-sm text-content-primary truncate">
-                          {agent.name}
-                        </span>
-                        {agent.status === "active" && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              <div className="p-1 border-t border-border/50">
-                <button
-                  type="button"
-                  onClick={handleCreateAgent}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors cursor-pointer text-primary"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="text-sm">Create Agent</span>
-                </button>
-              </div>
+                  <div className="p-1">
+                    <div className="px-2 py-1.5 text-xs font-medium text-content-tertiary uppercase tracking-wider">
+                      Agents
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {agents === undefined ? (
+                        <div className="px-2 py-4 text-center text-sm text-content-secondary">
+                          Loading...
+                        </div>
+                      ) : filteredAgents.length === 0 ? (
+                        <div className="px-2 py-4 text-center text-sm text-content-secondary">
+                          {searchQuery ? "No agents found" : "No agents yet"}
+                        </div>
+                      ) : (
+                        filteredAgents.map((agent: Doc<"agents">) => (
+                          <button
+                            key={agent._id}
+                            type="button"
+                            onClick={() => handleAgentSelect(agent._id)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors cursor-pointer text-left"
+                          >
+                            <Bot className="h-4 w-4 text-content-tertiary shrink-0" />
+                            <span className="text-sm text-content-primary truncate">
+                              {agent.name}
+                            </span>
+                            {agent.status === "active" && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-1 border-t border-border/50">
+                    <button
+                      type="button"
+                      onClick={handleCreateAgent}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors cursor-pointer text-primary"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span className="text-sm">Create Agent</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="flex flex-col">
