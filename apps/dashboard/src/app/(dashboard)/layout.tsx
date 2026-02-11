@@ -21,7 +21,9 @@ export default function DashboardLayout({
               <div className="flex h-screen flex-col">
                 <Header />
                 <div className="scrollbar flex-1 overflow-y-auto bg-background-primary">
-                  {children}
+                  <ErrorBoundary>
+                    {children}
+                  </ErrorBoundary>
                 </div>
               </div>
             </EnvironmentProvider>
