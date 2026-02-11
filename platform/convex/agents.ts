@@ -9,14 +9,18 @@ import { ActorContext } from "./lib/permissions/types"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
-async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
     .query("userOrganizations")
     .withIndex("by_user_org", (q) =>
       q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
     )
     .first()
-  if (!membership || membership.role !== "admin") {
+  return membership?.role === "admin"
+}
+
+async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+  if (!(await isOrgAdmin(ctx, auth))) {
     throw new Error("Admin access required")
   }
 }
@@ -29,7 +33,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
-    await requireOrgAdmin(ctx, auth)
+    if (!(await isOrgAdmin(ctx, auth))) return []
 
     const agents = await ctx.db
       .query("agents")
@@ -48,7 +52,7 @@ export const get = query({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
-    await requireOrgAdmin(ctx, auth)
+    if (!(await isOrgAdmin(ctx, auth))) return null
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
@@ -63,7 +67,7 @@ export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
-    await requireOrgAdmin(ctx, auth)
+    if (!(await isOrgAdmin(ctx, auth))) return null
 
     return await ctx.db
       .query("agents")
@@ -78,7 +82,7 @@ export const getWithConfig = query({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
-    await requireOrgAdmin(ctx, auth)
+    if (!(await isOrgAdmin(ctx, auth))) return null
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {

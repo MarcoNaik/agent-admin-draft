@@ -438,6 +438,37 @@ export const getUserRoles = query({
   },
 })
 
+export const cleanupAdminPackRoles = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireAuth(ctx)
+
+    const members = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .filter((q) => q.eq(q.field("role"), "admin"))
+      .collect()
+
+    let removed = 0
+    for (const member of members) {
+      const userRoles = await ctx.db
+        .query("userRoles")
+        .withIndex("by_user", (q) => q.eq("userId", member.userId))
+        .collect()
+
+      for (const ur of userRoles) {
+        const role = await ctx.db.get(ur.roleId)
+        if (role && role.organizationId === auth.organizationId) {
+          await ctx.db.delete(ur._id)
+          removed++
+        }
+      }
+    }
+
+    return { removed }
+  },
+})
+
 export const listInternal = internalQuery({
   args: {
     organizationId: v.id("organizations"),
