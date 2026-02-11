@@ -35,6 +35,9 @@ export async function canPerform(
     if (actor.actorType === "system") {
       return { allowed: true, reason: "System actor has implicit access" }
     }
+    if (actor.actorType === "user" && (action === "read" || action === "list")) {
+      return { allowed: true, reason: "Organization member has read access" }
+    }
     const result = {
       allowed: false,
       reason: "Actor has no roles assigned",
