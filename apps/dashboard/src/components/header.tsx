@@ -17,6 +17,7 @@ import {
   Globe,
   Code,
   User,
+  MessageSquare,
   Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -66,6 +67,12 @@ const guardianNavigation: NavItem[] = [
   { name: "My Profile", href: "/guardian/profile", icon: User },
 ]
 
+const memberNavigation: NavItem[] = [
+  { name: "Entities", href: "/entities", icon: Database },
+  { name: "Chat", href: "/chat", icon: MessageSquare },
+  { name: "Profile", href: "/profile", icon: User },
+]
+
 const entitiesNavigation: NavEntry[] = [
   { type: "separator", label: "Entities", roles: ["admin"] },
   { name: "Entity Browser", href: "/entities", icon: Database, roles: ["admin"] },
@@ -88,8 +95,9 @@ function getNavigationForRole(role: UserRole): NavItem[] {
       return teacherNavigation
     case "guardian":
       return guardianNavigation
-    case "admin":
     case "member":
+      return memberNavigation
+    case "admin":
     default:
       return adminNavigation
   }
@@ -201,7 +209,7 @@ export function Header() {
                   )
                 })}
 
-                {hasEntitiesItems && (
+                {hasEntitiesItems && userRole !== "member" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -239,7 +247,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2 px-3">
-          <EnvironmentSelector />
+          {userRole !== "member" && <EnvironmentSelector />}
           <div className="flex items-center">
             <button
               type="button"
