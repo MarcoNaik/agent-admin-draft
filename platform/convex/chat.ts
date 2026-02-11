@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { action, query, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+import { sendViaGateway } from "./lib/integrations/whatsapp"
 
 interface AuthInfo {
   userId: Id<"users">
@@ -90,6 +91,65 @@ export const sendBySlug = action({
       threadId: args.threadId,
       environment: args.environment,
     })
+  },
+})
+
+export const replyToThread = action({
+  args: {
+    threadId: v.id("threads"),
+    message: v.string(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    whatsappStatus: v.union(v.literal("sent"), v.literal("failed"), v.literal("skipped")),
+  }),
+  handler: async (ctx, args): Promise<{
+    success: boolean
+    whatsappStatus: "sent" | "failed" | "skipped"
+  }> => {
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as AuthInfo | null
+    if (!auth) {
+      throw new Error("Not authenticated")
+    }
+
+    const thread = await ctx.runQuery(internal.threads.getThreadInternal, {
+      threadId: args.threadId,
+    }) as { _id: Id<"threads">; organizationId: Id<"organizations">; externalId?: string } | null
+
+    if (!thread || thread.organizationId !== auth.organizationId) {
+      throw new Error("Thread not found")
+    }
+
+    await ctx.runMutation(internal.threads.appendMessages, {
+      threadId: args.threadId,
+      messages: [{ role: "assistant", content: args.message }],
+    })
+
+    if (thread.externalId?.startsWith("whatsapp:")) {
+      const phone = thread.externalId.replace("whatsapp:", "")
+      let messageId = `failed_${Date.now()}`
+      let status: "sent" | "failed" = "sent"
+
+      try {
+        const result = await sendViaGateway(auth.organizationId as string, phone, args.message)
+        messageId = result.messageId
+      } catch {
+        status = "failed"
+      }
+
+      await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+        organizationId: auth.organizationId,
+        phoneNumber: phone,
+        messageId,
+        text: args.message,
+        threadId: args.threadId,
+        status,
+      })
+
+      return { success: true, whatsappStatus: status }
+    }
+
+    return { success: true, whatsappStatus: "skipped" }
   },
 })
 
