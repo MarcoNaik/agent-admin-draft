@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery, action } from "./_generated/server"
+import { query, mutation, internalQuery, action, QueryCtx, MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { getAuthContext, requireAuth } from "./lib/auth"
@@ -9,6 +9,18 @@ import { ActorContext } from "./lib/permissions/types"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
+async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+  const membership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user_org", (q) =>
+      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
+    )
+    .first()
+  if (!membership || membership.role !== "admin") {
+    throw new Error("Admin access required")
+  }
+}
+
 export const list = query({
   args: {
     status: v.optional(
@@ -17,6 +29,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const agents = await ctx.db
       .query("agents")
@@ -35,6 +48,7 @@ export const get = query({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
@@ -49,6 +63,7 @@ export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     return await ctx.db
       .query("agents")
@@ -63,6 +78,7 @@ export const getWithConfig = query({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
+    await requireOrgAdmin(ctx, auth)
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
@@ -95,6 +111,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const slug = args.slug || generateSlug(args.name)
 
     const existing = await ctx.db
@@ -132,6 +149,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
@@ -152,6 +170,7 @@ export const remove = mutation({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const agent = await ctx.db.get(args.id)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
