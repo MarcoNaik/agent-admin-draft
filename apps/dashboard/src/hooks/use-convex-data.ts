@@ -269,38 +269,6 @@ export function useCurrentOrganization() {
   return useQuery(api.organizations.getCurrent, {})
 }
 
-export function usePacks(environment?: Environment) {
-  return useQuery(api.packs.list, { environment })
-}
-
-export function usePack(packId: string, environment?: Environment) {
-  return useQuery(api.packs.get, { packId, environment })
-}
-
-export function useInstallPack() {
-  return useMutation(api.packs.install)
-}
-
-export function useUninstallPack() {
-  return useMutation(api.packs.uninstall)
-}
-
-export function useUpgradePack() {
-  return useMutation(api.packs.upgrade)
-}
-
-export function usePreviewUpgrade(packId: string | undefined) {
-  return useQuery(api.packs.previewUpgrade, packId ? { packId } : "skip")
-}
-
-export function useTrackPackCustomization() {
-  return useMutation(api.packs.trackCustomization)
-}
-
-export function useRepairPack() {
-  return useMutation(api.packs.repair)
-}
-
 export function useCurrentUserRoles() {
   const currentUser = useCurrentUser()
   return useQuery(
