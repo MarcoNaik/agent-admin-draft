@@ -134,16 +134,6 @@ export const deployCommand = new Command('deploy')
       spinner.succeed('Production state fetched')
     }
 
-    if (remoteState?.installedPacks && remoteState.installedPacks.length > 0) {
-      console.log()
-      console.log(chalk.cyan('Installed packs detected:'))
-      for (const pack of remoteState.installedPacks) {
-        console.log(chalk.gray('  •'), `${pack.packId} v${pack.version}`, chalk.gray(`(${pack.entityTypeCount} types, ${pack.roleCount} roles)`))
-      }
-      console.log(chalk.gray('  Pack resources will be preserved during deploy.'))
-      console.log()
-    }
-
     if (remoteState?.agents && remoteState.agents.length > 0) {
       const localSlugs = new Set(resources.agents.map((a) => a.slug))
       const unmanagedAgents = remoteState.agents.filter((a) => !localSlugs.has(a.slug))
@@ -195,7 +185,6 @@ export const deployCommand = new Command('deploy')
         ...payload,
         organizationId: project.organization.id,
         environment: 'production',
-        preservePackResources: true,
         preserveUnmanagedAgents: true,
       })
       if (!syncResult.success) {
@@ -243,7 +232,6 @@ export const deployCommand = new Command('deploy')
             ...payload,
             organizationId: project.organization.id,
             environment: 'production',
-            preservePackResources: true,
             preserveUnmanagedAgents: true,
           })
           if (!syncResult.success) {
