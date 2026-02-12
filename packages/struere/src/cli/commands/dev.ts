@@ -115,16 +115,6 @@ export const devCommand = new Command('dev')
       spinner.succeed('Remote state fetched')
     }
 
-    if (remoteState?.installedPacks && remoteState.installedPacks.length > 0) {
-      console.log()
-      console.log(chalk.cyan('Installed packs detected:'))
-      for (const pack of remoteState.installedPacks) {
-        console.log(chalk.gray('  •'), `${pack.packId} v${pack.version}`, chalk.gray(`(${pack.entityTypeCount} types, ${pack.roleCount} roles)`))
-      }
-      console.log(chalk.gray('  Pack resources will be preserved during sync.'))
-      console.log()
-    }
-
     if (remoteState?.agents && remoteState.agents.length > 0) {
       const localResources = await loadAllResources(cwd)
       const localSlugs = new Set(localResources.agents.map((a) => a.slug))
@@ -150,7 +140,6 @@ export const devCommand = new Command('dev')
         ...payload,
         organizationId: project.organization.id,
         environment: 'development',
-        preservePackResources: true,
         preserveUnmanagedAgents: true,
       })
       if (!result.success) {
