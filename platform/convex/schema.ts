@@ -337,35 +337,6 @@ export default defineSchema({
     .index("by_agent", ["agentId"])
     .index("by_agent_tool", ["agentId", "toolName"]),
 
-  installedPacks: defineTable({
-    organizationId: v.id("organizations"),
-    environment: environmentValidator,
-    packId: v.string(),
-    version: v.string(),
-    installedAt: v.number(),
-    installedBy: v.optional(v.id("users")),
-    entityTypeIds: v.array(v.id("entityTypes")),
-    roleIds: v.array(v.id("roles")),
-    status: v.optional(v.union(v.literal("active"), v.literal("upgrading"), v.literal("failed"))),
-    customizations: v.optional(v.object({
-      entityTypes: v.array(v.string()),
-      roles: v.array(v.string()),
-      policies: v.array(v.string()),
-    })),
-    lastUpgradedAt: v.optional(v.number()),
-    lastUpgradedBy: v.optional(v.id("users")),
-    upgradeHistory: v.optional(v.array(v.object({
-      fromVersion: v.string(),
-      toVersion: v.string(),
-      upgradedAt: v.number(),
-      upgradedBy: v.optional(v.id("users")),
-    }))),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_org_pack", ["organizationId", "packId"])
-    .index("by_org_env", ["organizationId", "environment"])
-    .index("by_org_env_pack", ["organizationId", "environment", "packId"]),
-
   whatsappConnections: defineTable({
     organizationId: v.id("organizations"),
     status: v.union(
