@@ -52,7 +52,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
     }
   }
 
-  const handlePackRoleToggle = async (role: Doc<"roles">) => {
+  const handleRoleToggle = async (role: Doc<"roles">) => {
     setIsUpdating(true)
     try {
       const hasRole = userRoles?.some((ur: UserRoleWithDetails) => ur.roleId === role._id)
@@ -104,7 +104,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
           </div>
           {roles.length > 0 && user.role !== "admin" && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-content-secondary">Pack Roles:</span>
+              <span className="text-sm text-content-secondary">Roles:</span>
               <div className="flex flex-wrap gap-1">
                 {roles.map((role) => {
                   const hasRole = userRoles?.some((ur: UserRoleWithDetails) => ur.roleId === role._id)
@@ -114,7 +114,7 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
                       size="sm"
                       variant={hasRole ? "default" : "outline"}
                       className="h-7 text-xs"
-                      onClick={() => handlePackRoleToggle(role)}
+                      onClick={() => handleRoleToggle(role)}
                       disabled={isUpdating}
                     >
                       {role.name}
@@ -158,7 +158,7 @@ export default function UsersPage() {
     )
   }
 
-  const packRoles = roles.filter((r: Doc<"roles">) => !r.isSystem)
+  const assignableRoles = roles.filter((r: Doc<"roles">) => !r.isSystem)
 
   return (
     <div className="space-y-6">
@@ -185,7 +185,7 @@ export default function UsersPage() {
             <div className="py-8 text-center text-content-secondary">No users found</div>
           ) : (
             users.map((user: Doc<"users">) => (
-              <UserRow key={user._id} user={user} roles={packRoles} />
+              <UserRow key={user._id} user={user} roles={assignableRoles} />
             ))
           )}
         </CardContent>
@@ -194,21 +194,21 @@ export default function UsersPage() {
       <Card className="bg-background-secondary">
         <CardHeader>
           <CardTitle className="text-content-primary">Role Types</CardTitle>
-          <CardDescription className="text-content-secondary">Understanding organization and pack roles</CardDescription>
+          <CardDescription className="text-content-secondary">Understanding organization and assigned roles</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-content-secondary">
           <div>
             <h4 className="font-medium text-content-primary">Organization Roles</h4>
             <ul className="mt-1 list-inside list-disc space-y-1">
               <li><strong>Admin</strong> - Full access to all features including billing and danger zone</li>
-              <li><strong>Member</strong> - Limited access based on assigned pack roles</li>
+              <li><strong>Member</strong> - Limited access based on assigned roles</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-medium text-content-primary">Pack Roles</h4>
+            <h4 className="font-medium text-content-primary">Assigned Roles</h4>
             <p className="mt-1">
-              Pack roles (like Teacher, Guardian) are installed with Solution Packs and control access to specific entity types and actions.
-              Members need pack roles to access business features.
+              Roles (like Teacher, Guardian) control access to specific entity types and actions.
+              Members need roles to access business features.
             </p>
           </div>
         </CardContent>
