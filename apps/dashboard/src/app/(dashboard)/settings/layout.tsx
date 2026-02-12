@@ -6,7 +6,6 @@ import {
   Settings,
   Building2,
   Users,
-  Package,
   Plug,
   Key,
   CreditCard,
@@ -27,12 +26,6 @@ const settingsNav = [
     href: "/settings/users",
     icon: Users,
     description: "Team members and roles",
-  },
-  {
-    name: "Packs",
-    href: "/settings/packs",
-    icon: Package,
-    description: "Solution packs",
   },
   {
     name: "Integrations",
