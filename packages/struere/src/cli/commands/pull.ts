@@ -21,9 +21,8 @@ export const pullCommand = new Command('pull')
   .description('Pull remote resources to local files')
   .option('--force', 'Overwrite existing local files')
   .option('--env <environment>', 'Environment to pull from', 'development')
-  .option('--include-pack-managed', 'Include pack-managed resources')
   .option('--dry-run', 'Show what would be written without writing')
-  .action(async (options: { force?: boolean; env: string; includePackManaged?: boolean; dryRun?: boolean }) => {
+  .action(async (options: { force?: boolean; env: string; dryRun?: boolean }) => {
     const spinner = ora()
     const cwd = process.cwd()
 
@@ -76,7 +75,7 @@ export const pullCommand = new Command('pull')
     spinner.start('Fetching remote state')
 
     const environment = options.env as 'development' | 'production'
-    const { state, error } = await getPullState(project.organization.id, environment, options.includePackManaged ?? false)
+    const { state, error } = await getPullState(project.organization.id, environment)
 
     if (error || !state) {
       spinner.fail('Failed to fetch remote state')
@@ -89,7 +88,6 @@ export const pullCommand = new Command('pull')
 
     const created: string[] = []
     const skipped: string[] = []
-    const packManaged: string[] = []
 
     const ensureDir = (dir: string) => {
       if (!existsSync(dir)) {
@@ -128,10 +126,6 @@ export const pullCommand = new Command('pull')
 
     const entityTypeSlugs: string[] = []
     for (const et of state.entityTypes) {
-      if (et.isPackManaged && !options.includePackManaged) {
-        packManaged.push(`entity-types/${et.slug}.ts`)
-        continue
-      }
       entityTypeSlugs.push(et.slug)
       const content = generateEntityTypeFile(et)
       writeOrSkip(`entity-types/${et.slug}.ts`, content)
@@ -139,10 +133,6 @@ export const pullCommand = new Command('pull')
 
     const roleNames: string[] = []
     for (const role of state.roles) {
-      if (role.isPackManaged && !options.includePackManaged) {
-        packManaged.push(`roles/${role.name}.ts`)
-        continue
-      }
       roleNames.push(role.name)
       const content = generateRoleFile(role)
       writeOrSkip(`roles/${role.name}.ts`, content)
@@ -190,15 +180,7 @@ export const pullCommand = new Command('pull')
       console.log()
     }
 
-    if (packManaged.length > 0) {
-      console.log(chalk.gray(`Skipped ${packManaged.length} pack-managed resources (use --include-pack-managed to include):`))
-      for (const file of packManaged) {
-        console.log(chalk.gray('  ·'), file)
-      }
-      console.log()
-    }
-
-    if (created.length === 0 && skipped.length === 0 && packManaged.length === 0) {
+    if (created.length === 0 && skipped.length === 0) {
       console.log(chalk.gray('No remote resources found.'))
       console.log()
     }
