@@ -559,14 +559,12 @@ export interface SyncResult {
   roles?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
   agents?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
   evalSuites?: { created: string[]; updated: string[]; deleted: string[]; skipped: string[] }
-  packResourcesPreserved?: boolean
   error?: string
 }
 
 export interface SyncOptions extends SyncPayload {
   organizationId?: string
   environment: 'development' | 'production'
-  preservePackResources?: boolean
   preserveUnmanagedAgents?: boolean
 }
 
@@ -627,10 +625,9 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
 
 export interface SyncState {
   agents: Array<{ slug: string; name: string; version: string; hasConfig: boolean }>
-  entityTypes: Array<{ slug: string; name: string; isPackManaged?: boolean }>
-  roles: Array<{ name: string; policyCount: number; isPackManaged?: boolean }>
+  entityTypes: Array<{ slug: string; name: string }>
+  roles: Array<{ name: string; policyCount: number }>
   evalSuites?: Array<{ slug: string; name: string; agentId: string }>
-  installedPacks?: Array<{ packId: string; version: string; entityTypeCount: number; roleCount: number }>
 }
 
 export async function getSyncState(organizationId?: string, environment?: 'development' | 'production'): Promise<{ state?: SyncState; error?: string }> {
@@ -680,7 +677,6 @@ export interface PullStateAgent {
   systemPrompt: string
   model: { provider: string; name: string; temperature?: number; maxTokens?: number }
   tools: Array<{ name: string; description: string; parameters: unknown; handlerCode?: string; isBuiltin: boolean }>
-  isPackManaged: boolean
 }
 
 export interface PullStateEntityType {
@@ -689,13 +685,11 @@ export interface PullStateEntityType {
   schema: unknown
   searchFields?: string[]
   displayConfig?: unknown
-  isPackManaged: boolean
 }
 
 export interface PullStateRole {
   name: string
   description?: string
-  isPackManaged: boolean
   policies: Array<{ resource: string; actions: string[]; effect: string; priority: number }>
   scopeRules: Array<{ entityType: string; field: string; operator: string; value: string }>
   fieldMasks: Array<{ entityType: string; fieldPath: string; maskType: string; maskConfig?: Record<string, unknown> }>
@@ -709,8 +703,7 @@ export interface PullState {
 
 export async function getPullState(
   organizationId?: string,
-  environment: 'development' | 'production' = 'development',
-  includePackManaged: boolean = false
+  environment: 'development' | 'production' = 'development'
 ): Promise<{ state?: PullState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
@@ -728,7 +721,7 @@ export async function getPullState(
     },
     body: JSON.stringify({
       path: 'sync:getPullState',
-      args: { organizationId, environment, includePackManaged },
+      args: { organizationId, environment },
     }),
   })
 
