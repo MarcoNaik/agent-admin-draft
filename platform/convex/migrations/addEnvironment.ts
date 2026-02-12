@@ -192,27 +192,6 @@ export const backfillApiKeys = internalMutation({
   },
 })
 
-export const backfillInstalledPacks = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const records = await ctx.db.query("installedPacks")
-      .filter((q) => q.eq(q.field("environment"), undefined))
-      .take(BATCH_SIZE)
-    let count = 0
-
-    for (const record of records) {
-      await ctx.db.patch(record._id, { environment: "development" } as any)
-      count++
-    }
-
-    if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillInstalledPacks, {})
-    }
-
-    return { patched: count }
-  },
-})
-
 export const removeAgentConfigFKs = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -249,7 +228,6 @@ export const runAll = internalMutation({
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillThreads, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillExecutions, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillApiKeys, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillInstalledPacks, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.removeAgentConfigFKs, {})
     return { scheduled: true }
   },
