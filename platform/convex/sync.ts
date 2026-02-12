@@ -136,38 +136,23 @@ export const syncOrganization = mutation({
         ),
       })
     )),
-    preservePackResources: v.optional(v.boolean()),
     preserveUnmanagedAgents: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
 
-    const installedPacks = await ctx.db
-      .query("installedPacks")
-      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
-      .collect()
-
-    const packEntityTypeIds = new Set(
-      installedPacks.flatMap((p) => p.entityTypeIds.map((id) => id.toString()))
-    )
-    const packRoleIds = new Set(
-      installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
-    )
-
     const entityTypeResult = await syncEntityTypes(
       ctx,
       auth.organizationId,
       args.entityTypes,
-      args.environment,
-      args.preservePackResources !== false ? packEntityTypeIds : undefined
+      args.environment
     )
 
     const roleResult = await syncRoles(
       ctx,
       auth.organizationId,
       args.roles,
-      args.environment,
-      args.preservePackResources !== false ? packRoleIds : undefined
+      args.environment
     )
 
     const agentResult = await syncAgents(
@@ -195,7 +180,6 @@ export const syncOrganization = mutation({
       roles: roleResult,
       agents: agentResult,
       evalSuites: evalSuitesResult,
-      packResourcesPreserved: installedPacks.length > 0,
     }
   },
 })
@@ -256,18 +240,6 @@ export const getSyncState = query({
       })
     )
 
-    const installedPacks = await ctx.db
-      .query("installedPacks")
-      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
-      .collect()
-
-    const packEntityTypeIds = new Set(
-      installedPacks.flatMap((p) => p.entityTypeIds.map((id) => id.toString()))
-    )
-    const packRoleIds = new Set(
-      installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
-    )
-
     const evalSuites = await ctx.db
       .query("evalSuites")
       .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
@@ -280,25 +252,12 @@ export const getSyncState = query({
       entityTypes: entityTypes.map((t) => ({
         slug: t.slug,
         name: t.name,
-        isPackManaged: packEntityTypeIds.has(t._id.toString()),
       })),
-      roles: roleWithPolicyCounts.map((r) => {
-        const role = nonSystemRoles.find((nr) => nr.name === r.name)
-        return {
-          ...r,
-          isPackManaged: role ? packRoleIds.has(role._id.toString()) : false,
-        }
-      }),
+      roles: roleWithPolicyCounts,
       evalSuites: activeEvalSuites.map((s) => ({
         slug: s.slug,
         name: s.name,
         agentId: s.agentId,
-      })),
-      installedPacks: installedPacks.map((p) => ({
-        packId: p.packId,
-        version: p.version,
-        entityTypeCount: p.entityTypeIds.length,
-        roleCount: p.roleIds.length,
       })),
     }
   },
@@ -308,39 +267,22 @@ export const getPullState = query({
   args: {
     organizationId: v.optional(v.string()),
     environment: environmentValidator,
-    includePackManaged: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
-    const includePackManaged = args.includePackManaged ?? false
-
-    const installedPacks = await ctx.db
-      .query("installedPacks")
-      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
-      .collect()
-
-    const packEntityTypeIds = new Set(
-      installedPacks.flatMap((p) => p.entityTypeIds.map((id) => id.toString()))
-    )
-    const packRoleIds = new Set(
-      installedPacks.flatMap((p) => p.roleIds.map((id) => id.toString()))
-    )
 
     const entityTypes = await ctx.db
       .query("entityTypes")
       .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
       .collect()
 
-    const filteredEntityTypes = entityTypes
-      .filter((et) => includePackManaged || !packEntityTypeIds.has(et._id.toString()))
-      .map((et) => ({
-        name: et.name,
-        slug: et.slug,
-        schema: et.schema,
-        searchFields: et.searchFields,
-        displayConfig: et.displayConfig,
-        isPackManaged: packEntityTypeIds.has(et._id.toString()),
-      }))
+    const filteredEntityTypes = entityTypes.map((et) => ({
+      name: et.name,
+      slug: et.slug,
+      schema: et.schema,
+      searchFields: et.searchFields,
+      displayConfig: et.displayConfig,
+    }))
 
     const roles = await ctx.db
       .query("roles")
@@ -350,9 +292,7 @@ export const getPullState = query({
     const nonSystemRoles = roles.filter((r) => !r.isSystem)
 
     const filteredRoles = await Promise.all(
-      nonSystemRoles
-        .filter((r) => includePackManaged || !packRoleIds.has(r._id.toString()))
-        .map(async (role) => {
+      nonSystemRoles.map(async (role) => {
           const policies = await ctx.db
             .query("policies")
             .withIndex("by_role", (q) => q.eq("roleId", role._id))
@@ -426,7 +366,6 @@ export const getPullState = query({
           return {
             name: role.name,
             description: role.description,
-            isPackManaged: packRoleIds.has(role._id.toString()),
             policies: Array.from(grouped.values()),
             scopeRules,
             fieldMasks,
@@ -456,7 +395,6 @@ export const getPullState = query({
           systemPrompt: config?.systemPrompt ?? "",
           model: config?.model ?? { provider: "anthropic", name: "claude-haiku-4-5" },
           tools: config?.tools ?? [],
-          isPackManaged: false,
         }
       })
     )
