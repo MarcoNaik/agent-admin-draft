@@ -34,10 +34,9 @@ export async function syncRoles(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   roles: RoleInput[],
-  environment: "development" | "production",
-  preserveIds?: Set<string>
-): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
-  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], preserved: [] as string[] }
+  environment: "development" | "production"
+): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
+  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
   const now = Date.now()
 
   const existingRoles = await ctx.db
@@ -78,12 +77,8 @@ export async function syncRoles(
 
   for (const existing of nonSystemRoles) {
     if (!inputNames.has(existing.name)) {
-      if (preserveIds?.has(existing._id.toString())) {
-        result.preserved.push(existing.name)
-      } else {
-        await deleteRoleWithRelations(ctx, existing._id)
-        result.deleted.push(existing.name)
-      }
+      await deleteRoleWithRelations(ctx, existing._id)
+      result.deleted.push(existing.name)
     }
   }
 

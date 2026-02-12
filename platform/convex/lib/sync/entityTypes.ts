@@ -13,10 +13,9 @@ export async function syncEntityTypes(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   entityTypes: EntityTypeInput[],
-  environment: "development" | "production",
-  preserveIds?: Set<string>
-): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
-  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], preserved: [] as string[] }
+  environment: "development" | "production"
+): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
+  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
   const now = Date.now()
 
   const existingTypes = await ctx.db
@@ -57,12 +56,8 @@ export async function syncEntityTypes(
 
   for (const existing of existingTypes) {
     if (!inputSlugs.has(existing.slug)) {
-      if (preserveIds?.has(existing._id.toString())) {
-        result.preserved.push(existing.slug)
-      } else {
-        await ctx.db.delete(existing._id)
-        result.deleted.push(existing.slug)
-      }
+      await ctx.db.delete(existing._id)
+      result.deleted.push(existing.slug)
     }
   }
 
