@@ -503,7 +503,6 @@ export interface SyncPayload {
       resource: string
       actions: string[]
       effect: 'allow' | 'deny'
-      priority?: number
     }>
     scopeRules?: Array<{
       entityType: string
@@ -690,7 +689,7 @@ export interface PullStateEntityType {
 export interface PullStateRole {
   name: string
   description?: string
-  policies: Array<{ resource: string; actions: string[]; effect: string; priority: number }>
+  policies: Array<{ resource: string; actions: string[]; effect: string }>
   scopeRules: Array<{ entityType: string; field: string; operator: string; value: string }>
   fieldMasks: Array<{ entityType: string; fieldPath: string; maskType: string; maskConfig?: Record<string, unknown> }>
 }
