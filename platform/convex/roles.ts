@@ -438,6 +438,43 @@ export const getUserRoles = query({
   },
 })
 
+export const getAssignedUsers = query({
+  args: { roleId: v.id("roles") },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const role = await ctx.db.get(args.roleId)
+
+    if (!role || role.organizationId !== auth.organizationId) {
+      return []
+    }
+
+    const userRoles = await ctx.db
+      .query("userRoles")
+      .withIndex("by_role", (q) => q.eq("roleId", args.roleId))
+      .collect()
+
+    const now = Date.now()
+    const active = userRoles.filter((ur) => !ur.expiresAt || ur.expiresAt > now)
+
+    const results = await Promise.all(
+      active.map(async (ur) => {
+        const user = await ctx.db.get(ur.userId)
+        if (!user) return null
+        return {
+          _id: ur._id,
+          userId: ur.userId,
+          userName: user.name,
+          userEmail: user.email,
+          createdAt: ur.createdAt,
+          expiresAt: ur.expiresAt,
+        }
+      })
+    )
+
+    return results.filter((r): r is NonNullable<typeof r> => r !== null)
+  },
+})
+
 export const listInternal = internalQuery({
   args: {
     organizationId: v.id("organizations"),
