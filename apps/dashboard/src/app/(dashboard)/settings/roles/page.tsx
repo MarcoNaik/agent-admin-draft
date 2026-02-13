@@ -57,17 +57,6 @@ type AssignedUser = {
 
 const ALL_ACTIONS = ["create", "read", "update", "delete", "list"] as const
 
-const OPERATOR_LABELS: Record<string, string> = {
-  eq: "equals",
-  neq: "does not equal",
-  contains: "contains",
-  in: "is one of",
-  gt: "is greater than",
-  lt: "is less than",
-  gte: "is at least",
-  lte: "is at most",
-}
-
 function humanizeField(field: string): string {
   const cleaned = field.replace(/^data\./, "")
   return cleaned
@@ -77,15 +66,70 @@ function humanizeField(field: string): string {
     .toLowerCase()
 }
 
-function humanizeOperator(op: string): string {
-  return OPERATOR_LABELS[op] ?? op
+function pluralize(word: string): string {
+  if (word.endsWith("s")) return word
+  if (word.endsWith("y")) return word.slice(0, -1) + "ies"
+  return word + "s"
 }
 
-function humanizeValue(value: string): string {
-  if (value === "actor.entityId") return "their linked entity"
-  if (value === "actor.userId") return "the current user"
-  if (value.startsWith("actor.")) return value.replace("actor.", "current user's ")
-  return value
+function formatActions(actions: string[]): string {
+  if (actions.includes("*") || actions.length >= 5) return "Full access to"
+  const sorted = [...actions].sort(
+    (a, b) =>
+      ALL_ACTIONS.indexOf(a as (typeof ALL_ACTIONS)[number]) -
+      ALL_ACTIONS.indexOf(b as (typeof ALL_ACTIONS)[number])
+  )
+  if (sorted.length === 1) return `Can ${sorted[0]}`
+  const last = sorted[sorted.length - 1]
+  const rest = sorted.slice(0, -1)
+  return `Can ${rest.join(", ")}, and ${last}`
+}
+
+function describeScopeRule(
+  resource: string,
+  field: string,
+  operator: string,
+  value: string,
+  actions: string[]
+): string {
+  const prefix = formatActions(actions)
+  const res = pluralize(resource)
+
+  if (field === "_id" && operator === "eq" && value === "actor.entityId") {
+    return `${prefix} ${res} that represent their own profile`
+  }
+  if (field === "_id" && operator === "eq" && value === "actor.userId") {
+    return `${prefix} their own ${resource} record`
+  }
+
+  const fieldName = humanizeField(field)
+
+  if (operator === "eq" && value === "actor.entityId") {
+    return `${prefix} ${res} where ${fieldName} matches their linked entity`
+  }
+  if (operator === "eq" && value === "actor.userId") {
+    return `${prefix} ${res} assigned to them`
+  }
+
+  const opLabel: Record<string, string> = {
+    eq: "matches",
+    neq: "does not match",
+    contains: "contains",
+    in: "is one of",
+    gt: "is greater than",
+    lt: "is less than",
+    gte: "is at least",
+    lte: "is at most",
+  }
+  const opText = opLabel[operator] ?? operator
+
+  let valueText = value
+  if (value === "actor.entityId") valueText = "their linked entity"
+  else if (value === "actor.userId") valueText = "them"
+  else if (value.startsWith("actor."))
+    valueText = "their " + humanizeField(value.replace("actor.", ""))
+
+  return `${prefix} ${res} where ${fieldName} ${opText} ${valueText}`
 }
 
 type CellState =
@@ -294,9 +338,12 @@ function PermissionMatrix({
 function ScopeRulesGrouped({
   rules,
 }: {
-  rules: (ScopeRule & { resource: string })[]
+  rules: (ScopeRule & { resource: string; actions: string[] })[]
 }) {
-  const grouped = new Map<string, (ScopeRule & { resource: string })[]>()
+  const grouped = new Map<
+    string,
+    (ScopeRule & { resource: string; actions: string[] })[]
+  >()
   for (const rule of rules) {
     if (!grouped.has(rule.resource)) grouped.set(rule.resource, [])
     grouped.get(rule.resource)!.push(rule)
@@ -322,19 +369,18 @@ function ScopeRulesGrouped({
             <Filter className="h-3 w-3 text-content-tertiary/40" />
           </div>
           <div className="divide-y divide-border/10">
-            {resourceRules.map((rule) => (
+            {resourceRules.map((rule, i) => (
               <div
-                key={rule._id}
+                key={`${rule.field}-${rule.operator}-${rule.value}-${i}`}
                 className="px-4 py-3 text-[13px] text-content-secondary leading-relaxed"
               >
-                Can only see records where{" "}
-                <span className="font-medium text-content-primary">
-                  {humanizeField(rule.field)}
-                </span>{" "}
-                {humanizeOperator(rule.operator)}{" "}
-                <span className="font-medium text-content-primary">
-                  {humanizeValue(rule.value)}
-                </span>
+                {describeScopeRule(
+                  rule.resource,
+                  rule.field,
+                  rule.operator,
+                  rule.value,
+                  rule.actions
+                )}
               </div>
             ))}
           </div>
@@ -347,9 +393,12 @@ function ScopeRulesGrouped({
 function FieldMasksGrouped({
   masks,
 }: {
-  masks: (FieldMask & { resource: string })[]
+  masks: (FieldMask & { resource: string; actions: string[] })[]
 }) {
-  const grouped = new Map<string, (FieldMask & { resource: string })[]>()
+  const grouped = new Map<
+    string,
+    (FieldMask & { resource: string; actions: string[] })[]
+  >()
   for (const mask of masks) {
     if (!grouped.has(mask.resource)) grouped.set(mask.resource, [])
     grouped.get(mask.resource)!.push(mask)
@@ -375,8 +424,8 @@ function FieldMasksGrouped({
             <EyeOff className="h-3 w-3 text-content-tertiary/40" />
           </div>
           <div className="px-4 py-3 flex flex-wrap gap-2">
-            {resourceMasks.map((mask) => (
-              <TooltipProvider key={mask._id} delayDuration={200}>
+            {resourceMasks.map((mask, i) => (
+              <TooltipProvider key={`${mask.fieldPath}-${mask.maskType}-${i}`} delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1.5 rounded-md bg-background-tertiary/50 px-2.5 py-1.5 cursor-default">
@@ -396,8 +445,8 @@ function FieldMasksGrouped({
                       <span className="font-mono">{mask.fieldPath}</span>
                       {" \u2014 "}
                       {mask.maskType === "hide"
-                        ? "completely hidden from this role"
-                        : "value is redacted for this role"}
+                        ? "hidden when " + mask.actions.join(", ")
+                        : "redacted when " + mask.actions.join(", ")}
                     </p>
                     {mask.maskConfig && (
                       <pre className="font-mono text-[10px] mt-1 opacity-70">
@@ -505,19 +554,35 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
     policiesByResource[policy.resource].push(policy)
   }
 
-  const allScopeRules: (ScopeRule & { resource: string })[] = []
+  type ScopeRuleWithContext = ScopeRule & { resource: string; actions: string[] }
+  const scopeMap = new Map<string, ScopeRuleWithContext>()
   for (const p of policies) {
     for (const sr of p.scopeRules) {
-      allScopeRules.push({ ...sr, resource: p.resource })
+      const key = `${p.resource}:${sr.field}:${sr.operator}:${sr.value}`
+      const existing = scopeMap.get(key)
+      if (existing) {
+        if (!existing.actions.includes(p.action)) existing.actions.push(p.action)
+      } else {
+        scopeMap.set(key, { ...sr, resource: p.resource, actions: [p.action] })
+      }
     }
   }
+  const allScopeRules = Array.from(scopeMap.values())
 
-  const allFieldMasks: (FieldMask & { resource: string })[] = []
+  type FieldMaskWithContext = FieldMask & { resource: string; actions: string[] }
+  const maskMap = new Map<string, FieldMaskWithContext>()
   for (const p of policies) {
     for (const fm of p.fieldMasks) {
-      allFieldMasks.push({ ...fm, resource: p.resource })
+      const key = `${p.resource}:${fm.fieldPath}:${fm.maskType}`
+      const existing = maskMap.get(key)
+      if (existing) {
+        if (!existing.actions.includes(p.action)) existing.actions.push(p.action)
+      } else {
+        maskMap.set(key, { ...fm, resource: p.resource, actions: [p.action] })
+      }
     }
   }
+  const allFieldMasks = Array.from(maskMap.values())
 
   const allowCount = policies.filter((p) => p.effect === "allow").length
   const denyCount = policies.filter((p) => p.effect === "deny").length
@@ -695,14 +760,21 @@ function RoleSummaryStats({ roleId }: { roleId: Id<"roles"> }) {
   const denyCount = policies.filter(
     (p: PolicyWithRules) => p.effect === "deny"
   ).length
-  const scopeCount = policies.reduce(
-    (acc: number, p: PolicyWithRules) => acc + p.scopeRules.length,
-    0
-  )
-  const maskCount = policies.reduce(
-    (acc: number, p: PolicyWithRules) => acc + p.fieldMasks.length,
-    0
-  )
+  const scopeKeys = new Set<string>()
+  for (const p of policies) {
+    for (const sr of p.scopeRules) {
+      scopeKeys.add(`${sr.field}:${sr.operator}:${sr.value}`)
+    }
+  }
+  const scopeCount = scopeKeys.size
+
+  const maskKeys = new Set<string>()
+  for (const p of policies) {
+    for (const fm of p.fieldMasks) {
+      maskKeys.add(`${fm.fieldPath}:${fm.maskType}`)
+    }
+  }
+  const maskCount = maskKeys.size
   const userCount = assignedUsers?.length ?? 0
 
   return (
