@@ -20,6 +20,28 @@ function logPermissionDenied(
   })
 }
 
+export async function loadPoliciesForResource(
+  ctx: QueryCtx,
+  organizationId: Id<"organizations">,
+  resource: string
+) {
+  const [specific, wildcard] = await Promise.all([
+    ctx.db
+      .query("policies")
+      .withIndex("by_org_resource", (q) =>
+        q.eq("organizationId", organizationId).eq("resource", resource)
+      )
+      .collect(),
+    ctx.db
+      .query("policies")
+      .withIndex("by_org_resource", (q) =>
+        q.eq("organizationId", organizationId).eq("resource", "*")
+      )
+      .collect(),
+  ])
+  return [...specific, ...wildcard]
+}
+
 export async function canPerform(
   ctx: QueryCtx,
   actor: ActorContext,
@@ -47,15 +69,11 @@ export async function canPerform(
     return result
   }
 
-  const policies = await ctx.db
-    .query("policies")
-    .withIndex("by_org_resource", (q) => q.eq("organizationId", actor.organizationId))
-    .collect()
+  const policies = await loadPoliciesForResource(ctx, actor.organizationId, resource)
 
   const applicablePolicies = policies.filter(
     (p) =>
       actor.roleIds.includes(p.roleId) &&
-      (p.resource === resource || p.resource === "*") &&
       (p.action === action || p.action === "*")
   )
 
