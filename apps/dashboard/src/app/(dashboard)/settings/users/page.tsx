@@ -6,7 +6,6 @@ import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFr
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -19,29 +18,14 @@ import { InviteUserDialog } from "@/components/invite-user-dialog"
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
 
-function UserRoleBadges({ userId }: { userId: Id<"users"> }) {
-  const userRoles = useUserRoles(userId)
-
-  if (!userRoles || userRoles.length === 0) return null
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {userRoles.map((ur: UserRoleWithDetails) => (
-        <Badge key={ur._id} variant="secondary" className="text-xs">
-          <Shield className="mr-1 h-3 w-3" />
-          {ur.role?.name}
-        </Badge>
-      ))}
-    </div>
-  )
-}
-
 function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] }) {
   const updateUser = useUpdateUser()
   const assignRole = useAssignRoleToUser()
   const removeRole = useRemoveRoleFromUser()
   const userRoles = useUserRoles(user._id)
   const [isUpdating, setIsUpdating] = useState(false)
+
+  const currentRole = userRoles?.find((ur: UserRoleWithDetails) => ur.role !== null)
 
   const handleOrgRoleChange = async (newRole: "admin" | "member") => {
     setIsUpdating(true)
@@ -52,14 +36,13 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
     }
   }
 
-  const handleRoleToggle = async (role: Doc<"roles">) => {
+  const handleRoleChange = async (value: string) => {
     setIsUpdating(true)
     try {
-      const hasRole = userRoles?.some((ur: UserRoleWithDetails) => ur.roleId === role._id)
-      if (hasRole) {
-        await removeRole({ userId: user._id, roleId: role._id })
+      if (value === "none") {
+        await removeRole({ userId: user._id })
       } else {
-        await assignRole({ userId: user._id, roleId: role._id })
+        await assignRole({ userId: user._id, roleId: value as Id<"roles"> })
       }
     } finally {
       setIsUpdating(false)
@@ -81,7 +64,6 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
         <div>
           <div className="font-medium text-content-primary">{user.name || "Unnamed User"}</div>
           <div className="text-sm text-content-secondary">{user.email}</div>
-          {user.role !== "admin" && <UserRoleBadges userId={user._id} />}
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -104,24 +86,24 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
           </div>
           {roles.length > 0 && user.role !== "admin" && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-content-secondary">Roles:</span>
-              <div className="flex flex-wrap gap-1">
-                {roles.map((role) => {
-                  const hasRole = userRoles?.some((ur: UserRoleWithDetails) => ur.roleId === role._id)
-                  return (
-                    <Button
-                      key={role._id}
-                      size="sm"
-                      variant={hasRole ? "default" : "outline"}
-                      className="h-7 text-xs"
-                      onClick={() => handleRoleToggle(role)}
-                      disabled={isUpdating}
-                    >
+              <span className="text-sm text-content-secondary">Role:</span>
+              <Select
+                value={currentRole?.roleId ?? "none"}
+                onValueChange={handleRoleChange}
+                disabled={isUpdating}
+              >
+                <SelectTrigger className="w-40 bg-background-secondary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No role</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role._id} value={role._id}>
                       {role.name}
-                    </Button>
-                  )
-                })}
-              </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>
@@ -201,14 +183,13 @@ export default function UsersPage() {
             <h4 className="font-medium text-content-primary">Organization Roles</h4>
             <ul className="mt-1 list-inside list-disc space-y-1">
               <li><strong>Admin</strong> - Full access to all features including billing and danger zone</li>
-              <li><strong>Member</strong> - Limited access based on assigned roles</li>
+              <li><strong>Member</strong> - Limited access based on assigned role</li>
             </ul>
           </div>
           <div>
             <h4 className="font-medium text-content-primary">Assigned Roles</h4>
             <p className="mt-1">
-              Roles (like Teacher, Guardian) control access to specific entity types and actions.
-              Members need roles to access business features.
+              Each member can have one role (like Teacher, Guardian) that controls access to specific entity types and actions.
             </p>
           </div>
         </CardContent>
