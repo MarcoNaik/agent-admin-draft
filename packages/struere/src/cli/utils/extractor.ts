@@ -56,7 +56,6 @@ export interface SyncPayload {
       resource: string
       actions: string[]
       effect: 'allow' | 'deny'
-      priority?: number
     }>
     scopeRules?: Array<{
       entityType: string
@@ -129,7 +128,6 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
       resource: p.resource,
       actions: p.actions,
       effect: p.effect,
-      priority: p.priority,
     })),
     scopeRules: role.scopeRules?.map((sr) => ({
       entityType: sr.entityType,
