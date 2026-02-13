@@ -342,7 +342,7 @@ export default defineRole({
   name: "${name}",
   description: "${name.charAt(0).toUpperCase() + name.slice(1)} role",
   policies: [
-    { resource: "*", actions: ["list", "read"], effect: "allow", priority: 50 },
+    { resource: "*", actions: ["list", "read"], effect: "allow" },
   ],
   scopeRules: [],
   fieldMasks: [],
@@ -717,9 +717,9 @@ export default defineRole({
 
   // What actions are allowed/denied
   policies: [
-    { resource: "customer", actions: ["list", "read"], effect: "allow", priority: 50 },
-    { resource: "customer", actions: ["delete"], effect: "deny", priority: 100 },
-    { resource: "payment", actions: ["*"], effect: "deny", priority: 100 },
+    { resource: "customer", actions: ["list", "read"], effect: "allow" },
+    { resource: "customer", actions: ["delete"], effect: "deny" },
+    { resource: "payment", actions: ["*"], effect: "deny" },
   ],
 
   // Row-level security: only see assigned customers
@@ -747,7 +747,7 @@ Every tool call goes through permission checks:
 2. **Scope filter**: Query results filtered to rows user can access
 3. **Field mask**: Sensitive fields hidden/redacted in response
 
-Deny policies override allow. Higher priority wins.
+Deny policies always override allow.
 
 ## Defining Custom Tools
 
