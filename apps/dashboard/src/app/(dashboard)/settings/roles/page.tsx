@@ -57,6 +57,37 @@ type AssignedUser = {
 
 const ALL_ACTIONS = ["create", "read", "update", "delete", "list"] as const
 
+const OPERATOR_LABELS: Record<string, string> = {
+  eq: "equals",
+  neq: "does not equal",
+  contains: "contains",
+  in: "is one of",
+  gt: "is greater than",
+  lt: "is less than",
+  gte: "is at least",
+  lte: "is at most",
+}
+
+function humanizeField(field: string): string {
+  const cleaned = field.replace(/^data\./, "")
+  return cleaned
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[._]/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+function humanizeOperator(op: string): string {
+  return OPERATOR_LABELS[op] ?? op
+}
+
+function humanizeValue(value: string): string {
+  if (value === "actor.entityId") return "their linked entity"
+  if (value === "actor.userId") return "the current user"
+  if (value.startsWith("actor.")) return value.replace("actor.", "current user's ")
+  return value
+}
+
 type CellState =
   | "allow"
   | "deny"
@@ -260,78 +291,126 @@ function PermissionMatrix({
   )
 }
 
-function ScopeRuleExpression({
-  rule,
+function ScopeRulesGrouped({
+  rules,
 }: {
-  rule: ScopeRule & { resource: string }
+  rules: (ScopeRule & { resource: string })[]
 }) {
+  const grouped = new Map<string, (ScopeRule & { resource: string })[]>()
+  for (const rule of rules) {
+    if (!grouped.has(rule.resource)) grouped.set(rule.resource, [])
+    grouped.get(rule.resource)!.push(rule)
+  }
+
   return (
-    <div className="rounded-lg border border-border/20 bg-background-tertiary/30 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/10">
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="text-[10px] px-1.5 py-0 border-warning/20 text-warning font-normal"
-          >
-            {rule.resource}
-          </Badge>
-          <span className="text-[10px] uppercase tracking-widest text-content-tertiary font-medium">
-            {rule.type ?? "field_match"}
-          </span>
+    <div className="space-y-3">
+      {Array.from(grouped.entries()).map(([resource, resourceRules]) => (
+        <div
+          key={resource}
+          className="rounded-lg border border-border/20 bg-background-tertiary/20 overflow-hidden"
+        >
+          <div className="px-4 py-2.5 border-b border-border/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-content-primary">
+                {resource}
+              </span>
+              <span className="text-[11px] text-content-tertiary">
+                {resourceRules.length} rule
+                {resourceRules.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <Filter className="h-3 w-3 text-content-tertiary/40" />
+          </div>
+          <div className="divide-y divide-border/10">
+            {resourceRules.map((rule) => (
+              <div
+                key={rule._id}
+                className="px-4 py-3 text-[13px] text-content-secondary leading-relaxed"
+              >
+                Can only see records where{" "}
+                <span className="font-medium text-content-primary">
+                  {humanizeField(rule.field)}
+                </span>{" "}
+                {humanizeOperator(rule.operator)}{" "}
+                <span className="font-medium text-content-primary">
+                  {humanizeValue(rule.value)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-        <Filter className="h-3 w-3 text-warning/50" />
-      </div>
-      <div className="px-4 py-3">
-        <div className="flex items-center gap-0 font-mono text-[13px] leading-relaxed">
-          <span className="text-primary">{rule.field}</span>
-          <span className="mx-2 rounded bg-background-tertiary px-1.5 py-0.5 text-[11px] text-content-tertiary font-semibold">
-            {rule.operator}
-          </span>
-          <span className="text-success">{rule.value}</span>
-        </div>
-      </div>
+      ))}
     </div>
   )
 }
 
-function FieldMaskRow({ mask }: { mask: FieldMask & { resource: string } }) {
+function FieldMasksGrouped({
+  masks,
+}: {
+  masks: (FieldMask & { resource: string })[]
+}) {
+  const grouped = new Map<string, (FieldMask & { resource: string })[]>()
+  for (const mask of masks) {
+    if (!grouped.has(mask.resource)) grouped.set(mask.resource, [])
+    grouped.get(mask.resource)!.push(mask)
+  }
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border/20 bg-background-tertiary/30 px-4 py-3 transition-colors hover:bg-background-tertiary/50">
-      <div className="flex items-center gap-3">
-        <Badge
-          variant="outline"
-          className="text-[10px] px-1.5 py-0 border-primary/20 text-primary font-normal"
+    <div className="space-y-3">
+      {Array.from(grouped.entries()).map(([resource, resourceMasks]) => (
+        <div
+          key={resource}
+          className="rounded-lg border border-border/20 bg-background-tertiary/20 overflow-hidden"
         >
-          {mask.resource}
-        </Badge>
-        <code className="font-mono text-[13px] text-content-primary">
-          {mask.fieldPath}
-        </code>
-      </div>
-      <div className="flex items-center gap-2">
-        {mask.maskConfig && (
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-[10px] text-content-tertiary cursor-default">
-                  config
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <pre className="font-mono text-xs">
-                  {JSON.stringify(mask.maskConfig, null, 2)}
-                </pre>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        <Badge
-          variant={mask.maskType === "hide" ? "destructive" : "secondary"}
-          className="text-[10px] px-2 py-0 font-normal"
-        >
-          {mask.maskType}
-        </Badge>
-      </div>
+          <div className="px-4 py-2.5 border-b border-border/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-content-primary">
+                {resource}
+              </span>
+              <span className="text-[11px] text-content-tertiary">
+                {resourceMasks.length} hidden field
+                {resourceMasks.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <EyeOff className="h-3 w-3 text-content-tertiary/40" />
+          </div>
+          <div className="px-4 py-3 flex flex-wrap gap-2">
+            {resourceMasks.map((mask) => (
+              <TooltipProvider key={mask._id} delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 rounded-md bg-background-tertiary/50 px-2.5 py-1.5 cursor-default">
+                      <EyeOff className="h-3 w-3 text-content-tertiary/60" />
+                      <span className="text-xs text-content-secondary">
+                        {humanizeField(mask.fieldPath)}
+                      </span>
+                      {mask.maskType === "redact" && (
+                        <span className="text-[10px] text-content-tertiary">
+                          (redacted)
+                        </span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">
+                      <span className="font-mono">{mask.fieldPath}</span>
+                      {" \u2014 "}
+                      {mask.maskType === "hide"
+                        ? "completely hidden from this role"
+                        : "value is redacted for this role"}
+                    </p>
+                    {mask.maskConfig && (
+                      <pre className="font-mono text-[10px] mt-1 opacity-70">
+                        {JSON.stringify(mask.maskConfig, null, 2)}
+                      </pre>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -457,7 +536,7 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
         {allScopeRules.length > 0 && (
           <>
             <ChevronRight className="h-3 w-3 text-content-tertiary/40" />
-            <div className="flex items-center gap-2 rounded-md bg-warning/8 px-3 py-1.5 text-warning">
+            <div className="flex items-center gap-2 rounded-md bg-background-tertiary px-3 py-1.5 text-content-secondary">
               <Filter className="h-3.5 w-3.5" />
               <span className="text-xs font-medium">
                 {allScopeRules.length}
@@ -469,12 +548,12 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
         {allFieldMasks.length > 0 && (
           <>
             <ChevronRight className="h-3 w-3 text-content-tertiary/40" />
-            <div className="flex items-center gap-2 rounded-md bg-primary/8 px-3 py-1.5 text-primary">
+            <div className="flex items-center gap-2 rounded-md bg-background-tertiary px-3 py-1.5 text-content-secondary">
               <EyeOff className="h-3.5 w-3.5" />
               <span className="text-xs font-medium">
                 {allFieldMasks.length}
               </span>
-              <span className="text-xs opacity-70">field masks</span>
+              <span className="text-xs opacity-70">hidden fields</span>
             </div>
           </>
         )}
@@ -489,7 +568,7 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
           {allScopeRules.length > 0 && (
             <TabsTrigger value="scopes" className="text-xs gap-1.5 px-3">
               <Filter className="h-3.5 w-3.5" />
-              Scope Rules
+              Data Filters
               <Badge
                 variant="secondary"
                 className="ml-1 text-[9px] px-1 py-0 h-4 min-w-[16px] flex items-center justify-center"
@@ -501,7 +580,7 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
           {allFieldMasks.length > 0 && (
             <TabsTrigger value="masks" className="text-xs gap-1.5 px-3">
               <EyeOff className="h-3.5 w-3.5" />
-              Field Masks
+              Hidden Fields
               <Badge
                 variant="secondary"
                 className="ml-1 text-[9px] px-1 py-0 h-4 min-w-[16px] flex items-center justify-center"
@@ -531,14 +610,10 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
               </h3>
             </div>
             <div className="flex items-center gap-3 text-xs text-content-tertiary">
-              <div className="flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3 text-success" />
-                <span>{allowCount} allow</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <ShieldX className="h-3 w-3 text-destructive" />
-                <span>{denyCount} deny</span>
-              </div>
+              <span>{allowCount} allow</span>
+              {denyCount > 0 && (
+                <span className="text-destructive">{denyCount} deny</span>
+              )}
               <Separator orientation="vertical" className="h-3" />
               <span>
                 {resourceCount} resource{resourceCount !== 1 ? "s" : ""}
@@ -552,36 +627,28 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
 
         <TabsContent value="scopes" className="space-y-3">
           <div className="flex items-center gap-2">
-            <Filter className="h-3.5 w-3.5 text-warning" />
+            <Filter className="h-3.5 w-3.5 text-content-secondary" />
             <h3 className="text-xs font-medium text-content-primary">
-              Row-Level Security
+              Data Filters
             </h3>
             <span className="text-[11px] text-content-tertiary">
-              Filters applied to queries for this role
+              This role can only see records matching these conditions
             </span>
           </div>
-          <div className="space-y-3">
-            {allScopeRules.map((rule) => (
-              <ScopeRuleExpression key={rule._id} rule={rule} />
-            ))}
-          </div>
+          <ScopeRulesGrouped rules={allScopeRules} />
         </TabsContent>
 
         <TabsContent value="masks" className="space-y-3">
           <div className="flex items-center gap-2">
-            <EyeOff className="h-3.5 w-3.5 text-primary" />
+            <EyeOff className="h-3.5 w-3.5 text-content-secondary" />
             <h3 className="text-xs font-medium text-content-primary">
-              Column-Level Visibility
+              Hidden Fields
             </h3>
             <span className="text-[11px] text-content-tertiary">
-              Fields hidden or redacted for this role
+              These fields are not visible to this role
             </span>
           </div>
-          <div className="space-y-2">
-            {allFieldMasks.map((mask) => (
-              <FieldMaskRow key={mask._id} mask={mask} />
-            ))}
-          </div>
+          <FieldMasksGrouped masks={allFieldMasks} />
         </TabsContent>
 
         <TabsContent value="users" className="space-y-3">
@@ -655,12 +722,10 @@ function RoleSummaryStats({ roleId }: { roleId: Id<"roles"> }) {
           </TooltipContent>
         </Tooltip>
 
-        {allowCount > 0 && (
-          <div className="flex items-center gap-1 text-success">
-            <ShieldCheck className="h-3 w-3" />
-            <span>{allowCount}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <ShieldCheck className="h-3 w-3" />
+          <span>{allowCount}</span>
+        </div>
         {denyCount > 0 && (
           <div className="flex items-center gap-1 text-destructive">
             <ShieldX className="h-3 w-3" />
@@ -669,13 +734,13 @@ function RoleSummaryStats({ roleId }: { roleId: Id<"roles"> }) {
         )}
 
         {scopeCount > 0 && (
-          <div className="flex items-center gap-1 text-warning">
+          <div className="flex items-center gap-1">
             <Filter className="h-3 w-3" />
             <span>{scopeCount}</span>
           </div>
         )}
         {maskCount > 0 && (
-          <div className="flex items-center gap-1 text-primary">
+          <div className="flex items-center gap-1">
             <EyeOff className="h-3 w-3" />
             <span>{maskCount}</span>
           </div>
@@ -712,14 +777,7 @@ function RoleRow({
         onClick={onToggle}
         className="flex w-full items-center gap-4 p-4 text-left cursor-pointer"
       >
-        <div
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
-            role.isSystem
-              ? "bg-warning/10 text-warning"
-              : "bg-primary/10 text-primary"
-          )}
-        >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background-tertiary text-content-secondary transition-colors duration-200">
           <Shield className="h-4 w-4" />
         </div>
 
@@ -730,7 +788,7 @@ function RoleRow({
             </span>
             {role.isSystem && (
               <Badge
-                variant="warning"
+                variant="secondary"
                 className="text-[10px] px-1.5 py-0 font-normal"
               >
                 system
@@ -781,22 +839,13 @@ function StatsBar({ roles }: { roles: Doc<"roles">[] }) {
   const customCount = roles.filter((r) => !r.isSystem).length
 
   return (
-    <div className="flex items-center gap-6 text-xs text-content-tertiary">
-      <div className="flex items-center gap-1.5">
-        <div className="h-2 w-2 rounded-full bg-primary/50" />
-        <span>{roles.length} total</span>
-      </div>
+    <div className="flex items-center gap-4 text-xs text-content-tertiary">
+      <span>{roles.length} total</span>
       {systemCount > 0 && (
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-warning/50" />
-          <span>{systemCount} system</span>
-        </div>
+        <span>{systemCount} system</span>
       )}
       {customCount > 0 && (
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-content-tertiary/50" />
-          <span>{customCount} custom</span>
-        </div>
+        <span>{customCount} custom</span>
       )}
     </div>
   )
