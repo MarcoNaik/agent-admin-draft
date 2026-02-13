@@ -22,10 +22,6 @@ export function defineRole(config: RoleConfig): RoleConfig {
 
   return {
     ...config,
-    policies: config.policies.map((policy, index) => ({
-      ...policy,
-      priority: policy.priority ?? (index + 1) * 10,
-    })),
     scopeRules: config.scopeRules || [],
     fieldMasks: config.fieldMasks || [],
   }
