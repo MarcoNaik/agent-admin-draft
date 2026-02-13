@@ -34,10 +34,8 @@ export function useCurrentRole(): CurrentRoleResult {
     return { isOrgAdmin, packRole: null, role: isOrgAdmin ? "admin" : "member", isLoading: true, userId: currentUser._id }
   }
 
-  const hasTeacherRole = userRoles.some((ur: { role?: { name?: string } }) => ur.role?.name === "teacher")
-  const hasGuardianRole = userRoles.some((ur: { role?: { name?: string } }) => ur.role?.name === "guardian")
-
-  const packRole: PackRole = hasTeacherRole ? "teacher" : hasGuardianRole ? "guardian" : null
+  const roleName = userRoles[0]?.role?.name as string | undefined
+  const packRole: PackRole = roleName === "teacher" || roleName === "guardian" ? roleName : null
 
   let role: UserRole = "member"
   if (isOrgAdmin) {
