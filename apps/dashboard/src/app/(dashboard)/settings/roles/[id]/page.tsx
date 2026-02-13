@@ -119,7 +119,6 @@ export default function RoleDetailPage() {
                           </Badge>
                           <span className="text-content-secondary font-mono text-xs">{policy.action}</span>
                         </div>
-                        <span className="text-xs text-content-secondary">priority {policy.priority}</span>
                       </div>
                     ))}
                   </div>
