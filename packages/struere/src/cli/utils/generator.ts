@@ -109,9 +109,6 @@ export function generateRoleFile(role: PullStateRole): string {
       `      actions: ${JSON.stringify(p.actions)}`,
       `      effect: "${p.effect}"`,
     ]
-    if (p.priority !== 50) {
-      pParts.push(`      priority: ${p.priority}`)
-    }
     return `    {\n${pParts.join(',\n')},\n    }`
   })
 
