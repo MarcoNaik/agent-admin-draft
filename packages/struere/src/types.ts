@@ -244,7 +244,6 @@ export interface PolicyConfig {
   resource: string
   actions: string[]
   effect: 'allow' | 'deny'
-  priority?: number
 }
 
 export interface ScopeRuleConfig {
