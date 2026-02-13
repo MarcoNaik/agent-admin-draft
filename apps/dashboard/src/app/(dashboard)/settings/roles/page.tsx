@@ -72,44 +72,52 @@ function pluralize(word: string): string {
   return word + "s"
 }
 
-function formatActions(actions: string[]): string {
-  if (actions.includes("*") || actions.length >= 5) return "Full access to"
-  const sorted = [...actions].sort(
+function sortActions(actions: string[]): string[] {
+  return [...actions].sort(
     (a, b) =>
       ALL_ACTIONS.indexOf(a as (typeof ALL_ACTIONS)[number]) -
       ALL_ACTIONS.indexOf(b as (typeof ALL_ACTIONS)[number])
   )
-  if (sorted.length === 1) return `Can ${sorted[0]}`
-  const last = sorted[sorted.length - 1]
-  const rest = sorted.slice(0, -1)
-  return `Can ${rest.join(", ")}, and ${last}`
 }
 
-function describeScopeRule(
-  resource: string,
-  field: string,
-  operator: string,
-  value: string,
+function BoldActions({ actions }: { actions: string[] }) {
+  const sorted = sortActions(actions)
+  if (sorted.length === 1) {
+    return <><span className="font-medium text-content-primary">{sorted[0]}</span></>
+  }
+  const last = sorted[sorted.length - 1]
+  const rest = sorted.slice(0, -1)
+  return (
+    <>
+      {rest.map((a, i) => (
+        <span key={a}>
+          <span className="font-medium text-content-primary">{a}</span>
+          {i < rest.length - 1 ? ", " : ""}
+        </span>
+      ))}
+      {", and "}
+      <span className="font-medium text-content-primary">{last}</span>
+    </>
+  )
+}
+
+function ScopeRuleDescription({
+  resource,
+  field,
+  operator,
+  value,
+  actions,
+  effect,
+}: {
+  resource: string
+  field: string
+  operator: string
+  value: string
   actions: string[]
-): string {
-  const prefix = formatActions(actions)
+  effect: "allow" | "deny"
+}) {
+  const isAll = actions.includes("*") || actions.length >= 5
   const res = pluralize(resource)
-
-  if (field === "_id" && operator === "eq" && value === "actor.entityId") {
-    return `${prefix} ${res} that represent their own profile`
-  }
-  if (field === "_id" && operator === "eq" && value === "actor.userId") {
-    return `${prefix} their own ${resource} record`
-  }
-
-  const fieldName = humanizeField(field)
-
-  if (operator === "eq" && value === "actor.entityId") {
-    return `${prefix} ${res} where ${fieldName} matches their linked entity`
-  }
-  if (operator === "eq" && value === "actor.userId") {
-    return `${prefix} ${res} assigned to them`
-  }
 
   const opLabel: Record<string, string> = {
     eq: "matches",
@@ -129,7 +137,36 @@ function describeScopeRule(
   else if (value.startsWith("actor."))
     valueText = "their " + humanizeField(value.replace("actor.", ""))
 
-  return `${prefix} ${res} where ${fieldName} ${opText} ${valueText}`
+  const fieldName = humanizeField(field)
+
+  let suffix: React.ReactNode
+  if (field === "_id" && operator === "eq" && value === "actor.entityId") {
+    suffix = <>{res} that represent their own profile</>
+  } else if (field === "_id" && operator === "eq" && value === "actor.userId") {
+    suffix = <>their own {resource} record</>
+  } else if (operator === "eq" && value === "actor.entityId") {
+    suffix = <>{res} where {fieldName} matches their linked entity</>
+  } else if (operator === "eq" && value === "actor.userId") {
+    suffix = <>{res} assigned to them</>
+  } else {
+    suffix = <>{res} where {fieldName} {opText} {valueText}</>
+  }
+
+  if (effect === "allow") {
+    if (isAll) {
+      return <>
+        <span className="font-medium text-content-primary">Full access</span> to {suffix}
+      </>
+    }
+    return <>Can <BoldActions actions={actions} /> {suffix}</>
+  }
+
+  if (isAll) {
+    return <>
+      <span className="font-medium text-content-primary">No access</span> to {suffix}
+    </>
+  }
+  return <>Cannot <BoldActions actions={actions} /> {suffix}</>
 }
 
 type CellState =
@@ -338,11 +375,19 @@ function PermissionMatrix({
 function ScopeRulesGrouped({
   rules,
 }: {
-  rules: (ScopeRule & { resource: string; actions: string[] })[]
+  rules: (ScopeRule & {
+    resource: string
+    allowActions: string[]
+    denyActions: string[]
+  })[]
 }) {
   const grouped = new Map<
     string,
-    (ScopeRule & { resource: string; actions: string[] })[]
+    (ScopeRule & {
+      resource: string
+      allowActions: string[]
+      denyActions: string[]
+    })[]
   >()
   for (const rule of rules) {
     if (!grouped.has(rule.resource)) grouped.set(rule.resource, [])
@@ -372,14 +417,31 @@ function ScopeRulesGrouped({
             {resourceRules.map((rule, i) => (
               <div
                 key={`${rule.field}-${rule.operator}-${rule.value}-${i}`}
-                className="px-4 py-3 text-[13px] text-content-secondary leading-relaxed"
+                className="px-4 py-3 space-y-1"
               >
-                {describeScopeRule(
-                  rule.resource,
-                  rule.field,
-                  rule.operator,
-                  rule.value,
-                  rule.actions
+                {rule.allowActions.length > 0 && (
+                  <div className="text-[13px] text-content-secondary leading-relaxed">
+                    <ScopeRuleDescription
+                      resource={rule.resource}
+                      field={rule.field}
+                      operator={rule.operator}
+                      value={rule.value}
+                      actions={rule.allowActions}
+                      effect="allow"
+                    />
+                  </div>
+                )}
+                {rule.denyActions.length > 0 && (
+                  <div className="text-[13px] text-content-tertiary leading-relaxed">
+                    <ScopeRuleDescription
+                      resource={rule.resource}
+                      field={rule.field}
+                      operator={rule.operator}
+                      value={rule.value}
+                      actions={rule.denyActions}
+                      effect="deny"
+                    />
+                  </div>
                 )}
               </div>
             ))}
@@ -554,16 +616,27 @@ function RoleExpandedDetail({ roleId }: { roleId: Id<"roles"> }) {
     policiesByResource[policy.resource].push(policy)
   }
 
-  type ScopeRuleWithContext = ScopeRule & { resource: string; actions: string[] }
+  type ScopeRuleWithContext = ScopeRule & {
+    resource: string
+    allowActions: string[]
+    denyActions: string[]
+  }
   const scopeMap = new Map<string, ScopeRuleWithContext>()
   for (const p of policies) {
     for (const sr of p.scopeRules) {
       const key = `${p.resource}:${sr.field}:${sr.operator}:${sr.value}`
       const existing = scopeMap.get(key)
       if (existing) {
-        if (!existing.actions.includes(p.action)) existing.actions.push(p.action)
+        const list =
+          p.effect === "allow" ? existing.allowActions : existing.denyActions
+        if (!list.includes(p.action)) list.push(p.action)
       } else {
-        scopeMap.set(key, { ...sr, resource: p.resource, actions: [p.action] })
+        scopeMap.set(key, {
+          ...sr,
+          resource: p.resource,
+          allowActions: p.effect === "allow" ? [p.action] : [],
+          denyActions: p.effect === "deny" ? [p.action] : [],
+        })
       }
     }
   }
