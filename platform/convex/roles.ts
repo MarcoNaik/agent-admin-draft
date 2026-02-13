@@ -213,7 +213,6 @@ export const addPolicy = mutation({
     resource: v.string(),
     action: v.string(),
     effect: v.union(v.literal("allow"), v.literal("deny")),
-    priority: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -229,7 +228,6 @@ export const addPolicy = mutation({
       resource: args.resource,
       action: args.action,
       effect: args.effect,
-      priority: args.priority ?? 0,
       createdAt: Date.now(),
     })
   },
@@ -302,27 +300,13 @@ export const assignToUser = mutation({
       throw new Error("Admins have full access and cannot be assigned roles")
     }
 
-    let existingQuery = ctx.db
+    const existingUserRoles = await ctx.db
       .query("userRoles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("roleId"), args.roleId))
+      .collect()
 
-    if (args.resourceType !== undefined) {
-      existingQuery = existingQuery.filter((q) =>
-        q.eq(q.field("resourceType"), args.resourceType)
-      )
-    }
-
-    if (args.resourceId !== undefined) {
-      existingQuery = existingQuery.filter((q) =>
-        q.eq(q.field("resourceId"), args.resourceId)
-      )
-    }
-
-    const existing = await existingQuery.first()
-
-    if (existing) {
-      throw new Error("User already has this role")
+    for (const ur of existingUserRoles) {
+      await ctx.db.delete(ur._id)
     }
 
     return await ctx.db.insert("userRoles", {
@@ -340,35 +324,9 @@ export const assignToUser = mutation({
 export const removeFromUser = mutation({
   args: {
     userId: v.id("users"),
-    roleId: v.id("roles"),
-    resourceType: v.optional(v.string()),
-    resourceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
-
-    let userRoleQuery = ctx.db
-      .query("userRoles")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("roleId"), args.roleId))
-
-    if (args.resourceType !== undefined) {
-      userRoleQuery = userRoleQuery.filter((q) =>
-        q.eq(q.field("resourceType"), args.resourceType)
-      )
-    }
-
-    if (args.resourceId !== undefined) {
-      userRoleQuery = userRoleQuery.filter((q) =>
-        q.eq(q.field("resourceId"), args.resourceId)
-      )
-    }
-
-    const userRole = await userRoleQuery.first()
-
-    if (!userRole) {
-      throw new Error("User role assignment not found")
-    }
 
     const user = await ctx.db.get(args.userId)
     if (!user) {
@@ -386,7 +344,15 @@ export const removeFromUser = mutation({
       throw new Error("Access denied")
     }
 
-    await ctx.db.delete(userRole._id)
+    const userRoles = await ctx.db
+      .query("userRoles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect()
+
+    for (const ur of userRoles) {
+      await ctx.db.delete(ur._id)
+    }
+
     return { success: true }
   },
 })
