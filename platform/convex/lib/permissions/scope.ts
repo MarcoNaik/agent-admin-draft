@@ -1,5 +1,59 @@
 import { QueryCtx } from "../../_generated/server"
+import { Id } from "../../_generated/dataModel"
 import { ActorContext, ScopeFilter } from "./types"
+import { loadPoliciesForResource } from "./evaluate"
+
+async function resolveActorEntityId(
+  ctx: QueryCtx,
+  actor: ActorContext
+): Promise<Id<"entities"> | null> {
+  if (actor.roleIds.length === 0) return null
+
+  const role = await ctx.db.get(actor.roleIds[0])
+  if (!role) return null
+
+  const actorEntityType = await ctx.db
+    .query("entityTypes")
+    .withIndex("by_org_env_slug", (q) =>
+      q
+        .eq("organizationId", actor.organizationId)
+        .eq("environment", actor.environment)
+        .eq("slug", role.name)
+    )
+    .first()
+
+  if (!actorEntityType) return null
+
+  const actorEntity = await ctx.db
+    .query("entities")
+    .withIndex("by_org_env_type", (q) =>
+      q
+        .eq("organizationId", actor.organizationId)
+        .eq("environment", actor.environment)
+        .eq("entityTypeId", actorEntityType._id)
+    )
+    .filter((q) => q.eq(q.field("data.userId"), actor.actorId))
+    .first()
+
+  return actorEntity?._id ?? null
+}
+
+async function resolveRelatedEntityIds(
+  ctx: QueryCtx,
+  actor: ActorContext,
+  actorEntityId: Id<"entities">,
+  relationType: string
+): Promise<Id<"entities">[]> {
+  const relations = await ctx.db
+    .query("entityRelations")
+    .withIndex("by_from", (q) =>
+      q.eq("fromEntityId", actorEntityId).eq("relationType", relationType)
+    )
+    .filter((q) => q.eq(q.field("environment"), actor.environment))
+    .collect()
+
+  return relations.map((r) => r.toEntityId)
+}
 
 export async function getScopeFilters(
   ctx: QueryCtx,
@@ -14,33 +68,14 @@ export async function getScopeFilters(
     return []
   }
 
-  const entityType = await ctx.db
-    .query("entityTypes")
-    .withIndex("by_org_env_slug", (q) =>
-      q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("slug", entityTypeSlug)
-    )
-    .first()
-
-  if (!entityType) {
-    return []
-  }
-
-  const policies = await ctx.db
-    .query("policies")
-    .withIndex("by_org_resource", (q) => q.eq("organizationId", actor.organizationId))
-    .filter((q) =>
-      q.or(
-        q.eq(q.field("resource"), entityTypeSlug),
-        q.eq(q.field("resource"), "*")
-      )
-    )
-    .collect()
+  const policies = await loadPoliciesForResource(ctx, actor.organizationId, entityTypeSlug)
 
   const applicablePolicies = policies.filter(
     (p) => actor.roleIds.includes(p.roleId) && p.effect === "allow"
   )
 
   const filters: ScopeFilter[] = []
+  let actorEntityId: Id<"entities"> | null | undefined = undefined
 
   for (const policy of applicablePolicies) {
     const scopeRules = await ctx.db
@@ -56,6 +91,21 @@ export async function getScopeFilters(
           value = actor.actorId
         } else if (rule.value === "actor.organizationId") {
           value = actor.organizationId
+        } else if (rule.value === "actor.entityId") {
+          if (actorEntityId === undefined) {
+            actorEntityId = await resolveActorEntityId(ctx, actor)
+          }
+          value = actorEntityId
+        } else if (rule.value?.startsWith("actor.relatedIds:")) {
+          const relationType = rule.value.slice("actor.relatedIds:".length)
+          if (actorEntityId === undefined) {
+            actorEntityId = await resolveActorEntityId(ctx, actor)
+          }
+          if (actorEntityId) {
+            value = await resolveRelatedEntityIds(ctx, actor, actorEntityId, relationType)
+          } else {
+            value = []
+          }
         } else if (rule.value?.startsWith("literal:")) {
           value = rule.value.slice(8)
         } else {
@@ -83,7 +133,7 @@ export function applyScopeFiltersToQuery<T extends Record<string, unknown>>(
   }
 
   return records.filter((record) => {
-    return filters.every((filter) => {
+    return filters.some((filter) => {
       const fieldValue = getNestedValue(record, filter.field)
 
       switch (filter.operator) {
