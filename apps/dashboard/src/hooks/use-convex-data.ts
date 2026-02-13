@@ -185,6 +185,10 @@ export function useUserRoles(userId: Id<"users"> | undefined) {
   return useQuery(api.roles.getUserRoles, userId ? { userId } : "skip")
 }
 
+export function useRoleAssignedUsers(roleId: Id<"roles"> | undefined) {
+  return useQuery(api.roles.getAssignedUsers, roleId ? { roleId } : "skip")
+}
+
 export function useApiKeys() {
   return useQuery(api.apiKeys.list, {})
 }
