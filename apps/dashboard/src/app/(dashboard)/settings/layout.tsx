@@ -6,6 +6,7 @@ import {
   Settings,
   Building2,
   Users,
+  Shield,
   Plug,
   Key,
   CreditCard,
@@ -26,6 +27,12 @@ const settingsNav = [
     href: "/settings/users",
     icon: Users,
     description: "Team members and roles",
+  },
+  {
+    name: "Roles",
+    href: "/settings/roles",
+    icon: Shield,
+    description: "Permission roles and policies",
   },
   {
     name: "Integrations",
