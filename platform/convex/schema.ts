@@ -229,7 +229,6 @@ export default defineSchema({
     resource: v.string(),
     action: v.string(),
     effect: v.union(v.literal("allow"), v.literal("deny")),
-    priority: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_role", ["roleId"])
