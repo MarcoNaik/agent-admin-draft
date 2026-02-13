@@ -1,5 +1,6 @@
 import { QueryCtx } from "../../_generated/server"
 import { ActorContext, FieldMaskResult } from "./types"
+import { loadPoliciesForResource } from "./evaluate"
 
 export async function getFieldMask(
   ctx: QueryCtx,
@@ -14,27 +15,7 @@ export async function getFieldMask(
     return { allowedFields: [], isWildcard: true }
   }
 
-  const entityType = await ctx.db
-    .query("entityTypes")
-    .withIndex("by_org_env_slug", (q) =>
-      q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("slug", entityTypeSlug)
-    )
-    .first()
-
-  if (!entityType) {
-    return { allowedFields: [], isWildcard: false }
-  }
-
-  const policies = await ctx.db
-    .query("policies")
-    .withIndex("by_org_resource", (q) => q.eq("organizationId", actor.organizationId))
-    .filter((q) =>
-      q.or(
-        q.eq(q.field("resource"), entityTypeSlug),
-        q.eq(q.field("resource"), "*")
-      )
-    )
-    .collect()
+  const policies = await loadPoliciesForResource(ctx, actor.organizationId, entityTypeSlug)
 
   const applicablePolicies = policies.filter(
     (p) => actor.roleIds.includes(p.roleId) && p.effect === "allow"
