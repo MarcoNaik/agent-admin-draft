@@ -56,7 +56,6 @@ export const syncOrganization = mutation({
             resource: v.string(),
             actions: v.array(v.string()),
             effect: v.union(v.literal("allow"), v.literal("deny")),
-            priority: v.optional(v.number()),
           })
         ),
         scopeRules: v.optional(
@@ -298,10 +297,10 @@ export const getPullState = query({
             .withIndex("by_role", (q) => q.eq("roleId", role._id))
             .collect()
 
-          const grouped = new Map<string, { resource: string; actions: string[]; effect: string; priority: number }>()
+          const grouped = new Map<string, { resource: string; actions: string[]; effect: string }>()
 
           for (const policy of policies) {
-            const key = `${policy.resource}:${policy.effect}:${policy.priority}`
+            const key = `${policy.resource}:${policy.effect}`
             const existing = grouped.get(key)
             if (existing) {
               existing.actions.push(policy.action)
@@ -310,7 +309,6 @@ export const getPullState = query({
                 resource: policy.resource,
                 actions: [policy.action],
                 effect: policy.effect,
-                priority: policy.priority,
               })
             }
           }
