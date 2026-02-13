@@ -5,7 +5,6 @@ export interface PolicyInput {
   resource: string
   actions: string[]
   effect: "allow" | "deny"
-  priority?: number
 }
 
 export interface ScopeRuleInput {
@@ -152,7 +151,6 @@ async function syncPoliciesForRole(
         resource: policy.resource,
         action,
         effect: policy.effect,
-        priority: policy.priority ?? 50,
         createdAt: now,
       })
 
@@ -257,23 +255,32 @@ async function duplicateUserRolesForProduction(
       .collect()
 
     for (const devUR of devUserRoles) {
-      const existingProdUR = await ctx.db
+      const existingProdUserRoles = await ctx.db
         .query("userRoles")
         .withIndex("by_user", (q) => q.eq("userId", devUR.userId))
-        .filter((q) => q.eq(q.field("roleId"), prodRole._id))
-        .first()
+        .collect()
 
-      if (!existingProdUR) {
-        await ctx.db.insert("userRoles", {
-          userId: devUR.userId,
-          roleId: prodRole._id,
-          resourceType: devUR.resourceType,
-          resourceId: devUR.resourceId,
-          grantedBy: devUR.grantedBy,
-          expiresAt: devUR.expiresAt,
-          createdAt: now,
-        })
+      const prodAssignments = []
+      for (const ur of existingProdUserRoles) {
+        const role = await ctx.db.get(ur.roleId)
+        if (role && role.environment === "production") {
+          prodAssignments.push(ur)
+        }
       }
+
+      for (const stale of prodAssignments) {
+        await ctx.db.delete(stale._id)
+      }
+
+      await ctx.db.insert("userRoles", {
+        userId: devUR.userId,
+        roleId: prodRole._id,
+        resourceType: devUR.resourceType,
+        resourceId: devUR.resourceId,
+        grantedBy: devUR.grantedBy,
+        expiresAt: devUR.expiresAt,
+        createdAt: now,
+      })
     }
   }
 }
