@@ -7,6 +7,7 @@ import {
   useThreadWithMessages,
   useReplyToThread,
 } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { cn } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"
 import {
@@ -46,8 +47,9 @@ export default function ChatPage() {
   const [sendError, setSendError] = useState<string | null>(null)
   const replyToThread = useReplyToThread()
 
+  const { environment } = useEnvironment()
   const filteredAgentId = agentFilter !== "all" ? (agentFilter as Id<"agents">) : undefined
-  const threads = useThreadsWithPreviews(filteredAgentId, "production")
+  const threads = useThreadsWithPreviews(filteredAgentId, environment)
   const selectedThread = useThreadWithMessages(selectedThreadId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
