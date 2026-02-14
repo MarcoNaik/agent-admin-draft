@@ -1,9 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { MessageSquare, CreditCard, Video, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { useIntegrationConfigs, useWhatsAppConnection } from "@/hooks/use-convex-data"
-import { useEnvironment } from "@/contexts/environment-context"
+import { MessageSquare, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useWhatsAppConnection } from "@/hooks/use-convex-data"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -55,23 +54,15 @@ function IntegrationCard({ name, description, href, icon, status }: IntegrationC
 }
 
 export default function IntegrationsPage() {
-  const configs = useIntegrationConfigs()
-  const { environment } = useEnvironment()
-  const whatsappConnection = useWhatsAppConnection(environment)
+  const whatsappConnection = useWhatsAppConnection("production")
 
-  const getStatus = (provider: string): "active" | "inactive" | "error" | null => {
-    if (provider === "whatsapp") {
-      if (whatsappConnection === undefined) return null
-      if (whatsappConnection?.status === "connected") return "active"
-      if (whatsappConnection?.status === "connecting" || whatsappConnection?.status === "qr_ready") return "inactive"
-      return "inactive"
-    }
-    if (!configs) return null
-    const config = configs.find((c: { provider: string }) => c.provider === provider)
-    return config?.status || "inactive"
+  const getWhatsAppStatus = (): "active" | "inactive" | null => {
+    if (whatsappConnection === undefined) return null
+    if (whatsappConnection?.status === "connected") return "active"
+    return "inactive"
   }
 
-  if (configs === undefined) {
+  if (whatsappConnection === undefined) {
     return (
       <div className="space-y-6">
         <div>
@@ -99,39 +90,8 @@ export default function IntegrationsPage() {
           description="Connect your WhatsApp account for AI-powered conversations"
           href="/settings/integrations/whatsapp"
           icon={<MessageSquare className="h-5 w-5 text-primary" />}
-          status={getStatus("whatsapp")}
+          status={getWhatsAppStatus()}
         />
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Payments</h2>
-        <IntegrationCard
-          name="Flow Payment"
-          description="Accept payments from parents and guardians"
-          href="/settings/integrations/payments"
-          icon={<CreditCard className="h-5 w-5 text-primary" />}
-          status={getStatus("flow")}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Video Conferencing</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <IntegrationCard
-            name="Google Meet"
-            description="Create meeting links for tutoring sessions"
-            href="/settings/integrations/google"
-            icon={<Video className="h-5 w-5 text-primary" />}
-            status={getStatus("google")}
-          />
-          <IntegrationCard
-            name="Zoom"
-            description="Create Zoom meetings for tutoring sessions"
-            href="/settings/integrations/zoom"
-            icon={<Video className="h-5 w-5 text-primary" />}
-            status={getStatus("zoom")}
-          />
-        </div>
       </div>
     </div>
   )

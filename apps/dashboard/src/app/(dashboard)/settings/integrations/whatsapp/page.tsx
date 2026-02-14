@@ -12,7 +12,6 @@ import {
   useSetWhatsAppAgent,
   useAgents,
 } from "@/hooks/use-convex-data"
-import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -60,8 +59,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function WhatsAppSettingsPage() {
   const router = useRouter()
-  const { environment } = useEnvironment()
-  const connection = useWhatsAppConnection(environment)
+  const connection = useWhatsAppConnection("production")
   const agents = useAgents()
   const connectWhatsApp = useConnectWhatsApp()
   const disconnectWhatsApp = useDisconnectWhatsApp()
@@ -75,7 +73,7 @@ export default function WhatsAppSettingsPage() {
   const handleConnect = async () => {
     setConnecting(true)
     try {
-      await connectWhatsApp({ environment })
+      await connectWhatsApp({ environment: "production" })
     } catch (err) {
       console.error("Failed to connect:", err)
     } finally {
@@ -87,7 +85,7 @@ export default function WhatsAppSettingsPage() {
     if (!confirm("Are you sure you want to disconnect WhatsApp?")) return
     setDisconnecting(true)
     try {
-      await disconnectWhatsApp({ environment })
+      await disconnectWhatsApp({ environment: "production" })
     } catch (err) {
       console.error("Failed to disconnect:", err)
     } finally {
@@ -99,7 +97,7 @@ export default function WhatsAppSettingsPage() {
     if (!confirm("This will reset your WhatsApp connection and require a new QR code scan. Continue?")) return
     setReconnecting(true)
     try {
-      await reconnectWhatsApp({ environment })
+      await reconnectWhatsApp({ environment: "production" })
     } catch (err) {
       console.error("Failed to reconnect:", err)
     } finally {
@@ -111,7 +109,7 @@ export default function WhatsAppSettingsPage() {
     try {
       await setWhatsAppAgent({
         agentId: value === "none" ? undefined : (value as any),
-        environment,
+        environment: "production",
       })
     } catch (err) {
       console.error("Failed to set agent:", err)

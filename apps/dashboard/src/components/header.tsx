@@ -51,6 +51,7 @@ type NavEntry = NavItem | NavSeparator
 
 const adminNavigation: NavItem[] = [
   { name: "Agents", href: "/agents" },
+  { name: "Chat", href: "/conversations", icon: MessageSquare },
   { name: "Settings", href: "/settings" },
 ]
 
