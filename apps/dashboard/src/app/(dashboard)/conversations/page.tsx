@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Bot, Loader2, MessageSquare, User, Phone, Send, AlertCircle } from "lucide-react"
+import { Bot, FlaskConical, Loader2, MessageSquare, User, Phone, Send, AlertCircle } from "lucide-react"
 import {
   useThreadsWithPreviews,
   useThreadWithMessages,
   useReplyToThread,
 } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
+import { useRoleContext } from "@/contexts/role-context"
 import { cn } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 
 function formatRelativeTime(timestamp: number) {
   const now = Date.now()
@@ -40,7 +42,9 @@ function truncate(str: string, max: number) {
 
 export default function ChatPage() {
   const [agentFilter, setAgentFilter] = useState<string>("all")
+  const [showEvals, setShowEvals] = useState(false)
   const [selectedThreadId, setSelectedThreadId] = useState<Id<"threads"> | null>(null)
+  const { isAdmin } = useRoleContext()
 
   const [messageInput, setMessageInput] = useState("")
   const [isSending, setIsSending] = useState(false)
@@ -94,8 +98,12 @@ export default function ChatPage() {
     )
   }
 
+  const visibleThreads = showEvals
+    ? threads
+    : threads.filter((t: typeof threads[number]) => !t.participantName.startsWith("eval:"))
+
   const agentOptions = new Map<string, string>()
-  for (const t of threads) {
+  for (const t of visibleThreads) {
     if (!agentOptions.has(t.agentId)) {
       agentOptions.set(t.agentId, t.agentName)
     }
@@ -105,13 +113,13 @@ export default function ChatPage() {
     (m: { role: string }) => m.role === "user" || m.role === "assistant"
   ) ?? []
 
-  const selectedPreview = threads?.find((t: { _id: Id<"threads"> }) => t._id === selectedThreadId)
+  const selectedPreview = visibleThreads?.find((t: { _id: Id<"threads"> }) => t._id === selectedThreadId)
   const isWhatsAppThread = selectedPreview?.participantType === "whatsapp"
 
   return (
     <div className="flex h-[calc(100dvh-49px)]">
       <aside className="w-80 border-r bg-background-secondary flex flex-col shrink-0">
-        <div className="p-3 border-b">
+        <div className="p-3 border-b space-y-2">
           <Select value={agentFilter} onValueChange={setAgentFilter}>
             <SelectTrigger className="w-full h-9 text-sm">
               <SelectValue placeholder="All agents" />
@@ -125,17 +133,26 @@ export default function ChatPage() {
               ))}
             </SelectContent>
           </Select>
+          {isAdmin && (
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="flex items-center gap-1.5 text-xs text-content-secondary">
+                <FlaskConical className="h-3 w-3" />
+                Show evals
+              </span>
+              <Switch checked={showEvals} onCheckedChange={setShowEvals} className="scale-75" />
+            </label>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {threads.length === 0 ? (
+          {visibleThreads.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <MessageSquare className="h-10 w-10 text-content-tertiary mb-3" />
               <p className="text-sm text-content-secondary">No conversations found</p>
             </div>
           ) : (
             <ul>
-              {threads.map((thread: typeof threads[number]) => (
+              {visibleThreads.map((thread: typeof visibleThreads[number]) => (
                 <li key={thread._id}>
                   <button
                     type="button"
