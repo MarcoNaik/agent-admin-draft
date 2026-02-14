@@ -51,7 +51,7 @@ type NavEntry = NavItem | NavSeparator
 
 const adminNavigation: NavItem[] = [
   { name: "Agents", href: "/agents" },
-  { name: "Chat", href: "/conversations", icon: MessageSquare },
+  { name: "Conversations", href: "/conversations" },
   { name: "Settings", href: "/settings" },
 ]
 
@@ -70,7 +70,7 @@ const guardianNavigation: NavItem[] = [
 
 const memberNavigation: NavItem[] = [
   { name: "Entities", href: "/entities", icon: Database },
-  { name: "Chat", href: "/conversations", icon: MessageSquare },
+  { name: "Conversations", href: "/conversations" },
   { name: "Profile", href: "/profile", icon: User },
 ]
 

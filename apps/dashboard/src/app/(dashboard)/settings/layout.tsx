@@ -14,8 +14,17 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOnly } from "@/components/role-redirect"
+import { useEnvironment } from "@/contexts/environment-context"
 
-const settingsNav = [
+type Environment = "development" | "production"
+
+const settingsNav: {
+  name: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  description: string
+  environments?: Environment[]
+}[] = [
   {
     name: "General",
     href: "/settings",
@@ -39,6 +48,7 @@ const settingsNav = [
     href: "/settings/integrations",
     icon: Plug,
     description: "External services",
+    environments: ["production"],
   },
   {
     name: "API Keys",
@@ -60,6 +70,7 @@ export default function SettingsLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const { environment } = useEnvironment()
 
   const isActive = (href: string) => {
     if (href === "/settings") {
@@ -67,6 +78,10 @@ export default function SettingsLayout({
     }
     return pathname.startsWith(href)
   }
+
+  const filteredNav = settingsNav.filter(
+    (item) => !item.environments || item.environments.includes(environment)
+  )
 
   return (
     <AdminOnly>
@@ -81,7 +96,7 @@ export default function SettingsLayout({
 
           <nav className="flex-1 overflow-y-auto p-2">
             <ul className="space-y-0.5">
-              {settingsNav.map((item) => {
+              {filteredNav.map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
                 return (
