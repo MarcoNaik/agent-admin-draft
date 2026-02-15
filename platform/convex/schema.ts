@@ -385,6 +385,41 @@ export default defineSchema({
     .index("by_provider", ["provider"])
     .index("by_provider_status", ["provider", "status"]),
 
+  triggers: defineTable({
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    entityType: v.string(),
+    action: v.string(),
+    condition: v.optional(v.any()),
+    actions: v.array(v.object({
+      tool: v.string(),
+      args: v.any(),
+      as: v.optional(v.string()),
+    })),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_entity", ["organizationId", "environment", "entityType"])
+    .index("by_org_env_slug", ["organizationId", "environment", "slug"]),
+
+  calendarConnections: defineTable({
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    provider: v.literal("google"),
+    calendarId: v.string(),
+    status: v.union(v.literal("connected"), v.literal("disconnected"), v.literal("error")),
+    connectedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_user_org_env", ["userId", "organizationId", "environment"])
+    .index("by_org_env", ["organizationId", "environment"]),
+
   evalSuites: defineTable({
     organizationId: v.id("organizations"),
     agentId: v.id("agents"),
