@@ -9,3 +9,6 @@ export type { AgentInput } from "./agents"
 
 export { syncEvalSuites } from "./evalSuites"
 export type { EvalSuiteInput } from "./evalSuites"
+
+export { syncTriggers } from "./triggers"
+export type { TriggerInput } from "./triggers"
