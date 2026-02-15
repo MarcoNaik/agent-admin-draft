@@ -279,15 +279,35 @@ export interface AgentConfigV2 {
   tools?: string[]
 }
 
+export interface TriggerAction {
+  tool: string
+  args: Record<string, unknown>
+  as?: string
+}
+
+export interface TriggerConfig {
+  name: string
+  slug: string
+  description?: string
+  on: {
+    entityType: string
+    action: 'created' | 'updated' | 'deleted'
+    condition?: Record<string, unknown>
+  }
+  actions: TriggerAction[]
+}
+
 export interface SyncPayload {
   agents: AgentConfigV2[]
   entityTypes: EntityTypeConfig[]
   roles: RoleConfig[]
   customTools?: ToolReference[]
+  triggers?: TriggerConfig[]
 }
 
 export interface SyncState {
   agents: Array<{ slug: string; name: string; version: string; hasDevConfig: boolean; hasProdConfig: boolean }>
   entityTypes: Array<{ slug: string; name: string }>
   roles: Array<{ name: string; policyCount: number }>
+  triggers?: Array<{ slug: string; name: string; entityType: string; action: string }>
 }
