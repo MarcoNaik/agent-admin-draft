@@ -700,6 +700,39 @@ export default defineEntityType({
 })
 \`\`\`
 
+### Binding Entity Types to Roles (\`boundToRole\`)
+
+When an entity type represents users of a specific role (e.g. a "teacher" entity type for users with the "teacher" role), declare the binding explicitly:
+
+\`\`\`typescript
+import { defineEntityType } from 'struere'
+
+export default defineEntityType({
+  name: "Teacher",
+  slug: "teacher",
+  schema: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      email: { type: "string", format: "email" },
+      userId: { type: "string" },  // Links to the Convex user _id
+    },
+    required: ["name", "email", "userId"],
+  },
+  searchFields: ["name", "email"],
+  boundToRole: "teacher",    // Role name this entity type represents
+  userIdField: "userId",     // Field in data that holds the user's Convex _id (defaults to "userId")
+})
+\`\`\`
+
+This enables \`actor.entityId\` in scope rules to automatically resolve which entity record belongs to the current user. Without \`boundToRole\`, scope rules using \`actor.entityId\` will match nothing.
+
+**Rules:**
+- Each role can only be bound to one entity type (enforced at sync time)
+- \`userIdField\` defaults to \`"userId"\` if not specified
+- \`userIdField\` requires \`boundToRole\` to be set
+- The entity's \`data[userIdField]\` must contain the Convex user \`_id\`
+
 Entities are stored as:
 \`\`\`json
 {
@@ -734,7 +767,7 @@ export default defineRole({
       entityType: "customer",
       field: "data.assignedTo",  // Field in entity data
       operator: "eq",
-      value: "actor.userId"      // Current user's ID
+      value: "actor.userId"      // Current user's Convex _id
     },
   ],
 
@@ -754,6 +787,45 @@ Every tool call goes through permission checks:
 3. **Field mask**: Sensitive fields hidden/redacted in response
 
 Deny policies always override allow.
+
+### Scope Rule Values
+
+| Value | Resolves To |
+|-------|-------------|
+| \`"actor.userId"\` | Current user's Convex \`_id\` |
+| \`"actor.organizationId"\` | Current organization ID |
+| \`"actor.entityId"\` | Entity record bound to this user via \`boundToRole\` (requires entity type with \`boundToRole\` set) |
+| \`"actor.relatedIds:TYPE"\` | IDs of entities related to the actor's entity via relation type TYPE |
+| \`"literal:VALUE"\` | Literal string value |
+
+**Example using \`actor.entityId\`:**
+
+\`\`\`typescript
+// roles/teacher.ts — Teacher sees only their own sessions
+export default defineRole({
+  name: "teacher",
+  policies: [
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
+  ],
+  scopeRules: [
+    {
+      entityType: "session",
+      field: "data.teacherId",
+      operator: "eq",
+      value: "actor.entityId"  // Resolves to the teacher entity _id for this user
+    },
+  ],
+})
+
+// entity-types/teacher.ts — Must declare boundToRole for actor.entityId to work
+export default defineEntityType({
+  name: "Teacher",
+  slug: "teacher",
+  boundToRole: "teacher",
+  userIdField: "userId",
+  // ...schema
+})
+\`\`\`
 
 ## Defining Custom Tools
 
@@ -975,6 +1047,57 @@ Events are immutable audit logs. Use for analytics, debugging, compliance.
 \`\`\`
 
 Jobs run asynchronously with retry logic. Use for: emails, notifications, data sync.
+
+### Calendar Tools
+
+Requires a connected Google Calendar (via Settings > Integrations). The \`userId\` must be a user with a linked Google account.
+
+\`\`\`typescript
+// calendar.list - List events in a time range
+{ userId: "user_abc", timeMin: "2024-01-01T00:00:00Z", timeMax: "2024-01-31T23:59:59Z", maxResults: 50 }
+
+// calendar.create - Create a calendar event
+{
+  userId: "user_abc",
+  summary: "Session with Student",
+  startTime: "2024-01-15T10:00:00Z",
+  endTime: "2024-01-15T11:00:00Z",
+  description: "Weekly tutoring session",  // optional
+  attendees: ["student@example.com"],       // optional
+  timeZone: "America/New_York"              // optional
+}
+
+// calendar.update - Update an existing event
+{ userId: "user_abc", eventId: "evt_123", summary: "Updated title", startTime: "2024-01-15T11:00:00Z" }
+
+// calendar.delete - Delete a calendar event
+{ userId: "user_abc", eventId: "evt_123" }
+
+// calendar.freeBusy - Check availability
+{ userId: "user_abc", timeMin: "2024-01-15T00:00:00Z", timeMax: "2024-01-15T23:59:59Z" }
+// Returns: { busy: [{ start: "...", end: "..." }, ...] }
+\`\`\`
+
+Calendar tools work in both agent tool calls and trigger actions. Example trigger:
+\`\`\`typescript
+defineTrigger({
+  name: "Add Session to Calendar",
+  slug: "add-session-to-calendar",
+  on: { entityType: "session", action: "created" },
+  actions: [
+    {
+      tool: "calendar.create",
+      args: {
+        userId: "{{trigger.data.teacherId}}",
+        summary: "Session: {{trigger.data.studentName}}",
+        startTime: "{{trigger.data.startTime}}",
+        endTime: "{{trigger.data.endTime}}"
+      },
+      as: "calendarEvent"
+    }
+  ]
+})
+\`\`\`
 
 ## Invoking Agents (API)
 
