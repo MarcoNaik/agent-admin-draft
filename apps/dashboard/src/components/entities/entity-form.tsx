@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useUsers } from "@/hooks/use-convex-data"
 
 interface EntityTypeField {
   name: string
@@ -30,6 +31,8 @@ interface EntityType {
     listFields?: string[]
     detailFields?: string[]
   }
+  boundToRole?: string
+  userIdField?: string
 }
 
 interface Entity {
@@ -76,15 +79,55 @@ function formatFieldName(name: string): string {
     .trim()
 }
 
+function UserPickerField({
+  value,
+  onChange,
+  fieldName,
+}: {
+  value: unknown
+  onChange: (value: unknown) => void
+  fieldName: string
+}) {
+  const users = useUsers()
+
+  if (users === undefined) {
+    return <Input type="text" value="" disabled placeholder="Loading users..." />
+  }
+
+  return (
+    <Select
+      value={value as string || ""}
+      onValueChange={(v) => onChange(v)}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={`Select user for ${formatFieldName(fieldName)}`} />
+      </SelectTrigger>
+      <SelectContent>
+        {users.map((user: { _id: string; name?: string; email: string }) => (
+          <SelectItem key={user._id} value={user._id}>
+            {user.name || user.email} ({user.email})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 function FieldInput({
   field,
   value,
   onChange,
+  entityType,
 }: {
   field: EntityTypeField
   value: unknown
   onChange: (value: unknown) => void
+  entityType?: EntityType
 }) {
+  if (entityType?.boundToRole && field.name === (entityType.userIdField || "userId")) {
+    return <UserPickerField value={value} onChange={onChange} fieldName={field.name} />
+  }
+
   switch (field.type) {
     case "enum":
       return (
@@ -262,6 +305,7 @@ export function EntityForm({ entityType, entity, onSubmit, onCancel }: EntityFor
               field={field}
               value={formData[field.name]}
               onChange={(value) => handleFieldChange(field.name, value)}
+              entityType={entityType}
             />
             {errors[field.name] && (
               <p className="text-sm text-destructive">{errors[field.name]}</p>
