@@ -543,6 +543,9 @@ my-org/
 │   ├── admin.ts              # Role + policies + scope rules + field masks
 │   ├── teacher.ts
 │   └── index.ts
+├── triggers/
+│   ├── notify-on-session.ts  # Trigger definition
+│   └── index.ts              # Re-exports all triggers
 ├── tools/
 │   └── index.ts              # Shared custom tools
 └── struere.config.ts
@@ -562,7 +565,7 @@ my-org/
 
 ### SDK Exports
 ```typescript
-import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole } from 'struere'
+import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole, defineTrigger } from 'struere'
 ```
 
 - `defineAgent(config)` - Creates/validates agent configurations
@@ -570,6 +573,7 @@ import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole } 
 - `defineConfig(config)` - Creates framework config with defaults
 - `defineEntityType(config)` - Creates entity type schema definitions
 - `defineRole(config)` - Creates role with policies, scope rules, field masks
+- `defineTrigger(config)` - Creates trigger automation rules
 
 ### Key Types
 - **AgentConfigV2**: name, slug, version, systemPrompt, model, tools (string array of tool names)
@@ -578,6 +582,8 @@ import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole } 
 - **PolicyConfig**: resource, actions, effect, priority
 - **ScopeRuleConfig**: entityType, field, operator, value
 - **FieldMaskConfig**: entityType, fieldPath, maskType, maskConfig
+- **TriggerConfig**: name, slug, on (entityType, action, condition?), actions
+- **TriggerAction**: tool, args, as?
 
 ### Definition Examples
 
@@ -634,6 +640,40 @@ export default defineRole({
   ],
 })
 ```
+
+**Trigger** (`triggers/notify-on-session.ts`):
+```typescript
+import { defineTrigger } from 'struere'
+
+export default defineTrigger({
+  name: "Notify on New Session",
+  slug: "notify-on-session",
+  on: {
+    entityType: "session",
+    action: "created",
+    condition: { "data.status": "scheduled" }
+  },
+  actions: [
+    {
+      tool: "entity.get",
+      args: { id: "{{trigger.data.teacherId}}" },
+      as: "teacher"
+    },
+    {
+      tool: "event.emit",
+      args: {
+        eventType: "session.notification",
+        entityId: "{{trigger.entityId}}",
+        payload: { teacher: "{{steps.teacher.data.name}}" }
+      }
+    }
+  ]
+})
+```
+
+**Trigger template variables**: `{{trigger.entityId}}`, `{{trigger.entityType}}`, `{{trigger.action}}`, `{{trigger.data.X}}`, `{{trigger.previousData.X}}`, `{{steps.NAME.X}}`
+
+**Trigger execution**: Async (scheduled after mutation), system actor, fail-fast, emits `trigger.executed`/`trigger.failed` events. Fires from dashboard CRUD, agent tool calls, and API mutations.
 
 ### Built-in Tools Reference
 
@@ -846,7 +886,7 @@ export default defineAgent({
 | `init` | Initialize org-centric project, scaffold directories |
 | `dev` | Watch all files, sync everything to Convex on change |
 | `deploy` | Deploy all agents to production |
-| `add <type> <name>` | Scaffold new agent/entity-type/role |
+| `add <type> <name>` | Scaffold new agent/entity-type/role/trigger |
 | `status` | Compare local vs remote state |
 | `login/logout` | Browser-based OAuth authentication |
 | `whoami` | Display current logged-in user |
@@ -877,7 +917,7 @@ Commands automatically run prerequisites without manual intervention:
 **Utility Files** (`src/cli/utils/`):
 | File | Purpose |
 |------|---------|
-| `loader.ts` | Load agents, entity types, roles from directories |
+| `loader.ts` | Load agents, entity types, roles, triggers from directories |
 | `extractor.ts` | Build sync payload from loaded resources |
 | `project.ts` | Load/save struere.json (v1 and v2) |
 | `convex.ts` | API calls (syncOrganization, getSyncState, deployAllAgents) |
@@ -889,7 +929,7 @@ Commands automatically run prerequisites without manual intervention:
 **Dev Command Flow** (`dev.ts`):
 1. Auto-init if no `struere.json`
 2. Auto-login if not authenticated
-3. Load all resources from `agents/`, `entity-types/`, `roles/`, `tools/`
+3. Load all resources from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`
 4. Build sync payload via `extractSyncPayload()`
 5. Sync to Convex via `syncOrganization()` mutation
 6. Watch directories with chokidar
@@ -900,7 +940,8 @@ Commands automatically run prerequisites without manual intervention:
 {
   agents: [...],      // All agent configs
   entityTypes: [...], // All entity type schemas
-  roles: [...]        // All roles with policies, scope rules, field masks
+  roles: [...],       // All roles with policies, scope rules, field masks
+  triggers: [...]     // All trigger automation rules
 }
 ```
 
@@ -925,13 +966,15 @@ Body: { path: "sync:syncOrganization", args: { agents, entityTypes, roles } }
 | `entityTypes.ts` | Upsert entity types by slug |
 | `roles.ts` | Upsert roles with policies, scope rules, field masks |
 | `agents.ts` | Upsert agents with configs |
+| `triggers.ts` | Upsert triggers by slug |
 
 ### Key Files
-- `src/index.ts` - SDK exports (defineAgent, defineEntityType, defineRole, etc.)
+- `src/index.ts` - SDK exports (defineAgent, defineEntityType, defineRole, defineTrigger, etc.)
 - `src/types.ts` - TypeScript type definitions
 - `src/define/agent.ts` - Agent definition function
 - `src/define/entityType.ts` - Entity type definition function
 - `src/define/role.ts` - Role definition function
+- `src/define/trigger.ts` - Trigger definition function
 - `src/cli/index.ts` - CLI entry point
 - `src/cli/commands/` - Command implementations
 - `src/cli/utils/` - Utilities
