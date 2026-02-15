@@ -3,6 +3,7 @@ export { defineTools } from './define/tools'
 export { defineConfig } from './define/config'
 export { defineEntityType } from './define/entityType'
 export { defineRole } from './define/role'
+export { defineTrigger } from './define/trigger'
 
 export type {
   AgentConfig,
@@ -38,4 +39,6 @@ export type {
   AgentConfigV2,
   SyncPayload,
   SyncState,
+  TriggerConfig,
+  TriggerAction,
 } from './types'
