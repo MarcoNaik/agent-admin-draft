@@ -14,6 +14,7 @@ import {
   FieldMaskResult,
   Environment,
 } from "../lib/permissions"
+import { checkAndScheduleTriggers } from "../lib/triggers"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -108,6 +109,15 @@ export const entityCreate = internalMutation({
       actorType: actor.actorType,
       payload: { data: args.data },
       timestamp: now,
+    })
+
+    await checkAndScheduleTriggers(ctx, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      entityTypeSlug: args.type,
+      action: "created",
+      entityId,
+      data: args.data,
     })
 
     return { id: entityId }
@@ -417,6 +427,16 @@ export const entityUpdate = internalMutation({
       timestamp: now,
     })
 
+    await checkAndScheduleTriggers(ctx, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      entityTypeSlug: entityType.slug,
+      action: "updated",
+      entityId: entity._id,
+      data: mergedData,
+      previousData: entity.data,
+    })
+
     return { success: true }
   },
 })
@@ -488,6 +508,16 @@ export const entityDelete = internalMutation({
       actorType: actor.actorType,
       payload: { previousData: entity.data },
       timestamp: now,
+    })
+
+    await checkAndScheduleTriggers(ctx, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      entityTypeSlug: entityType.slug,
+      action: "deleted",
+      entityId: entity._id,
+      data: entity.data,
+      previousData: entity.data,
     })
 
     return { success: true }
