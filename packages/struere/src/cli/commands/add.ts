@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import { hasProject, getProjectVersion } from '../utils/project'
-import { scaffoldAgent, scaffoldEntityType, scaffoldRole, scaffoldEval } from '../utils/scaffold'
+import { scaffoldAgent, scaffoldEntityType, scaffoldRole, scaffoldEval, scaffoldTrigger } from '../utils/scaffold'
 import { runInit } from './init'
 
 export const addCommand = new Command('add')
@@ -93,6 +93,18 @@ export const addCommand = new Command('add')
         }
         break
 
+      case 'trigger':
+        result = scaffoldTrigger(cwd, displayName, slug)
+        if (result.createdFiles.length > 0) {
+          console.log(chalk.green('✓'), `Created trigger "${displayName}"`)
+          for (const file of result.createdFiles) {
+            console.log(chalk.gray('  →'), file)
+          }
+        } else {
+          console.log(chalk.yellow('Trigger already exists:'), `triggers/${slug}.ts`)
+        }
+        break
+
       default:
         console.log(chalk.red('Unknown resource type:'), type)
         console.log()
@@ -101,6 +113,7 @@ export const addCommand = new Command('add')
         console.log(chalk.gray('  -'), chalk.cyan('entity-type'), '- Create an entity type schema')
         console.log(chalk.gray('  -'), chalk.cyan('role'), '- Create a role with permissions')
         console.log(chalk.gray('  -'), chalk.cyan('eval'), '- Create an eval suite (YAML)')
+        console.log(chalk.gray('  -'), chalk.cyan('trigger'), '- Create an entity trigger')
         console.log()
         process.exit(1)
     }
