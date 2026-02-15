@@ -38,6 +38,8 @@ export function EntityCreateForm({ entityTypeSlug, onSuccess }: EntityCreateForm
     slug: entityType.slug,
     schema: entityType.schema,
     displayConfig: entityType.displayConfig,
+    boundToRole: entityType.boundToRole,
+    userIdField: entityType.userIdField,
   }
 
   const handleSubmit = async (data: Record<string, unknown>) => {
