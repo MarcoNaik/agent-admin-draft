@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { join, basename } from 'path'
 import YAML from 'yaml'
-import type { AgentConfigV2, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition } from '../../types'
+import type { AgentConfigV2, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig } from '../../types'
 
 export interface LoadedResources {
   agents: AgentConfigV2[]
@@ -9,6 +9,7 @@ export interface LoadedResources {
   roles: RoleConfig[]
   customTools: ToolReference[]
   evalSuites: EvalSuiteDefinition[]
+  triggers: TriggerConfig[]
   errors: string[]
 }
 
@@ -23,8 +24,9 @@ export async function loadAllResources(cwd: string): Promise<LoadedResources> {
   }
   const { suites: evalSuites, errors: evalErrors } = loadAllEvalSuites(join(cwd, 'evals'))
   errors.push(...evalErrors)
+  const triggers = await loadAllTriggers(join(cwd, 'triggers'))
 
-  return { agents, entityTypes, roles, customTools, evalSuites, errors }
+  return { agents, entityTypes, roles, customTools, evalSuites, triggers, errors }
 }
 
 export async function loadAllAgents(dir: string): Promise<AgentConfigV2[]> {
@@ -161,12 +163,26 @@ export function loadAllEvalSuites(dir: string): { suites: EvalSuiteDefinition[];
   return { suites, errors }
 }
 
+export async function loadAllTriggers(dir: string): Promise<TriggerConfig[]> {
+  if (!existsSync(dir)) {
+    return []
+  }
+
+  const indexPath = join(dir, 'index.ts')
+  if (existsSync(indexPath)) {
+    return loadFromIndex<TriggerConfig>(indexPath)
+  }
+
+  return loadFromDirectory<TriggerConfig>(dir)
+}
+
 export function getResourceDirectories(cwd: string): {
   agents: string
   entityTypes: string
   roles: string
   tools: string
   evals: string
+  triggers: string
 } {
   return {
     agents: join(cwd, 'agents'),
@@ -174,6 +190,7 @@ export function getResourceDirectories(cwd: string): {
     roles: join(cwd, 'roles'),
     tools: join(cwd, 'tools'),
     evals: join(cwd, 'evals'),
+    triggers: join(cwd, 'triggers'),
   }
 }
 
