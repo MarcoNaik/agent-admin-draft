@@ -154,7 +154,7 @@ export const devCommand = new Command('dev')
 
     try {
       const resources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites`)
+      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites, ${resources.triggers.length} triggers`)
 
       for (const err of resources.errors) {
         console.log(chalk.red('  ✖'), err)
@@ -219,6 +219,7 @@ export const devCommand = new Command('dev')
       dirs.roles,
       dirs.tools,
       dirs.evals,
+      dirs.triggers,
       join(cwd, 'struere.config.ts'),
     ].filter((p) => existsSync(p))
 
