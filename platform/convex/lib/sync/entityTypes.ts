@@ -7,6 +7,8 @@ export interface EntityTypeInput {
   schema: Record<string, unknown>
   searchFields?: string[]
   displayConfig?: Record<string, unknown>
+  boundToRole?: string
+  userIdField?: string
 }
 
 export async function syncEntityTypes(
@@ -26,6 +28,18 @@ export async function syncEntityTypes(
   const existingBySlug = new Map(existingTypes.map((t) => [t.slug, t]))
   const inputSlugs = new Set(entityTypes.map((t) => t.slug))
 
+  const boundRoles = new Map<string, string>()
+  for (const et of entityTypes) {
+    if (et.boundToRole) {
+      if (boundRoles.has(et.boundToRole)) {
+        throw new Error(
+          `Multiple entity types bound to role "${et.boundToRole}": "${boundRoles.get(et.boundToRole)}" and "${et.slug}"`
+        )
+      }
+      boundRoles.set(et.boundToRole, et.slug)
+    }
+  }
+
   for (const entityType of entityTypes) {
     const existing = existingBySlug.get(entityType.slug)
 
@@ -35,6 +49,8 @@ export async function syncEntityTypes(
         schema: entityType.schema,
         searchFields: entityType.searchFields || [],
         displayConfig: entityType.displayConfig,
+        boundToRole: entityType.boundToRole,
+        userIdField: entityType.userIdField,
         updatedAt: now,
       })
       result.updated.push(entityType.slug)
@@ -47,6 +63,8 @@ export async function syncEntityTypes(
         schema: entityType.schema,
         searchFields: entityType.searchFields || [],
         displayConfig: entityType.displayConfig,
+        boundToRole: entityType.boundToRole,
+        userIdField: entityType.userIdField,
         createdAt: now,
         updatedAt: now,
       })
