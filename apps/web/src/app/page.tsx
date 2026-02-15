@@ -850,6 +850,27 @@ function Footer() {
           Struere: Agent Factory — AI agents for small businesses, built by
           people like you.
         </p>
+        <div
+          className={`flex justify-center gap-6 mt-6 transition-all duration-1000 ease-out ${
+            isVisible ? "opacity-50 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
+          style={{ transitionDelay: "200ms" }}
+        >
+          <a
+            href="/privacy-policy"
+            className="text-[10px] tracking-wider hover:opacity-100 transition-opacity"
+            style={{ color: "var(--text-accent)" }}
+          >
+            Privacy Policy
+          </a>
+          <a
+            href="/terms-of-service"
+            className="text-[10px] tracking-wider hover:opacity-100 transition-opacity"
+            style={{ color: "var(--text-accent)" }}
+          >
+            Terms of Service
+          </a>
+        </div>
       </div>
 
       <div
