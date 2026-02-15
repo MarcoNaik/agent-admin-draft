@@ -53,6 +53,8 @@ export interface SyncPayload {
     schema: unknown
     searchFields?: string[]
     displayConfig?: unknown
+    boundToRole?: string
+    userIdField?: string
   }>
   roles: Array<{
     name: string
@@ -137,6 +139,8 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
     schema: et.schema,
     searchFields: et.searchFields,
     displayConfig: et.displayConfig,
+    boundToRole: et.boundToRole,
+    userIdField: et.userIdField,
   }))
 
   const roles = resources.roles.map((role) => ({
