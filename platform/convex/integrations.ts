@@ -11,9 +11,7 @@ interface FlowConfig {
 }
 
 interface GoogleConfig {
-  clientId: string
-  clientSecret: string
-  refreshToken: string
+  enabled: boolean
 }
 
 interface ZoomConfig {
@@ -275,9 +273,9 @@ export const testConnection = action({
       }
 
       if (args.provider === "google") {
-        const googleConfig = config.config as GoogleConfig
-        if (!googleConfig.clientId || !googleConfig.refreshToken) {
-          return { success: false, message: "Missing required Google configuration" }
+        const clerkSecretKey = process.env.CLERK_SECRET_KEY
+        if (!clerkSecretKey) {
+          return { success: false, message: "CLERK_SECRET_KEY not configured in Convex environment" }
         }
 
         await ctx.runMutation(internal.integrations.patchConfigStatus, {
@@ -285,7 +283,7 @@ export const testConnection = action({
           status: "active",
           lastVerifiedAt: now,
         })
-        return { success: true, message: "Google configuration saved" }
+        return { success: true, message: "Google Calendar integration ready (uses Clerk OAuth)" }
       }
 
       if (args.provider === "zoom") {
