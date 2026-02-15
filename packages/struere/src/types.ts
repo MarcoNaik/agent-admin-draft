@@ -214,6 +214,8 @@ export interface EntityTypeConfig {
     subtitleField?: string
     descriptionField?: string
   }
+  boundToRole?: string
+  userIdField?: string
 }
 
 export interface JSONSchema {
