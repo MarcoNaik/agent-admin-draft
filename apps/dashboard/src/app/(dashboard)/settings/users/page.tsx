@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, Shield, User, UserPlus } from "lucide-react"
-import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles } from "@/hooks/use-convex-data"
+import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,7 +18,7 @@ import { InviteUserDialog } from "@/components/invite-user-dialog"
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
 
-function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] }) {
+function UserRow({ user, roles, entityTypes }: { user: Doc<"users">; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[] }) {
   const updateUser = useUpdateUser()
   const assignRole = useAssignRoleToUser()
   const removeRole = useRemoveRoleFromUser()
@@ -43,6 +43,18 @@ function UserRow({ user, roles }: { user: Doc<"users">; roles: Doc<"roles">[] })
         await removeRole({ userId: user._id })
       } else {
         await assignRole({ userId: user._id, roleId: value as Id<"roles"> })
+
+        const assignedRole = roles.find((r) => r._id === value)
+        if (assignedRole) {
+          const boundEntityType = entityTypes.find(
+            (et) => et.boundToRole === assignedRole.name
+          )
+          if (boundEntityType) {
+            alert(
+              `No ${boundEntityType.name} entity is linked to this user yet. Create one at /entities/${boundEntityType.slug}/new and set the ${boundEntityType.userIdField || "userId"} field to this user.`
+            )
+          }
+        }
       }
     } finally {
       setIsUpdating(false)
@@ -117,9 +129,10 @@ export default function UsersPage() {
   const { environment } = useEnvironment()
   const users = useUsers()
   const roles = useRoles(environment)
+  const entityTypes = useEntityTypes(environment)
   const [inviteOpen, setInviteOpen] = useState(false)
 
-  if (users === undefined || roles === undefined) {
+  if (users === undefined || roles === undefined || entityTypes === undefined) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -167,7 +180,7 @@ export default function UsersPage() {
             <div className="py-8 text-center text-content-secondary">No users found</div>
           ) : (
             users.map((user: Doc<"users">) => (
-              <UserRow key={user._id} user={user} roles={assignableRoles} />
+              <UserRow key={user._id} user={user} roles={assignableRoles} entityTypes={entityTypes ?? []} />
             ))
           )}
         </CardContent>
