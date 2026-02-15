@@ -9,20 +9,25 @@ async function resolveActorEntityId(
 ): Promise<Id<"entities"> | null> {
   if (actor.roleIds.length === 0) return null
 
-  const role = await ctx.db.get(actor.roleIds[0])
-  if (!role) return null
+  const roles = await Promise.all(actor.roleIds.map((id) => ctx.db.get(id)))
+  const roleNames = roles.filter(Boolean).map((r) => r!.name)
 
-  const actorEntityType = await ctx.db
+  const entityTypes = await ctx.db
     .query("entityTypes")
-    .withIndex("by_org_env_slug", (q) =>
+    .withIndex("by_org_env", (q) =>
       q
         .eq("organizationId", actor.organizationId)
         .eq("environment", actor.environment)
-        .eq("slug", role.name)
     )
-    .first()
+    .collect()
 
-  if (!actorEntityType) return null
+  const boundEntityType = entityTypes.find(
+    (et) => et.boundToRole && roleNames.includes(et.boundToRole)
+  )
+
+  if (!boundEntityType) return null
+
+  const userIdField = boundEntityType.userIdField || "userId"
 
   const actorEntity = await ctx.db
     .query("entities")
@@ -30,9 +35,9 @@ async function resolveActorEntityId(
       q
         .eq("organizationId", actor.organizationId)
         .eq("environment", actor.environment)
-        .eq("entityTypeId", actorEntityType._id)
+        .eq("entityTypeId", boundEntityType._id)
     )
-    .filter((q) => q.eq(q.field("data.userId"), actor.actorId))
+    .filter((q) => q.eq(q.field(`data.${userIdField}`), actor.actorId))
     .first()
 
   return actorEntity?._id ?? null
