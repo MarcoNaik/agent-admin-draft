@@ -412,3 +412,35 @@ export function useCancelEvalRun() {
 export function useReorderEvalCases() {
   return useMutation(api.evals.reorderCases)
 }
+
+export function useTriggers(environment?: Environment) {
+  return useQuery(api.triggers.list, { environment })
+}
+
+export function useCalendarConnection(environment?: Environment) {
+  return useQuery(api.calendar.getConnection, { environment })
+}
+
+export function useCalendarConnections(environment?: Environment) {
+  return useQuery(api.calendar.listConnections, { environment })
+}
+
+export function useConnectCalendar() {
+  return useMutation(api.calendar.connect)
+}
+
+export function useDisconnectCalendar() {
+  return useMutation(api.calendar.disconnect)
+}
+
+export function useSelectCalendar() {
+  return useMutation(api.calendar.selectCalendar)
+}
+
+export function useListUserCalendars() {
+  return useAction(api.calendar.listUserCalendars)
+}
+
+export function useVerifyCalendarConnection() {
+  return useAction(api.calendar.verifyConnection)
+}
