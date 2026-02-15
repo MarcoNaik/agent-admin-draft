@@ -64,6 +64,8 @@ export const create = mutation({
     indexMapping: v.optional(v.any()),
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
+    boundToRole: v.optional(v.string()),
+    userIdField: v.optional(v.string()),
     environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.id("entityTypes"),
@@ -101,6 +103,8 @@ export const create = mutation({
       indexMapping: args.indexMapping,
       searchFields: args.searchFields,
       displayConfig: args.displayConfig,
+      boundToRole: args.boundToRole,
+      userIdField: args.userIdField,
       createdAt: now,
       updatedAt: now,
     })
@@ -115,6 +119,8 @@ export const update = mutation({
     indexMapping: v.optional(v.any()),
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
+    boundToRole: v.optional(v.string()),
+    userIdField: v.optional(v.string()),
     environment: v.union(v.literal("development"), v.literal("production")),
   },
   returns: v.union(v.any(), v.null()),
@@ -142,6 +148,8 @@ export const update = mutation({
     if (args.searchFields !== undefined) updates.searchFields = args.searchFields
     if (args.displayConfig !== undefined)
       updates.displayConfig = args.displayConfig
+    if (args.boundToRole !== undefined) updates.boundToRole = args.boundToRole
+    if (args.userIdField !== undefined) updates.userIdField = args.userIdField
 
     await ctx.db.patch(args.id, updates)
     return await ctx.db.get(args.id)
