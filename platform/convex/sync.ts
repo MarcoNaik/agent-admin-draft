@@ -6,6 +6,7 @@ import {
   syncRoles,
   syncAgents,
   syncEvalSuites,
+  syncTriggers,
 } from "./lib/sync"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
@@ -135,6 +136,23 @@ export const syncOrganization = mutation({
         ),
       })
     )),
+    triggers: v.optional(v.array(
+      v.object({
+        name: v.string(),
+        slug: v.string(),
+        description: v.optional(v.string()),
+        entityType: v.string(),
+        action: v.string(),
+        condition: v.optional(v.any()),
+        actions: v.array(
+          v.object({
+            tool: v.string(),
+            args: v.any(),
+            as: v.optional(v.string()),
+          })
+        ),
+      })
+    )),
     preserveUnmanagedAgents: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -173,12 +191,23 @@ export const syncOrganization = mutation({
       )
     }
 
+    let triggersResult
+    if (args.triggers && args.triggers.length > 0) {
+      triggersResult = await syncTriggers(
+        ctx,
+        auth.organizationId,
+        args.triggers,
+        args.environment
+      )
+    }
+
     return {
       success: true,
       entityTypes: entityTypeResult,
       roles: roleResult,
       agents: agentResult,
       evalSuites: evalSuitesResult,
+      triggers: triggersResult,
     }
   },
 })
@@ -246,6 +275,13 @@ export const getSyncState = query({
 
     const activeEvalSuites = evalSuites.filter((s) => s.status === "active")
 
+    const triggers = await ctx.db
+      .query("triggers")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const enabledTriggers = triggers.filter((t) => t.enabled)
+
     return {
       agents: agentStates,
       entityTypes: entityTypes.map((t) => ({
@@ -257,6 +293,12 @@ export const getSyncState = query({
         slug: s.slug,
         name: s.name,
         agentId: s.agentId,
+      })),
+      triggers: enabledTriggers.map((t) => ({
+        slug: t.slug,
+        name: t.name,
+        entityType: t.entityType,
+        action: t.action,
       })),
     }
   },
@@ -397,10 +439,26 @@ export const getPullState = query({
       })
     )
 
+    const triggers = await ctx.db
+      .query("triggers")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const enabledTriggers = triggers.filter((t) => t.enabled)
+
     return {
       agents: agentStates,
       entityTypes: filteredEntityTypes,
       roles: filteredRoles,
+      triggers: enabledTriggers.map((t) => ({
+        name: t.name,
+        slug: t.slug,
+        description: t.description,
+        entityType: t.entityType,
+        action: t.action,
+        condition: t.condition,
+        actions: t.actions,
+      })),
     }
   },
 })
