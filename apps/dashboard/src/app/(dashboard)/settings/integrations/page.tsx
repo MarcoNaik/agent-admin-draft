@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { MessageSquare, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { useWhatsAppConnection } from "@/hooks/use-convex-data"
+import { MessageSquare, Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useWhatsAppConnection, useCalendarConnection } from "@/hooks/use-convex-data"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -55,10 +55,17 @@ function IntegrationCard({ name, description, href, icon, status }: IntegrationC
 
 export default function IntegrationsPage() {
   const whatsappConnection = useWhatsAppConnection("production")
+  const calendarConnection = useCalendarConnection("production")
 
   const getWhatsAppStatus = (): "active" | "inactive" | null => {
     if (whatsappConnection === undefined) return null
     if (whatsappConnection?.status === "connected") return "active"
+    return "inactive"
+  }
+
+  const getCalendarStatus = (): "active" | "inactive" | null => {
+    if (calendarConnection === undefined) return null
+    if (calendarConnection?.status === "connected") return "active"
     return "inactive"
   }
 
@@ -91,6 +98,17 @@ export default function IntegrationsPage() {
           href="/settings/integrations/whatsapp"
           icon={<MessageSquare className="h-5 w-5 text-primary" />}
           status={getWhatsAppStatus()}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Calendar & Scheduling</h2>
+        <IntegrationCard
+          name="Google Calendar"
+          description="Sync calendar events and check availability via Google Calendar"
+          href="/settings/integrations/google"
+          icon={<Calendar className="h-5 w-5 text-primary" />}
+          status={getCalendarStatus()}
         />
       </div>
     </div>
