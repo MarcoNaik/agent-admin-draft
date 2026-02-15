@@ -75,6 +75,8 @@ export default function EntityEditPage({ params }: EntityEditPageProps) {
     slug: entityType.slug,
     schema: entityType.schema,
     displayConfig: entityType.displayConfig,
+    boundToRole: entityType.boundToRole,
+    userIdField: entityType.userIdField,
   }
 
   const mappedEntity = {
