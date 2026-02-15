@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardCopy, Check } from "lucide-react"
+import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "lucide-react"
 import { useEntityTypeBySlug, useEntities } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EntityTable } from "@/components/entities/entity-table"
+import { Badge } from "@/components/ui/badge"
 import { Doc } from "@convex/_generated/dataModel"
 
 interface EntityListPageProps {
@@ -130,7 +131,15 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{entityType.name}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">{entityType.name}</h1>
+          {entityType.boundToRole && (
+            <Badge variant="outline" className="gap-1">
+              <Shield className="h-3 w-3" />
+              {entityType.boundToRole} role
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center border rounded-md">
             <Button variant="ghost" size="sm" className="h-8 px-2 rounded-r-none border-r">

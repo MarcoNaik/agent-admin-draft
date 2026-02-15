@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, Shield, User, UserPlus } from "lucide-react"
-import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes } from "@/hooks/use-convex-data"
+import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes, useCreateEntity } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,17 +13,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Doc, Id } from "@convex/_generated/dataModel"
 import { InviteUserDialog } from "@/components/invite-user-dialog"
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
 
 function UserRow({ user, roles, entityTypes }: { user: Doc<"users">; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[] }) {
+  const { environment } = useEnvironment()
   const updateUser = useUpdateUser()
   const assignRole = useAssignRoleToUser()
   const removeRole = useRemoveRoleFromUser()
+  const createEntity = useCreateEntity()
   const userRoles = useUserRoles(user._id)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [pendingEntityCreation, setPendingEntityCreation] = useState<Doc<"entityTypes"> | null>(null)
+  const [isCreatingEntity, setIsCreatingEntity] = useState(false)
 
   const currentRole = userRoles?.find((ur: UserRoleWithDetails) => ur.role !== null)
 
@@ -50,14 +62,42 @@ function UserRow({ user, roles, entityTypes }: { user: Doc<"users">; roles: Doc<
             (et) => et.boundToRole === assignedRole.name
           )
           if (boundEntityType) {
-            alert(
-              `No ${boundEntityType.name} entity is linked to this user yet. Create one at /entities/${boundEntityType.slug}/new and set the ${boundEntityType.userIdField || "userId"} field to this user.`
-            )
+            setPendingEntityCreation(boundEntityType)
           }
         }
       }
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const handleCreateBoundEntity = async () => {
+    if (!pendingEntityCreation) return
+    setIsCreatingEntity(true)
+    try {
+      const userIdField = pendingEntityCreation.userIdField || "userId"
+      const schema = pendingEntityCreation.schema as { properties?: Record<string, unknown>; required?: string[] } | undefined
+      const properties = schema?.properties || {}
+
+      const data: Record<string, unknown> = {
+        [userIdField]: user.clerkUserId,
+      }
+      if ("name" in properties && user.name) {
+        data.name = user.name
+      }
+      if ("email" in properties && user.email) {
+        data.email = user.email
+      }
+
+      await createEntity({
+        entityTypeSlug: pendingEntityCreation.slug,
+        environment,
+        data,
+        status: "active",
+      })
+      setPendingEntityCreation(null)
+    } finally {
+      setIsCreatingEntity(false)
     }
   }
 
@@ -121,6 +161,30 @@ function UserRow({ user, roles, entityTypes }: { user: Doc<"users">; roles: Doc<
         </div>
         {isUpdating && <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />}
       </div>
+
+      <Dialog open={!!pendingEntityCreation} onOpenChange={(open) => !open && setPendingEntityCreation(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create {pendingEntityCreation?.name} Entity</DialogTitle>
+            <DialogDescription>
+              No {pendingEntityCreation?.name} entity is linked to {user.name || user.email} yet. Would you like to create one now?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-sm text-content-secondary space-y-1">
+            {user.name && <p>Name: {user.name}</p>}
+            <p>Email: {user.email}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingEntityCreation(null)} disabled={isCreatingEntity}>
+              Skip
+            </Button>
+            <Button onClick={handleCreateBoundEntity} disabled={isCreatingEntity}>
+              {isCreatingEntity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create {pendingEntityCreation?.name}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
