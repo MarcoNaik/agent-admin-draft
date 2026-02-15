@@ -1,5 +1,5 @@
 import type { LoadedResources } from './loader'
-import type { AgentConfigV2, ToolReference } from '../../types'
+import type { AgentConfigV2, ToolReference, TriggerConfig } from '../../types'
 
 function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' {
   if (modelName.startsWith('gpt-') || modelName.startsWith('o1') || modelName.startsWith('o3') || modelName.startsWith('o4')) return 'openai'
@@ -19,6 +19,11 @@ const BUILTIN_TOOLS = [
   'event.query',
   'job.enqueue',
   'job.status',
+  'calendar.list',
+  'calendar.create',
+  'calendar.update',
+  'calendar.delete',
+  'calendar.freeBusy',
 ]
 
 export interface SyncPayload {
@@ -103,6 +108,19 @@ export interface SyncPayload {
       }>
     }>
   }>
+  triggers?: Array<{
+    name: string
+    slug: string
+    description?: string
+    entityType: string
+    action: string
+    condition?: Record<string, unknown>
+    actions: Array<{
+      tool: string
+      args: Record<string, unknown>
+      as?: string
+    }>
+  }>
 }
 
 export function extractSyncPayload(resources: LoadedResources): SyncPayload {
@@ -168,7 +186,23 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
       }))
     : undefined
 
-  return { agents, entityTypes, roles, evalSuites }
+  const triggers = resources.triggers.length > 0
+    ? resources.triggers.map((t) => ({
+        name: t.name,
+        slug: t.slug,
+        description: t.description,
+        entityType: t.on.entityType,
+        action: t.on.action,
+        condition: t.on.condition,
+        actions: t.actions.map((a) => ({
+          tool: a.tool,
+          args: a.args,
+          as: a.as,
+        })),
+      }))
+    : undefined
+
+  return { agents, entityTypes, roles, evalSuites, triggers }
 }
 
 function extractAgentPayload(
@@ -244,6 +278,11 @@ function getBuiltinToolDescription(name: string): string {
     'event.query': 'Query historical events with optional filters',
     'job.enqueue': 'Schedule a background job to run later',
     'job.status': 'Get the status of a scheduled job',
+    'calendar.list': 'List Google Calendar events for a user within a time range',
+    'calendar.create': 'Create a Google Calendar event on a user\'s calendar',
+    'calendar.update': 'Update an existing Google Calendar event',
+    'calendar.delete': 'Delete a Google Calendar event',
+    'calendar.freeBusy': 'Check free/busy availability on a user\'s Google Calendar',
   }
   return descriptions[name] || name
 }
@@ -350,6 +389,60 @@ function getBuiltinToolParameters(name: string): unknown {
         id: { type: 'string', description: 'The job ID to check' },
       },
       required: ['id'],
+    },
+    'calendar.list': {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', description: 'User ID (Convex or Clerk) whose calendar to query' },
+        timeMin: { type: 'string', description: 'Start of time range (ISO 8601 datetime)' },
+        timeMax: { type: 'string', description: 'End of time range (ISO 8601 datetime)' },
+        maxResults: { type: 'number', description: 'Maximum number of events to return' },
+      },
+      required: ['userId', 'timeMin', 'timeMax'],
+    },
+    'calendar.create': {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', description: 'User ID (Convex or Clerk) whose calendar to create the event on' },
+        summary: { type: 'string', description: 'Event title' },
+        startTime: { type: 'string', description: 'Event start time (ISO 8601 datetime)' },
+        endTime: { type: 'string', description: 'Event end time (ISO 8601 datetime)' },
+        description: { type: 'string', description: 'Event description' },
+        attendees: { type: 'array', items: { type: 'string' }, description: 'List of attendee email addresses' },
+        timeZone: { type: 'string', description: 'Time zone (e.g., "America/Santiago")' },
+      },
+      required: ['userId', 'summary', 'startTime', 'endTime'],
+    },
+    'calendar.update': {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', description: 'User ID (Convex or Clerk) whose calendar contains the event' },
+        eventId: { type: 'string', description: 'Google Calendar event ID to update' },
+        summary: { type: 'string', description: 'New event title' },
+        startTime: { type: 'string', description: 'New start time (ISO 8601 datetime)' },
+        endTime: { type: 'string', description: 'New end time (ISO 8601 datetime)' },
+        description: { type: 'string', description: 'New event description' },
+        attendees: { type: 'array', items: { type: 'string' }, description: 'Updated list of attendee emails' },
+        status: { type: 'string', description: 'Event status (confirmed, tentative, cancelled)' },
+      },
+      required: ['userId', 'eventId'],
+    },
+    'calendar.delete': {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', description: 'User ID (Convex or Clerk) whose calendar contains the event' },
+        eventId: { type: 'string', description: 'Google Calendar event ID to delete' },
+      },
+      required: ['userId', 'eventId'],
+    },
+    'calendar.freeBusy': {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', description: 'User ID (Convex or Clerk) whose availability to check' },
+        timeMin: { type: 'string', description: 'Start of time range (ISO 8601 datetime)' },
+        timeMax: { type: 'string', description: 'End of time range (ISO 8601 datetime)' },
+      },
+      required: ['userId', 'timeMin', 'timeMax'],
     },
   }
   return schemas[name] || { type: 'object', properties: {} }
