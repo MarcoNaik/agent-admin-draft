@@ -384,7 +384,7 @@ Always be concise, accurate, and helpful.\`,
 `
 }
 
-export function getIndexTs(type: 'agents' | 'entity-types' | 'roles'): string {
+export function getIndexTs(type: 'agents' | 'entity-types' | 'roles' | 'triggers'): string {
   return `// Export all ${type} from this directory
 // Example: export { default as myAgent } from './my-agent'
 `
@@ -517,6 +517,7 @@ Struere is a framework for building production AI agents with Convex as the real
 │  ├── agents/*.ts        → Agent configs synced to Convex        │
 │  ├── entity-types/*.ts  → Schema definitions synced to Convex   │
 │  ├── roles/*.ts         → RBAC policies synced to Convex        │
+│  ├── triggers/*.ts      → Automation rules synced to Convex     │
 │  ├── tools/index.ts     → Custom tools (run on CF Worker)       │
 │  └── evals/*.eval.yaml  → Test suites (synced + executed)       │
 └─────────────────────┬───────────────────────────────────────────┘
@@ -553,6 +554,10 @@ entity-types/        # Data schemas (like DB tables)
 roles/               # RBAC: who can do what
 ├── admin.ts         # Full access
 ├── support.ts       # Limited access
+└── index.ts
+
+triggers/            # Automation rules (react to entity changes)
+├── notify-on-create.ts
 └── index.ts
 
 tools/               # Custom tools shared by all agents
@@ -595,6 +600,7 @@ export default defineConfig({
 | \`struere add agent <name>\` | Create agents/name.ts with template |
 | \`struere add entity-type <name>\` | Create entity-types/name.ts |
 | \`struere add role <name>\` | Create roles/name.ts |
+| \`struere add trigger <name>\` | Create triggers/name.ts with template |
 | \`struere add eval <name>\` | Create evals/name.eval.yaml with template |
 | \`struere eval\` | Run all eval suites |
 | \`struere eval --suite <name>\` | Run a specific eval suite |
@@ -816,6 +822,103 @@ Custom tool handlers can only fetch from:
 - api.openai.com, api.anthropic.com
 - api.stripe.com, api.sendgrid.com, api.twilio.com
 - hooks.slack.com, discord.com, api.github.com
+
+## Defining Triggers
+
+Triggers are automated actions that fire when entities are created, updated, or deleted. They run asynchronously after the mutation completes.
+
+Create \\\`triggers/notify-on-session.ts\\\`:
+\\\`\\\`\\\`typescript
+import { defineTrigger } from 'struere'
+
+export default defineTrigger({
+  name: "Notify Teacher on New Session",
+  slug: "notify-teacher-on-session",
+  on: {
+    entityType: "session",
+    action: "created",
+    condition: { "data.status": "scheduled" }  // optional
+  },
+  actions: [
+    {
+      tool: "entity.get",
+      args: { id: "{{trigger.data.teacherId}}" },
+      as: "teacher"  // store result for later steps
+    },
+    {
+      tool: "event.emit",
+      args: {
+        eventType: "notification.sent",
+        entityId: "{{trigger.entityId}}",
+        payload: {
+          teacherName: "{{steps.teacher.data.name}}",
+          sessionTime: "{{trigger.data.startTime}}"
+        }
+      }
+    }
+  ]
+})
+\\\`\\\`\\\`
+
+### Trigger Config
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| \\\`name\\\` | Yes | Display name |
+| \\\`slug\\\` | Yes | Unique identifier (used for sync) |
+| \\\`on.entityType\\\` | Yes | Entity type slug to watch |
+| \\\`on.action\\\` | Yes | \\\`"created"\\\`, \\\`"updated"\\\`, or \\\`"deleted"\\\` |
+| \\\`on.condition\\\` | No | Dot-notation equality conditions on entity data |
+| \\\`actions\\\` | Yes | Ordered list of tool calls to execute |
+
+### Action Pipeline
+
+Each action in the \\\`actions\\\` array runs sequentially:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| \\\`tool\\\` | Yes | Built-in or custom tool name |
+| \\\`args\\\` | Yes | Arguments (supports \\\`{{template}}\\\` variables) |
+| \\\`as\\\` | No | Store result under this name for later steps |
+
+### Template Variables
+
+Use \\\`{{...}}\\\` in action args to reference trigger context and previous step results:
+
+| Variable | Description |
+|----------|-------------|
+| \\\`{{trigger.entityId}}\\\` | ID of the entity that changed |
+| \\\`{{trigger.entityType}}\\\` | Entity type slug |
+| \\\`{{trigger.action}}\\\` | \\\`"created"\\\`, \\\`"updated"\\\`, or \\\`"deleted"\\\` |
+| \\\`{{trigger.data.X}}\\\` | Entity data field (e.g. \\\`{{trigger.data.email}}\\\`) |
+| \\\`{{trigger.previousData.X}}\\\` | Previous value (updates/deletes only) |
+| \\\`{{steps.NAME.X}}\\\` | Result from a prior action with \\\`as: "NAME"\\\` |
+
+### Conditions
+
+Conditions use dot-notation path equality matching:
+\\\`\\\`\\\`typescript
+condition: {
+  "data.status": "scheduled",       // field must equal value
+  "data.priority": "high"           // all conditions must match (AND)
+}
+\\\`\\\`\\\`
+
+### Execution Model
+
+- **Async**: Triggers are scheduled after the mutation, keeping writes fast
+- **System actor**: Actions execute with full admin access (not the user's role)
+- **Fail-fast**: If any action fails, remaining actions are skipped
+- **Events**: Emits \\\`trigger.executed\\\` on success, \\\`trigger.failed\\\` on error
+- **Both paths**: Triggers fire from dashboard CRUD, agent tool calls, and API mutations
+
+### Scaffold a new trigger
+
+\\\`\\\`\\\`bash
+struere add trigger my-trigger
+\\\`\\\`\\\`
+
+Creates \\\`triggers/my-trigger.ts\\\` with a starter template.
 
 ## Built-in Tools Reference
 
@@ -1073,6 +1176,30 @@ Always confirm what was created/updated.\\\`,
   tools: ["entity.create", "entity.update", "entity.query"],
 })
 \`\`\`
+`
+}
+
+export function getTriggerTs(name: string, slug: string): string {
+  return `import { defineTrigger } from 'struere'
+
+export default defineTrigger({
+  name: "${name}",
+  slug: "${slug}",
+  on: {
+    entityType: "ENTITY_TYPE_HERE",
+    action: "created",
+  },
+  actions: [
+    {
+      tool: "event.emit",
+      args: {
+        eventType: "trigger.${slug}.fired",
+        entityId: "{{trigger.entityId}}",
+        payload: { triggeredBy: "${slug}" },
+      },
+    },
+  ],
+})
 `
 }
 
