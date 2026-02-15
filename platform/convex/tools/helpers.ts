@@ -48,6 +48,11 @@ export const BUILTIN_TOOLS = [
   "event.query",
   "job.enqueue",
   "job.status",
+  "calendar.list",
+  "calendar.create",
+  "calendar.update",
+  "calendar.delete",
+  "calendar.freeBusy",
 ] as const
 
 export type BuiltinToolName = (typeof BUILTIN_TOOLS)[number]
