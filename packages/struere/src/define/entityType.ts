@@ -42,8 +42,21 @@ export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig {
     }
   }
 
+  if (config.boundToRole !== undefined && config.boundToRole === '') {
+    throw new Error('boundToRole cannot be an empty string')
+  }
+
+  if (config.userIdField !== undefined && !config.boundToRole) {
+    throw new Error('userIdField requires boundToRole to be set')
+  }
+
+  const userIdField = config.boundToRole && !config.userIdField
+    ? 'userId'
+    : config.userIdField
+
   return {
     ...config,
     searchFields: config.searchFields || [],
+    userIdField,
   }
 }
