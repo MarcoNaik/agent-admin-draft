@@ -971,6 +971,69 @@ async function executeBuiltinTool(
         id: args.id as string,
       })
 
+    case "calendar.list":
+      if (!args.userId) throw new Error("calendar.list requires 'userId' parameter")
+      if (!args.timeMin) throw new Error("calendar.list requires 'timeMin' parameter")
+      if (!args.timeMax) throw new Error("calendar.list requires 'timeMax' parameter")
+      return await ctx.runAction(internal.tools.calendar.calendarList, {
+        organizationId, actorId, actorType, environment,
+        userId: args.userId as string,
+        timeMin: args.timeMin as string,
+        timeMax: args.timeMax as string,
+        maxResults: args.maxResults as number | undefined,
+      })
+
+    case "calendar.create":
+      if (!args.userId) throw new Error("calendar.create requires 'userId' parameter")
+      if (!args.summary) throw new Error("calendar.create requires 'summary' parameter")
+      if (!args.startTime) throw new Error("calendar.create requires 'startTime' parameter")
+      if (!args.endTime) throw new Error("calendar.create requires 'endTime' parameter")
+      return await ctx.runAction(internal.tools.calendar.calendarCreate, {
+        organizationId, actorId, actorType, environment,
+        userId: args.userId as string,
+        summary: args.summary as string,
+        startTime: args.startTime as string,
+        endTime: args.endTime as string,
+        description: args.description as string | undefined,
+        attendees: args.attendees as string[] | undefined,
+        timeZone: args.timeZone as string | undefined,
+      })
+
+    case "calendar.update":
+      if (!args.userId) throw new Error("calendar.update requires 'userId' parameter")
+      if (!args.eventId) throw new Error("calendar.update requires 'eventId' parameter")
+      return await ctx.runAction(internal.tools.calendar.calendarUpdate, {
+        organizationId, actorId, actorType, environment,
+        userId: args.userId as string,
+        eventId: args.eventId as string,
+        summary: args.summary as string | undefined,
+        startTime: args.startTime as string | undefined,
+        endTime: args.endTime as string | undefined,
+        description: args.description as string | undefined,
+        attendees: args.attendees as string[] | undefined,
+        status: args.status as string | undefined,
+      })
+
+    case "calendar.delete":
+      if (!args.userId) throw new Error("calendar.delete requires 'userId' parameter")
+      if (!args.eventId) throw new Error("calendar.delete requires 'eventId' parameter")
+      return await ctx.runAction(internal.tools.calendar.calendarDelete, {
+        organizationId, actorId, actorType, environment,
+        userId: args.userId as string,
+        eventId: args.eventId as string,
+      })
+
+    case "calendar.freeBusy":
+      if (!args.userId) throw new Error("calendar.freeBusy requires 'userId' parameter")
+      if (!args.timeMin) throw new Error("calendar.freeBusy requires 'timeMin' parameter")
+      if (!args.timeMax) throw new Error("calendar.freeBusy requires 'timeMax' parameter")
+      return await ctx.runAction(internal.tools.calendar.calendarFreeBusy, {
+        organizationId, actorId, actorType, environment,
+        userId: args.userId as string,
+        timeMin: args.timeMin as string,
+        timeMax: args.timeMax as string,
+      })
+
     default:
       throw new Error(`Unknown builtin tool: ${toolName}`)
   }
