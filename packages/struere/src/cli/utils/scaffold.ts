@@ -19,6 +19,7 @@ import {
   getClaudeMDV2,
   getEntityTypeTs,
   getRoleTs,
+  getTriggerTs,
   getIndexTs,
   getExampleEvalYaml,
   getEvalYamlTemplate,
@@ -176,6 +177,7 @@ export function scaffoldProjectV2(cwd: string, options: ScaffoldOptionsV2): Scaf
     'roles',
     'tools',
     'evals',
+    'triggers',
   ]
 
   for (const dir of directories) {
@@ -197,6 +199,7 @@ export function scaffoldProjectV2(cwd: string, options: ScaffoldOptionsV2): Scaf
     'entity-types/index.ts': getIndexTs('entity-types'),
     'roles/index.ts': getIndexTs('roles'),
     'tools/index.ts': getToolsIndexTs(),
+    'triggers/index.ts': getIndexTs('triggers'),
     'evals/basic-agent-tests.eval.yaml': getExampleEvalYaml('my-agent'),
   }
 
@@ -309,6 +312,30 @@ export function scaffoldEval(cwd: string, name: string, slug: string, agentSlug:
 
   writeFileSync(filePath, getEvalYamlTemplate(displayName, slug, agentSlug))
   result.createdFiles.push(`evals/${fileName}`)
+
+  return result
+}
+
+export function scaffoldTrigger(cwd: string, name: string, slug: string): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const triggersDir = join(cwd, 'triggers')
+  if (!existsSync(triggersDir)) {
+    mkdirSync(triggersDir, { recursive: true })
+  }
+
+  const fileName = `${slug}.ts`
+  const filePath = join(triggersDir, fileName)
+
+  if (existsSync(filePath)) {
+    return result
+  }
+
+  writeFileSync(filePath, getTriggerTs(name, slug))
+  result.createdFiles.push(`triggers/${fileName}`)
 
   return result
 }
