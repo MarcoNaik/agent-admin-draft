@@ -16,6 +16,7 @@ import {
   FieldMaskResult,
 } from "./lib/permissions"
 import { Environment } from "./lib/permissions/types"
+import { checkAndScheduleTriggers } from "./lib/triggers"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -272,6 +273,15 @@ export const create = mutation({
       timestamp: now,
     })
 
+    await checkAndScheduleTriggers(ctx, {
+      organizationId: auth.organizationId,
+      environment,
+      entityTypeSlug: args.entityTypeSlug,
+      action: "created",
+      entityId,
+      data: args.data,
+    })
+
     return entityId
   },
 })
@@ -356,6 +366,16 @@ export const update = mutation({
       timestamp: now,
     })
 
+    await checkAndScheduleTriggers(ctx, {
+      organizationId: auth.organizationId,
+      environment,
+      entityTypeSlug: entityType.slug,
+      action: "updated",
+      entityId: args.id,
+      data: mergedData,
+      previousData: entity.data,
+    })
+
     return await ctx.db.get(args.id)
   },
 })
@@ -421,6 +441,16 @@ export const remove = mutation({
       actorType: actor.actorType,
       payload: { previousData: entity.data },
       timestamp: now,
+    })
+
+    await checkAndScheduleTriggers(ctx, {
+      organizationId: auth.organizationId,
+      environment,
+      entityTypeSlug: entityType.slug,
+      action: "deleted",
+      entityId: args.id,
+      data: entity.data,
+      previousData: entity.data,
     })
 
     return { success: true }
