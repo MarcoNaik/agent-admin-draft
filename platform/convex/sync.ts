@@ -46,6 +46,8 @@ export const syncOrganization = mutation({
         schema: v.any(),
         searchFields: v.optional(v.array(v.string())),
         displayConfig: v.optional(v.any()),
+        boundToRole: v.optional(v.string()),
+        userIdField: v.optional(v.string()),
       })
     ),
     roles: v.array(
@@ -287,6 +289,7 @@ export const getSyncState = query({
       entityTypes: entityTypes.map((t) => ({
         slug: t.slug,
         name: t.name,
+        boundToRole: t.boundToRole,
       })),
       roles: roleWithPolicyCounts,
       evalSuites: activeEvalSuites.map((s) => ({
@@ -323,6 +326,8 @@ export const getPullState = query({
       schema: et.schema,
       searchFields: et.searchFields,
       displayConfig: et.displayConfig,
+      boundToRole: et.boundToRole,
+      userIdField: et.userIdField,
     }))
 
     const roles = await ctx.db
