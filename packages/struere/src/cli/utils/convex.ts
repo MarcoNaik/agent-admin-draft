@@ -627,6 +627,7 @@ export interface SyncState {
   entityTypes: Array<{ slug: string; name: string }>
   roles: Array<{ name: string; policyCount: number }>
   evalSuites?: Array<{ slug: string; name: string; agentId: string }>
+  triggers?: Array<{ slug: string; name: string; entityType: string; action: string }>
 }
 
 export async function getSyncState(organizationId?: string, environment?: 'development' | 'production'): Promise<{ state?: SyncState; error?: string }> {
