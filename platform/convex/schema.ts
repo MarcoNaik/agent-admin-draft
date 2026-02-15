@@ -104,6 +104,8 @@ export default defineSchema({
     indexMapping: v.optional(v.any()),
     searchFields: v.optional(v.array(v.string())),
     displayConfig: v.optional(v.any()),
+    boundToRole: v.optional(v.string()),
+    userIdField: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
