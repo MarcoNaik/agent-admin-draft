@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 
@@ -43,6 +44,9 @@ interface EntityTableProps {
   entityType: EntityType
   entities: Entity[]
   onRowClick?: (entity: Entity) => void
+  sortField?: string | null
+  sortDirection?: "asc" | "desc"
+  onSort?: (field: string) => void
 }
 
 function formatSimpleValue(value: unknown): string {
@@ -131,7 +135,16 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
   }
 }
 
-export function EntityTable({ entityType, entities, onRowClick }: EntityTableProps) {
+function SortIcon({ field, sortField, sortDirection }: { field: string; sortField?: string | null; sortDirection?: "asc" | "desc" }) {
+  if (sortField !== field) {
+    return <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+  }
+  return sortDirection === "asc"
+    ? <ArrowUp className="h-3 w-3" />
+    : <ArrowDown className="h-3 w-3" />
+}
+
+export function EntityTable({ entityType, entities, onRowClick, sortField, sortDirection, onSort }: EntityTableProps) {
   const router = useRouter()
 
   const schemaFields = getSchemaFields(entityType.schema)
@@ -161,12 +174,35 @@ export function EntityTable({ entityType, entities, onRowClick }: EntityTablePro
         <thead>
           <tr className="border-b">
             {columns.map((col) => (
-              <th key={col} className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                {formatFieldName(col)}
+              <th
+                key={col}
+                onClick={() => onSort?.(col)}
+                className="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer select-none group"
+              >
+                <span className="inline-flex items-center gap-1">
+                  {formatFieldName(col)}
+                  <SortIcon field={col} sortField={sortField} sortDirection={sortDirection} />
+                </span>
               </th>
             ))}
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Created</th>
+            <th
+              onClick={() => onSort?.("status")}
+              className="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer select-none group"
+            >
+              <span className="inline-flex items-center gap-1">
+                Status
+                <SortIcon field="status" sortField={sortField} sortDirection={sortDirection} />
+              </span>
+            </th>
+            <th
+              onClick={() => onSort?.("createdAt")}
+              className="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer select-none group"
+            >
+              <span className="inline-flex items-center gap-1">
+                Created
+                <SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>

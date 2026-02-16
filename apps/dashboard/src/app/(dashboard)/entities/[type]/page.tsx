@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Filter, Plus, Layers, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "lucide-react"
-import { useEntityTypeBySlug, useEntities } from "@/hooks/use-convex-data"
+import { Search, Filter, Plus, Layers, Loader2, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "lucide-react"
+import { useEntityTypeBySlug, useEntities, useSearchEntities } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +34,8 @@ const STATUS_OPTIONS = [
   { value: "failed", label: "Failed" },
 ]
 
+const PAGE_SIZE = 25
+
 export default function EntityListPage({ params }: EntityListPageProps) {
   const { type: typeSlug } = params
   const router = useRouter()
@@ -41,10 +43,83 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
   const [csvCopied, setCsvCopied] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [sortField, setSortField] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { environment } = useEnvironment()
 
   const entityType = useEntityTypeBySlug(typeSlug, environment)
   const entities = useEntities(typeSlug, environment, status !== "all" ? status : undefined)
+  const searchResults = useSearchEntities(typeSlug, search.length >= 2 ? search : "", environment)
+
+  const sourceEntities = useMemo(() => {
+    if (search.length >= 2 && searchResults) {
+      if (status === "all") return searchResults as Doc<"entities">[]
+      return (searchResults as Doc<"entities">[]).filter((e) => e.status === status)
+    }
+    return (entities ?? []) as Doc<"entities">[]
+  }, [search, searchResults, entities, status])
+
+  const sortedEntities = useMemo(() => {
+    if (!sortField) return sourceEntities
+    return [...sourceEntities].sort((a, b) => {
+      let aVal: unknown
+      let bVal: unknown
+
+      if (sortField === "status") {
+        aVal = a.status
+        bVal = b.status
+      } else if (sortField === "createdAt") {
+        aVal = a.createdAt
+        bVal = b.createdAt
+      } else {
+        aVal = a.data?.[sortField]
+        bVal = b.data?.[sortField]
+      }
+
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+
+      let cmp: number
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        cmp = aVal - bVal
+      } else {
+        cmp = String(aVal).localeCompare(String(bVal))
+      }
+
+      return sortDirection === "asc" ? cmp : -cmp
+    })
+  }, [sourceEntities, sortField, sortDirection])
+
+  const totalPages = Math.ceil(sortedEntities.length / PAGE_SIZE)
+
+  const paginatedEntities = useMemo(() => {
+    const start = currentPage * PAGE_SIZE
+    return sortedEntities.slice(start, start + PAGE_SIZE)
+  }, [sortedEntities, currentPage])
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value)
+    setCurrentPage(0)
+  }, [])
+
+  const handleStatusChange = useCallback((value: string) => {
+    setStatus(value)
+    setCurrentPage(0)
+  }, [])
+
+  const handleSort = useCallback((field: string) => {
+    setCurrentPage(0)
+    setSortField((prev) => {
+      if (prev === field) {
+        setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
+        return field
+      }
+      setSortDirection("asc")
+      return field
+    })
+  }, [])
 
   if (entityType === undefined || entities === undefined) {
     return (
@@ -76,10 +151,6 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     )
   }
 
-  const filteredEntities = search
-    ? entities.filter((e: Doc<"entities">) => JSON.stringify(e.data).toLowerCase().includes(search.toLowerCase()))
-    : entities
-
   const mappedEntityType = {
     id: entityType._id,
     name: entityType.name,
@@ -102,7 +173,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   const handleCopyCsv = async () => {
     const columns = ["id", ...allSchemaFields, "status", "createdAt", "updatedAt"]
     const header = columns.join(",")
-    const rows = entities.map((e: Doc<"entities">) => {
+    const rows = sortedEntities.map((e: Doc<"entities">) => {
       const data = e.data || {}
       return columns
         .map((col) => {
@@ -120,13 +191,15 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     setTimeout(() => setCsvCopied(false), 2000)
   }
 
-  const mappedEntities = filteredEntities.map((e: Doc<"entities">) => ({
+  const mappedEntities = paginatedEntities.map((e: Doc<"entities">) => ({
     id: e._id,
     status: e.status || "active",
     data: e.data || {},
     createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : new Date().toISOString(),
     updatedAt: e.updatedAt ? new Date(e.updatedAt).toISOString() : new Date().toISOString(),
   }))
+
+  const pageDisplay = totalPages === 0 ? "0 / 0" : `${currentPage + 1} / ${totalPages}`
 
   return (
     <div className="space-y-4">
@@ -142,14 +215,27 @@ export default function EntityListPage({ params }: EntityListPageProps) {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center border rounded-md">
-            <Button variant="ghost" size="sm" className="h-8 px-2 rounded-r-none border-r">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 rounded-r-none border-r"
+              disabled={currentPage === 0}
+              onClick={() => setCurrentPage((p) => p - 1)}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 px-2 rounded-l-none">
+            <span className="px-2 text-xs text-muted-foreground tabular-nums">{pageDisplay}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 rounded-l-none"
+              disabled={currentPage >= totalPages - 1}
+              onClick={() => setCurrentPage((p) => p + 1)}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger className="h-8 w-[130px] text-sm">
               <Filter className="mr-1.5 h-3.5 w-3.5" />
               <SelectValue />
@@ -167,7 +253,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
             size="sm"
             className="h-8"
             onClick={handleCopyCsv}
-            disabled={!entities || entities.length === 0}
+            disabled={sortedEntities.length === 0}
           >
             {csvCopied ? (
               <Check className="mr-1.5 h-3.5 w-3.5 text-green-500" />
@@ -191,16 +277,16 @@ export default function EntityListPage({ params }: EntityListPageProps) {
         <div className="bg-muted/30 border-b px-3 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">
-              {filteredEntities.length} {filteredEntities.length === 1 ? "document" : "documents"}
+              {sortedEntities.length} {sortedEntities.length === 1 ? "document" : "documents"}
             </span>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Filter..."
+              placeholder="Search..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="h-7 pl-8 w-[180px] text-sm"
             />
           </div>
@@ -209,6 +295,9 @@ export default function EntityListPage({ params }: EntityListPageProps) {
           entityType={mappedEntityType}
           entities={mappedEntities}
           onRowClick={(entity) => router.push(`/entities/${typeSlug}/${entity.id}`)}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
         />
       </div>
     </div>
