@@ -677,7 +677,7 @@ export default defineTrigger({
 
 ### Built-in Tools Reference
 
-Agents can enable any combination of these 11 built-in tools:
+Agents can enable any combination of these built-in tools:
 
 | Tool | Category | Description |
 |------|----------|-------------|
@@ -692,6 +692,7 @@ Agents can enable any combination of these 11 built-in tools:
 | `event.query` | Event | Query historical events with filters |
 | `job.enqueue` | Job | Schedule a background job |
 | `job.status` | Job | Check the status of a scheduled job |
+| `agent.chat` | Agent | Send a message to another agent and get its response |
 
 **Tool Parameters:**
 
@@ -707,6 +708,7 @@ Agents can enable any combination of these 11 built-in tools:
 "event.query": { eventType?: string, entityId?: string, since?: number, limit?: number }
 "job.enqueue": { jobType: string, payload?: object, runAt?: number }
 "job.status": { jobId: string }
+"agent.chat": { agent: string, message: string, context?: object }
 ```
 
 ### Model Configuration
@@ -1095,6 +1097,25 @@ All tools are permission-aware and pass actor context:
 | `event.query` | `tools.events.eventQuery` | Query events (visibility filtered) |
 | `job.enqueue` | `tools.jobs.jobEnqueue` | Schedule job (preserves actor) |
 | `job.status` | `tools.jobs.jobStatus` | Get job status |
+| `agent.chat` | `tools.agents.agentChat` | Delegate to another agent (internalAction) |
+
+### Multi-Agent Communication (`agent.chat`)
+
+The `agent.chat` tool enables agents to delegate work to other agents within the same organization and environment. The calling agent waits for the target agent's response synchronously.
+
+**Flow**: Caller agent → `executeBuiltinTool` → `tools.agents.agentChat` (internalAction) → resolves target agent by slug → creates thread with shared `conversationId` → calls `executeChatAction` → target agent runs its own LLM loop with its own config/tools/permissions → response returns as tool result to caller.
+
+**Key files**:
+- `tools/agents.ts` — `agentChat` internalAction (target resolution, depth/cycle checks, thread creation, delegation)
+- `agent.ts` — `executeChatAction` internalAction (serializable wrapper around `executeChat`), `agent.chat` case in `executeBuiltinTool`
+
+**Safety**:
+- Depth limit: `MAX_AGENT_DEPTH = 3` (prevents unbounded chains)
+- Cycle detection: Target slug checked against caller slug
+- Per-agent iteration cap: Existing `stepCountIs(10)` limits each agent's LLM loop independently
+- Convex action timeout: Built-in timeout on actions prevents infinite hangs
+
+**Thread linking**: All threads in a multi-agent conversation share the same `conversationId` (stored on both threads and executions tables). Child threads also store `parentThreadId` linking back to the parent. Thread metadata includes `{ conversationId, parentAgentSlug, depth, parentContext }`.
 
 ## Web App (apps/web)
 

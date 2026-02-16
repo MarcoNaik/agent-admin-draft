@@ -72,6 +72,8 @@ export default defineSchema({
     userId: v.optional(v.id("users")),
     externalId: v.optional(v.string()),
     metadata: v.optional(v.any()),
+    conversationId: v.optional(v.string()),
+    parentThreadId: v.optional(v.id("threads")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -79,7 +81,8 @@ export default defineSchema({
     .index("by_agent_env", ["agentId", "environment"])
     .index("by_external", ["externalId"])
     .index("by_org", ["organizationId"])
-    .index("by_org_env", ["organizationId", "environment"]),
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_conversation", ["conversationId"]),
 
   messages: defineTable({
     threadId: v.id("threads"),

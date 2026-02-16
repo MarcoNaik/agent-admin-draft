@@ -57,6 +57,7 @@ import type * as roles from "../roles.js";
 import type * as sessions from "../sessions.js";
 import type * as sync from "../sync.js";
 import type * as threads from "../threads.js";
+import type * as tools_agents from "../tools/agents.js";
 import type * as tools_calendar from "../tools/calendar.js";
 import type * as tools_entities from "../tools/entities.js";
 import type * as tools_events from "../tools/events.js";
@@ -123,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   sessions: typeof sessions;
   sync: typeof sync;
   threads: typeof threads;
+  "tools/agents": typeof tools_agents;
   "tools/calendar": typeof tools_calendar;
   "tools/entities": typeof tools_entities;
   "tools/events": typeof tools_events;

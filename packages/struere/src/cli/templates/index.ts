@@ -1099,6 +1099,42 @@ defineTrigger({
 })
 \`\`\`
 
+### Agent Communication Tools
+
+The \\\`agent.chat\\\` tool lets agents delegate work to other agents within the same organization and environment. The calling agent sends a message to a target agent (by slug), waits for its response, and uses the result to continue its own execution.
+
+\`\`\`typescript
+// agent.chat - Send a message to another agent
+{ agent: "billing-agent", message: "How many credits does guardian ent_abc have?", context: { guardianId: "ent_abc" } }
+// Returns: { response: "Guardian has 5 remaining credits...", threadId: "thread_xyz", agentSlug: "billing-agent", usage: {...} }
+\`\`\`
+
+**Safety limits:**
+- **Depth limit**: Max 3 levels of agent-to-agent delegation (A→B→C allowed, A→B→C→D rejected)
+- **Cycle detection**: An agent cannot call itself
+- **Per-agent iteration cap**: Each agent's LLM loop is independently limited to 10 steps
+
+**How it works:**
+1. Caller agent invokes \\\`agent.chat\\\` with a target slug and message
+2. Target agent is resolved by slug within the same organization
+3. A new thread is created for the target agent (linked via shared \\\`conversationId\\\`)
+4. Target agent runs its own LLM loop with its own system prompt, tools, and permissions
+5. Response is returned as a tool result to the calling agent
+
+**Example: Coordinator delegates to specialist**
+\`\`\`typescript
+// agents/coordinator.ts
+export default defineAgent({
+  name: "Coordinator",
+  slug: "coordinator",
+  version: "0.1.0",
+  systemPrompt: \\\\\\\`You coordinate between specialist agents.
+When asked about billing, delegate to the billing agent using agent.chat.
+When asked about scheduling, delegate to the scheduler agent.\\\\\\\`,
+  tools: ["agent.chat", "entity.query", "event.emit"],
+})
+\`\`\`
+
 ## Invoking Agents (API)
 
 ### Chat Endpoint
@@ -1516,6 +1552,22 @@ Example job operations:
 // job.status
 { "id": "job_abc123" }
 \`\`\`
+
+### Agent Communication Tools
+
+| Tool | Description |
+|------|-------------|
+| \`agent.chat\` | Send a message to another agent and get its response |
+
+The \`agent.chat\` tool enables multi-agent workflows by letting agents delegate work to other agents within the same organization. The calling agent waits for the target agent's response.
+
+\`\`\`json
+// agent.chat
+{ "agent": "billing-agent", "message": "Check credits for guardian ent_abc", "context": { "guardianId": "ent_abc" } }
+// Returns: { "response": "...", "threadId": "...", "agentSlug": "billing-agent", "usage": {...} }
+\`\`\`
+
+**Safety:** Max depth of 3 levels (A→B→C), no self-calls, each agent has its own 10-step LLM iteration limit.
 
 ## Evaluations (Evals)
 

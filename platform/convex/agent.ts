@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { internalAction, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
-import { hashApiKey } from "./lib/utils"
+import { hashApiKey, generateId } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
@@ -71,10 +71,14 @@ interface ExecuteChatParams {
   config: any
   thread: any
   userId?: Id<"users">
+  conversationId?: string
+  depth?: number
 }
 
 async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   const { ctx, organizationId, agentId, message, threadId, environment, actor, agent, config, thread, userId } = params
+  const conversationId = params.conversationId ?? generateId("conv")
+  const depth = params.depth ?? 0
   const startTime = Date.now()
 
   const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
@@ -196,6 +200,9 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
               environment,
               toolName: originalName,
               args,
+              conversationId,
+              depth,
+              callerAgentSlug: agent.slug,
             })
           } else if (toolConfig?.handlerCode) {
             return await ctx.runAction(internal.agent.executeCustomTool, {
@@ -275,6 +282,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     agentId,
     threadId,
     environment,
+    conversationId,
     inputMessage: message,
     outputMessage: finalContent,
     toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
@@ -294,6 +302,56 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     },
   }
 }
+
+export const executeChatAction = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    agentId: v.id("agents"),
+    message: v.string(),
+    threadId: v.id("threads"),
+    environment: environmentValidator,
+    actor: v.object({
+      organizationId: v.id("organizations"),
+      actorType: v.union(v.literal("user"), v.literal("agent"), v.literal("system"), v.literal("webhook")),
+      actorId: v.string(),
+      roleIds: v.array(v.id("roles")),
+      isOrgAdmin: v.optional(v.boolean()),
+      environment: environmentValidator,
+    }),
+    agent: v.object({ name: v.string(), slug: v.string() }),
+    config: v.any(),
+    thread: v.any(),
+    userId: v.optional(v.id("users")),
+    conversationId: v.optional(v.string()),
+    depth: v.optional(v.number()),
+  },
+  returns: v.object({
+    message: v.string(),
+    threadId: v.id("threads"),
+    usage: v.object({
+      inputTokens: v.number(),
+      outputTokens: v.number(),
+      totalTokens: v.number(),
+    }),
+  }),
+  handler: async (ctx, args): Promise<ChatResponse> => {
+    return executeChat({
+      ctx,
+      organizationId: args.organizationId,
+      agentId: args.agentId,
+      message: args.message,
+      threadId: args.threadId,
+      environment: args.environment,
+      actor: args.actor as ActorContext,
+      agent: args.agent,
+      config: args.config,
+      thread: args.thread,
+      userId: args.userId,
+      conversationId: args.conversationId,
+      depth: args.depth,
+    })
+  },
+})
 
 export const chat = internalAction({
   args: {
@@ -832,6 +890,9 @@ async function executeBuiltinTool(
     environment: Environment
     toolName: string
     args: Record<string, unknown>
+    conversationId?: string
+    depth?: number
+    callerAgentSlug?: string
   }
 ): Promise<unknown> {
   const { organizationId, actorId, actorType, isOrgAdmin, environment, toolName, args } = params
@@ -1032,6 +1093,22 @@ async function executeBuiltinTool(
         userId: args.userId as string,
         timeMin: args.timeMin as string,
         timeMax: args.timeMax as string,
+      })
+
+    case "agent.chat":
+      if (!args.agent) throw new Error("agent.chat requires 'agent' parameter")
+      if (!args.message) throw new Error("agent.chat requires 'message' parameter")
+      return await ctx.runAction(internal.tools.agents.agentChat, {
+        organizationId,
+        actorId,
+        actorType,
+        environment,
+        agentSlug: args.agent as string,
+        message: args.message as string,
+        context: (args.context as Record<string, unknown>) ?? undefined,
+        conversationId: params.conversationId,
+        depth: params.depth ?? 0,
+        callerAgentSlug: params.callerAgentSlug,
       })
 
     default:

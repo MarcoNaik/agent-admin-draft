@@ -53,6 +53,7 @@ export const BUILTIN_TOOLS = [
   "calendar.update",
   "calendar.delete",
   "calendar.freeBusy",
+  "agent.chat",
 ] as const
 
 export type BuiltinToolName = (typeof BUILTIN_TOOLS)[number]

@@ -24,6 +24,7 @@ const BUILTIN_TOOLS = [
   'calendar.update',
   'calendar.delete',
   'calendar.freeBusy',
+  'agent.chat',
 ]
 
 export interface SyncPayload {
@@ -287,6 +288,7 @@ function getBuiltinToolDescription(name: string): string {
     'calendar.update': 'Update an existing Google Calendar event',
     'calendar.delete': 'Delete a Google Calendar event',
     'calendar.freeBusy': 'Check free/busy availability on a user\'s Google Calendar',
+    'agent.chat': 'Send a message to another agent and get its response',
   }
   return descriptions[name] || name
 }
@@ -447,6 +449,15 @@ function getBuiltinToolParameters(name: string): unknown {
         timeMax: { type: 'string', description: 'End of time range (ISO 8601 datetime)' },
       },
       required: ['userId', 'timeMin', 'timeMax'],
+    },
+    'agent.chat': {
+      type: 'object',
+      properties: {
+        agent: { type: 'string', description: 'Target agent slug to communicate with' },
+        message: { type: 'string', description: 'The message to send to the agent' },
+        context: { type: 'object', description: 'Optional context data to pass to the target agent' },
+      },
+      required: ['agent', 'message'],
     },
   }
   return schemas[name] || { type: 'object', properties: {} }
