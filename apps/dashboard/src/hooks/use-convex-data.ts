@@ -421,6 +421,14 @@ export function useTriggers(environment?: Environment) {
   return useQuery(api.triggers.list, { environment })
 }
 
+export function useTriggerExecutions(environment?: Environment, triggerSlug?: string, limit?: number) {
+  return useQuery(api.triggers.listExecutions, { environment, triggerSlug, limit })
+}
+
+export function useTriggerLastRunStatuses(environment?: Environment) {
+  return useQuery(api.triggers.getLastRunStatuses, { environment })
+}
+
 export function useCalendarConnection(environment?: Environment) {
   return useQuery(api.calendar.getConnection, { environment })
 }

@@ -3,6 +3,7 @@ import { internalAction, internalMutation, internalQuery, query } from "./_gener
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { resolveTemplateVars } from "./lib/triggers"
+import { getAuthContext } from "./lib/auth"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -301,30 +302,96 @@ export const list = query({
     environment: v.optional(environmentValidator),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) return []
-
+    const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
-
-    const users = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", identity.subject))
-      .first()
-
-    if (!users) return []
-
-    const userOrgs = await ctx.db
-      .query("userOrganizations")
-      .withIndex("by_user", (q) => q.eq("userId", users._id))
-      .collect()
-
-    if (userOrgs.length === 0) return []
-
-    const orgId = userOrgs[0].organizationId
 
     return await ctx.db
       .query("triggers")
-      .withIndex("by_org_env", (q) => q.eq("organizationId", orgId).eq("environment", environment))
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
       .collect()
+  },
+})
+
+export const listExecutions = query({
+  args: {
+    environment: v.optional(environmentValidator),
+    triggerSlug: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+    const limit = args.limit ?? 20
+
+    const [executed, failed] = await Promise.all([
+      ctx.db
+        .query("events")
+        .withIndex("by_org_env_type", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("eventType", "trigger.executed")
+        )
+        .order("desc")
+        .take(100),
+      ctx.db
+        .query("events")
+        .withIndex("by_org_env_type", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("eventType", "trigger.failed")
+        )
+        .order("desc")
+        .take(100),
+    ])
+
+    let merged = [...executed, ...failed]
+
+    if (args.triggerSlug) {
+      merged = merged.filter((e) => e.payload?.triggerSlug === args.triggerSlug)
+    }
+
+    merged.sort((a, b) => b.timestamp - a.timestamp)
+
+    return merged.slice(0, limit)
+  },
+})
+
+export const getLastRunStatuses = query({
+  args: {
+    environment: v.optional(environmentValidator),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+
+    const [executed, failed] = await Promise.all([
+      ctx.db
+        .query("events")
+        .withIndex("by_org_env_type", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("eventType", "trigger.executed")
+        )
+        .order("desc")
+        .take(100),
+      ctx.db
+        .query("events")
+        .withIndex("by_org_env_type", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("eventType", "trigger.failed")
+        )
+        .order("desc")
+        .take(100),
+    ])
+
+    const statuses: Record<string, { status: string; timestamp: number; error?: string; entityId?: string }> = {}
+
+    for (const event of [...executed, ...failed]) {
+      const slug = event.payload?.triggerSlug as string | undefined
+      if (!slug) continue
+      if (statuses[slug] && statuses[slug].timestamp >= event.timestamp) continue
+
+      statuses[slug] = {
+        status: event.eventType === "trigger.executed" ? "success" : "failed",
+        timestamp: event.timestamp,
+        error: event.payload?.error as string | undefined,
+        entityId: event.entityId as string | undefined,
+      }
+    }
+
+    return statuses
   },
 })
