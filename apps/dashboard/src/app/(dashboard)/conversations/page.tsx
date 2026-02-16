@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Bot, FlaskConical, Loader2, MessageSquare, User, Phone, Send, AlertCircle } from "lucide-react"
+import { ToolCallBubble, ToolResultBubble } from "@/components/chat/tool-bubbles"
 import {
   useThreadsWithPreviews,
   useThreadWithMessages,
@@ -110,7 +111,7 @@ export default function ChatPage() {
   }
 
   const visibleMessages = selectedThread?.messages?.filter(
-    (m: { role: string }) => m.role === "user" || m.role === "assistant"
+    (m: { role: string }) => m.role !== "system"
   ) ?? []
 
   const selectedPreview = visibleThreads?.find((t: { _id: Id<"threads"> }) => t._id === selectedThreadId)
@@ -264,53 +265,97 @@ export default function ChatPage() {
                   <p className="text-sm text-content-secondary">No messages in this thread</p>
                 </div>
               ) : (
-                visibleMessages.map((message: { _id: string; role: string; content: string; createdAt: number }) => (
-                  <div
-                    key={message._id}
-                    className={cn(
-                      "flex gap-3 max-w-3xl",
-                      message.role === "user" ? "" : "ml-auto flex-row-reverse"
-                    )}
-                  >
+                visibleMessages.map((message: { _id: string; role: string; content: string; createdAt: number; toolCalls?: Array<{ id: string; name: string; arguments: unknown }>; toolCallId?: string }) => {
+                  if (message.role === "tool") {
+                    return (
+                      <ToolResultBubble
+                        key={message._id}
+                        toolCallId={message.toolCallId ?? ""}
+                        content={message.content}
+                        allMessages={visibleMessages}
+                      />
+                    )
+                  }
+
+                  if (message.role === "assistant" && message.toolCalls?.length && !message.content) {
+                    return (
+                      <div key={message._id} className="space-y-2">
+                        {message.toolCalls.map((tc) => (
+                          <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                        ))}
+                      </div>
+                    )
+                  }
+
+                  if (message.role === "assistant" && message.toolCalls?.length && message.content) {
+                    return (
+                      <div key={message._id} className="space-y-2">
+                        <div className="flex gap-3 max-w-3xl ml-auto flex-row-reverse">
+                          <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 bg-primary text-primary-foreground">
+                            <Bot className="h-4 w-4" />
+                          </div>
+                          <div className="rounded-lg px-4 py-2 max-w-[80%] bg-primary text-primary-foreground">
+                            <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                            <p className="text-[10px] mt-1 text-primary-foreground/70">
+                              {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                        {message.toolCalls.map((tc) => (
+                          <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                        ))}
+                      </div>
+                    )
+                  }
+
+                  return (
                     <div
+                      key={message._id}
                       className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                        message.role === "user"
-                          ? "bg-muted"
-                          : "bg-primary text-primary-foreground"
+                        "flex gap-3 max-w-3xl",
+                        message.role === "user" ? "" : "ml-auto flex-row-reverse"
                       )}
                     >
-                      {message.role === "user" ? (
-                        <User className="h-4 w-4" />
-                      ) : (
-                        <Bot className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div
-                      className={cn(
-                        "rounded-lg px-4 py-2 max-w-[80%]",
-                        message.role === "user"
-                          ? "bg-muted text-content-primary"
-                          : "bg-primary text-primary-foreground"
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                      <p
+                      <div
                         className={cn(
-                          "text-[10px] mt-1",
+                          "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
                           message.role === "user"
-                            ? "text-content-tertiary"
-                            : "text-primary-foreground/70"
+                            ? "bg-muted"
+                            : "bg-primary text-primary-foreground"
                         )}
                       >
-                        {new Date(message.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                        {message.role === "user" ? (
+                          <User className="h-4 w-4" />
+                        ) : (
+                          <Bot className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div
+                        className={cn(
+                          "rounded-lg px-4 py-2 max-w-[80%]",
+                          message.role === "user"
+                            ? "bg-muted text-content-primary"
+                            : "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                        <p
+                          className={cn(
+                            "text-[10px] mt-1",
+                            message.role === "user"
+                              ? "text-content-tertiary"
+                              : "text-primary-foreground/70"
+                          )}
+                        >
+                          {new Date(message.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
               <div ref={messagesEndRef} />
             </div>

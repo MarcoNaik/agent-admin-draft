@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Loader2, Send, Bot, User, AlertCircle } from "lucide-react"
+import { ToolCallBubble, ToolResultBubble } from "@/components/chat/tool-bubbles"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -13,6 +14,8 @@ interface Message {
   role: "user" | "assistant" | "system" | "tool"
   content: string
   createdAt: number
+  toolCalls?: Array<{ id: string; name: string; arguments: unknown }>
+  toolCallId?: string
 }
 
 interface ChatInterfaceProps {
@@ -143,41 +146,82 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
         )}
 
         {messages
-          .filter((m: Message) => m.role === "user" || m.role === "assistant")
-          .map((message: Message) => (
-            <div
-              key={message._id}
-              className={cn(
-                "flex gap-3 max-w-3xl",
-                message.role === "user" ? "ml-auto flex-row-reverse" : ""
-              )}
-            >
+          .filter((m: Message) => m.role !== "system")
+          .map((message: Message) => {
+            if (message.role === "tool") {
+              return (
+                <ToolResultBubble
+                  key={message._id}
+                  toolCallId={message.toolCallId ?? ""}
+                  content={message.content}
+                  allMessages={messages}
+                />
+              )
+            }
+
+            if (message.role === "assistant" && message.toolCalls?.length && !message.content) {
+              return (
+                <div key={message._id} className="space-y-2">
+                  {message.toolCalls.map((tc) => (
+                    <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                  ))}
+                </div>
+              )
+            }
+
+            if (message.role === "assistant" && message.toolCalls?.length && message.content) {
+              return (
+                <div key={message._id} className="space-y-2">
+                  <div className="flex gap-3 max-w-3xl">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div className="rounded-lg px-4 py-2 max-w-[80%] bg-muted text-content-primary">
+                      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                    </div>
+                  </div>
+                  {message.toolCalls.map((tc) => (
+                    <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                  ))}
+                </div>
+              )
+            }
+
+            return (
               <div
+                key={message._id}
                 className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  "flex gap-3 max-w-3xl",
+                  message.role === "user" ? "ml-auto flex-row-reverse" : ""
                 )}
               >
-                {message.role === "user" ? (
-                  <User className="h-4 w-4" />
-                ) : (
-                  <Bot className="h-4 w-4" />
-                )}
+                <div
+                  className={cn(
+                    "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted"
+                  )}
+                >
+                  {message.role === "user" ? (
+                    <User className="h-4 w-4" />
+                  ) : (
+                    <Bot className="h-4 w-4" />
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    "rounded-lg px-4 py-2 max-w-[80%]",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-content-primary"
+                  )}
+                >
+                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                </div>
               </div>
-              <div
-                className={cn(
-                  "rounded-lg px-4 py-2 max-w-[80%]",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-content-primary"
-                )}
-              >
-                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
 
         {isLoading && (
           <div className="flex gap-3 max-w-3xl">
