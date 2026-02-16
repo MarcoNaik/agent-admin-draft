@@ -31,7 +31,10 @@ export async function checkAndScheduleTriggers(
     if (!t.enabled) return false
     if (t.action !== params.action) return false
     if (t.condition) {
-      return evaluateCondition(t.condition as Record<string, unknown>, params.data)
+      return evaluateCondition(t.condition as Record<string, unknown>, {
+        data: params.data,
+        previousData: params.previousData,
+      })
     }
     return true
   })
