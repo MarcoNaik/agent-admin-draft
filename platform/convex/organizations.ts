@@ -290,7 +290,7 @@ export const syncMembership = internalMutation({
       return existing._id
     }
 
-    return await ctx.db.insert("userOrganizations", {
+    const membershipId = await ctx.db.insert("userOrganizations", {
       userId: user._id,
       organizationId: org._id,
       role: args.role,
@@ -298,6 +298,73 @@ export const syncMembership = internalMutation({
       createdAt: now,
       updatedAt: now,
     })
+
+    if (args.role === "member") {
+      const userEmail = (args.userEmail ?? user.email).toLowerCase().trim()
+      const pending = await ctx.db
+        .query("pendingRoleAssignments")
+        .withIndex("by_org_email", (q) =>
+          q.eq("organizationId", org._id).eq("email", userEmail)
+        )
+        .first()
+
+      if (pending) {
+        const role = await ctx.db.get(pending.roleId)
+        if (role && role.organizationId === org._id) {
+          const existingUserRoles = await ctx.db
+            .query("userRoles")
+            .withIndex("by_user", (q) => q.eq("userId", user!._id))
+            .collect()
+          for (const ur of existingUserRoles) {
+            await ctx.db.delete(ur._id)
+          }
+
+          await ctx.db.insert("userRoles", {
+            userId: user!._id,
+            roleId: pending.roleId,
+            grantedBy: pending.createdBy,
+            createdAt: now,
+          })
+
+          const boundEntityType = await ctx.db
+            .query("entityTypes")
+            .withIndex("by_org_env", (q) =>
+              q.eq("organizationId", org._id).eq("environment", pending.environment)
+            )
+            .filter((q) => q.eq(q.field("boundToRole"), role.name))
+            .first()
+
+          if (boundEntityType) {
+            const userIdField = boundEntityType.userIdField || "userId"
+            const schema = boundEntityType.schema as { properties?: Record<string, unknown> } | undefined
+            const properties = schema?.properties || {}
+            const data: Record<string, unknown> = {
+              [userIdField]: user!.clerkUserId,
+            }
+            if ("name" in properties && user!.name) {
+              data.name = user!.name
+            }
+            if ("email" in properties && user!.email) {
+              data.email = user!.email
+            }
+
+            await ctx.db.insert("entities", {
+              organizationId: org._id,
+              environment: pending.environment,
+              entityTypeId: boundEntityType._id,
+              status: "active",
+              data,
+              createdAt: now,
+              updatedAt: now,
+            })
+          }
+        }
+
+        await ctx.db.delete(pending._id)
+      }
+    }
+
+    return membershipId
   },
 })
 

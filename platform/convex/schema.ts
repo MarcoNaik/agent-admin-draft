@@ -520,6 +520,16 @@ export default defineSchema({
     .index("by_agent_env", ["agentId", "environment"])
     .index("by_org_env", ["organizationId", "environment"]),
 
+  pendingRoleAssignments: defineTable({
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    roleId: v.id("roles"),
+    environment: environmentValidator,
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org_email", ["organizationId", "email"]),
+
   evalResults: defineTable({
     organizationId: v.id("organizations"),
     runId: v.id("evalRuns"),

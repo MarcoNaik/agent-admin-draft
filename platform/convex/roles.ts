@@ -441,6 +441,56 @@ export const getAssignedUsers = query({
   },
 })
 
+export const createPendingAssignment = mutation({
+  args: {
+    email: v.string(),
+    roleId: v.id("roles"),
+    environment: v.union(v.literal("development"), v.literal("production")),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+
+    const role = await ctx.db.get(args.roleId)
+    if (!role || role.organizationId !== auth.organizationId) {
+      throw new Error("Role not found")
+    }
+    if (role.environment !== args.environment) {
+      throw new Error("Role does not match environment")
+    }
+    if (role.isSystem) {
+      throw new Error("Cannot assign system roles")
+    }
+
+    const normalizedEmail = args.email.toLowerCase().trim()
+
+    const existing = await ctx.db
+      .query("pendingRoleAssignments")
+      .withIndex("by_org_email", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("email", normalizedEmail)
+      )
+      .first()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        roleId: args.roleId,
+        environment: args.environment,
+        createdBy: auth.userId,
+        createdAt: Date.now(),
+      })
+      return existing._id
+    }
+
+    return await ctx.db.insert("pendingRoleAssignments", {
+      organizationId: auth.organizationId,
+      email: normalizedEmail,
+      roleId: args.roleId,
+      environment: args.environment,
+      createdBy: auth.userId,
+      createdAt: Date.now(),
+    })
+  },
+})
+
 export const listInternal = internalQuery({
   args: {
     organizationId: v.id("organizations"),

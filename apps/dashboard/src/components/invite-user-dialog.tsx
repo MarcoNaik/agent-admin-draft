@@ -21,18 +21,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useCreatePendingAssignment } from "@/hooks/use-convex-data"
+import { Doc } from "@convex/_generated/dataModel"
+import type { Environment } from "@/contexts/environment-context"
 
 interface InviteUserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  roles?: Doc<"roles">[]
+  environment?: Environment
 }
 
-export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) {
+export function InviteUserDialog({ open, onOpenChange, roles, environment }: InviteUserDialogProps) {
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState<string>("org:member")
+  const [orgRole, setOrgRole] = useState<string>("org:member")
+  const [internalRoleId, setInternalRoleId] = useState<string>("none")
   const [isInviting, setIsInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { organization } = useOrganization()
+  const createPendingAssignment = useCreatePendingAssignment()
 
   const handleInvite = async () => {
     if (!email.trim() || !organization) return
@@ -40,9 +47,19 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
     setIsInviting(true)
     setError(null)
     try {
-      await organization.inviteMember({ emailAddress: email.trim(), role })
+      await organization.inviteMember({ emailAddress: email.trim(), role: orgRole })
+
+      if (orgRole === "org:member" && internalRoleId !== "none" && environment) {
+        await createPendingAssignment({
+          email: email.trim(),
+          roleId: internalRoleId as any,
+          environment,
+        })
+      }
+
       setEmail("")
-      setRole("org:member")
+      setOrgRole("org:member")
+      setInternalRoleId("none")
       onOpenChange(false)
     } catch (err: any) {
       const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || "Failed to send invitation"
@@ -57,6 +74,15 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
       handleInvite()
     }
   }
+
+  const handleOrgRoleChange = (value: string) => {
+    setOrgRole(value)
+    if (value !== "org:member") {
+      setInternalRoleId("none")
+    }
+  }
+
+  const showInternalRoleSelector = orgRole === "org:member" && roles && roles.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,8 +109,8 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role" className="text-content-primary">Role</Label>
-            <Select value={role} onValueChange={setRole} disabled={isInviting}>
+            <Label htmlFor="role" className="text-content-primary">Organization Role</Label>
+            <Select value={orgRole} onValueChange={handleOrgRoleChange} disabled={isInviting}>
               <SelectTrigger className="bg-background-tertiary border-border/50">
                 <SelectValue />
               </SelectTrigger>
@@ -94,6 +120,27 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
               </SelectContent>
             </Select>
           </div>
+          {showInternalRoleSelector && (
+            <div className="space-y-2">
+              <Label htmlFor="internalRole" className="text-content-primary">Internal Role</Label>
+              <Select value={internalRoleId} onValueChange={setInternalRoleId} disabled={isInviting}>
+                <SelectTrigger className="bg-background-tertiary border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No role</SelectItem>
+                  {roles!.map((r) => (
+                    <SelectItem key={r._id} value={r._id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-content-secondary">
+                Auto-assigned when the user accepts the invite
+              </p>
+            </div>
+          )}
           {error && (
             <p className="text-sm text-red-500">{error}</p>
           )}

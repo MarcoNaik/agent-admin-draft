@@ -3,7 +3,7 @@
 import { createContext, useContext, useCallback, useState, useEffect, ReactNode } from "react"
 import { useRoleContext } from "@/contexts/role-context"
 
-type Environment = "development" | "production"
+export type Environment = "development" | "production"
 
 interface EnvironmentContextValue {
   environment: Environment

@@ -272,7 +272,7 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+      <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} roles={assignableRoles} environment={environment} />
     </div>
   )
 }
