@@ -12,22 +12,22 @@ interface ModelConfig {
 
 const BUILTIN_PREFIXES = ["entity", "event", "job"]
 
-export function createModel(config: ModelConfig): LanguageModel {
+export function createModel(config: ModelConfig, apiKeyOverride?: string): LanguageModel {
   switch (config.provider) {
     case "anthropic": {
-      const apiKey = process.env.ANTHROPIC_API_KEY
+      const apiKey = apiKeyOverride ?? process.env.ANTHROPIC_API_KEY
       if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured")
       const provider = createAnthropic({ apiKey })
       return provider(config.name)
     }
     case "openai": {
-      const apiKey = process.env.OPENAI_API_KEY
+      const apiKey = apiKeyOverride ?? process.env.OPENAI_API_KEY
       if (!apiKey) throw new Error("OPENAI_API_KEY not configured")
       const provider = createOpenAI({ apiKey })
       return provider(config.name)
     }
     case "google": {
-      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      const apiKey = apiKeyOverride ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
       if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY not configured")
       const provider = createGoogleGenerativeAI({ apiKey })
       return provider(config.name)
