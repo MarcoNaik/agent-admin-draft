@@ -59,7 +59,7 @@ export default function GoogleCalendarSettingsPage() {
       </div>
 
       <div className="space-y-6">
-        <CalendarConnectionCard />
+        <CalendarConnectionCard alwaysShow />
 
         {allConnections && allConnections.length > 0 && (
           <Card className="bg-background-secondary">

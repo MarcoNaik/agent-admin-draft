@@ -46,7 +46,7 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-export function CalendarConnectionCard() {
+export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: boolean } = {}) {
   const integrationConfig = useIntegrationConfig("google")
   const connection = useCalendarConnection("production")
   const connectCalendar = useConnectCalendar()
@@ -129,9 +129,10 @@ export function CalendarConnectionCard() {
     }
   }
 
-  if (integrationConfig === undefined) return null
-
-  if (!integrationConfig || integrationConfig.status !== "active") return null
+  if (!alwaysShow) {
+    if (integrationConfig === undefined) return null
+    if (!integrationConfig || integrationConfig.status !== "active") return null
+  }
 
   if (connection === undefined) {
     return (
