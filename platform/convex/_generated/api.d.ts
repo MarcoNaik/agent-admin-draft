@@ -52,6 +52,7 @@ import type * as migrations_addEnvironment from "../migrations/addEnvironment.js
 import type * as organizations from "../organizations.js";
 import type * as payments from "../payments.js";
 import type * as permissions from "../permissions.js";
+import type * as providers from "../providers.js";
 import type * as publicChat from "../publicChat.js";
 import type * as roles from "../roles.js";
 import type * as sessions from "../sessions.js";
@@ -120,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   organizations: typeof organizations;
   payments: typeof payments;
   permissions: typeof permissions;
+  providers: typeof providers;
   publicChat: typeof publicChat;
   roles: typeof roles;
   sessions: typeof sessions;
