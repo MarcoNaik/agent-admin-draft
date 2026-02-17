@@ -7,6 +7,7 @@ export { canUseTool, getToolIdentity, ToolPermissionResult } from "./tools"
 
 import { QueryCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
+import { PaginationOptions, PaginationResult } from "convex/server"
 import { ActorContext, ScopeFilter } from "./types"
 import { canPerform } from "./evaluate"
 import { getScopeFilters, applyScopeFiltersToQuery } from "./scope"
@@ -67,6 +68,7 @@ export async function queryEntitiesAsActor<T extends Record<string, unknown>>(
       .withIndex("by_org_env_type", (q) =>
         q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("entityTypeId", entityType._id)
       )
+      .order("desc")
       .filter((q) => q.eq(q.field("deletedAt"), undefined))
       .collect()
     entities = hasContains
@@ -78,6 +80,7 @@ export async function queryEntitiesAsActor<T extends Record<string, unknown>>(
       .withIndex("by_org_env_type", (q) =>
         q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("entityTypeId", entityType._id)
       )
+      .order("desc")
       .filter((q: any) => {
         const notDeleted = q.eq(q.field("deletedAt"), undefined)
         const scopeExpr = buildConvexScopeExpression(q, scopeFilters)
@@ -89,6 +92,77 @@ export async function queryEntitiesAsActor<T extends Record<string, unknown>>(
 
   const fieldMask = await getFieldMask(ctx, actor, entityTypeSlug)
   return entities.map((e) => applyFieldMask(e, fieldMask))
+}
+
+export async function paginatedQueryEntitiesAsActor(
+  ctx: QueryCtx,
+  actor: ActorContext,
+  entityTypeSlug: string,
+  paginationOpts: PaginationOptions,
+  status?: string
+): Promise<PaginationResult<Partial<Record<string, unknown>>>> {
+  const permission = await canPerform(ctx, actor, "list", entityTypeSlug)
+  if (!permission.allowed) {
+    return { page: [], isDone: true, continueCursor: "" }
+  }
+
+  const entityType = await ctx.db
+    .query("entityTypes")
+    .withIndex("by_org_env_slug", (q) =>
+      q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("slug", entityTypeSlug)
+    )
+    .first()
+
+  if (!entityType) {
+    return { page: [], isDone: true, continueCursor: "" }
+  }
+
+  const scopeFilters = await getScopeFilters(ctx, actor, entityTypeSlug)
+  const hasContains = scopeFilters.some((f) => f.operator === "contains")
+
+  let baseQuery
+  if (status) {
+    baseQuery = ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type_status", (q) =>
+        q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("entityTypeId", entityType._id).eq("status", status)
+      )
+      .order("desc")
+  } else {
+    baseQuery = ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) =>
+        q.eq("organizationId", actor.organizationId).eq("environment", actor.environment).eq("entityTypeId", entityType._id)
+      )
+      .order("desc")
+  }
+
+  let filteredQuery
+  if (scopeFilters.length === 0 || hasContains) {
+    filteredQuery = baseQuery.filter((q: any) => q.eq(q.field("deletedAt"), undefined))
+  } else {
+    filteredQuery = baseQuery.filter((q: any) => {
+      const notDeleted = q.eq(q.field("deletedAt"), undefined)
+      const scopeExpr = buildConvexScopeExpression(q, scopeFilters)
+      return scopeExpr ? q.and(notDeleted, scopeExpr) : notDeleted
+    })
+  }
+
+  const result = await filteredQuery.paginate(paginationOpts)
+
+  let page = result.page as Record<string, unknown>[]
+  if (hasContains) {
+    page = applyScopeFiltersToQuery(page, scopeFilters)
+  }
+
+  const fieldMask = await getFieldMask(ctx, actor, entityTypeSlug)
+  const maskedPage = page.map((e) => applyFieldMask(e, fieldMask))
+
+  return {
+    page: maskedPage,
+    isDone: result.isDone,
+    continueCursor: result.continueCursor,
+  }
 }
 
 export async function getEntityAsActor<T extends Record<string, unknown>>(

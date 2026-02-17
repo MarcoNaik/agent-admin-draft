@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, Filter, Plus, Layers, Loader2, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "lucide-react"
-import { useEntityTypeBySlug, useEntities, useSearchEntities } from "@/hooks/use-convex-data"
+import { useEntityTypeBySlug, useEntitiesPaginated, useSearchEntities } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,8 +49,21 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   const { environment } = useEnvironment()
 
   const entityType = useEntityTypeBySlug(typeSlug, environment)
-  const entities = useEntities(typeSlug, environment, status !== "all" ? status : undefined)
+  const { results: entities, status: paginationStatus, loadMore } = useEntitiesPaginated(
+    typeSlug,
+    environment,
+    status !== "all" ? status : undefined
+  )
   const searchResults = useSearchEntities(typeSlug, search.length >= 2 ? search : "", environment)
+
+  const isLoadingMore = paginationStatus === "LoadingMore"
+  const canLoadMore = paginationStatus === "CanLoadMore"
+
+  useEffect(() => {
+    if (canLoadMore) {
+      loadMore(50)
+    }
+  }, [canLoadMore, loadMore])
 
   const sourceEntities = useMemo(() => {
     if (search.length >= 2 && searchResults) {
@@ -121,7 +134,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     })
   }, [])
 
-  if (entityType === undefined || entities === undefined) {
+  if (entityType === undefined) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -278,6 +291,12 @@ export default function EntityListPage({ params }: EntityListPageProps) {
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">
               {sortedEntities.length} {sortedEntities.length === 1 ? "document" : "documents"}
+              {(isLoadingMore || canLoadMore) && (
+                <span className="ml-1 inline-flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  loading...
+                </span>
+              )}
             </span>
           </div>
           <div className="relative">

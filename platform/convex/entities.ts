@@ -1,10 +1,12 @@
 import { v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
 import { query, mutation } from "./_generated/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { buildSearchText } from "./lib/utils"
 import {
   buildActorContext,
   queryEntitiesAsActor,
+  paginatedQueryEntitiesAsActor,
   getEntityAsActor,
   canPerform,
   assertCanPerform,
@@ -76,6 +78,38 @@ export const list = query({
     }
 
     return entities.slice(0, args.limit ?? 100)
+  },
+})
+
+export const listPaginated = query({
+  args: {
+    entityTypeSlug: v.string(),
+    environment: v.optional(environmentValidator),
+    status: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
+    const actor = await buildActorContext(ctx, {
+      organizationId: auth.organizationId,
+      actorType: auth.actorType,
+      actorId: auth.userId,
+      environment,
+    })
+
+    return await paginatedQueryEntitiesAsActor(
+      ctx,
+      actor,
+      args.entityTypeSlug,
+      args.paginationOpts,
+      args.status ?? undefined
+    )
   },
 })
 

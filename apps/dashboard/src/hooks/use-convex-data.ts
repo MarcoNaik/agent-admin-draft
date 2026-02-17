@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery, useMutation, useAction } from "convex/react"
+import { useQuery, useMutation, useAction, usePaginatedQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -60,6 +60,14 @@ export function useDeleteEntityType() {
 
 export function useEntities(entityTypeSlug: string, environment?: Environment, status?: string) {
   return useQuery(api.entities.list, { entityTypeSlug, environment, status })
+}
+
+export function useEntitiesPaginated(entityTypeSlug: string, environment?: Environment, status?: string) {
+  return usePaginatedQuery(
+    api.entities.listPaginated,
+    { entityTypeSlug, environment, status },
+    { initialNumItems: 50 }
+  )
 }
 
 export function useEntity(id: Id<"entities">, environment?: Environment) {
