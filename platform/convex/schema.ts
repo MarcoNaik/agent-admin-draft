@@ -412,6 +412,19 @@ export default defineSchema({
     .index("by_org_env_entity", ["organizationId", "environment", "entityType"])
     .index("by_org_env_slug", ["organizationId", "environment", "slug"]),
 
+  providerConfigs: defineTable({
+    organizationId: v.id("organizations"),
+    provider: v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google")),
+    mode: v.union(v.literal("platform"), v.literal("custom")),
+    apiKey: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
+    lastVerifiedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_provider", ["organizationId", "provider"]),
+
   calendarConnections: defineTable({
     userId: v.id("users"),
     organizationId: v.id("organizations"),
