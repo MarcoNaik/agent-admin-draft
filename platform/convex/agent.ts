@@ -224,8 +224,13 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     })
   }
 
+  const providerKey = await ctx.runQuery(internal.providers.resolveApiKey, {
+    organizationId,
+    provider: config.model.provider,
+  })
+
   const result = await generateText({
-    model: createModel(config.model),
+    model: createModel(config.model, providerKey?.apiKey),
     system: processedSystemPrompt,
     messages: toAIMessages([
       ...historyMessages,
