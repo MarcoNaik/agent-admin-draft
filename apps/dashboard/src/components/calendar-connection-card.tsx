@@ -64,10 +64,22 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
   const [calendars, setCalendars] = useState<Array<{ id: string; summary: string; primary: boolean }>>([])
   const [loadingCalendars, setLoadingCalendars] = useState(false)
+  const [linkingGoogle, setLinkingGoogle] = useState(false)
 
   const hasGoogleOAuth = clerkUser?.externalAccounts?.some(
-    (account) => (account.provider as string) === "oauth_google" && account.verification?.status === "verified"
+    (account) => (account.provider as string) === "google" && account.verification?.status === "verified"
   )
+
+  useEffect(() => {
+    if (!linkingGoogle || hasGoogleOAuth) {
+      setLinkingGoogle(false)
+      return
+    }
+    const interval = setInterval(() => {
+      clerkUser?.reload()
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [linkingGoogle, hasGoogleOAuth, clerkUser])
 
   const status = connection?.status ?? "disconnected"
 
@@ -90,6 +102,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   }
 
   const handleLinkGoogle = () => {
+    setLinkingGoogle(true)
     clerk.openUserProfile({
       appearance: {
         elements: {
