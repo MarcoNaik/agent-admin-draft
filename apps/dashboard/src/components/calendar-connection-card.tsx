@@ -66,7 +66,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const [loadingCalendars, setLoadingCalendars] = useState(false)
 
   const hasGoogleOAuth = clerkUser?.externalAccounts?.some(
-    (account) => account.provider === "oauth_google" && account.verification?.status === "verified"
+    (account) => (account.provider as string) === "oauth_google" && account.verification?.status === "verified"
   )
 
   const status = connection?.status ?? "disconnected"
