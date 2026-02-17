@@ -24,6 +24,9 @@ const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref
   "calendar.update": { type: "action", ref: "calendarUpdate" },
   "calendar.delete": { type: "action", ref: "calendarDelete" },
   "calendar.freeBusy": { type: "action", ref: "calendarFreeBusy" },
+  "whatsapp.send": { type: "action", ref: "whatsappSend" },
+  "whatsapp.getConversation": { type: "action", ref: "whatsappGetConversation" },
+  "whatsapp.getStatus": { type: "action", ref: "whatsappGetStatus" },
 }
 
 export const execute = internalAction({
@@ -300,6 +303,25 @@ async function executeToolAction(
         userId: args.userId as string,
         timeMin: args.timeMin as string,
         timeMax: args.timeMax as string,
+      })
+
+    case "whatsapp.send":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSend, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        text: args.text as string,
+      })
+
+    case "whatsapp.getConversation":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappGetConversation, {
+        organizationId, actorId, actorType, environment,
+        phoneNumber: args.phoneNumber as string,
+        limit: args.limit as number | undefined,
+      })
+
+    case "whatsapp.getStatus":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappGetStatus, {
+        organizationId, actorId, actorType, environment,
       })
 
     default:

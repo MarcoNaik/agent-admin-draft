@@ -53,6 +53,9 @@ export const BUILTIN_TOOLS = [
   "calendar.update",
   "calendar.delete",
   "calendar.freeBusy",
+  "whatsapp.send",
+  "whatsapp.getConversation",
+  "whatsapp.getStatus",
   "agent.chat",
 ] as const
 

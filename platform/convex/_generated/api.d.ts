@@ -64,6 +64,7 @@ import type * as tools_events from "../tools/events.js";
 import type * as tools_helpers from "../tools/helpers.js";
 import type * as tools_index from "../tools/index.js";
 import type * as tools_jobs from "../tools/jobs.js";
+import type * as tools_whatsapp from "../tools/whatsapp.js";
 import type * as triggers from "../triggers.js";
 import type * as users from "../users.js";
 import type * as whatsapp from "../whatsapp.js";
@@ -131,6 +132,7 @@ declare const fullApi: ApiFromModules<{
   "tools/helpers": typeof tools_helpers;
   "tools/index": typeof tools_index;
   "tools/jobs": typeof tools_jobs;
+  "tools/whatsapp": typeof tools_whatsapp;
   triggers: typeof triggers;
   users: typeof users;
   whatsapp: typeof whatsapp;

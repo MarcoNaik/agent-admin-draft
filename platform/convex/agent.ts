@@ -1095,6 +1095,28 @@ async function executeBuiltinTool(
         timeMax: args.timeMax as string,
       })
 
+    case "whatsapp.send":
+      if (!args.to) throw new Error("whatsapp.send requires 'to' parameter")
+      if (!args.text) throw new Error("whatsapp.send requires 'text' parameter")
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSend, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        text: args.text as string,
+      })
+
+    case "whatsapp.getConversation":
+      if (!args.phoneNumber) throw new Error("whatsapp.getConversation requires 'phoneNumber' parameter")
+      return await ctx.runAction(internal.tools.whatsapp.whatsappGetConversation, {
+        organizationId, actorId, actorType, environment,
+        phoneNumber: args.phoneNumber as string,
+        limit: args.limit as number | undefined,
+      })
+
+    case "whatsapp.getStatus":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappGetStatus, {
+        organizationId, actorId, actorType, environment,
+      })
+
     case "agent.chat":
       if (!args.agent) throw new Error("agent.chat requires 'agent' parameter")
       if (!args.message) throw new Error("agent.chat requires 'message' parameter")
