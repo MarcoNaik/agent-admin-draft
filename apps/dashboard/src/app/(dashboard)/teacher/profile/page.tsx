@@ -2,6 +2,7 @@
 
 import { Loader2, User, Mail } from "lucide-react"
 import { useCurrentUser } from "@/hooks/use-convex-data"
+import { CalendarConnectionCard } from "@/components/calendar-connection-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -104,6 +105,8 @@ export default function TeacherProfilePage() {
           </p>
         </CardContent>
       </Card>
+
+      <CalendarConnectionCard />
     </div>
   )
 }

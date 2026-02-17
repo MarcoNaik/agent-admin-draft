@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs"
 import { Loader2, User, Mail, Shield } from "lucide-react"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
+import { CalendarConnectionCard } from "@/components/calendar-connection-card"
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser()
@@ -65,6 +66,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <CalendarConnectionCard />
     </div>
   )
 }
