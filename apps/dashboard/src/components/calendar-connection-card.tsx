@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Loader2, Calendar, CheckCircle, XCircle, RefreshCw, ExternalLink } from "lucide-react"
-import { useUser } from "@clerk/nextjs"
+import { useUser, useClerk } from "@clerk/nextjs"
 import {
   useCalendarConnection,
   useConnectCalendar,
@@ -49,6 +49,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: boolean } = {}) {
   const { user: clerkUser } = useUser()
+  const clerk = useClerk()
   const integrationConfig = useIntegrationConfig("google")
   const connection = useCalendarConnection("production")
   const connectCalendar = useConnectCalendar()
@@ -58,7 +59,6 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const verifyConnection = useVerifyCalendarConnection()
 
   const [connecting, setConnecting] = useState(false)
-  const [linkingGoogle, setLinkingGoogle] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -89,21 +89,14 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
     }
   }
 
-  const handleLinkGoogle = async () => {
-    if (!clerkUser) return
-    setLinkingGoogle(true)
-    try {
-      const res = await clerkUser.createExternalAccount({
-        strategy: "oauth_google",
-        redirectUrl: window.location.href,
-      })
-      if (res.verification?.externalVerificationRedirectURL) {
-        window.location.href = res.verification.externalVerificationRedirectURL.toString()
-      }
-    } catch (err) {
-      console.error("Failed to link Google account:", err)
-      setLinkingGoogle(false)
-    }
+  const handleLinkGoogle = () => {
+    clerk.openUserProfile({
+      appearance: {
+        elements: {
+          rootBox: { width: "100%" },
+        },
+      },
+    })
   }
 
   const handleConnect = async () => {
@@ -233,18 +226,9 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
 
           <div className="flex gap-2 pt-2">
             {status === "disconnected" && !hasGoogleOAuth && (
-              <Button onClick={handleLinkGoogle} disabled={linkingGoogle}>
-                {linkingGoogle ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Link Google Account
-                  </>
-                )}
+              <Button onClick={handleLinkGoogle}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Link Google Account
               </Button>
             )}
             {status === "disconnected" && hasGoogleOAuth && (
