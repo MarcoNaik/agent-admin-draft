@@ -75,9 +75,10 @@ export const calendarCreate = internalAction({
   handler: async (ctx, args) => {
     let endTime = args.endTime
     if (!endTime && args.durationMinutes) {
-      const start = new Date(args.startTime)
+      const normalized = args.startTime.includes("Z") || args.startTime.includes("+") ? args.startTime : args.startTime + "Z"
+      const start = new Date(normalized)
       start.setMinutes(start.getMinutes() + args.durationMinutes)
-      endTime = start.toISOString()
+      endTime = start.toISOString().replace(/\.\d{3}Z$/, "")
     }
     if (!endTime) {
       throw new Error("Either endTime or durationMinutes is required")
@@ -96,7 +97,7 @@ export const calendarCreate = internalAction({
       description: args.description,
       start: { dateTime: args.startTime, timeZone: args.timeZone },
       end: { dateTime: endTime, timeZone: args.timeZone },
-      attendees: args.attendees?.map((email) => ({ email })),
+      attendees: args.attendees?.filter((email) => email).map((email) => ({ email })),
     }
 
     const result = await createCalendarEvent(token, target.calendarId, event)
