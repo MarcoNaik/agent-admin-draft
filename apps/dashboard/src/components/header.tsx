@@ -4,8 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UserButton } from "@clerk/nextjs"
 import {
-  Sparkles,
-  HelpCircle,
   ChevronsUpDown,
   ChevronDown,
   ChevronRight,
@@ -250,20 +248,6 @@ export function Header() {
         <div className="flex items-center gap-2 px-3">
           {isOrgAdmin && <EnvironmentSelector />}
           <div className="flex items-center">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary cursor-pointer transition-colors"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden md:block">Ask AI</span>
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary cursor-pointer transition-colors"
-            >
-              <HelpCircle className="h-4 w-4" />
-              <span className="hidden md:block">Support</span>
-            </button>
             <ThemeToggle />
           </div>
           <div className="rounded-md p-1 transition-colors hover:bg-background-tertiary">
