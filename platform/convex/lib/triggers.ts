@@ -83,6 +83,12 @@ export function resolveTemplateVars(
   context: Record<string, unknown>
 ): unknown {
   if (typeof obj === "string") {
+    const exactMatch = obj.match(/^\{\{([^}]+)\}\}$/)
+    if (exactMatch) {
+      const value = getNestedValue(context as Record<string, unknown>, exactMatch[1].trim())
+      return value ?? ""
+    }
+
     return obj.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
       const trimmed = path.trim()
       const value = getNestedValue(context as Record<string, unknown>, trimmed)
