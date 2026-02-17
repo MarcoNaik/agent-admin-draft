@@ -9,7 +9,7 @@ import {
   Shield,
   Plug,
   Key,
-  CreditCard,
+  Cpu,
   AlertTriangle,
   Zap,
 } from "lucide-react"
@@ -64,10 +64,10 @@ const settingsNav: {
     description: "External access",
   },
   {
-    name: "Billing",
-    href: "/settings/billing",
-    icon: CreditCard,
-    description: "Subscription and payments",
+    name: "Providers",
+    href: "/settings/providers",
+    icon: Cpu,
+    description: "LLM provider API keys",
   },
 ]
 
