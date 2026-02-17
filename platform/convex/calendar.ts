@@ -18,17 +18,10 @@ export const getConnection = query({
     const auth = await requireAuth(ctx)
     const environment = args.environment ?? "development"
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", auth.userId))
-      .first()
-
-    if (!user) return null
-
     return await ctx.db
       .query("calendarConnections")
       .withIndex("by_user_org_env", (q) =>
-        q.eq("userId", user._id).eq("organizationId", auth.organizationId).eq("environment", environment)
+        q.eq("userId", auth.userId).eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .first()
   },
@@ -142,21 +135,39 @@ export const connect = mutation({
     const auth = await requireAuth(ctx)
     const environment = args.environment ?? "development"
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", auth.userId))
-      .first()
-
-    if (!user) throw new Error("User not found")
-
     const existing = await ctx.db
       .query("calendarConnections")
       .withIndex("by_user_org_env", (q) =>
-        q.eq("userId", user._id).eq("organizationId", auth.organizationId).eq("environment", environment)
+        q.eq("userId", auth.userId).eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .first()
 
     const now = Date.now()
+
+    const integrationConfig = await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("provider", "google")
+      )
+      .first()
+
+    if (!integrationConfig) {
+      await ctx.db.insert("integrationConfigs", {
+        organizationId: auth.organizationId,
+        provider: "google",
+        config: { enabled: true },
+        status: "active",
+        lastVerifiedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+    } else if (integrationConfig.status !== "active") {
+      await ctx.db.patch(integrationConfig._id, {
+        status: "active",
+        lastVerifiedAt: now,
+        updatedAt: now,
+      })
+    }
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -168,7 +179,7 @@ export const connect = mutation({
     }
 
     return await ctx.db.insert("calendarConnections", {
-      userId: user._id,
+      userId: auth.userId,
       organizationId: auth.organizationId,
       environment,
       provider: "google",
@@ -187,17 +198,10 @@ export const disconnect = mutation({
     const auth = await requireAuth(ctx)
     const environment = args.environment ?? "development"
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", auth.userId))
-      .first()
-
-    if (!user) throw new Error("User not found")
-
     const connection = await ctx.db
       .query("calendarConnections")
       .withIndex("by_user_org_env", (q) =>
-        q.eq("userId", user._id).eq("organizationId", auth.organizationId).eq("environment", environment)
+        q.eq("userId", auth.userId).eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .first()
 
@@ -216,17 +220,10 @@ export const selectCalendar = mutation({
     const auth = await requireAuth(ctx)
     const environment = args.environment ?? "development"
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", auth.userId))
-      .first()
-
-    if (!user) throw new Error("User not found")
-
     const connection = await ctx.db
       .query("calendarConnections")
       .withIndex("by_user_org_env", (q) =>
-        q.eq("userId", user._id).eq("organizationId", auth.organizationId).eq("environment", environment)
+        q.eq("userId", auth.userId).eq("organizationId", auth.organizationId).eq("environment", environment)
       )
       .first()
 
