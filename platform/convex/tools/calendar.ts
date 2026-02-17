@@ -66,12 +66,23 @@ export const calendarCreate = internalAction({
     userId: v.string(),
     summary: v.string(),
     startTime: v.string(),
-    endTime: v.string(),
+    endTime: v.optional(v.string()),
+    durationMinutes: v.optional(v.number()),
     description: v.optional(v.string()),
     attendees: v.optional(v.array(v.string())),
     timeZone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    let endTime = args.endTime
+    if (!endTime && args.durationMinutes) {
+      const start = new Date(args.startTime)
+      start.setMinutes(start.getMinutes() + args.durationMinutes)
+      endTime = start.toISOString()
+    }
+    if (!endTime) {
+      throw new Error("Either endTime or durationMinutes is required")
+    }
+
     const target = await ctx.runQuery(internal.calendar.resolveTargetUser, {
       userId: args.userId,
       organizationId: args.organizationId,
@@ -84,7 +95,7 @@ export const calendarCreate = internalAction({
       summary: args.summary,
       description: args.description,
       start: { dateTime: args.startTime, timeZone: args.timeZone },
-      end: { dateTime: args.endTime, timeZone: args.timeZone },
+      end: { dateTime: endTime, timeZone: args.timeZone },
       attendees: args.attendees?.map((email) => ({ email })),
     }
 
