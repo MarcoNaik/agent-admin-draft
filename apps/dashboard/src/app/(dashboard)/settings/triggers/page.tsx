@@ -138,14 +138,120 @@ function ActionPipeline({ actions }: { actions: Trigger["actions"] }) {
   )
 }
 
-function TriggerExecutionRow({ event }: { event: Record<string, any> }) {
-  const [showError, setShowError] = useState(false)
-  const isSuccess = event.eventType === "trigger.executed"
-  const payload = event.payload ?? {}
+type ExecutionLogEntry = {
+  tool: string
+  as?: string
+  args: Record<string, unknown>
+  status: "success" | "failed"
+  result?: unknown
+  error?: string
+  stack?: string
+  durationMs: number
+}
+
+function ExecutionLogStep({ step, index }: { step: ExecutionLogEntry; index: number }) {
+  const [expanded, setExpanded] = useState(step.status === "failed")
 
   return (
-    <div className="rounded-lg border border-border/20 bg-background-tertiary/20 px-3 py-2.5">
-      <div className="flex items-center gap-3">
+    <div className={cn(
+      "rounded-lg border px-3 py-2",
+      step.status === "failed"
+        ? "border-destructive/20 bg-destructive/5"
+        : "border-border/20 bg-background-tertiary/20"
+    )}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 text-left cursor-pointer"
+      >
+        <div className={cn(
+          "flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded text-[10px] font-medium",
+          step.status === "failed"
+            ? "bg-destructive/15 text-destructive"
+            : "bg-success/15 text-success"
+        )}>
+          {index + 1}
+        </div>
+        <span className="font-mono text-[11px] font-medium text-content-primary">{step.tool}</span>
+        {step.as && (
+          <Badge variant="secondary" className="text-[9px] px-1 py-0 font-mono">
+            as: {step.as}
+          </Badge>
+        )}
+        <span className="text-[10px] text-content-tertiary ml-auto shrink-0">
+          {step.durationMs}ms
+        </span>
+        {step.status === "failed" && (
+          <XCircle className="h-3 w-3 shrink-0 text-destructive" />
+        )}
+        {step.status === "success" && (
+          <CheckCircle2 className="h-3 w-3 shrink-0 text-success" />
+        )}
+        <ChevronDown className={cn(
+          "h-3 w-3 shrink-0 text-content-tertiary transition-transform duration-150",
+          expanded && "rotate-180"
+        )} />
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2 border-t border-border/10 pt-2">
+          <div>
+            <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wider">Args</span>
+            <pre className="mt-1 text-[11px] text-content-secondary font-mono whitespace-pre-wrap break-all bg-background-tertiary/50 rounded px-2 py-1.5 max-h-[200px] overflow-auto">
+              {JSON.stringify(step.args, null, 2)}
+            </pre>
+          </div>
+
+          {step.status === "success" && step.result !== undefined && (
+            <div>
+              <span className="text-[10px] font-medium text-success/70 uppercase tracking-wider">Result</span>
+              <pre className="mt-1 text-[11px] text-content-secondary font-mono whitespace-pre-wrap break-all bg-background-tertiary/50 rounded px-2 py-1.5 max-h-[200px] overflow-auto">
+                {JSON.stringify(step.result, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {step.status === "failed" && step.error && (
+            <div>
+              <span className="text-[10px] font-medium text-destructive/70 uppercase tracking-wider">Error</span>
+              <pre className="mt-1 text-[11px] text-destructive/80 font-mono whitespace-pre-wrap break-all bg-destructive/5 border border-destructive/10 rounded px-2 py-1.5">
+                {step.error}
+              </pre>
+            </div>
+          )}
+
+          {step.status === "failed" && step.stack && (
+            <div>
+              <span className="text-[10px] font-medium text-destructive/50 uppercase tracking-wider">Stack Trace</span>
+              <pre className="mt-1 text-[10px] text-content-tertiary font-mono whitespace-pre-wrap break-all bg-background-tertiary/50 rounded px-2 py-1.5 max-h-[150px] overflow-auto">
+                {step.stack}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TriggerExecutionRow({ event }: { event: Record<string, any> }) {
+  const [showLogs, setShowLogs] = useState(false)
+  const isSuccess = event.eventType === "trigger.executed"
+  const payload = event.payload ?? {}
+  const executionLog = (payload.executionLog ?? []) as ExecutionLogEntry[]
+  const hasLogs = executionLog.length > 0
+
+  return (
+    <div className={cn(
+      "rounded-lg border transition-colors",
+      showLogs ? "border-border/40 bg-background-tertiary/30" : "border-border/20 bg-background-tertiary/20"
+    )}>
+      <button
+        onClick={() => hasLogs && setShowLogs(!showLogs)}
+        className={cn(
+          "flex w-full items-center gap-3 px-3 py-2.5 text-left",
+          hasLogs && "cursor-pointer"
+        )}
+      >
         {isSuccess ? (
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
         ) : (
@@ -157,17 +263,27 @@ function TriggerExecutionRow({ event }: { event: Record<string, any> }) {
             <span className={cn("text-xs font-medium", isSuccess ? "text-success" : "text-destructive")}>
               {isSuccess ? "Success" : "Failed"}
             </span>
+            {!isSuccess && payload.failedActionIndex !== undefined && payload.totalActions && (
+              <span className="text-[11px] text-content-tertiary">
+                at step {payload.failedActionIndex + 1}/{payload.totalActions}
+              </span>
+            )}
+            {!isSuccess && payload.failedAction && (
+              <span className="font-mono text-[11px] text-destructive/60">
+                {payload.failedAction}
+              </span>
+            )}
             {isSuccess && payload.actionsCount && (
               <span className="text-[11px] text-content-tertiary">
                 {payload.actionsCount} action{payload.actionsCount !== 1 ? "s" : ""}
               </span>
             )}
-            {!isSuccess && payload.failedAction && (
-              <span className="font-mono text-[11px] text-content-tertiary">
-                {payload.failedAction}
-              </span>
-            )}
           </div>
+          {!isSuccess && payload.error && !showLogs && (
+            <p className="text-[11px] text-destructive/60 mt-0.5 line-clamp-1 font-mono">
+              {payload.error}
+            </p>
+          )}
         </div>
 
         {event.entityId && (
@@ -181,19 +297,45 @@ function TriggerExecutionRow({ event }: { event: Record<string, any> }) {
           <span>{timeAgo(event.timestamp)}</span>
         </div>
 
-        {!isSuccess && payload.error && (
-          <button
-            onClick={() => setShowError(!showError)}
-            className="text-content-tertiary hover:text-content-secondary transition-colors cursor-pointer"
-          >
-            <AlertTriangle className="h-3 w-3" />
-          </button>
+        {hasLogs && (
+          <ChevronDown className={cn(
+            "h-3.5 w-3.5 shrink-0 text-content-tertiary transition-transform duration-150",
+            showLogs && "rotate-180"
+          )} />
         )}
-      </div>
 
-      {showError && payload.error && (
-        <div className="mt-2 rounded bg-destructive/5 border border-destructive/10 px-2.5 py-2">
-          <pre className="text-[11px] text-destructive/80 font-mono whitespace-pre-wrap break-all">
+        {!hasLogs && !isSuccess && payload.error && (
+          <AlertTriangle className="h-3 w-3 shrink-0 text-warning" />
+        )}
+      </button>
+
+      {showLogs && (
+        <div className="border-t border-border/20 px-3 pb-3 pt-2 space-y-3">
+          {payload.triggerData && (
+            <div>
+              <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wider">Trigger Data</span>
+              <pre className="mt-1 text-[11px] text-content-secondary font-mono whitespace-pre-wrap break-all bg-background-tertiary/50 rounded px-2 py-1.5 max-h-[150px] overflow-auto">
+                {JSON.stringify(payload.triggerData, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          <div>
+            <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wider">
+              Execution Log ({executionLog.length} step{executionLog.length !== 1 ? "s" : ""})
+            </span>
+            <div className="mt-1.5 space-y-1.5">
+              {executionLog.map((step, i) => (
+                <ExecutionLogStep key={i} step={step} index={i} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!hasLogs && !isSuccess && payload.error && showLogs && (
+        <div className="border-t border-border/20 px-3 pb-3 pt-2">
+          <pre className="text-[11px] text-destructive/80 font-mono whitespace-pre-wrap break-all bg-destructive/5 border border-destructive/10 rounded px-2.5 py-2">
             {payload.error}
           </pre>
         </div>

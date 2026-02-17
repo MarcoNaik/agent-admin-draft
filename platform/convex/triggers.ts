@@ -58,12 +58,25 @@ export const execute = internalAction({
     }
 
     const steps = templateContext.steps as Record<string, unknown>
+    const executionLog: Array<{
+      tool: string
+      as?: string
+      args: Record<string, unknown>
+      status: "success" | "failed"
+      result?: unknown
+      error?: string
+      stack?: string
+      durationMs: number
+    }> = []
 
-    for (const triggerAction of trigger.actions) {
+    for (let i = 0; i < trigger.actions.length; i++) {
+      const triggerAction = trigger.actions[i]
       const resolvedArgs = resolveTemplateVars(
         triggerAction.args,
         templateContext
       ) as Record<string, unknown>
+
+      const startTime = Date.now()
 
       try {
         const result = await executeToolAction(ctx, {
@@ -73,10 +86,32 @@ export const execute = internalAction({
           args: resolvedArgs,
         })
 
+        executionLog.push({
+          tool: triggerAction.tool,
+          as: triggerAction.as,
+          args: resolvedArgs,
+          status: "success",
+          result,
+          durationMs: Date.now() - startTime,
+        })
+
         if (triggerAction.as) {
           steps[triggerAction.as] = result
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorStack = error instanceof Error ? error.stack : undefined
+
+        executionLog.push({
+          tool: triggerAction.tool,
+          as: triggerAction.as,
+          args: resolvedArgs,
+          status: "failed",
+          error: errorMessage,
+          stack: errorStack,
+          durationMs: Date.now() - startTime,
+        })
+
         await ctx.runMutation(internal.triggers.emitTriggerEvent, {
           organizationId: args.organizationId,
           environment: args.environment,
@@ -86,7 +121,12 @@ export const execute = internalAction({
             triggerSlug: trigger.slug,
             triggerName: trigger.name,
             failedAction: triggerAction.tool,
-            error: error instanceof Error ? error.message : String(error),
+            failedActionIndex: i,
+            totalActions: trigger.actions.length,
+            error: errorMessage,
+            stack: errorStack,
+            executionLog,
+            triggerData: args.data,
           },
         })
         return
@@ -102,6 +142,7 @@ export const execute = internalAction({
         triggerSlug: trigger.slug,
         triggerName: trigger.name,
         actionsCount: trigger.actions.length,
+        executionLog,
       },
     })
   },
