@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { MessageSquare, Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { useWhatsAppConnection, useCalendarConnection } from "@/hooks/use-convex-data"
+import { useWhatsAppConnection, useCalendarConnection, useIntegrationConfig } from "@/hooks/use-convex-data"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -56,9 +56,11 @@ function IntegrationCard({ name, description, href, icon, status }: IntegrationC
 export default function IntegrationsPage() {
   const whatsappConnection = useWhatsAppConnection("production")
   const calendarConnection = useCalendarConnection("production")
+  const whatsappConfig = useIntegrationConfig("whatsapp")
 
   const getWhatsAppStatus = (): "active" | "inactive" | null => {
-    if (whatsappConnection === undefined) return null
+    if (whatsappConfig === undefined || whatsappConnection === undefined) return null
+    if (whatsappConfig?.status !== "active") return "inactive"
     if (whatsappConnection?.status === "connected") return "active"
     return "inactive"
   }
@@ -69,7 +71,7 @@ export default function IntegrationsPage() {
     return "inactive"
   }
 
-  if (whatsappConnection === undefined) {
+  if (whatsappConfig === undefined || whatsappConnection === undefined) {
     return (
       <div className="space-y-6">
         <div>

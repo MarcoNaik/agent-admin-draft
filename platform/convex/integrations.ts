@@ -1,7 +1,24 @@
 import { v } from "convex/values"
-import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
+import { query, mutation, action, internalQuery, internalMutation, QueryCtx, MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
+
+async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+  const membership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user_org", (q) =>
+      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
+    )
+    .first()
+  return membership?.role === "admin"
+}
+
+async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+  if (!(await isOrgAdmin(ctx, auth))) {
+    throw new Error("Admin access required")
+  }
+}
 
 interface FlowConfig {
   apiUrl: string
@@ -138,6 +155,7 @@ export const updateConfig = mutation({
   returns: v.id("integrationConfigs"),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const existing = await ctx.db
       .query("integrationConfigs")
@@ -205,6 +223,20 @@ export const patchConfigStatus = internalMutation({
   },
 })
 
+export const isOrgAdminInternal = internalQuery({
+  args: { userId: v.id("users"), organizationId: v.id("organizations") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId)
+      )
+      .first()
+    return membership?.role === "admin"
+  },
+})
+
 export const testConnection = action({
   args: {
     provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
@@ -217,6 +249,14 @@ export const testConnection = action({
     const auth = await ctx.runQuery(internal.chat.getAuthInfo)
     if (!auth) {
       throw new Error("Not authenticated")
+    }
+
+    const isAdmin = await ctx.runQuery(internal.integrations.isOrgAdminInternal, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!isAdmin) {
+      throw new Error("Admin access required")
     }
 
     const config = await ctx.runQuery(internal.integrations.getConfigForTest, {
@@ -358,6 +398,7 @@ export const deleteConfig = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const config = await ctx.db
       .query("integrationConfigs")
@@ -383,6 +424,7 @@ export const setConfigStatus = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const config = await ctx.db
       .query("integrationConfigs")

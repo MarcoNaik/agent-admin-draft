@@ -337,6 +337,14 @@ export function useSetWhatsAppAgent() {
   return useMutation(api.whatsapp.setWhatsAppAgent)
 }
 
+export function useEnableWhatsApp() {
+  return useMutation(api.whatsapp.enableWhatsApp)
+}
+
+export function useDisableWhatsApp() {
+  return useMutation(api.whatsapp.disableWhatsApp)
+}
+
 export function useAgentBySlug(slug: string) {
   return useQuery(api.chat.getAgentBySlug, { slug })
 }

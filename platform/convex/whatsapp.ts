@@ -1,6 +1,7 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation, internalAction, internalQuery } from "./_generated/server"
+import { query, mutation, internalMutation, internalAction, internalQuery, QueryCtx, MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import {
   connectViaGateway,
@@ -9,6 +10,34 @@ import {
 } from "./lib/integrations/whatsapp"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
+async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+  const membership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user_org", (q) =>
+      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
+    )
+    .first()
+  return membership?.role === "admin"
+}
+
+async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
+  if (!(await isOrgAdmin(ctx, auth))) {
+    throw new Error("Admin access required")
+  }
+}
+
+async function requireWhatsAppEnabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">) {
+  const integrationConfig = await ctx.db
+    .query("integrationConfigs")
+    .withIndex("by_org_provider", (q) =>
+      q.eq("organizationId", organizationId).eq("provider", "whatsapp")
+    )
+    .first()
+  if (!integrationConfig || integrationConfig.status !== "active") {
+    throw new Error("WhatsApp integration is not enabled")
+  }
+}
 
 export const connect = internalAction({
   args: {
@@ -105,6 +134,7 @@ export const reconnectWhatsApp = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     await ctx.scheduler.runAfter(0, internal.whatsapp.reconnect, {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -120,6 +150,8 @@ export const connectWhatsApp = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
+    await requireWhatsAppEnabled(ctx, auth.organizationId)
     await ctx.scheduler.runAfter(0, internal.whatsapp.connect, {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -135,6 +167,7 @@ export const disconnectWhatsApp = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     await ctx.scheduler.runAfter(0, internal.whatsapp.disconnect, {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -151,6 +184,8 @@ export const setWhatsAppAgent = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
+    await requireWhatsAppEnabled(ctx, auth.organizationId)
 
     const connection = await ctx.db
       .query("whatsappConnections")
@@ -186,6 +221,7 @@ export const getConnection = query({
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     return await ctx.db
       .query("whatsappConnections")
       .withIndex("by_org_env", (q) =>
@@ -515,6 +551,7 @@ export const getConversationMessages = query({
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const messages = await ctx.db
       .query("whatsappMessages")
@@ -535,6 +572,7 @@ export const listConversations = query({
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const messages = await ctx.db
       .query("whatsappMessages")
@@ -555,5 +593,67 @@ export const listConversations = query({
     }
 
     return Array.from(phoneMap.values()).slice(0, args.limit ?? 50)
+  },
+})
+
+export const enableWhatsApp = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
+
+    const existing = await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("provider", "whatsapp")
+      )
+      .first()
+
+    const now = Date.now()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: "active",
+        updatedAt: now,
+      })
+    } else {
+      await ctx.db.insert("integrationConfigs", {
+        organizationId: auth.organizationId,
+        provider: "whatsapp",
+        config: {},
+        status: "active",
+        lastVerifiedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    return null
+  },
+})
+
+export const disableWhatsApp = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
+
+    const existing = await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("provider", "whatsapp")
+      )
+      .first()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: "inactive",
+        updatedAt: Date.now(),
+      })
+    }
+
+    return null
   },
 })
