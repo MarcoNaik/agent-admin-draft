@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, Calendar, CheckCircle, XCircle, RefreshCw } from "lucide-react"
+import { Loader2, Calendar, CheckCircle, XCircle, RefreshCw, ExternalLink } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 import {
   useCalendarConnection,
   useConnectCalendar,
@@ -47,6 +48,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: boolean } = {}) {
+  const { user: clerkUser } = useUser()
   const integrationConfig = useIntegrationConfig("google")
   const connection = useCalendarConnection("production")
   const connectCalendar = useConnectCalendar()
@@ -56,11 +58,16 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const verifyConnection = useVerifyCalendarConnection()
 
   const [connecting, setConnecting] = useState(false)
+  const [linkingGoogle, setLinkingGoogle] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
   const [calendars, setCalendars] = useState<Array<{ id: string; summary: string; primary: boolean }>>([])
   const [loadingCalendars, setLoadingCalendars] = useState(false)
+
+  const hasGoogleOAuth = clerkUser?.externalAccounts?.some(
+    (account) => account.provider === "oauth_google" && account.verification?.status === "verified"
+  )
 
   const status = connection?.status ?? "disconnected"
 
@@ -79,6 +86,23 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
       console.error("Failed to load calendars:", err)
     } finally {
       setLoadingCalendars(false)
+    }
+  }
+
+  const handleLinkGoogle = async () => {
+    if (!clerkUser) return
+    setLinkingGoogle(true)
+    try {
+      const res = await clerkUser.createExternalAccount({
+        strategy: "oauth_google",
+        redirectUrl: window.location.href,
+      })
+      if (res.verification?.externalVerificationRedirectURL) {
+        window.location.href = res.verification.externalVerificationRedirectURL.toString()
+      }
+    } catch (err) {
+      console.error("Failed to link Google account:", err)
+      setLinkingGoogle(false)
     }
   }
 
@@ -180,12 +204,22 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
             </div>
           )}
 
-          {status === "disconnected" && (
+          {status === "disconnected" && !hasGoogleOAuth && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <Calendar className="h-8 w-8 text-content-tertiary" />
+              <p className="text-sm text-content-secondary">Google account not linked</p>
+              <p className="text-xs text-content-tertiary text-center max-w-sm">
+                Link your Google account to grant calendar access. You will be redirected to Google to authorize.
+              </p>
+            </div>
+          )}
+
+          {status === "disconnected" && hasGoogleOAuth && (
             <div className="flex flex-col items-center gap-3 py-6">
               <Calendar className="h-8 w-8 text-content-tertiary" />
               <p className="text-sm text-content-secondary">No Google Calendar connected</p>
               <p className="text-xs text-content-tertiary text-center max-w-sm">
-                Sign in with Google OAuth via Clerk to grant calendar access, then connect here.
+                Your Google account is linked. Connect your calendar to enable event sync.
               </p>
             </div>
           )}
@@ -198,7 +232,22 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
           )}
 
           <div className="flex gap-2 pt-2">
-            {status === "disconnected" && (
+            {status === "disconnected" && !hasGoogleOAuth && (
+              <Button onClick={handleLinkGoogle} disabled={linkingGoogle}>
+                {linkingGoogle ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Link Google Account
+                  </>
+                )}
+              </Button>
+            )}
+            {status === "disconnected" && hasGoogleOAuth && (
               <Button onClick={handleConnect} disabled={connecting}>
                 {connecting ? (
                   <>
