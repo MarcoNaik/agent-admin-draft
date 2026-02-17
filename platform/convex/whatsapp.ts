@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation, internalAction } from "./_generated/server"
+import { query, mutation, internalMutation, internalAction, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { requireAuth } from "./lib/auth"
 import {
@@ -192,6 +192,47 @@ export const getConnection = query({
         q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
       )
       .first()
+  },
+})
+
+export const getConnectionInternal = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment)
+      )
+      .first()
+  },
+})
+
+export const getConversationMessagesInternal = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    phoneNumber: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("whatsappMessages")
+      .withIndex("by_org_phone", (q) =>
+        q.eq("organizationId", args.organizationId).eq("phoneNumber", args.phoneNumber)
+      )
+      .order("desc")
+      .take(args.limit ?? 50)
+
+    return messages.reverse().map((msg) => ({
+      id: msg._id,
+      direction: msg.direction,
+      text: msg.text,
+      type: msg.type,
+      status: msg.status,
+      timestamp: msg.createdAt,
+    }))
   },
 })
 
