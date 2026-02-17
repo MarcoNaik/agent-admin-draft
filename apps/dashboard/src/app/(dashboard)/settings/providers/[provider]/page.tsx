@@ -21,28 +21,24 @@ const PROVIDER_META: Record<ProviderKey, {
   name: string
   color: string
   bgColor: string
-  models: string[]
   keyPrefix: string
 }> = {
   anthropic: {
     name: "Anthropic",
     color: "text-orange-400",
     bgColor: "bg-orange-400/10",
-    models: ["claude-haiku-4-5", "claude-sonnet-4", "claude-opus-4-5"],
     keyPrefix: "sk-ant-",
   },
   openai: {
     name: "OpenAI",
     color: "text-emerald-400",
     bgColor: "bg-emerald-400/10",
-    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
     keyPrefix: "sk-",
   },
   google: {
     name: "Google AI",
     color: "text-blue-400",
     bgColor: "bg-blue-400/10",
-    models: ["gemini-1.5-pro", "gemini-1.5-flash"],
     keyPrefix: "AI",
   },
 }
@@ -296,24 +292,6 @@ export default function ProviderDetailPage() {
           </CardContent>
         </Card>
       )}
-
-      <Card className="bg-background-secondary">
-        <CardHeader>
-          <CardTitle className="text-base text-content-primary">Available Models</CardTitle>
-          <CardDescription className="text-content-secondary">
-            Models available through {meta.name}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {meta.models.map((model) => (
-              <div key={model} className="flex items-center gap-2 p-2 rounded bg-background-tertiary">
-                <code className="text-sm text-content-primary font-mono">{model}</code>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {config?.lastVerifiedAt && (
         <p className="text-xs text-content-tertiary mt-4">
