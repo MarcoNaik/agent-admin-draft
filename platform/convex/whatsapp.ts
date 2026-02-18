@@ -11,6 +11,16 @@ import {
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
+const connectionMethodValidator = v.union(v.literal("qr"), v.literal("pairing_code"))
+
+const connectionStatusValidator = v.union(
+  v.literal("disconnected"),
+  v.literal("connecting"),
+  v.literal("qr_ready"),
+  v.literal("pairing_code_ready"),
+  v.literal("connected")
+)
+
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
     .query("userOrganizations")
@@ -43,6 +53,8 @@ export const connect = internalAction({
   args: {
     organizationId: v.id("organizations"),
     environment: environmentValidator,
+    method: v.optional(connectionMethodValidator),
+    phoneNumber: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -52,7 +64,7 @@ export const connect = internalAction({
       status: "connecting",
     })
     try {
-      const result = await connectViaGateway(args.organizationId as string)
+      const result = await connectViaGateway(args.organizationId as string, args.method, args.phoneNumber)
       if (result.status === "connected") {
         await ctx.runMutation(internal.whatsapp.upsertConnection, {
           organizationId: args.organizationId,
@@ -146,6 +158,8 @@ export const reconnectWhatsApp = mutation({
 export const connectWhatsApp = mutation({
   args: {
     environment: environmentValidator,
+    method: v.optional(connectionMethodValidator),
+    phoneNumber: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -155,6 +169,8 @@ export const connectWhatsApp = mutation({
     await ctx.scheduler.runAfter(0, internal.whatsapp.connect, {
       organizationId: auth.organizationId,
       environment: args.environment,
+      method: args.method,
+      phoneNumber: args.phoneNumber,
     })
     return null
   },
@@ -276,14 +292,10 @@ export const upsertConnection = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     environment: environmentValidator,
-    status: v.union(
-      v.literal("disconnected"),
-      v.literal("connecting"),
-      v.literal("qr_ready"),
-      v.literal("connected")
-    ),
+    status: connectionStatusValidator,
     phoneNumber: v.optional(v.string()),
     qrCode: v.optional(v.string()),
+    pairingCode: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -303,9 +315,13 @@ export const upsertConnection = internalMutation({
       }
       if (args.phoneNumber !== undefined) patch.phoneNumber = args.phoneNumber
       if (args.qrCode !== undefined) patch.qrCode = args.qrCode
+      if (args.pairingCode !== undefined) patch.pairingCode = args.pairingCode
       if (args.status === "connected") patch.lastConnectedAt = now
       if (args.status === "disconnected") patch.lastDisconnectedAt = now
-      if (args.status === "connected") patch.qrCode = undefined
+      if (args.status === "connected") {
+        patch.qrCode = undefined
+        patch.pairingCode = undefined
+      }
       await ctx.db.patch(existing._id, patch)
     } else {
       await ctx.db.insert("whatsappConnections", {
@@ -314,6 +330,7 @@ export const upsertConnection = internalMutation({
         status: args.status,
         phoneNumber: args.phoneNumber,
         qrCode: args.qrCode,
+        pairingCode: args.pairingCode,
         lastConnectedAt: args.status === "connected" ? now : undefined,
         lastDisconnectedAt: args.status === "disconnected" ? now : undefined,
         createdAt: now,
@@ -351,15 +368,36 @@ export const updateQRCode = internalMutation({
   },
 })
 
+export const updatePairingCode = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    pairingCode: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+
+    for (const conn of connections) {
+      if (conn.status === "connecting" || conn.status === "pairing_code_ready") {
+        await ctx.db.patch(conn._id, {
+          pairingCode: args.pairingCode,
+          status: "pairing_code_ready",
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    return null
+  },
+})
+
 export const updateConnectionStatus = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    status: v.union(
-      v.literal("disconnected"),
-      v.literal("connecting"),
-      v.literal("qr_ready"),
-      v.literal("connected")
-    ),
+    status: connectionStatusValidator,
     phoneNumber: v.optional(v.string()),
   },
   returns: v.null(),
@@ -382,10 +420,12 @@ export const updateConnectionStatus = internalMutation({
       if (args.status === "connected") {
         patch.lastConnectedAt = now
         patch.qrCode = undefined
+        patch.pairingCode = undefined
       }
       if (args.status === "disconnected") {
         patch.lastDisconnectedAt = now
         patch.qrCode = undefined
+        patch.pairingCode = undefined
       }
       await ctx.db.patch(conn._id, patch)
     }
