@@ -10,6 +10,7 @@ interface FlowConfig {
 
 interface CreatePaymentLinkParams {
   organizationId: Id<"organizations">
+  environment: "development" | "production"
   paymentId: Id<"entities">
   amount: number
   currency: string
@@ -34,12 +35,13 @@ interface FlowPaymentStatus {
 
 export async function getFlowConfig(
   ctx: QueryCtx,
-  organizationId: Id<"organizations">
+  organizationId: Id<"organizations">,
+  environment: "development" | "production"
 ): Promise<FlowConfig> {
   const config = await ctx.db
     .query("integrationConfigs")
-    .withIndex("by_org_provider", (q) =>
-      q.eq("organizationId", organizationId).eq("provider", "flow")
+    .withIndex("by_org_env_provider", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("provider", "flow")
     )
     .first()
 
@@ -195,7 +197,7 @@ export async function createPaymentLink(
   ctx: MutationCtx,
   params: CreatePaymentLinkParams
 ): Promise<CreatePaymentLinkResult> {
-  const config = await getFlowConfig(ctx, params.organizationId)
+  const config = await getFlowConfig(ctx, params.organizationId, params.environment)
 
   const orderData: Record<string, unknown> = {
     apiKey: config.apiKey,
@@ -254,11 +256,12 @@ export async function createPaymentLink(
 export async function verifyPaymentStatus(
   ctx: ActionCtx,
   organizationId: Id<"organizations">,
+  environment: "development" | "production",
   token: string
 ): Promise<FlowPaymentStatus> {
   const config = await ctx.runQuery(
     (async (ctx: QueryCtx) => {
-      return getFlowConfig(ctx, organizationId)
+      return getFlowConfig(ctx, organizationId, environment)
     }) as never,
     {} as never
   ) as FlowConfig
@@ -293,9 +296,10 @@ export async function verifyPaymentStatus(
 export async function checkFlowOrderStatus(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
+  environment: "development" | "production",
   flowOrderId: string
 ): Promise<FlowPaymentStatus> {
-  const config = await getFlowConfig(ctx, organizationId)
+  const config = await getFlowConfig(ctx, organizationId, environment)
 
   const params: Record<string, unknown> = {
     apiKey: config.apiKey,
