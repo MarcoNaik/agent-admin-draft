@@ -5,6 +5,7 @@ import { Activity, Zap, Clock, CheckCircle, Loader2 } from "lucide-react"
 import {
   useExecutionStats,
   useUsageByAgent,
+  useUsageByModel,
   useEvalStats,
   useRecentExecutions,
   useAgents,
@@ -18,6 +19,7 @@ export default function UsagePage() {
   const { environment } = useEnvironment()
   const stats = useExecutionStats(undefined, environment)
   const agentUsage = useUsageByAgent(environment)
+  const modelUsage = useUsageByModel(environment)
   const evalStats = useEvalStats(environment)
   const recentExecs = useRecentExecutions(undefined, environment, 20)
   const agents = useAgents()
@@ -131,6 +133,52 @@ export default function UsagePage() {
                     <tr key={row.agentId} className="border-b border-border/50">
                       <td className="py-2 pr-4 text-content-primary">
                         {agentNameMap.get(row.agentId) ?? "Unknown"}
+                      </td>
+                      <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.count)}</td>
+                      <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.inputTokens)}</td>
+                      <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.outputTokens)}</td>
+                      <td className="text-right py-2 px-4 text-content-primary font-medium">
+                        {formatNumber(row.inputTokens + row.outputTokens)}
+                      </td>
+                      <td className="text-right py-2 pl-4 text-content-secondary">
+                        {row.errors > 0 ? (
+                          <span className="text-destructive">{row.errors}</span>
+                        ) : (
+                          "0"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {modelUsage && modelUsage.length > 0 && (
+        <Card className="bg-background-secondary">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-content-primary">Model Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-content-secondary">
+                    <th className="text-left py-2 pr-4 font-medium">Model</th>
+                    <th className="text-right py-2 px-4 font-medium">Runs</th>
+                    <th className="text-right py-2 px-4 font-medium">Input tokens</th>
+                    <th className="text-right py-2 px-4 font-medium">Output tokens</th>
+                    <th className="text-right py-2 px-4 font-medium">Total tokens</th>
+                    <th className="text-right py-2 pl-4 font-medium">Errors</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modelUsage.map((row: { model: string; count: number; inputTokens: number; outputTokens: number; errors: number }) => (
+                    <tr key={row.model} className="border-b border-border/50">
+                      <td className="py-2 pr-4 text-content-primary">
+                        {row.model === "unknown" ? "Unknown" : row.model}
                       </td>
                       <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.count)}</td>
                       <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.inputTokens)}</td>
