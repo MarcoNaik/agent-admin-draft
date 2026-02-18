@@ -17,8 +17,6 @@ const BUILTIN_TOOLS = [
   'entity.unlink',
   'event.emit',
   'event.query',
-  'job.enqueue',
-  'job.status',
   'calendar.list',
   'calendar.create',
   'calendar.update',
@@ -123,6 +121,16 @@ export interface SyncPayload {
       args: Record<string, unknown>
       as?: string
     }>
+    schedule?: {
+      delay?: number
+      at?: string
+      offset?: number
+      cancelPrevious?: boolean
+    }
+    retry?: {
+      maxAttempts?: number
+      backoffMs?: number
+    }
   }>
 }
 
@@ -204,6 +212,8 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
           args: a.args,
           as: a.as,
         })),
+        schedule: t.schedule,
+        retry: t.retry,
       }))
     : undefined
 
@@ -281,8 +291,6 @@ function getBuiltinToolDescription(name: string): string {
     'entity.unlink': 'Remove a relation between two entities',
     'event.emit': 'Emit a custom event for audit logging',
     'event.query': 'Query historical events with optional filters',
-    'job.enqueue': 'Schedule a background job to run later',
-    'job.status': 'Get the status of a scheduled job',
     'calendar.list': 'List Google Calendar events for a user within a time range',
     'calendar.create': 'Create a Google Calendar event on a user\'s calendar',
     'calendar.update': 'Update an existing Google Calendar event',
@@ -375,26 +383,6 @@ function getBuiltinToolParameters(name: string): unknown {
         since: { type: 'number', description: 'Unix timestamp to filter events after' },
         limit: { type: 'number', description: 'Maximum number of results' },
       },
-    },
-    'job.enqueue': {
-      type: 'object',
-      properties: {
-        jobType: { type: 'string', description: 'The type of job to schedule' },
-        payload: { type: 'object', description: 'Job payload data' },
-        scheduledFor: { type: 'number', description: 'Unix timestamp when job should run (optional, runs immediately if omitted)' },
-        priority: { type: 'number', description: 'Job priority (higher runs first)' },
-        maxAttempts: { type: 'number', description: 'Maximum retry attempts' },
-        idempotencyKey: { type: 'string', description: 'Unique key to prevent duplicate jobs' },
-        entityId: { type: 'string', description: 'Optional entity ID this job relates to' },
-      },
-      required: ['jobType'],
-    },
-    'job.status': {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'The job ID to check' },
-      },
-      required: ['id'],
     },
     'calendar.list': {
       type: 'object',

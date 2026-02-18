@@ -10,8 +10,7 @@ const BUILTIN_TOOLS = [
   'entity.unlink',
   'event.emit',
   'event.query',
-  'job.enqueue',
-  'job.status',
+  'agent.chat',
 ]
 
 function escapeTemplateLiteral(str: string): string {
