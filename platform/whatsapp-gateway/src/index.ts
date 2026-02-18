@@ -25,11 +25,18 @@ app.post("/connect", async (c) => {
   if (!verifySecret(c.req.raw)) {
     return c.json({ error: "Unauthorized" }, 403)
   }
-  const { orgId } = await c.req.json<{ orgId: string }>()
+  const { orgId, method, phoneNumber } = await c.req.json<{
+    orgId: string
+    method?: "qr" | "pairing_code"
+    phoneNumber?: string
+  }>()
   if (!orgId) {
     return c.json({ error: "orgId is required" }, 400)
   }
-  await connect(orgId)
+  if (method === "pairing_code" && !phoneNumber?.match(/^\d+$/)) {
+    return c.json({ error: "phoneNumber with digits only is required for pairing_code method" }, 400)
+  }
+  await connect(orgId, method ?? "qr", phoneNumber)
   const status = getStatus(orgId)
   return c.json({ success: true, ...status })
 })
