@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
-import { join, basename } from 'path'
+import { join } from 'path'
 import YAML from 'yaml'
 import type { AgentConfigV2, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig } from '../../types'
+import { registerStruerePlugin } from './plugin'
 
 export interface LoadedResources {
   agents: AgentConfigV2[]
@@ -14,61 +15,49 @@ export interface LoadedResources {
 }
 
 export async function loadAllResources(cwd: string): Promise<LoadedResources> {
+  registerStruerePlugin()
   const errors: string[] = []
-  const agents = await loadAllAgents(join(cwd, 'agents'))
-  const entityTypes = await loadAllEntityTypes(join(cwd, 'entity-types'))
-  const roles = await loadAllRoles(join(cwd, 'roles'))
+  const agents = await loadTsDirectory<AgentConfigV2>(join(cwd, 'agents'))
+  const entityTypes = await loadTsDirectory<EntityTypeConfig>(join(cwd, 'entity-types'))
+  const roles = await loadTsDirectory<RoleConfig>(join(cwd, 'roles'))
   const { tools: customTools, error: toolsError } = await loadCustomTools(join(cwd, 'tools'))
   if (toolsError) {
     errors.push(toolsError)
   }
-  const { suites: evalSuites, errors: evalErrors } = loadAllEvalSuites(join(cwd, 'evals'))
+  const { suites: evalSuites, errors: evalErrors } = loadEvalSuites(join(cwd, 'evals'))
   errors.push(...evalErrors)
-  const triggers = await loadAllTriggers(join(cwd, 'triggers'))
+  const triggers = await loadTsDirectory<TriggerConfig>(join(cwd, 'triggers'))
 
   return { agents, entityTypes, roles, customTools, evalSuites, triggers, errors }
 }
 
-export async function loadAllAgents(dir: string): Promise<AgentConfigV2[]> {
+async function loadTsDirectory<T>(dir: string): Promise<T[]> {
   if (!existsSync(dir)) {
     return []
   }
 
-  const indexPath = join(dir, 'index.ts')
-  if (existsSync(indexPath)) {
-    return loadFromIndex<AgentConfigV2>(indexPath)
+  const files = readdirSync(dir).filter(
+    (f) => f.endsWith('.ts') && f !== 'index.ts' && !f.endsWith('.d.ts')
+  )
+
+  const items: T[] = []
+
+  for (const file of files) {
+    const filePath = join(dir, file)
+    try {
+      const module = await import(`${filePath}?update=${Date.now()}`)
+      if (module.default) {
+        items.push(module.default as T)
+      }
+    } catch (error) {
+      throw new Error(`Failed to load ${file}: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
-  return loadFromDirectory<AgentConfigV2>(dir)
+  return items
 }
 
-export async function loadAllEntityTypes(dir: string): Promise<EntityTypeConfig[]> {
-  if (!existsSync(dir)) {
-    return []
-  }
-
-  const indexPath = join(dir, 'index.ts')
-  if (existsSync(indexPath)) {
-    return loadFromIndex<EntityTypeConfig>(indexPath)
-  }
-
-  return loadFromDirectory<EntityTypeConfig>(dir)
-}
-
-export async function loadAllRoles(dir: string): Promise<RoleConfig[]> {
-  if (!existsSync(dir)) {
-    return []
-  }
-
-  const indexPath = join(dir, 'index.ts')
-  if (existsSync(indexPath)) {
-    return loadFromIndex<RoleConfig>(indexPath)
-  }
-
-  return loadFromDirectory<RoleConfig>(dir)
-}
-
-export async function loadCustomTools(dir: string): Promise<{ tools: ToolReference[]; error?: string }> {
+async function loadCustomTools(dir: string): Promise<{ tools: ToolReference[]; error?: string }> {
   if (!existsSync(dir)) {
     return { tools: [] }
   }
@@ -93,52 +82,7 @@ export async function loadCustomTools(dir: string): Promise<{ tools: ToolReferen
   }
 }
 
-async function loadFromIndex<T>(indexPath: string): Promise<T[]> {
-  try {
-    const module = await import(`${indexPath}?update=${Date.now()}`)
-
-    if (Array.isArray(module.default)) {
-      return module.default
-    }
-
-    const items: T[] = []
-    for (const key of Object.keys(module)) {
-      if (key === 'default') continue
-      const value = module[key]
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        items.push(value as T)
-      }
-    }
-
-    return items
-  } catch (error) {
-    throw new Error(`Failed to load index at ${indexPath}: ${error instanceof Error ? error.message : String(error)}`)
-  }
-}
-
-async function loadFromDirectory<T>(dir: string): Promise<T[]> {
-  const files = readdirSync(dir).filter(
-    (f) => f.endsWith('.ts') && f !== 'index.ts' && !f.endsWith('.d.ts')
-  )
-
-  const items: T[] = []
-
-  for (const file of files) {
-    const filePath = join(dir, file)
-    try {
-      const module = await import(`${filePath}?update=${Date.now()}`)
-      if (module.default) {
-        items.push(module.default as T)
-      }
-    } catch (error) {
-      throw new Error(`Failed to load ${file}: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  return items
-}
-
-export function loadAllEvalSuites(dir: string): { suites: EvalSuiteDefinition[]; errors: string[] } {
+function loadEvalSuites(dir: string): { suites: EvalSuiteDefinition[]; errors: string[] } {
   const suites: EvalSuiteDefinition[] = []
   const errors: string[] = []
 
@@ -163,19 +107,6 @@ export function loadAllEvalSuites(dir: string): { suites: EvalSuiteDefinition[];
   return { suites, errors }
 }
 
-export async function loadAllTriggers(dir: string): Promise<TriggerConfig[]> {
-  if (!existsSync(dir)) {
-    return []
-  }
-
-  const indexPath = join(dir, 'index.ts')
-  if (existsSync(indexPath)) {
-    return loadFromIndex<TriggerConfig>(indexPath)
-  }
-
-  return loadFromDirectory<TriggerConfig>(dir)
-}
-
 export function getResourceDirectories(cwd: string): {
   agents: string
   entityTypes: string
@@ -192,9 +123,4 @@ export function getResourceDirectories(cwd: string): {
     evals: join(cwd, 'evals'),
     triggers: join(cwd, 'triggers'),
   }
-}
-
-export function hasResourceDirectories(cwd: string): boolean {
-  const dirs = getResourceDirectories(cwd)
-  return existsSync(dirs.agents) || existsSync(dirs.entityTypes) || existsSync(dirs.roles)
 }
