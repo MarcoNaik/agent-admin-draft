@@ -315,6 +315,26 @@ http.route({
 })
 
 http.route({
+  path: "/webhook/whatsapp/pairing-code",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
+    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
+      return new Response("Forbidden", { status: 403 })
+    }
+
+    const { orgId, pairingCode } = await request.json() as { orgId: string; pairingCode: string }
+
+    await ctx.runMutation(internal.whatsapp.updatePairingCode, {
+      organizationId: orgId as Id<"organizations">,
+      pairingCode,
+    })
+
+    return new Response("OK", { status: 200 })
+  }),
+})
+
+http.route({
   path: "/webhook/whatsapp/status",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
@@ -325,7 +345,7 @@ http.route({
 
     const { orgId, status, phoneNumber } = await request.json() as {
       orgId: string
-      status: "disconnected" | "connecting" | "qr_ready" | "connected"
+      status: "disconnected" | "connecting" | "qr_ready" | "pairing_code_ready" | "connected"
       phoneNumber?: string
     }
 
