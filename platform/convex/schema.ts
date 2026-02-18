@@ -347,10 +347,12 @@ export default defineSchema({
       v.literal("disconnected"),
       v.literal("connecting"),
       v.literal("qr_ready"),
+      v.literal("pairing_code_ready"),
       v.literal("connected")
     ),
     phoneNumber: v.optional(v.string()),
     qrCode: v.optional(v.string()),
+    pairingCode: v.optional(v.string()),
     agentId: v.optional(v.id("agents")),
     environment: environmentValidator,
     lastConnectedAt: v.optional(v.number()),
