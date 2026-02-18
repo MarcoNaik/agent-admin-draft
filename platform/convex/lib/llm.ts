@@ -10,7 +10,7 @@ interface ModelConfig {
   maxTokens?: number
 }
 
-const BUILTIN_PREFIXES = ["entity", "event", "job"]
+const BUILTIN_PREFIXES = ["entity", "event", "agent", "calendar"]
 
 export function createModel(config: ModelConfig, apiKeyOverride?: string): LanguageModel {
   switch (config.provider) {
