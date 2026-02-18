@@ -8,6 +8,7 @@ import { performLogin } from './login'
 import { hasProject, getProjectVersion } from '../utils/project'
 import { scaffoldProjectV2 } from '../utils/scaffold'
 import { listMyOrganizations, OrgInfo } from '../utils/convex'
+import { generateTypeDeclarations } from '../utils/plugin'
 
 export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boolean> {
   const spinner = ora()
@@ -72,21 +73,8 @@ export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boole
     console.log(chalk.green('✓'), `Created ${file}`)
   }
 
-  console.log()
-  spinner.start('Installing dependencies')
-
-  const installResult = Bun.spawnSync(['bun', 'install'], {
-    cwd,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-
-  if (installResult.exitCode === 0) {
-    spinner.succeed('Dependencies installed')
-  } else {
-    spinner.warn('Could not install dependencies automatically')
-    console.log(chalk.gray('  Run'), chalk.cyan('bun install'), chalk.gray('manually'))
-  }
+  generateTypeDeclarations(cwd)
+  console.log(chalk.green('✓'), 'Generated .struere/types.d.ts')
 
   console.log()
   console.log(chalk.green('✓'), 'Project initialized')
@@ -196,21 +184,8 @@ export const initCommand = new Command('init')
       console.log(chalk.green('✓'), `Created ${file}`)
     }
 
-    console.log()
-    spinner.start('Installing dependencies')
-
-    const installResult = Bun.spawnSync(['bun', 'install'], {
-      cwd,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
-
-    if (installResult.exitCode === 0) {
-      spinner.succeed('Dependencies installed')
-    } else {
-      spinner.warn('Could not install dependencies automatically')
-      console.log(chalk.gray('  Run'), chalk.cyan('bun install'), chalk.gray('manually'))
-    }
+    generateTypeDeclarations(cwd)
+    console.log(chalk.green('✓'), 'Generated .struere/types.d.ts')
 
     console.log()
     console.log(chalk.green('Success!'), 'Project initialized')
