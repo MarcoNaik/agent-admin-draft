@@ -508,3 +508,7 @@ export function useAddCredits() {
 export function useAdjustBalance() {
   return useMutation(api.billing.adjustBalance)
 }
+
+export function useCreateCheckoutSession() {
+  return useAction(api.billing.createCheckoutSession)
+}
