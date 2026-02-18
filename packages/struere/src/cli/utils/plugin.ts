@@ -3,7 +3,7 @@ import { join } from 'path'
 
 let registered = false
 
-const VIRTUAL_MODULE_SOURCE = `
+export const VIRTUAL_MODULE_SOURCE = `
 function defineAgent(config) {
   if (!config.name) throw new Error('Agent name is required')
   if (!config.version) throw new Error('Agent version is required')
@@ -202,21 +202,6 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
 
   export interface AgentConfig {
     name: string
-    version: string
-    description?: string
-    model?: ModelConfig
-    systemPrompt: string | (() => string | Promise<string>)
-    tools?: ToolReference[]
-    workflows?: { name: string; path: string }[]
-    state?: {
-      storage: 'memory' | 'redis' | 'postgres' | 'custom'
-      ttl?: number
-      prefix?: string
-    }
-  }
-
-  export interface AgentConfigV2 {
-    name: string
     slug: string
     version: string
     description?: string
@@ -320,7 +305,6 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
   }
 
   export function defineAgent(config: AgentConfig): AgentConfig
-  export function defineAgent(config: AgentConfigV2): AgentConfigV2
   export function defineRole(config: RoleConfig): RoleConfig
   export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig
   export function defineTrigger(config: TriggerConfig): TriggerConfig
@@ -335,4 +319,12 @@ export function generateTypeDeclarations(cwd: string): void {
     mkdirSync(struereDir, { recursive: true })
   }
   writeFileSync(join(struereDir, 'types.d.ts'), TYPE_DECLARATIONS)
+  writeFileSync(join(struereDir, 'index.d.ts'), TYPE_DECLARATIONS)
+  writeFileSync(join(struereDir, 'index.js'), VIRTUAL_MODULE_SOURCE)
+
+  const shimDir = join(cwd, 'node_modules', 'struere')
+  mkdirSync(shimDir, { recursive: true })
+  writeFileSync(join(shimDir, 'index.js'), VIRTUAL_MODULE_SOURCE)
+  writeFileSync(join(shimDir, 'index.d.ts'), TYPE_DECLARATIONS)
+  writeFileSync(join(shimDir, 'package.json'), JSON.stringify({ name: 'struere', version: '0.0.0', main: 'index.js', types: 'index.d.ts' }))
 }
