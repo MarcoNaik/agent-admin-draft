@@ -36,11 +36,14 @@ export function getTsConfig(): string {
         skipLibCheck: true,
         forceConsistentCasingInFileNames: true,
         outDir: 'dist',
-        rootDir: 'src',
+        rootDir: '.',
         types: ['bun-types'],
+        paths: {
+          struere: ['./.struere/types.d.ts'],
+        },
       },
-      include: ['src/**/*'],
-      exclude: ['node_modules', 'dist'],
+      include: ['**/*.ts'],
+      exclude: ['node_modules', 'dist', '.struere'],
     },
     null,
     2
@@ -284,6 +287,7 @@ Thumbs.db
 *.log
 logs/
 .vercel/
+.struere/
 `
 }
 
@@ -488,9 +492,6 @@ export function getPackageJsonV2(name: string): string {
         build: 'struere build',
         deploy: 'struere deploy',
         status: 'struere status',
-      },
-      dependencies: {
-        struere: '^0.4.0',
       },
       devDependencies: {
         'bun-types': '^1.0.0',
