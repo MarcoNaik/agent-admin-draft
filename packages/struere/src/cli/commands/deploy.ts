@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
-import { syncOrganization, getSyncState } from '../utils/convex'
+import { syncOrganization } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { performLogin } from './login'
@@ -106,48 +106,6 @@ export const deployCommand = new Command('deploy')
       return
     }
 
-    spinner.start('Checking production state')
-
-    const { state: remoteState, error: stateError } = await getSyncState(project.organization.id, 'production')
-
-    if (stateError) {
-      if (isAuthError(new Error(stateError))) {
-        spinner.fail('Session expired - re-authenticating...')
-        clearCredentials()
-        credentials = await performLogin()
-        if (!credentials) {
-          console.log(chalk.red('Authentication failed'))
-          process.exit(1)
-        }
-      } else if (isOrgAccessError(new Error(stateError))) {
-        spinner.fail('Organization access denied')
-        console.log()
-        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
-        console.log()
-        process.exit(1)
-      } else {
-        spinner.fail('Failed to fetch production state')
-        console.log(chalk.red('Error:'), stateError)
-        process.exit(1)
-      }
-    } else {
-      spinner.succeed('Production state fetched')
-    }
-
-    if (remoteState?.agents && remoteState.agents.length > 0) {
-      const localSlugs = new Set(resources.agents.map((a) => a.slug))
-      const unmanagedAgents = remoteState.agents.filter((a) => !localSlugs.has(a.slug))
-
-      if (unmanagedAgents.length > 0) {
-        console.log(chalk.cyan('Existing agents not in local files:'))
-        for (const agent of unmanagedAgents) {
-          console.log(chalk.gray('  •'), agent.name, chalk.gray(`(${agent.slug})`))
-        }
-        console.log(chalk.gray('  These agents will be preserved during deploy.'))
-        console.log()
-      }
-    }
-
     if (options.dryRun) {
       console.log()
       console.log(chalk.yellow('Dry run mode - no changes will be made'))
@@ -185,7 +143,6 @@ export const deployCommand = new Command('deploy')
         ...payload,
         organizationId: project.organization.id,
         environment: 'production',
-        preserveUnmanagedAgents: true,
       })
       if (!syncResult.success) {
         throw new Error(syncResult.error || 'Deploy failed')
@@ -232,8 +189,7 @@ export const deployCommand = new Command('deploy')
             ...payload,
             organizationId: project.organization.id,
             environment: 'production',
-            preserveUnmanagedAgents: true,
-          })
+              })
           if (!syncResult.success) {
             throw new Error(syncResult.error || 'Deploy failed')
           }

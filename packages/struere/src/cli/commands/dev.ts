@@ -7,11 +7,12 @@ import { existsSync, writeFileSync } from 'fs'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
 import { performLogin } from './login'
-import { syncOrganization, getSyncState } from '../utils/convex'
+import { syncOrganization } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { getClaudeMDV2 } from '../templates'
 import { runInit } from './init'
+import { generateTypeDeclarations } from '../utils/plugin'
 
 export const devCommand = new Command('dev')
   .description('Sync all resources to development environment')
@@ -43,6 +44,8 @@ export const devCommand = new Command('dev')
       console.log(chalk.red('Failed to load struere.json'))
       process.exit(1)
     }
+
+    generateTypeDeclarations(cwd)
 
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
     console.log(chalk.gray('Environment:'), chalk.cyan('development'))
@@ -83,53 +86,6 @@ export const devCommand = new Command('dev')
              message.includes('Organization not found')
     }
 
-    spinner.start('Checking remote state')
-
-    const { state: remoteState, error: stateError } = await getSyncState(project.organization.id, 'development')
-
-    if (stateError) {
-      if (isAuthError(new Error(stateError))) {
-        spinner.fail('Session expired - re-authenticating...')
-        clearCredentials()
-        credentials = await performLogin()
-        if (!credentials) {
-          console.log(chalk.red('Authentication failed'))
-          process.exit(1)
-        }
-      } else if (isOrgAccessError(new Error(stateError))) {
-        spinner.fail('Organization access denied')
-        console.log()
-        console.log(chalk.red('You do not have access to organization:'), chalk.cyan(project.organization.name))
-        console.log()
-        console.log(chalk.gray('To fix this:'))
-        console.log(chalk.gray('  1.'), 'Check that you have access to this organization')
-        console.log(chalk.gray('  2.'), 'Or run', chalk.cyan('struere init'), 'to select a different organization')
-        console.log()
-        process.exit(1)
-      } else {
-        spinner.fail('Failed to fetch remote state')
-        console.log(chalk.red('Error:'), stateError)
-        process.exit(1)
-      }
-    } else {
-      spinner.succeed('Remote state fetched')
-    }
-
-    if (remoteState?.agents && remoteState.agents.length > 0) {
-      const localResources = await loadAllResources(cwd)
-      const localSlugs = new Set(localResources.agents.map((a) => a.slug))
-      const unmanagedAgents = remoteState.agents.filter((a) => !localSlugs.has(a.slug))
-
-      if (unmanagedAgents.length > 0) {
-        console.log(chalk.cyan('Existing agents not in local files:'))
-        for (const agent of unmanagedAgents) {
-          console.log(chalk.gray('  •'), agent.name, chalk.gray(`(${agent.slug})`))
-        }
-        console.log(chalk.gray('  These agents will be preserved during sync.'))
-        console.log()
-      }
-    }
-
     const performSync = async (): Promise<boolean> => {
       const resources = await loadAllResources(cwd)
       if (resources.errors.length > 0) {
@@ -140,7 +96,6 @@ export const devCommand = new Command('dev')
         ...payload,
         organizationId: project.organization.id,
         environment: 'development',
-        preserveUnmanagedAgents: true,
       })
       if (!result.success) {
         throw new Error(result.error || 'Sync failed')
