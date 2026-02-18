@@ -669,6 +669,42 @@ export const getRoles = internalQuery({
   },
 })
 
+export const getEvalStats = query({
+  args: {
+    environment: v.optional(environmentValidator),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+
+    const runs = await ctx.db
+      .query("evalRuns")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
+      .collect()
+
+    let totalRuns = runs.length
+    let completedRuns = 0
+    let agentTokens = 0
+    let judgeTokens = 0
+
+    for (const run of runs) {
+      if (run.status === "completed") completedRuns++
+      if (run.totalTokens) {
+        agentTokens += run.totalTokens.agent
+        judgeTokens += run.totalTokens.judge
+      }
+    }
+
+    return {
+      totalRuns,
+      completedRuns,
+      agentTokens,
+      judgeTokens,
+      totalTokens: agentTokens + judgeTokens,
+    }
+  },
+})
+
 export const deleteCasesBySuite = mutation({
   args: { suiteId: v.id("evalSuites") },
   handler: async (ctx, args) => {
