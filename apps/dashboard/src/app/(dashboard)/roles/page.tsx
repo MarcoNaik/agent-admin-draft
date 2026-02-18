@@ -26,6 +26,7 @@ import {
   useRoleAssignedUsers,
 } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
+import { AdminOnly } from "@/components/role-redirect"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
@@ -996,7 +997,7 @@ function StatsBar({ roles }: { roles: Doc<"roles">[] }) {
   )
 }
 
-export default function RolesPage() {
+function RolesPageContent() {
   const { environment } = useEnvironment()
   const roles = useRoles(environment)
   const [search, setSearch] = useState("")
@@ -1142,5 +1143,15 @@ export default function RolesPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function RolesPage() {
+  return (
+    <AdminOnly>
+      <div className="p-6 max-w-4xl">
+        <RolesPageContent />
+      </div>
+    </AdminOnly>
   )
 }

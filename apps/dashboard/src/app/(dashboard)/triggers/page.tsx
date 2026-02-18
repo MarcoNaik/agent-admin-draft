@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { useTriggers, useTriggerLastRunStatuses, useTriggerExecutions } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
+import { AdminOnly } from "@/components/role-redirect"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -549,7 +550,7 @@ function StatsBar({ triggers }: { triggers: Trigger[] }) {
   )
 }
 
-export default function TriggersPage() {
+function TriggersPageContent() {
   const { environment } = useEnvironment()
   const triggers = useTriggers(environment) as Trigger[] | undefined
   const lastRunStatuses = useTriggerLastRunStatuses(environment)
@@ -663,5 +664,15 @@ export default function TriggersPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function TriggersPage() {
+  return (
+    <AdminOnly>
+      <div className="p-6 max-w-4xl">
+        <TriggersPageContent />
+      </div>
+    </AdminOnly>
   )
 }

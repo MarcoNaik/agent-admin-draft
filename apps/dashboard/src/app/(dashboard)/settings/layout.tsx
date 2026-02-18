@@ -6,12 +6,10 @@ import {
   Settings,
   Building2,
   Users,
-  Shield,
   Plug,
   Key,
   Cpu,
   AlertTriangle,
-  Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOnly } from "@/components/role-redirect"
@@ -37,18 +35,6 @@ const settingsNav: {
     href: "/settings/users",
     icon: Users,
     description: "Team members and roles",
-  },
-  {
-    name: "Roles",
-    href: "/settings/roles",
-    icon: Shield,
-    description: "Permission roles and policies",
-  },
-  {
-    name: "Triggers",
-    href: "/settings/triggers",
-    icon: Zap,
-    description: "Entity automation rules",
   },
   {
     name: "Integrations",
