@@ -329,7 +329,7 @@ export function getClaudeMD(orgName: string): string {
 
 > **This is a workspace project**, not the Struere framework source code. You define agents, entity types, roles, and custom tools here. The CLI syncs them to Convex. Framework source: github.com/struere/struere
 
-Struere is a framework for building production AI agents with Convex as the real-time backend. Agents can manage entities (business data), emit events, and schedule background jobs—all with built-in RBAC permissions.
+Struere is a framework for building production AI agents with Convex as the real-time backend. Agents can manage entities (business data), emit events, and automate workflows with triggers—all with built-in RBAC permissions.
 
 ## How It Works
 
@@ -347,7 +347,7 @@ Struere is a framework for building production AI agents with Convex as the real
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Convex (Real-time Backend)                                      │
-│  • Stores agent configs, entities, events, jobs                  │
+│  • Stores agent configs, entities, events, triggers              │
 │  • Runs LLM calls (Anthropic/OpenAI)                             │
 │  • Enforces RBAC on every operation                              │
 │  • Executes custom tools via Cloudflare Worker                   │
@@ -748,6 +748,8 @@ export default defineTrigger({
 | \\\`on.entityType\\\` | Yes | Entity type slug to watch |
 | \\\`on.action\\\` | Yes | \\\`"created"\\\`, \\\`"updated"\\\`, or \\\`"deleted"\\\` |
 | \\\`on.condition\\\` | No | Dot-notation equality conditions on entity data |
+| \\\`schedule\\\` | No | Delay or schedule execution (see Scheduled Triggers) |
+| \\\`retry\\\` | No | Retry on failure (see Retry Options) |
 | \\\`actions\\\` | Yes | Ordered list of tool calls to execute |
 
 ### Action Pipeline
@@ -790,6 +792,47 @@ condition: {
 - **Fail-fast**: If any action fails, remaining actions are skipped
 - **Events**: Emits \\\`trigger.executed\\\` on success, \\\`trigger.failed\\\` on error
 - **Both paths**: Triggers fire from dashboard CRUD, agent tool calls, and API mutations
+
+### Scheduled Triggers
+
+Add \\\`schedule\\\` to delay execution or run at a specific time derived from entity data:
+
+\\\`\\\`\\\`typescript
+defineTrigger({
+  name: "Session Reminder",
+  slug: "session-reminder",
+  on: { entityType: "session", action: "created" },
+  schedule: {
+    at: "{{trigger.data.startTime}}",
+    offset: -3600000,
+  },
+  retry: { maxAttempts: 3, backoffMs: 60000 },
+  actions: [
+    { tool: "entity.get", args: { id: "{{trigger.entityId}}" }, as: "session" },
+    { tool: "event.emit", args: { eventType: "session.reminder", entityId: "{{trigger.entityId}}" } },
+  ],
+})
+\\\`\\\`\\\`
+
+**Schedule Options:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| \\\`delay\\\` | number | Fixed delay in ms after entity mutation |
+| \\\`at\\\` | string | Template expression resolving to a timestamp (e.g. \\\`"{{trigger.data.startTime}}"\\\`) |
+| \\\`offset\\\` | number | Offset from \\\`at\\\` time in ms (negative = before, positive = after) |
+| \\\`cancelPrevious\\\` | boolean | Cancel pending runs for same trigger+entity when new run created |
+
+Cannot use both \\\`delay\\\` and \\\`at\\\` on the same trigger.
+
+**Retry Options:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| \\\`maxAttempts\\\` | number | 1 | Max execution attempts |
+| \\\`backoffMs\\\` | number | 60000 | Base backoff (exponential: \\\`min(backoffMs * 2^(attempt-1), 3600000)\\\`) |
+
+Scheduled triggers create **trigger runs** visible in the dashboard with status tracking (pending → running → completed/failed/dead).
 
 ### Scaffold a new trigger
 
@@ -837,23 +880,6 @@ Creates \\\`triggers/my-trigger.ts\\\` with a starter template.
 \`\`\`
 
 Events are immutable audit logs. Use for analytics, debugging, compliance.
-
-### Job Tools
-
-\`\`\`typescript
-// job.enqueue - Schedule background work
-{
-  jobType: "send_reminder",
-  payload: { customerId: "ent_abc", message: "Your trial ends soon" },
-  runAt: 1706832000000  // Unix timestamp (optional, runs immediately if omitted)
-}
-
-// job.status - Check job status
-{ jobId: "job_xyz123" }
-// Returns: { status: "pending" | "running" | "completed" | "failed", result: {...} }
-\`\`\`
-
-Jobs run asynchronously with retry logic. Use for: emails, notifications, data sync.
 
 ### Calendar Tools
 
@@ -1103,7 +1129,7 @@ export default defineAgent({
 Check teacher availability before booking. Create session entities for confirmed bookings.
 Send confirmation via the send_notification custom tool.\\\`,
   model: { provider: "anthropic", name: "claude-haiku-4-5" },
-  tools: ["entity.create", "entity.query", "job.enqueue", "send_notification"],
+  tools: ["entity.create", "entity.query", "event.emit", "send_notification"],
 })
 \`\`\`
 
