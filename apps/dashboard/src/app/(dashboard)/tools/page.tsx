@@ -5,7 +5,6 @@ import {
   Wrench,
   Database,
   Bell,
-  Clock,
   Code,
   ChevronDown,
   ChevronRight,
@@ -14,7 +13,7 @@ import { AdminOnly } from "@/components/role-redirect"
 import { cn } from "@/lib/utils"
 
 const BUILTIN_TOOL_DEFINITIONS: Record<string, {
-  category: "entity" | "event" | "job"
+  category: "entity" | "event" | "agent"
   description: string
   parameters: {
     type: string
@@ -137,32 +136,8 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
       required: [],
     },
   },
-  "job.enqueue": {
-    category: "job",
-    description: "Schedule a background job for async processing",
-    parameters: {
-      type: "object",
-      properties: {
-        jobType: { type: "string", description: "Job type to execute" },
-        payload: { type: "object", description: "Job input data" },
-        runAt: { type: "number", description: "Scheduled execution time (optional)" },
-      },
-      required: ["jobType"],
-    },
-  },
-  "job.status": {
-    category: "job",
-    description: "Check the status of a scheduled job",
-    parameters: {
-      type: "object",
-      properties: {
-        jobId: { type: "string", description: "Job ID to check" },
-      },
-      required: ["jobId"],
-    },
-  },
   "agent.chat": {
-    category: "agent" as any,
+    category: "agent",
     description: "Send a message to another agent and get its response",
     parameters: {
       type: "object",
@@ -190,11 +165,6 @@ const CATEGORY_INFO: Record<string, {
     label: "Event Tools",
     description: "Audit logging and queries",
     icon: Bell,
-  },
-  job: {
-    label: "Job Tools",
-    description: "Background job scheduling",
-    icon: Clock,
   },
   agent: {
     label: "Agent Tools",
