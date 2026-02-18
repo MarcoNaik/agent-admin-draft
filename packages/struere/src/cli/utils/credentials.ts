@@ -66,12 +66,3 @@ export function getApiKey(): string | null {
   }
   return process.env.STRUERE_API_KEY || null
 }
-
-export function getToken(): string | null {
-  const credentials = loadCredentials()
-  return credentials?.token || null
-}
-
-export function isLoggedIn(): boolean {
-  return loadCredentials() !== null
-}
