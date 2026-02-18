@@ -554,9 +554,9 @@ export interface SyncPayload {
 
 export interface SyncResult {
   success: boolean
-  entityTypes?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
-  roles?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
-  agents?: { created: string[]; updated: string[]; deleted: string[]; preserved?: string[] }
+  entityTypes?: { created: string[]; updated: string[]; deleted: string[] }
+  roles?: { created: string[]; updated: string[]; deleted: string[] }
+  agents?: { created: string[]; updated: string[]; deleted: string[] }
   evalSuites?: { created: string[]; updated: string[]; deleted: string[]; skipped: string[] }
   error?: string
 }
@@ -564,7 +564,6 @@ export interface SyncResult {
 export interface SyncOptions extends SyncPayload {
   organizationId?: string
   environment: 'development' | 'production'
-  preserveUnmanagedAgents?: boolean
 }
 
 export async function syncOrganization(payload: SyncOptions): Promise<SyncResult> {
