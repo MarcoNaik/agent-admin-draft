@@ -206,8 +206,8 @@ export const createCheckoutSession = action({
       throw new Error("Minimum purchase is $1.00")
     }
 
-    const polarServer = process.env.POLAR_SERVER === "production" ? "api" : "api.sandbox"
-    const resp = await fetch(`https://${polarServer}.polar.sh/v1/checkouts/`, {
+    const polarBase = process.env.POLAR_SERVER === "production" ? "https://api.polar.sh" : "https://sandbox-api.polar.sh"
+    const resp = await fetch(`${polarBase}/v1/checkouts/`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.POLAR_ACCESS_TOKEN}`,
