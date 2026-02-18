@@ -3,15 +3,6 @@ import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 
-function base64Decode(str: string): Uint8Array {
-  const binary = atob(str)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-  return bytes
-}
-
 function base64Encode(bytes: Uint8Array): string {
   let binary = ""
   for (let i = 0; i < bytes.length; i++) {
@@ -448,7 +439,7 @@ http.route({
 
     const body = await request.text()
 
-    const secretBytes = base64Decode(webhookSecret.replace("whsec_", ""))
+    const secretBytes = new TextEncoder().encode(webhookSecret)
     const key = await crypto.subtle.importKey(
       "raw",
       secretBytes.buffer as ArrayBuffer,
@@ -482,11 +473,15 @@ http.route({
 
     if (event.type === "order.paid") {
       const order = event.data
+      const organizationId = order.metadata?.organizationId ?? order.customer?.external_id
+      if (!organizationId) {
+        return new Response("Missing organizationId", { status: 400 })
+      }
       await ctx.runMutation(internal.billing.addCreditsFromPolar, {
-        organizationId: order.customer.external_id,
+        organizationId,
         amount: order.amount,
         polarOrderId: order.id,
-        polarCustomerId: order.customer.id,
+        polarCustomerId: order.customer?.id,
       })
     }
 
