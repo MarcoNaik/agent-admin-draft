@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Calendar, CheckCircle, XCircle } from "lucide-react"
 import { useCalendarConnections } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { CalendarConnectionCard } from "@/components/calendar-connection-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -33,7 +34,8 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function GoogleCalendarSettingsPage() {
   const router = useRouter()
-  const allConnections = useCalendarConnections("production")
+  const { environment } = useEnvironment()
+  const allConnections = useCalendarConnections(environment)
 
   return (
     <div className="mx-auto max-w-3xl p-6">
