@@ -174,6 +174,31 @@ export const cleanupLegacyOrganizations = internalMutation({
   },
 })
 
+export const removePlanFromOrganizations = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").collect()
+    let updated = 0
+
+    for (const org of orgs) {
+      const raw = org as unknown as Record<string, unknown>
+      if ("plan" in raw) {
+        const { plan, ...rest } = raw
+        await ctx.db.replace(org._id, {
+          name: rest.name as string,
+          slug: rest.slug as string,
+          clerkOrgId: rest.clerkOrgId as string | undefined,
+          createdAt: rest.createdAt as number,
+          updatedAt: rest.updatedAt as number,
+        })
+        updated++
+      }
+    }
+
+    return { updated }
+  },
+})
+
 export const migrateOwnerToAdmin = internalMutation({
   args: {},
   handler: async (ctx) => {
