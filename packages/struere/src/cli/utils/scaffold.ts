@@ -178,6 +178,7 @@ export function scaffoldProjectV2(cwd: string, options: ScaffoldOptionsV2): Scaf
     'tools',
     'evals',
     'triggers',
+    '.struere',
   ]
 
   for (const dir of directories) {
