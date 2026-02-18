@@ -125,28 +125,20 @@ export function useEmitEvent() {
   return useMutation(api.events.emit)
 }
 
-export function useJobs(environment?: Environment, status?: "pending" | "claimed" | "running" | "completed" | "failed" | "dead") {
-  return useQuery(api.jobs.list, { environment, status })
+export function useTriggerRuns(environment?: Environment, status?: "pending" | "running" | "completed" | "failed" | "dead", triggerSlug?: string) {
+  return useQuery(api.triggers.listRuns, { environment, status, triggerSlug })
 }
 
-export function useJob(id: Id<"jobs">) {
-  return useQuery(api.jobs.get, { id })
+export function useTriggerRunStats(environment?: Environment) {
+  return useQuery(api.triggers.getRunStats, { environment })
 }
 
-export function useJobStats(environment?: Environment) {
-  return useQuery(api.jobs.getStats, { environment })
+export function useRetryTriggerRun() {
+  return useMutation(api.triggers.retryRun)
 }
 
-export function useEnqueueJob() {
-  return useMutation(api.jobs.enqueue)
-}
-
-export function useRetryJob() {
-  return useMutation(api.jobs.retry)
-}
-
-export function useCancelJob() {
-  return useMutation(api.jobs.cancel)
+export function useCancelTriggerRun() {
+  return useMutation(api.triggers.cancelRun)
 }
 
 export function useRoles(environment?: Environment) {
@@ -293,12 +285,12 @@ export function useCurrentUserRoles() {
   )
 }
 
-export function useIntegrationConfig(provider: "whatsapp" | "flow" | "google" | "zoom") {
-  return useQuery(api.integrations.getConfig, { provider })
+export function useIntegrationConfig(provider: "whatsapp" | "flow" | "google" | "zoom", environment: Environment) {
+  return useQuery(api.integrations.getConfig, { provider, environment })
 }
 
-export function useIntegrationConfigs() {
-  return useQuery(api.integrations.listConfigs, {})
+export function useIntegrationConfigs(environment: Environment) {
+  return useQuery(api.integrations.listConfigs, { environment })
 }
 
 export function useUpdateIntegrationConfig() {
