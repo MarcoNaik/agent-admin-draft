@@ -46,8 +46,6 @@ export const BUILTIN_TOOLS = [
   "entity.unlink",
   "event.emit",
   "event.query",
-  "job.enqueue",
-  "job.status",
   "calendar.list",
   "calendar.create",
   "calendar.update",
