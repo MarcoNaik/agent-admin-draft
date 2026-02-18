@@ -4,6 +4,10 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 
+const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+
+const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"))
+
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
     .query("userOrganizations")
@@ -39,13 +43,15 @@ interface ZoomConfig {
 
 export const getConfig = query({
   args: {
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    provider: providerValidator,
+    environment: environmentValidator,
   },
   returns: v.union(
     v.object({
       _id: v.id("integrationConfigs"),
       organizationId: v.id("organizations"),
-      provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+      environment: environmentValidator,
+      provider: providerValidator,
       config: v.any(),
       status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
       lastVerifiedAt: v.union(v.number(), v.null()),
@@ -59,8 +65,8 @@ export const getConfig = query({
 
     const config = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("provider", args.provider)
       )
       .first()
 
@@ -98,14 +104,16 @@ export const getConfig = query({
 export const getConfigInternal = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    environment: environmentValidator,
+    provider: providerValidator,
   },
   returns: v.union(
     v.object({
       _id: v.id("integrationConfigs"),
       _creationTime: v.number(),
       organizationId: v.id("organizations"),
-      provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+      environment: environmentValidator,
+      provider: providerValidator,
       config: v.any(),
       status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
       lastVerifiedAt: v.union(v.number(), v.null()),
@@ -117,8 +125,8 @@ export const getConfigInternal = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("provider", args.provider)
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", args.provider)
       )
       .first()
   },
@@ -131,7 +139,8 @@ export const listFlowConfigs = internalQuery({
       _id: v.id("integrationConfigs"),
       _creationTime: v.number(),
       organizationId: v.id("organizations"),
-      provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+      environment: environmentValidator,
+      provider: providerValidator,
       config: v.any(),
       status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
       lastVerifiedAt: v.union(v.number(), v.null()),
@@ -149,7 +158,8 @@ export const listFlowConfigs = internalQuery({
 
 export const updateConfig = mutation({
   args: {
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    provider: providerValidator,
+    environment: environmentValidator,
     config: v.any(),
   },
   returns: v.id("integrationConfigs"),
@@ -159,8 +169,8 @@ export const updateConfig = mutation({
 
     const existing = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("provider", args.provider)
       )
       .first()
 
@@ -177,6 +187,7 @@ export const updateConfig = mutation({
 
     const configId = await ctx.db.insert("integrationConfigs", {
       organizationId: auth.organizationId,
+      environment: args.environment,
       provider: args.provider,
       config: args.config,
       status: "inactive",
@@ -192,14 +203,15 @@ export const updateConfig = mutation({
 export const getConfigForTest = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    environment: environmentValidator,
+    provider: providerValidator,
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("provider", args.provider)
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", args.provider)
       )
       .first()
   },
@@ -239,7 +251,8 @@ export const isOrgAdminInternal = internalQuery({
 
 export const testConnection = action({
   args: {
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    provider: providerValidator,
+    environment: environmentValidator,
   },
   returns: v.object({
     success: v.boolean(),
@@ -261,6 +274,7 @@ export const testConnection = action({
 
     const config = await ctx.runQuery(internal.integrations.getConfigForTest, {
       organizationId: auth.organizationId,
+      environment: args.environment,
       provider: args.provider,
     })
 
@@ -353,14 +367,18 @@ export const testConnection = action({
 })
 
 export const listConfigs = query({
-  args: {},
+  args: {
+    environment: environmentValidator,
+  },
   returns: v.array(v.any()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
     const configs = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
+      )
       .collect()
 
     return configs.map((config) => {
@@ -393,7 +411,8 @@ export const listConfigs = query({
 
 export const deleteConfig = mutation({
   args: {
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    provider: providerValidator,
+    environment: environmentValidator,
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -402,8 +421,8 @@ export const deleteConfig = mutation({
 
     const config = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("provider", args.provider)
       )
       .first()
 
@@ -418,7 +437,8 @@ export const deleteConfig = mutation({
 
 export const setConfigStatus = mutation({
   args: {
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    provider: providerValidator,
+    environment: environmentValidator,
     status: v.union(v.literal("active"), v.literal("inactive")),
   },
   returns: v.object({ success: v.boolean() }),
@@ -428,8 +448,8 @@ export const setConfigStatus = mutation({
 
     const config = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("provider", args.provider)
       )
       .first()
 
