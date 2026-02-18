@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { QRCodeSVG } from "qrcode.react"
-import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, QrCode, Smartphone, RefreshCw, Power, PowerOff } from "lucide-react"
+import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, QrCode, Smartphone, RefreshCw, Power, PowerOff, Hash } from "lucide-react"
 import {
   useWhatsAppConnection,
   useConnectWhatsApp,
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -41,6 +42,13 @@ function StatusBadge({ status }: { status: string }) {
         <Badge className="flex items-center gap-1 bg-amber-500/20 text-amber-500 border-amber-500/30">
           <QrCode className="h-3 w-3" />
           Scan QR Code
+        </Badge>
+      )
+    case "pairing_code_ready":
+      return (
+        <Badge className="flex items-center gap-1 bg-amber-500/20 text-amber-500 border-amber-500/30">
+          <Hash className="h-3 w-3" />
+          Enter Pairing Code
         </Badge>
       )
     case "connecting":
@@ -76,6 +84,8 @@ export default function WhatsAppSettingsPage() {
   const [disconnecting, setDisconnecting] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
   const [toggling, setToggling] = useState(false)
+  const [connectionMethod, setConnectionMethod] = useState<"qr" | "pairing_code">("qr")
+  const [pairingPhoneNumber, setPairingPhoneNumber] = useState("")
 
   const isEnabled = integrationConfig?.status === "active"
 
@@ -105,7 +115,11 @@ export default function WhatsAppSettingsPage() {
   const handleConnect = async () => {
     setConnecting(true)
     try {
-      await connectWhatsApp({ environment: "production" })
+      await connectWhatsApp({
+        environment: "production",
+        method: connectionMethod,
+        phoneNumber: connectionMethod === "pairing_code" ? pairingPhoneNumber.replace(/\D/g, "") : undefined,
+      })
     } catch (err) {
       console.error("Failed to connect:", err)
     } finally {
@@ -245,7 +259,7 @@ export default function WhatsAppSettingsPage() {
               <CardDescription className="text-content-secondary">
                 {status === "connected"
                   ? "Your WhatsApp account is connected and ready to receive messages"
-                  : "Scan the QR code with your WhatsApp to connect"}
+                  : "Connect your WhatsApp using a QR code or pairing code"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -287,16 +301,62 @@ export default function WhatsAppSettingsPage() {
                 </div>
               )}
 
+              {status === "pairing_code_ready" && connection?.pairingCode && (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="rounded-xl bg-background-tertiary p-6">
+                    <p className="text-3xl font-mono font-bold tracking-[0.3em] text-content-primary text-center">
+                      {connection.pairingCode.slice(0, 4)}-{connection.pairingCode.slice(4)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-content-secondary text-center max-w-sm">
+                    Open WhatsApp on your phone, go to Settings &rarr; Linked Devices &rarr; Link a Device &rarr; Link with phone number instead, then enter this code
+                  </p>
+                </div>
+              )}
+
               {status === "disconnected" && (
-                <div className="flex flex-col items-center gap-3 py-6">
-                  <WifiOff className="h-8 w-8 text-content-tertiary" />
-                  <p className="text-sm text-content-secondary">No WhatsApp account connected</p>
+                <div className="space-y-4 py-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant={connectionMethod === "qr" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setConnectionMethod("qr")}
+                    >
+                      <QrCode className="mr-2 h-4 w-4" />
+                      QR Code
+                    </Button>
+                    <Button
+                      variant={connectionMethod === "pairing_code" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setConnectionMethod("pairing_code")}
+                    >
+                      <Hash className="mr-2 h-4 w-4" />
+                      Pairing Code
+                    </Button>
+                  </div>
+                  {connectionMethod === "pairing_code" && (
+                    <div className="space-y-2">
+                      <Label className="text-content-primary">Phone Number</Label>
+                      <Input
+                        placeholder="e.g. 14155551234 (country code + number)"
+                        value={pairingPhoneNumber}
+                        onChange={(e) => setPairingPhoneNumber(e.target.value)}
+                        className="bg-background-tertiary"
+                      />
+                      <p className="text-xs text-content-tertiary">
+                        Enter the full phone number with country code, digits only
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
               <div className="flex gap-2 pt-2">
                 {status === "disconnected" && (
-                  <Button onClick={handleConnect} disabled={connecting}>
+                  <Button
+                    onClick={handleConnect}
+                    disabled={connecting || (connectionMethod === "pairing_code" && !pairingPhoneNumber.replace(/\D/g, ""))}
+                  >
                     {connecting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -327,9 +387,9 @@ export default function WhatsAppSettingsPage() {
                     </Button>
                   </>
                 )}
-                {status === "qr_ready" && (
+                {(status === "qr_ready" || status === "pairing_code_ready") && (
                   <Button variant="outline" onClick={handleConnect} disabled={connecting}>
-                    Refresh QR Code
+                    {status === "qr_ready" ? "Refresh QR Code" : "Refresh Pairing Code"}
                   </Button>
                 )}
               </div>
