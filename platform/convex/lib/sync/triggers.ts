@@ -13,6 +13,16 @@ export interface TriggerInput {
     args: Record<string, unknown>
     as?: string
   }>
+  schedule?: {
+    delay?: number
+    at?: string
+    offset?: number
+    cancelPrevious?: boolean
+  }
+  retry?: {
+    maxAttempts?: number
+    backoffMs?: number
+  }
 }
 
 export async function syncTriggers(
@@ -43,6 +53,8 @@ export async function syncTriggers(
         action: trigger.action,
         condition: trigger.condition,
         actions: trigger.actions,
+        schedule: trigger.schedule,
+        retry: trigger.retry,
         updatedAt: now,
       })
       result.updated.push(trigger.slug)
@@ -57,6 +69,8 @@ export async function syncTriggers(
         action: trigger.action,
         condition: trigger.condition,
         actions: trigger.actions,
+        schedule: trigger.schedule,
+        retry: trigger.retry,
         enabled: true,
         createdAt: now,
         updatedAt: now,
