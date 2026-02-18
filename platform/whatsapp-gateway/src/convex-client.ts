@@ -40,10 +40,14 @@ export async function sendQRToConvex(orgId: string, qrCode: string): Promise<voi
 
 export async function sendStatusToConvex(
   orgId: string,
-  status: "disconnected" | "connecting" | "qr_ready" | "connected",
+  status: "disconnected" | "connecting" | "qr_ready" | "pairing_code_ready" | "connected",
   phoneNumber?: string
 ): Promise<void> {
   await postToConvex("/webhook/whatsapp/status", { orgId, status, phoneNumber })
+}
+
+export async function sendPairingCodeToConvex(orgId: string, pairingCode: string): Promise<void> {
+  await postToConvex("/webhook/whatsapp/pairing-code", { orgId, pairingCode })
 }
 
 export async function sendInboundToConvex(
