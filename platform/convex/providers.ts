@@ -228,19 +228,11 @@ export const testConnection = action({
       provider: args.provider,
     })
 
-    let apiKey: string | undefined
-
-    if (resolved) {
-      apiKey = resolved.apiKey
-    } else {
-      if (args.provider === "anthropic") apiKey = process.env.ANTHROPIC_API_KEY
-      else if (args.provider === "openai") apiKey = process.env.OPENAI_API_KEY
-      else if (args.provider === "google") apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    if (!resolved) {
+      return { success: false, message: `No custom API key configured for ${args.provider}` }
     }
 
-    if (!apiKey) {
-      return { success: false, message: `No API key available for ${args.provider}` }
-    }
+    const apiKey = resolved.apiKey
 
     try {
       if (args.provider === "anthropic") {
