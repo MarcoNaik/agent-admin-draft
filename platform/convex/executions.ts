@@ -167,6 +167,59 @@ export const getUsageByAgent = query({
   },
 })
 
+export const getUsageByModel = query({
+  args: {
+    environment: v.optional(environmentValidator),
+    since: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+
+    let executions = await ctx.db
+      .query("executions")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
+      .collect()
+
+    if (args.since) {
+      executions = executions.filter((e) => e.createdAt >= args.since!)
+    }
+
+    const byModel = new Map<
+      string,
+      {
+        model: string
+        count: number
+        inputTokens: number
+        outputTokens: number
+        errors: number
+      }
+    >()
+
+    for (const exec of executions) {
+      const model = exec.model ?? "unknown"
+      const existing = byModel.get(model) || {
+        model,
+        count: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        errors: 0,
+      }
+
+      existing.count++
+      existing.inputTokens += exec.inputTokens
+      existing.outputTokens += exec.outputTokens
+      if (exec.status === "error") existing.errors++
+
+      byModel.set(model, existing)
+    }
+
+    return Array.from(byModel.values()).sort(
+      (a, b) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens)
+    )
+  },
+})
+
 export const getRecent = query({
   args: {
     agentId: v.optional(v.id("agents")),
@@ -211,6 +264,7 @@ export const record = internalMutation({
     inputTokens: v.number(),
     outputTokens: v.number(),
     durationMs: v.number(),
+    model: v.optional(v.string()),
     status: v.union(v.literal("success"), v.literal("error"), v.literal("timeout")),
     errorMessage: v.optional(v.string()),
   },
@@ -228,6 +282,7 @@ export const record = internalMutation({
       inputTokens: args.inputTokens,
       outputTokens: args.outputTokens,
       durationMs: args.durationMs,
+      model: args.model,
       status: args.status,
       errorMessage: args.errorMessage,
       createdAt: Date.now(),
