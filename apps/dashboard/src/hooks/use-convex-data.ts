@@ -225,6 +225,10 @@ export function useUsageByAgent(environment?: Environment, since?: number) {
   return useQuery(api.executions.getUsageByAgent, { environment, since })
 }
 
+export function useUsageByModel(environment?: Environment, since?: number) {
+  return useQuery(api.executions.getUsageByModel, { environment, since })
+}
+
 export function useRecentExecutions(agentId?: Id<"agents">, environment?: Environment, limit?: number) {
   return useQuery(api.executions.getRecent, { agentId, environment, limit })
 }
