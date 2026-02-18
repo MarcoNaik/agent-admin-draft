@@ -32,7 +32,7 @@ function PurchaseCreditsForm() {
         successUrl: `${window.location.origin}${window.location.pathname}?success=true`,
       })
       window.location.href = result.checkoutUrl
-    } catch {
+    } finally {
       setLoading(false)
     }
   }
