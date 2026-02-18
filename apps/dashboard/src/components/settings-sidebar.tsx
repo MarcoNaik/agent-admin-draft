@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 
-export type SettingsTab = "edit" | "deploy-production" | "deploy-preview" | "env-vars" | "delete"
+export type SettingsTab = "edit" | "api-keys" | "delete"
 
 interface SettingsSidebarProps {
   agentId: string
@@ -12,9 +12,7 @@ interface SettingsSidebarProps {
 
 const navItems: { label: string; tab: SettingsTab; variant?: "destructive" }[] = [
   { label: "Edit Agent", tab: "edit" },
-  { label: "Production Deploy Keys", tab: "deploy-production" },
-  { label: "Preview Deploy Keys", tab: "deploy-preview" },
-  { label: "Environment Variables", tab: "env-vars" },
+  { label: "API Keys", tab: "api-keys" },
   { label: "Delete Agent", tab: "delete", variant: "destructive" },
 ]
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Settings, Key, Trash2, Loader2, Plus, Copy, Check, Variable } from "lucide-react"
+import { Settings, Key, Trash2, Loader2, Plus, Copy, Check } from "lucide-react"
 import { useAgent, useUpdateAgent, useDeleteAgent, useApiKeys, useCreateApiKey, useDeleteApiKey } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useSettingsTab } from "@/contexts/settings-tab-context"
@@ -78,7 +78,7 @@ function EditAgentTab({ agent, onSave, isSaving }: { agent: Doc<"agents">; onSav
   )
 }
 
-function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "development"; apiKeys: Doc<"apiKeys">[] }) {
+function ApiKeysTab({ environment, apiKeys }: { environment: "production" | "development"; apiKeys: any[] }) {
   const createApiKey = useCreateApiKey()
   const deleteApiKey = useDeleteApiKey()
   const [isCreating, setIsCreating] = useState(false)
@@ -87,7 +87,6 @@ function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "
   const [createdKey, setCreatedKey] = useState<string | null>(null)
 
   const envKeys = apiKeys.filter((k: any) => k.environment === environment)
-  const label = environment === "production" ? "Production" : "Preview"
 
   const handleCreate = async () => {
     if (!newKeyName.trim()) return
@@ -113,9 +112,9 @@ function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "
           <div>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
-              {label} Deploy Keys
+              API Keys
             </CardTitle>
-            <CardDescription>API keys scoped to the {environment} environment</CardDescription>
+            <CardDescription>API keys for the {environment} environment</CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => setShowCreateForm(!showCreateForm)}>
             <Plus className="h-4 w-4 mr-1" />
@@ -132,7 +131,7 @@ function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "
                 id="key-name"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder={`my-${environment}-key`}
+                placeholder="my-api-key"
               />
             </div>
             <Button onClick={handleCreate} disabled={isCreating || !newKeyName.trim()}>
@@ -160,13 +159,13 @@ function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "
         {envKeys.length === 0 && !showCreateForm ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Key className="mb-4 h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">No {environment} API keys yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Create a key to deploy to {environment}</p>
+            <p className="text-sm text-muted-foreground">No API keys yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Create a key to authenticate API requests</p>
           </div>
         ) : (
           <div className="space-y-3">
             {envKeys.map((key: any) => (
-              <div key={key._id || key.id} className="flex items-center justify-between rounded-lg border p-3">
+              <div key={key.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-3">
                   <Key className="h-4 w-4 text-muted-foreground" />
                   <div>
@@ -186,7 +185,7 @@ function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "
                     className="text-destructive hover:text-destructive h-8 w-8 p-0"
                     onClick={async () => {
                       if (confirm("Delete this API key?")) {
-                        await deleteApiKey({ id: key._id || key.id })
+                        await deleteApiKey({ id: key.id })
                       }
                     }}
                   >
@@ -197,31 +196,6 @@ function DeployKeysTab({ environment, apiKeys }: { environment: "production" | "
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function EnvVarsTab() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Variable className="h-5 w-5" />
-          Environment Variables
-        </CardTitle>
-        <CardDescription>
-          Configure environment variables for your agent&apos;s custom tool handlers
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Variable className="mb-4 h-8 w-8 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">No environment variables configured</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Environment variables are available to custom tool handlers at runtime
-          </p>
-        </div>
       </CardContent>
     </Card>
   )
@@ -257,6 +231,7 @@ export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
   const updateAgent = useUpdateAgent()
   const deleteAgent = useDeleteAgent()
   const { activeTab } = useSettingsTab()
+  const { environment } = useEnvironment()
 
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -308,15 +283,9 @@ export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
         <EditAgentTab agent={agent} onSave={handleSave} isSaving={isUpdating} />
       )}
 
-      {activeTab === "deploy-production" && (
-        <DeployKeysTab environment="production" apiKeys={apiKeys as unknown as Doc<"apiKeys">[]} />
+      {activeTab === "api-keys" && (
+        <ApiKeysTab environment={environment} apiKeys={apiKeys as any[]} />
       )}
-
-      {activeTab === "deploy-preview" && (
-        <DeployKeysTab environment="development" apiKeys={apiKeys as unknown as Doc<"apiKeys">[]} />
-      )}
-
-      {activeTab === "env-vars" && <EnvVarsTab />}
 
       {activeTab === "delete" && (
         <DeleteAgentTab agent={agent} onDelete={handleDelete} isDeleting={isDeleting} />

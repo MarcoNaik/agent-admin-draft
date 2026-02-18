@@ -19,6 +19,7 @@ export const list = query({
       name: k.name,
       keyPrefix: k.keyPrefix,
       permissions: k.permissions,
+      environment: k.environment,
       expiresAt: k.expiresAt,
       lastUsedAt: k.lastUsedAt,
       createdAt: k.createdAt,
