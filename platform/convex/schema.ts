@@ -9,6 +9,7 @@ export default defineSchema({
     slug: v.string(),
     clerkOrgId: v.optional(v.string()),
     polarCustomerId: v.optional(v.string()),
+    plan: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
