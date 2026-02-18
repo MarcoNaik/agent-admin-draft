@@ -7,13 +7,12 @@ import {
   Bot,
   MessageSquare,
   Database,
-  Clock,
   Shield,
   Zap,
   Loader2,
   ChevronRight,
 } from "lucide-react"
-import { useAgents, useEntityTypes, useRoles, useJobStats, useThreads, useTriggers } from "@/hooks/use-convex-data"
+import { useAgents, useEntityTypes, useRoles, useThreads, useTriggers } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { Doc } from "@convex/_generated/dataModel"
@@ -80,7 +79,6 @@ function HomeContent() {
   const agents = useAgents()
   const entityTypes = useEntityTypes(environment)
   const roles = useRoles(environment)
-  const jobStats = useJobStats(environment)
   const threads = useThreads(undefined, environment)
   const triggers = useTriggers(environment)
 
@@ -91,10 +89,6 @@ function HomeContent() {
       </div>
     )
   }
-
-  const totalJobs = jobStats
-    ? (jobStats.pending ?? 0) + (jobStats.running ?? 0) + (jobStats.completed ?? 0) + (jobStats.failed ?? 0)
-    : undefined
 
   return (
     <div className="mx-auto w-full max-w-2xl p-6 space-y-8">
@@ -119,7 +113,6 @@ function HomeContent() {
         <div className="space-y-1.5">
           <StatCard label="Conversations" value={threads?.length} icon={MessageSquare} href="/conversations" />
           <StatCard label="Entity Types" value={entityTypes?.length} icon={Database} href="/entities" />
-          <StatCard label="Jobs" value={totalJobs} icon={Clock} href="/jobs" />
           <StatCard label="Roles" value={roles?.length} icon={Shield} href="/roles" />
           <StatCard label="Triggers" value={triggers?.length} icon={Zap} href="/triggers" />
         </div>
