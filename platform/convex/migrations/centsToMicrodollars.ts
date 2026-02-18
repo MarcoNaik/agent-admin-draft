@@ -8,16 +8,15 @@ export const migrateCreditBalances = internalMutation({
   args: {},
   handler: async (ctx) => {
     const records = await ctx.db.query("creditBalances")
-      .filter((q) => q.eq(q.field("unitMigrated" as any), undefined))
+      .filter((q) => q.lt(q.field("balance"), 10_000))
       .take(BATCH_SIZE)
     let count = 0
 
     for (const record of records) {
       await ctx.db.patch(record._id, {
         balance: record.balance * MULTIPLIER,
-        unitMigrated: true,
         updatedAt: Date.now(),
-      } as any)
+      })
       count++
     }
 
@@ -33,7 +32,7 @@ export const migrateCreditTransactions = internalMutation({
   args: {},
   handler: async (ctx) => {
     const records = await ctx.db.query("creditTransactions")
-      .filter((q) => q.eq(q.field("metadata.unitMigrated" as any), undefined))
+      .filter((q) => q.lt(q.field("amount"), 10_000))
       .take(BATCH_SIZE)
     let count = 0
 
@@ -41,8 +40,7 @@ export const migrateCreditTransactions = internalMutation({
       await ctx.db.patch(record._id, {
         amount: record.amount * MULTIPLIER,
         balanceAfter: record.balanceAfter * MULTIPLIER,
-        metadata: { ...((record.metadata as any) ?? {}), unitMigrated: true },
-      } as any)
+      })
       count++
     }
 
