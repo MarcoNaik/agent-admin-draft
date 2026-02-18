@@ -1,6 +1,5 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import { buildActorContext, assertCanPerform } from "./lib/permissions"
@@ -10,7 +9,6 @@ import {
   validateTeacherAvailability,
   validateNoOverlap,
 } from "./lib/scheduling"
-import { scheduleReminderTime } from "./jobs/sessionReminder"
 
 interface SessionData {
   teacherId: string
@@ -163,48 +161,6 @@ export const createSession = mutation({
       timestamp: now,
     })
 
-    if (initialStatus === "scheduled") {
-      const reminderTime = scheduleReminderTime(args.startTime)
-
-      if (reminderTime > now) {
-        const delay = reminderTime - now
-
-        if (guardianId) {
-          const guardianJobId = await ctx.db.insert("jobs", {
-            organizationId: auth.organizationId,
-            environment: args.environment,
-            entityId: sessionId,
-            jobType: "session.reminder",
-            idempotencyKey: `reminder-guardian-${sessionId}`,
-            status: "pending",
-            priority: 0,
-            payload: { sessionId: sessionId.toString(), reminderType: "guardian" },
-            attempts: 0,
-            maxAttempts: 3,
-            scheduledFor: reminderTime,
-            createdAt: now,
-          })
-          await ctx.scheduler.runAfter(delay, internal.jobs.execute, { jobId: guardianJobId })
-        }
-
-        const teacherJobId = await ctx.db.insert("jobs", {
-          organizationId: auth.organizationId,
-          environment: args.environment,
-          entityId: sessionId,
-          jobType: "session.reminder",
-          idempotencyKey: `reminder-teacher-${sessionId}`,
-          status: "pending",
-          priority: 0,
-          payload: { sessionId: sessionId.toString(), reminderType: "teacher" },
-          attempts: 0,
-          maxAttempts: 3,
-          scheduledFor: reminderTime,
-          createdAt: now,
-        })
-        await ctx.scheduler.runAfter(delay, internal.jobs.execute, { jobId: teacherJobId })
-      }
-    }
-
     return { sessionId, status: initialStatus }
   },
 })
@@ -295,63 +251,6 @@ export const rescheduleSession = mutation({
       timestamp: now,
     })
 
-    const existingJobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_entity", (q) => q.eq("entityId", args.sessionId))
-      .collect()
-
-    const pendingReminderJobs = existingJobs.filter(
-      (j) => j.jobType === "session.reminder" && j.status === "pending"
-    )
-
-    for (const job of pendingReminderJobs) {
-      await ctx.db.patch(job._id, {
-        status: "dead",
-        errorMessage: "Session rescheduled",
-        completedAt: now,
-      })
-    }
-
-    const reminderTime = scheduleReminderTime(args.newStartTime)
-
-    if (reminderTime > now) {
-      const delay = reminderTime - now
-
-      if (sessionData.guardianId) {
-        const guardianJobId = await ctx.db.insert("jobs", {
-          organizationId: auth.organizationId,
-          environment: args.environment,
-          entityId: args.sessionId,
-          jobType: "session.reminder",
-          idempotencyKey: `reminder-guardian-${args.sessionId}-${now}`,
-          status: "pending",
-          priority: 0,
-          payload: { sessionId: args.sessionId.toString(), reminderType: "guardian" },
-          attempts: 0,
-          maxAttempts: 3,
-          scheduledFor: reminderTime,
-          createdAt: now,
-        })
-        await ctx.scheduler.runAfter(delay, internal.jobs.execute, { jobId: guardianJobId })
-      }
-
-      const teacherJobId = await ctx.db.insert("jobs", {
-        organizationId: auth.organizationId,
-        environment: args.environment,
-        entityId: args.sessionId,
-        jobType: "session.reminder",
-        idempotencyKey: `reminder-teacher-${args.sessionId}-${now}`,
-        status: "pending",
-        priority: 0,
-        payload: { sessionId: args.sessionId.toString(), reminderType: "teacher" },
-        attempts: 0,
-        maxAttempts: 3,
-        scheduledFor: reminderTime,
-        createdAt: now,
-      })
-      await ctx.scheduler.runAfter(delay, internal.jobs.execute, { jobId: teacherJobId })
-    }
-
     return { success: true, newStartTime: args.newStartTime, newDuration }
   },
 })
@@ -419,21 +318,6 @@ export const cancelSession = mutation({
       },
       timestamp: now,
     })
-
-    const existingJobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_entity", (q) => q.eq("entityId", args.sessionId))
-      .collect()
-
-    const pendingJobs = existingJobs.filter((j) => j.status === "pending")
-
-    for (const job of pendingJobs) {
-      await ctx.db.patch(job._id, {
-        status: "dead",
-        errorMessage: "Session cancelled",
-        completedAt: now,
-      })
-    }
 
     return { success: true }
   },
@@ -534,27 +418,6 @@ export const completeSession = mutation({
         })
       }
     }
-
-    const sessionEndTime = sessionData.startTime + sessionData.duration * 60 * 1000
-    const followupType = sessionData.entitlementId ? "pack" : "trial"
-    const followupScheduledFor = sessionEndTime + 60 * 60 * 1000
-    const delay = Math.max(0, followupScheduledFor - now)
-
-    const followupJobId = await ctx.db.insert("jobs", {
-      organizationId: auth.organizationId,
-      environment: args.environment,
-      entityId: args.sessionId,
-      jobType: "session.followup",
-      idempotencyKey: `followup-${args.sessionId}`,
-      status: "pending",
-      priority: 0,
-      payload: { sessionId: args.sessionId.toString(), followupType },
-      attempts: 0,
-      maxAttempts: 3,
-      scheduledFor: followupScheduledFor,
-      createdAt: now,
-    })
-    await ctx.scheduler.runAfter(delay, internal.jobs.execute, { jobId: followupJobId })
 
     return { success: true }
   },

@@ -51,6 +51,7 @@ export const createPaymentLink = mutation({
 
     const result = await createFlowPaymentLink(ctx, {
       organizationId: auth.organizationId,
+      environment: payment.environment,
       paymentId: args.paymentId,
       amount: paymentData.amount,
       currency: paymentData.currency || "CLP",
@@ -239,6 +240,7 @@ export const reconcilePayments = internalMutation({
     const pendingPayments: Array<{
       _id: Id<"entities">
       organizationId: Id<"organizations">
+      environment: "development" | "production"
       data: PaymentData
       createdAt: number
     }> = []
@@ -261,6 +263,7 @@ export const reconcilePayments = internalMutation({
           pendingPayments.push({
             _id: payment._id,
             organizationId: payment.organizationId,
+            environment: payment.environment,
             data: paymentData,
             createdAt: payment.createdAt,
           })
@@ -275,6 +278,7 @@ export const reconcilePayments = internalMutation({
         const flowStatus = await checkFlowOrderStatus(
           ctx,
           payment.organizationId,
+          payment.environment,
           payment.data.providerReference!
         )
 
@@ -458,6 +462,7 @@ export const verifyPaymentFromWebhook = internalAction({
   handler: async (ctx, args) => {
     const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
       organizationId: args.organizationId,
+      environment: "production",
       provider: "flow",
     })
 

@@ -37,11 +37,11 @@ async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"
   }
 }
 
-async function requireWhatsAppEnabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">) {
+async function requireWhatsAppEnabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, environment: "development" | "production") {
   const integrationConfig = await ctx.db
     .query("integrationConfigs")
-    .withIndex("by_org_provider", (q) =>
-      q.eq("organizationId", organizationId).eq("provider", "whatsapp")
+    .withIndex("by_org_env_provider", (q) =>
+      q.eq("organizationId", organizationId).eq("environment", environment).eq("provider", "whatsapp")
     )
     .first()
   if (!integrationConfig || integrationConfig.status !== "active") {
@@ -165,7 +165,7 @@ export const connectWhatsApp = mutation({
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
-    await requireWhatsAppEnabled(ctx, auth.organizationId)
+    await requireWhatsAppEnabled(ctx, auth.organizationId, args.environment)
     await ctx.scheduler.runAfter(0, internal.whatsapp.connect, {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -201,7 +201,7 @@ export const setWhatsAppAgent = mutation({
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
-    await requireWhatsAppEnabled(ctx, auth.organizationId)
+    await requireWhatsAppEnabled(ctx, auth.organizationId, args.environment)
 
     const connection = await ctx.db
       .query("whatsappConnections")
@@ -637,16 +637,18 @@ export const listConversations = query({
 })
 
 export const enableWhatsApp = mutation({
-  args: {},
+  args: {
+    environment: environmentValidator,
+  },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
 
     const existing = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", "whatsapp")
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
       )
       .first()
 
@@ -660,6 +662,7 @@ export const enableWhatsApp = mutation({
     } else {
       await ctx.db.insert("integrationConfigs", {
         organizationId: auth.organizationId,
+        environment: args.environment,
         provider: "whatsapp",
         config: {},
         status: "active",
@@ -674,16 +677,18 @@ export const enableWhatsApp = mutation({
 })
 
 export const disableWhatsApp = mutation({
-  args: {},
+  args: {
+    environment: environmentValidator,
+  },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
 
     const existing = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", "whatsapp")
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
       )
       .first()
 

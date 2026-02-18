@@ -146,14 +146,15 @@ export const connect = mutation({
 
     const integrationConfig = await ctx.db
       .query("integrationConfigs")
-      .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", "google")
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("provider", "google")
       )
       .first()
 
     if (!integrationConfig) {
       await ctx.db.insert("integrationConfigs", {
         organizationId: auth.organizationId,
+        environment,
         provider: "google",
         config: { enabled: true },
         status: "active",
