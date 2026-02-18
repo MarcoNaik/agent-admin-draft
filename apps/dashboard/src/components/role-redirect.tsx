@@ -13,7 +13,7 @@ interface RoleRedirectProps {
 }
 
 const roleDefaultRoutes: Record<UserRole, string> = {
-  admin: "/agents",
+  admin: "/",
   teacher: "/teacher/sessions",
   guardian: "/guardian/sessions",
   member: "/conversations",
