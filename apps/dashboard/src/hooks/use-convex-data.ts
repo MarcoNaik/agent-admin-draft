@@ -361,6 +361,10 @@ export function useSendChatMessageBySlug() {
   return useAction(api.chat.sendBySlug)
 }
 
+export function useEvalStats(environment?: Environment) {
+  return useQuery(api.evals.getEvalStats, { environment })
+}
+
 export function useEvalSuites(agentId: Id<"agents">, environment?: Environment) {
   return useQuery(api.evals.listSuites, { agentId, environment })
 }
