@@ -86,7 +86,6 @@ export const manualSyncClerkOrg = internalMutation({
         name: args.name,
         slug: args.slug,
         clerkOrgId: args.clerkOrgId,
-        plan: "free",
         createdAt: now,
         updatedAt: now,
       })

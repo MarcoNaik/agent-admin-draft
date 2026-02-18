@@ -109,9 +109,6 @@ export const create = mutation({
     name: v.string(),
     slug: v.string(),
     clerkOrgId: v.optional(v.string()),
-    plan: v.optional(
-      v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise"))
-    ),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -128,7 +125,6 @@ export const create = mutation({
       name: args.name,
       slug: args.slug,
       clerkOrgId: args.clerkOrgId,
-      plan: args.plan ?? "free",
       createdAt: now,
       updatedAt: now,
     })
@@ -139,9 +135,6 @@ export const update = mutation({
   args: {
     id: v.id("organizations"),
     name: v.optional(v.string()),
-    plan: v.optional(
-      v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise"))
-    ),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -151,7 +144,6 @@ export const update = mutation({
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() }
     if (args.name !== undefined) updates.name = args.name
-    if (args.plan !== undefined) updates.plan = args.plan
 
     await ctx.db.patch(args.id, updates)
     return await ctx.db.get(args.id)
@@ -205,7 +197,6 @@ export const getOrCreateFromClerk = internalMutation({
       name: args.name,
       slug,
       clerkOrgId: args.clerkOrgId,
-      plan: "free",
       createdAt: now,
       updatedAt: now,
     })

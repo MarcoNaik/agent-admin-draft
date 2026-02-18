@@ -5,7 +5,6 @@ import { useCurrentUser, useCurrentOrganization } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 
 export default function SettingsPage() {
   const user = useCurrentUser()
@@ -57,12 +56,6 @@ export default function SettingsPage() {
                 className="bg-background-tertiary"
               />
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-content-secondary">Current Plan:</span>
-            <Badge variant="secondary" className="capitalize">
-              {organization?.plan || "free"}
-            </Badge>
           </div>
         </CardContent>
       </Card>

@@ -8,7 +8,6 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     clerkOrgId: v.optional(v.string()),
-    plan: v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
