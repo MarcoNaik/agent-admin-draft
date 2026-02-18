@@ -35,7 +35,6 @@ type NavItem = {
 const adminNavigation: NavItem[] = [
   { name: "Conversations", href: "/conversations" },
   { name: "Entities", href: "/entities" },
-  { name: "Jobs", href: "/jobs" },
   { name: "Roles", href: "/roles" },
   { name: "Tools", href: "/tools" },
   { name: "Triggers", href: "/triggers" },
