@@ -1,11 +1,31 @@
-import { existsSync, readdirSync, readFileSync } from 'fs'
-import { join } from 'path'
+import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
+import { join, dirname } from 'path'
 import YAML from 'yaml'
-import type { AgentConfigV2, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig } from '../../types'
-import { registerStruerePlugin } from './plugin'
+import type { AgentConfig, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig } from '../../types'
+import { VIRTUAL_MODULE_SOURCE } from './plugin'
+
+const IMPORT_STRUERE_RE = /import\s+\{[^}]*\}\s*from\s*['"]struere['"]\s*;?\n?/g
+
+async function importUserFile(filePath: string): Promise<Record<string, unknown>> {
+  const source = readFileSync(filePath, 'utf-8')
+
+  if (!source.includes("'struere'") && !source.includes('"struere"')) {
+    return await import(`${filePath}?update=${Date.now()}`)
+  }
+
+  const stripped = source.replace(IMPORT_STRUERE_RE, '')
+  const inlined = VIRTUAL_MODULE_SOURCE.trim() + '\n' + stripped
+  const tmpPath = join(dirname(filePath), `.struere-tmp-${Date.now()}.ts`)
+  writeFileSync(tmpPath, inlined)
+  try {
+    return await import(`${tmpPath}?update=${Date.now()}`)
+  } finally {
+    try { unlinkSync(tmpPath) } catch {}
+  }
+}
 
 export interface LoadedResources {
-  agents: AgentConfigV2[]
+  agents: AgentConfig[]
   entityTypes: EntityTypeConfig[]
   roles: RoleConfig[]
   customTools: ToolReference[]
@@ -15,9 +35,8 @@ export interface LoadedResources {
 }
 
 export async function loadAllResources(cwd: string): Promise<LoadedResources> {
-  registerStruerePlugin()
   const errors: string[] = []
-  const agents = await loadTsDirectory<AgentConfigV2>(join(cwd, 'agents'))
+  const agents = await loadTsDirectory<AgentConfig>(join(cwd, 'agents'))
   const entityTypes = await loadTsDirectory<EntityTypeConfig>(join(cwd, 'entity-types'))
   const roles = await loadTsDirectory<RoleConfig>(join(cwd, 'roles'))
   const { tools: customTools, error: toolsError } = await loadCustomTools(join(cwd, 'tools'))
@@ -45,7 +64,7 @@ async function loadTsDirectory<T>(dir: string): Promise<T[]> {
   for (const file of files) {
     const filePath = join(dir, file)
     try {
-      const module = await import(`${filePath}?update=${Date.now()}`)
+      const module = await importUserFile(filePath)
       if (module.default) {
         items.push(module.default as T)
       }
@@ -68,7 +87,7 @@ async function loadCustomTools(dir: string): Promise<{ tools: ToolReference[]; e
   }
 
   try {
-    const module = await import(`${indexPath}?update=${Date.now()}`)
+    const module = await importUserFile(indexPath)
     if (Array.isArray(module.default)) {
       return { tools: module.default }
     }
