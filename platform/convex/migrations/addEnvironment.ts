@@ -108,27 +108,6 @@ export const backfillEvents = internalMutation({
   },
 })
 
-export const backfillJobs = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const records = await ctx.db.query("jobs")
-      .filter((q) => q.eq(q.field("environment"), undefined))
-      .take(BATCH_SIZE)
-    let count = 0
-
-    for (const record of records) {
-      await ctx.db.patch(record._id, { environment: "development" } as any)
-      count++
-    }
-
-    if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillJobs, {})
-    }
-
-    return { patched: count }
-  },
-})
-
 export const backfillThreads = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -192,6 +171,27 @@ export const backfillApiKeys = internalMutation({
   },
 })
 
+export const backfillIntegrationConfigs = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const records = await ctx.db.query("integrationConfigs")
+      .filter((q) => q.eq(q.field("environment"), undefined))
+      .take(BATCH_SIZE)
+    let count = 0
+
+    for (const record of records) {
+      await ctx.db.patch(record._id, { environment: "production" } as any)
+      count++
+    }
+
+    if (records.length === BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillIntegrationConfigs, {})
+    }
+
+    return { patched: count }
+  },
+})
+
 export const removeAgentConfigFKs = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -224,10 +224,10 @@ export const runAll = internalMutation({
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntities, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntityRelations, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEvents, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillJobs, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillThreads, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillExecutions, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillApiKeys, {})
+    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillIntegrationConfigs, {})
     await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.removeAgentConfigFKs, {})
     return { scheduled: true }
   },
