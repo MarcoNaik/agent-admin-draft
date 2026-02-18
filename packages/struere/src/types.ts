@@ -1,14 +1,3 @@
-export interface AgentConfig {
-  name: string
-  version: string
-  description?: string
-  model?: ModelConfig
-  systemPrompt: string | (() => string | Promise<string>)
-  tools?: ToolReference[]
-  workflows?: WorkflowReference[]
-  state?: StateConfig
-}
-
 export interface ModelConfig {
   provider: 'anthropic' | 'openai' | 'google' | 'custom'
   name: string
@@ -44,24 +33,6 @@ export type ToolHandler = (params: Record<string, unknown>, context: ToolContext
 export interface ToolContext {
   conversationId: string
   userId?: string
-  state: StateAccessor
-}
-
-export interface StateAccessor {
-  get<T>(key: string): Promise<T | undefined>
-  set<T>(key: string, value: T): Promise<void>
-  delete(key: string): Promise<void>
-}
-
-export interface WorkflowReference {
-  name: string
-  path: string
-}
-
-export interface StateConfig {
-  storage: 'memory' | 'redis' | 'postgres' | 'custom'
-  ttl?: number
-  prefix?: string
 }
 
 export interface FrameworkConfig {
@@ -85,44 +56,6 @@ export interface LoggingConfig {
 export interface AuthConfig {
   type: 'none' | 'api-key' | 'jwt' | 'custom'
   validate?: (token: string) => Promise<boolean>
-}
-
-export interface Message {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  timestamp: Date
-  metadata?: Record<string, unknown>
-}
-
-export interface Conversation {
-  id: string
-  messages: Message[]
-  state: Record<string, unknown>
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface TestCase {
-  name: string
-  description?: string
-  conversation: TestMessage[]
-  assertions: TestAssertion[]
-}
-
-export interface TestMessage {
-  role: 'user' | 'assistant'
-  content: string
-  toolCalls?: TestToolCall[]
-}
-
-export interface TestToolCall {
-  name: string
-  parameters?: Record<string, unknown>
-}
-
-export interface TestAssertion {
-  type: 'contains' | 'matches' | 'toolCalled' | 'stateEquals'
-  value: string | Record<string, unknown>
 }
 
 export interface EvalAssertion {
@@ -192,18 +125,6 @@ export interface EvalResultSummary {
   }>
 }
 
-export interface DeployConfig {
-  environment: 'staging' | 'production'
-  region?: string
-  scaling?: ScalingConfig
-}
-
-export interface ScalingConfig {
-  minInstances: number
-  maxInstances: number
-  targetConcurrency?: number
-}
-
 export interface EntityTypeConfig {
   name: string
   slug: string
@@ -262,7 +183,7 @@ export interface FieldMaskConfig {
   maskConfig?: Record<string, unknown>
 }
 
-export interface StruereProjectV2 {
+export interface StruereProject {
   version: '2.0'
   organization: {
     id: string
@@ -271,7 +192,7 @@ export interface StruereProjectV2 {
   }
 }
 
-export interface AgentConfigV2 {
+export interface AgentConfig {
   name: string
   slug: string
   version: string
@@ -300,7 +221,7 @@ export interface TriggerConfig {
 }
 
 export interface SyncPayload {
-  agents: AgentConfigV2[]
+  agents: AgentConfig[]
   entityTypes: EntityTypeConfig[]
   roles: RoleConfig[]
   customTools?: ToolReference[]
