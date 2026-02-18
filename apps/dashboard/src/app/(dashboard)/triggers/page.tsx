@@ -15,14 +15,35 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
+  RefreshCw,
+  XOctagon,
+  Skull,
+  Timer,
 } from "lucide-react"
-import { useTriggers, useTriggerLastRunStatuses, useTriggerExecutions } from "@/hooks/use-convex-data"
+import {
+  useTriggers,
+  useTriggerLastRunStatuses,
+  useTriggerExecutions,
+  useTriggerRuns,
+  useTriggerRunStats,
+  useRetryTriggerRun,
+  useCancelTriggerRun,
+} from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { AdminOnly } from "@/components/role-redirect"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger as SelectTriggerUI,
+  SelectValue,
+} from "@/components/ui/select"
+import { cn, formatDate } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"
 
 type Trigger = {
@@ -38,6 +59,16 @@ type Trigger = {
     args: Record<string, unknown>
     as?: string
   }>
+  schedule?: {
+    delay?: number
+    at?: string
+    offset?: number
+    cancelPrevious?: boolean
+  }
+  retry?: {
+    maxAttempts?: number
+    backoffMs?: number
+  }
   enabled: boolean
 }
 
@@ -47,6 +78,8 @@ type LastRun = {
   error?: string
   entityId?: string
 }
+
+type RunStatus = "pending" | "running" | "completed" | "failed" | "dead"
 
 const ACTION_COLORS: Record<string, string> = {
   created: "bg-success/12 text-success border-success/20",
@@ -96,6 +129,46 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> })
             <span className="font-mono text-[11px] text-content-primary">{String(value)}</span>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function ScheduleDisplay({ schedule, retry }: { schedule: Trigger["schedule"]; retry: Trigger["retry"] }) {
+  if (!schedule) return null
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5 text-[11px] text-content-tertiary">
+        <Timer className="h-3 w-3" />
+        <span>Schedule</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {schedule.delay && (
+          <div className="rounded bg-background-tertiary/50 px-2 py-1">
+            <span className="font-mono text-[11px] text-content-secondary">delay: {schedule.delay}ms</span>
+          </div>
+        )}
+        {schedule.at && (
+          <div className="rounded bg-background-tertiary/50 px-2 py-1">
+            <span className="font-mono text-[11px] text-content-secondary">at: {schedule.at}</span>
+          </div>
+        )}
+        {schedule.offset !== undefined && schedule.offset !== 0 && (
+          <div className="rounded bg-background-tertiary/50 px-2 py-1">
+            <span className="font-mono text-[11px] text-content-secondary">offset: {schedule.offset}ms</span>
+          </div>
+        )}
+        {schedule.cancelPrevious && (
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">cancelPrevious</Badge>
+        )}
+        {retry && (
+          <div className="rounded bg-background-tertiary/50 px-2 py-1">
+            <span className="font-mono text-[11px] text-content-secondary">
+              retry: {retry.maxAttempts ?? 1}x / {retry.backoffMs ?? 60000}ms
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -396,6 +469,14 @@ function TriggerExpandedDetail({ trigger }: { trigger: Trigger }) {
             </div>
             <ArrowRight className="h-3 w-3 text-content-tertiary/40" />
             <ActionBadge action={trigger.action} />
+            {trigger.schedule && (
+              <>
+                <ArrowRight className="h-3 w-3 text-content-tertiary/40" />
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border border-blue-500/20 bg-blue-500/12 text-blue-400">
+                  scheduled
+                </Badge>
+              </>
+            )}
             <ArrowRight className="h-3 w-3 text-content-tertiary/40" />
             <div className="flex items-center gap-2 rounded-md bg-background-tertiary px-3 py-1.5 text-content-secondary">
               <Play className="h-3.5 w-3.5" />
@@ -406,6 +487,8 @@ function TriggerExpandedDetail({ trigger }: { trigger: Trigger }) {
           {trigger.condition && Object.keys(trigger.condition).length > 0 && (
             <ConditionDisplay condition={trigger.condition} />
           )}
+
+          <ScheduleDisplay schedule={trigger.schedule} retry={trigger.retry} />
 
           <ActionPipeline actions={trigger.actions} />
         </div>
@@ -467,6 +550,11 @@ function TriggerRow({
             {!trigger.enabled && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
                 disabled
+              </Badge>
+            )}
+            {trigger.schedule && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border-blue-500/20 text-blue-400">
+                scheduled
               </Badge>
             )}
           </div>
@@ -538,6 +626,7 @@ function TriggerRow({
 function StatsBar({ triggers }: { triggers: Trigger[] }) {
   const enabledCount = triggers.filter((t) => t.enabled).length
   const disabledCount = triggers.filter((t) => !t.enabled).length
+  const scheduledCount = triggers.filter((t) => t.schedule).length
   const entityTypes = new Set(triggers.map((t) => t.entityType))
 
   return (
@@ -545,7 +634,182 @@ function StatsBar({ triggers }: { triggers: Trigger[] }) {
       <span>{triggers.length} total</span>
       {enabledCount > 0 && <span>{enabledCount} enabled</span>}
       {disabledCount > 0 && <span>{disabledCount} disabled</span>}
+      {scheduledCount > 0 && <span>{scheduledCount} scheduled</span>}
       <span>{entityTypes.size} entity type{entityTypes.size !== 1 ? "s" : ""}</span>
+    </div>
+  )
+}
+
+function getRunStatusIcon(status: RunStatus) {
+  switch (status) {
+    case "pending":
+      return <Clock className="h-4 w-4 text-yellow-500" />
+    case "running":
+      return <Play className="h-4 w-4 text-blue-500" />
+    case "completed":
+      return <CheckCircle2 className="h-4 w-4 text-green-500" />
+    case "failed":
+      return <XCircle className="h-4 w-4 text-red-500" />
+    case "dead":
+      return <Skull className="h-4 w-4 text-gray-500" />
+  }
+}
+
+function getRunStatusVariant(status: RunStatus): "default" | "secondary" | "destructive" | "success" | "warning" {
+  switch (status) {
+    case "pending": return "warning"
+    case "running": return "default"
+    case "completed": return "success"
+    case "failed": return "destructive"
+    case "dead": return "secondary"
+  }
+}
+
+function ScheduledRunsTab() {
+  const { environment } = useEnvironment()
+  const [statusFilter, setStatusFilter] = useState<RunStatus | undefined>(undefined)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  const runs = useTriggerRuns(environment, statusFilter)
+  const stats = useTriggerRunStats(environment)
+  const retryRun = useRetryTriggerRun()
+  const cancelRun = useCancelTriggerRun()
+
+  const handleCancel = async (runId: string) => {
+    setActionLoading(runId)
+    try {
+      await cancelRun({ runId: runId as any })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleRetry = async (runId: string) => {
+    setActionLoading(runId)
+    try {
+      await retryRun({ runId: runId as any })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  if (runs === undefined || stats === undefined) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-content-tertiary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 grid-cols-5">
+        {(["pending", "running", "completed", "failed", "dead"] as const).map((status) => {
+          const icons = { pending: Clock, running: Play, completed: CheckCircle2, failed: XCircle, dead: Skull }
+          const colors = { pending: "text-yellow-500 bg-yellow-500/10", running: "text-blue-500 bg-blue-500/10", completed: "text-green-500 bg-green-500/10", failed: "text-red-500 bg-red-500/10", dead: "text-gray-500 bg-gray-500/10" }
+          const Icon = icons[status]
+          const color = colors[status]
+          return (
+            <Card key={status}>
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn("rounded-full p-1.5", color.split(" ")[1])}>
+                    <Icon className={cn("h-3.5 w-3.5", color.split(" ")[0])} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-content-tertiary capitalize">{status}</p>
+                    <p className="text-lg font-bold">{stats[status] || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-content-secondary">{runs.length} runs</span>
+        <Select
+          value={statusFilter || "all"}
+          onValueChange={(v) => setStatusFilter(v === "all" ? undefined : v as RunStatus)}
+        >
+          <SelectTriggerUI className="w-[140px] h-8 text-xs">
+            <Filter className="mr-2 h-3.5 w-3.5" />
+            <SelectValue />
+          </SelectTriggerUI>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="running">Running</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="dead">Dead</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {runs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Timer className="mb-3 h-8 w-8 text-content-tertiary/50" />
+          <p className="text-sm text-content-secondary">No scheduled runs</p>
+          <p className="mt-1 text-xs text-content-tertiary">
+            Scheduled trigger runs will appear here
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {runs.map((run: any) => (
+            <div
+              key={run._id}
+              className="flex items-center justify-between rounded-lg border border-border/30 bg-background-secondary/30 p-3"
+            >
+              <div className="flex items-center gap-3">
+                {getRunStatusIcon(run.status)}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{run.triggerSlug}</span>
+                    <Badge variant={getRunStatusVariant(run.status)} className="text-[10px]">{run.status}</Badge>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-3 text-[11px] text-content-tertiary">
+                    <span>Attempts: {run.attempts}/{run.maxAttempts}</span>
+                    <span>Scheduled: {formatDate(new Date(run.scheduledFor).toISOString())}</span>
+                    {run.completedAt && <span>Done: {formatDate(new Date(run.completedAt).toISOString())}</span>}
+                  </div>
+                  {run.errorMessage && (
+                    <p className="mt-1 text-[11px] text-destructive line-clamp-1">{run.errorMessage}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {run.status === "pending" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleCancel(run._id)}
+                    disabled={actionLoading === run._id}
+                  >
+                    <XOctagon className="mr-1.5 h-3 w-3" />
+                    Cancel
+                  </Button>
+                )}
+                {(run.status === "failed" || run.status === "dead") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleRetry(run._id)}
+                    disabled={actionLoading === run._id}
+                  >
+                    <RefreshCw className="mr-1.5 h-3 w-3" />
+                    Retry
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -556,6 +820,7 @@ function TriggersPageContent() {
   const lastRunStatuses = useTriggerLastRunStatuses(environment)
   const [search, setSearch] = useState("")
   const [expandedId, setExpandedId] = useState<Id<"triggers"> | null>(null)
+  const [activeTab, setActiveTab] = useState("triggers")
 
   if (triggers === undefined) {
     return (
@@ -572,6 +837,8 @@ function TriggersPageContent() {
       </div>
     )
   }
+
+  const hasScheduledTriggers = triggers.some((t) => t.schedule)
 
   const filtered = triggers.filter(
     (t) =>
@@ -617,6 +884,67 @@ function TriggersPageContent() {
         </span>
       </div>
 
+      {hasScheduledTriggers ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="h-9 bg-background-tertiary/50">
+            <TabsTrigger value="triggers" className="text-xs px-4 py-1.5 h-7">
+              Triggers
+            </TabsTrigger>
+            <TabsTrigger value="runs" className="text-xs px-4 py-1.5 h-7">
+              Scheduled Runs
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="triggers" className="mt-4">
+            <TriggersListContent
+              triggers={triggers}
+              filtered={filtered}
+              search={search}
+              setSearch={setSearch}
+              expandedId={expandedId}
+              toggleTrigger={toggleTrigger}
+              lastRunStatuses={lastRunStatuses}
+            />
+          </TabsContent>
+
+          <TabsContent value="runs" className="mt-4">
+            <ScheduledRunsTab />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <TriggersListContent
+          triggers={triggers}
+          filtered={filtered}
+          search={search}
+          setSearch={setSearch}
+          expandedId={expandedId}
+          toggleTrigger={toggleTrigger}
+          lastRunStatuses={lastRunStatuses}
+        />
+      )}
+    </div>
+  )
+}
+
+function TriggersListContent({
+  triggers,
+  filtered,
+  search,
+  setSearch,
+  expandedId,
+  toggleTrigger,
+  lastRunStatuses,
+}: {
+  triggers: Trigger[]
+  filtered: Trigger[]
+  search: string
+  setSearch: (s: string) => void
+  expandedId: Id<"triggers"> | null
+  toggleTrigger: (id: Id<"triggers">) => void
+  lastRunStatuses: Record<string, LastRun> | undefined
+}) {
+  return (
+    <>
       {triggers.length > 0 && (
         <div className="flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-xs">
@@ -663,7 +991,7 @@ function TriggersPageContent() {
           ))}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
