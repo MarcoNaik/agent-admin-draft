@@ -1,28 +1,3 @@
-export function getPackageJson(name: string): string {
-  return JSON.stringify(
-    {
-      name,
-      version: '0.1.0',
-      type: 'module',
-      scripts: {
-        dev: 'struere dev',
-        build: 'struere build',
-        test: 'struere test',
-        deploy: 'struere deploy',
-      },
-      dependencies: {
-        struere: '^0.3.0',
-      },
-      devDependencies: {
-        'bun-types': '^1.0.0',
-        typescript: '^5.3.0',
-      },
-    },
-    null,
-    2
-  )
-}
-
 export function getTsConfig(): string {
   return JSON.stringify(
     {
@@ -39,7 +14,7 @@ export function getTsConfig(): string {
         rootDir: '.',
         types: ['bun-types'],
         paths: {
-          struere: ['./.struere/types.d.ts'],
+          struere: ['./.struere/index.js'],
         },
       },
       include: ['**/*.ts'],
@@ -48,133 +23,6 @@ export function getTsConfig(): string {
     null,
     2
   )
-}
-
-export function getStruereConfig(): string {
-  return `import { defineConfig } from 'struere'
-
-export default defineConfig({
-  port: 3000,
-  host: 'localhost',
-  cors: {
-    origins: ['http://localhost:3000'],
-    credentials: true,
-  },
-  logging: {
-    level: 'info',
-    format: 'pretty',
-  },
-})
-`
-}
-
-export function getAgentTs(name: string): string {
-  const displayName = name
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-
-  return `import { defineAgent } from 'struere'
-import { tools } from './tools'
-
-export default defineAgent({
-  name: '${name}',
-  version: '0.1.0',
-  description: '${displayName} Agent',
-  model: {
-    provider: 'anthropic',
-    name: 'claude-haiku-4-5',
-    temperature: 0.7,
-    maxTokens: 4096,
-  },
-  systemPrompt: \`You are ${displayName}, a helpful AI assistant.
-
-Current time: {{datetime}}
-
-Your capabilities:
-- Answer questions accurately and helpfully
-- Use available tools when appropriate
-- Maintain conversation context
-
-Always be concise, accurate, and helpful.\`,
-  tools,
-})
-`
-}
-
-export function getToolsTs(): string {
-  return `import { defineTools } from 'struere'
-
-export const tools = defineTools([
-  {
-    name: 'get_current_time',
-    description: 'Get the current date and time',
-    parameters: {
-      type: 'object',
-      properties: {
-        timezone: {
-          type: 'string',
-          description: 'Timezone (e.g., "America/New_York", "UTC")',
-        },
-      },
-    },
-    handler: async (params) => {
-      const timezone = (params.timezone as string) || 'UTC'
-      const now = new Date()
-      return {
-        timestamp: now.toISOString(),
-        formatted: now.toLocaleString('en-US', { timeZone: timezone }),
-        timezone,
-      }
-    },
-  },
-  {
-    name: 'calculate',
-    description: 'Perform a mathematical calculation',
-    parameters: {
-      type: 'object',
-      properties: {
-        expression: {
-          type: 'string',
-          description: 'Mathematical expression to evaluate (e.g., "2 + 2")',
-        },
-      },
-      required: ['expression'],
-    },
-    handler: async (params) => {
-      const expression = params.expression as string
-      const sanitized = expression.replace(/[^0-9+*/().\\s-]/g, '')
-      try {
-        const result = new Function(\`return \${sanitized}\`)()
-        return { expression, result }
-      } catch {
-        return { expression, error: 'Invalid expression' }
-      }
-    },
-  },
-])
-`
-}
-
-export function getBasicTestYaml(): string {
-  return `name: Basic conversation test
-description: Verify the agent responds correctly to basic queries
-
-conversation:
-  - role: user
-    content: Hello, what can you do?
-  - role: assistant
-    assertions:
-      - type: contains
-        value: help
-
-  - role: user
-    content: What time is it?
-  - role: assistant
-    assertions:
-      - type: toolCalled
-        value: get_current_time
-`
 }
 
 export function getExampleEvalYaml(agentSlug: string): string {
@@ -291,26 +139,6 @@ logs/
 `
 }
 
-export function getStruereJson(agentId: string, team: string, slug: string, name: string): string {
-  return JSON.stringify(
-    {
-      agentId,
-      team,
-      agent: {
-        slug,
-        name,
-      },
-    },
-    null,
-    2
-  )
-}
-
-export function getEnvLocal(deploymentUrl: string): string {
-  return `STRUERE_DEPLOYMENT_URL=${deploymentUrl}
-`
-}
-
 export function getEntityTypeTs(name: string, slug: string): string {
   const displayName = name
     .split('-')
@@ -354,7 +182,7 @@ export default defineRole({
 `
 }
 
-export function getAgentTsV2(name: string, slug: string): string {
+export function getAgentTs(name: string, slug: string): string {
   const displayName = name
     .split('-')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -385,12 +213,6 @@ Your capabilities:
 Always be concise, accurate, and helpful.\`,
   tools: ["entity.query", "entity.get", "event.emit"],
 })
-`
-}
-
-export function getIndexTs(type: 'agents' | 'entity-types' | 'roles' | 'triggers'): string {
-  return `// Export all ${type} from this directory
-// Example: export { default as myAgent } from './my-agent'
 `
 }
 
@@ -466,7 +288,7 @@ export default defineTools([
 `
 }
 
-export function getStruereJsonV2(orgId: string, orgSlug: string, orgName: string): string {
+export function getStruereJson(orgId: string, orgSlug: string, orgName: string): string {
   return JSON.stringify(
     {
       version: '2.0',
@@ -481,7 +303,7 @@ export function getStruereJsonV2(orgId: string, orgSlug: string, orgName: string
   )
 }
 
-export function getPackageJsonV2(name: string): string {
+export function getPackageJson(name: string): string {
   return JSON.stringify(
     {
       name,
@@ -489,7 +311,6 @@ export function getPackageJsonV2(name: string): string {
       type: 'module',
       scripts: {
         dev: 'struere dev',
-        build: 'struere build',
         deploy: 'struere deploy',
         status: 'struere status',
       },
@@ -503,7 +324,7 @@ export function getPackageJsonV2(name: string): string {
   )
 }
 
-export function getClaudeMDV2(orgName: string): string {
+export function getClaudeMD(orgName: string): string {
   return `# ${orgName} - Struere Workspace
 
 > **This is a workspace project**, not the Struere framework source code. You define agents, entity types, roles, and custom tools here. The CLI syncs them to Convex. Framework source: github.com/struere/struere
@@ -545,21 +366,17 @@ Struere is a framework for building production AI agents with Convex as the real
 
 \`\`\`
 agents/              # Agent definitions (synced to Convex)
-├── my-agent.ts      # One file per agent
-└── index.ts         # Re-exports (optional)
+└── my-agent.ts      # One file per agent
 
 entity-types/        # Data schemas (like DB tables)
-├── customer.ts      # Defines shape of "customer" entities
-└── index.ts
+└── customer.ts      # Defines shape of "customer" entities
 
 roles/               # RBAC: who can do what
 ├── admin.ts         # Full access
-├── support.ts       # Limited access
-└── index.ts
+└── support.ts       # Limited access
 
 triggers/            # Automation rules (react to entity changes)
-├── notify-on-create.ts
-└── index.ts
+└── notify-on-create.ts
 
 tools/               # Custom tools shared by all agents
 └── index.ts         # defineTools([...])
@@ -569,7 +386,6 @@ evals/               # Eval suites (YAML test definitions)
 └── tools.eval.yaml
 
 struere.json         # Organization ID (don't edit)
-struere.config.ts    # Local dev settings (port, CORS)
 \`\`\`
 
 ## Configuration Files
@@ -583,15 +399,6 @@ Links this project to your Convex organization:
 }
 \`\`\`
 
-### struere.config.ts (optional local settings)
-\`\`\`typescript
-import { defineConfig } from 'struere'
-export default defineConfig({
-  port: 3000,           // Local dev server port
-  logging: { level: 'debug' }
-})
-\`\`\`
-
 ## CLI Commands
 
 | Command | What it does |
@@ -603,9 +410,8 @@ export default defineConfig({
 | \`struere add role <name>\` | Create roles/name.ts |
 | \`struere add trigger <name>\` | Create triggers/name.ts with template |
 | \`struere add eval <name>\` | Create evals/name.eval.yaml with template |
-| \`struere eval\` | Run all eval suites |
-| \`struere eval --suite <name>\` | Run a specific eval suite |
 | \`struere status\` | Show what's synced vs local-only |
+| \`struere pull\` | Pull remote resources to local files |
 
 ## Defining Agents
 
@@ -1247,27 +1053,7 @@ cases:
 
 Each assertion can have an optional \`weight\` (1-5, default 1) that affects the overall score.
 
-### CLI Commands
-
-\`\`\`bash
-# Run all eval suites
-struere eval
-
-# Run a specific suite
-struere eval --suite my-test-suite
-
-# Dry run (parse only, no execution)
-struere eval --dry-run
-
-# Verbose output (shows judge reasoning on failures)
-struere eval --verbose
-
-# JSON output (for CI/CD)
-struere eval --json
-
-# Skip syncing (use already-synced suites)
-struere eval --no-sync
-\`\`\`
+Eval suites are synced via \\\`struere dev\\\` and can be run from the dashboard.
 
 ### Scaffold a new eval suite
 
@@ -1360,353 +1146,5 @@ export default defineTrigger({
     },
   ],
 })
-`
-}
-
-export function getClaudeMD(name: string): string {
-  const displayName = name
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-
-  return `# ${displayName} Agent
-
-This is a Struere AI agent project. Struere is a framework for building production AI agents with built-in data management, event tracking, and job scheduling.
-
-## Project Structure
-
-\`\`\`
-src/
-├── agent.ts      # Agent definition (system prompt, model, tools)
-├── tools.ts      # Custom tool definitions
-└── workflows/    # Multi-step workflow definitions
-tests/
-└── *.test.yaml   # YAML-based conversation tests
-struere.json      # Project configuration (agentId, team, slug)
-struere.config.ts # Framework settings (port, CORS, logging)
-\`\`\`
-
-## Agent Definition
-
-Define your agent in \`src/agent.ts\`:
-
-\`\`\`typescript
-import { defineAgent } from 'struere'
-import { tools } from './tools'
-
-export default defineAgent({
-  name: 'my-agent',
-  version: '0.1.0',
-  description: 'My AI Agent',
-  model: {
-    provider: 'anthropic',
-    name: 'claude-haiku-4-5',  // Best cost/intelligence ratio
-    temperature: 0.7,
-    maxTokens: 4096,
-  },
-  systemPrompt: \\\`You are a helpful assistant.
-
-Current time: {{datetime}}
-Customer: {{entity.get({"id": "{{thread.metadata.customerId}}"})}}\\\`,
-  tools,
-})
-\`\`\`
-
-## System Prompt Templates
-
-System prompts support dynamic \`{{...}}\` templates that are resolved at runtime before the LLM call.
-
-### Available Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| \`{{currentTime}}\` | string | ISO 8601 timestamp |
-| \`{{datetime}}\` | string | ISO 8601 timestamp (alias) |
-| \`{{timestamp}}\` | number | Unix timestamp (ms) |
-| \`{{organizationName}}\` | string | Organization name |
-| \`{{organizationId}}\` | string | Organization ID |
-| \`{{agentName}}\` | string | Agent display name |
-| \`{{agent.name}}\` | string | Agent name |
-| \`{{agent.slug}}\` | string | Agent slug |
-| \`{{userId}}\` | string | Current user ID |
-| \`{{threadId}}\` | string | Conversation thread ID |
-| \`{{agentId}}\` | string | Agent ID |
-| \`{{thread.metadata.X}}\` | any | Thread metadata field X |
-| \`{{message}}\` | string | Current user message |
-| \`{{entityTypes}}\` | array | JSON array of all entity types |
-| \`{{roles}}\` | array | JSON array of all roles |
-
-### Function Calls
-
-Call any agent tool directly in the system prompt:
-
-\`\`\`
-{{entity.get({"id": "ent_123"})}}
-{{entity.query({"type": "customer", "limit": 5})}}
-{{event.query({"entityId": "ent_123", "limit": 10})}}
-\`\`\`
-
-### Nested Templates
-
-Variables can be used inside function arguments:
-
-\`\`\`
-{{entity.get({"id": "{{thread.metadata.customerId}}"})}}
-\`\`\`
-
-### Error Handling
-
-Failed templates are replaced with inline errors:
-\`\`\`
-[TEMPLATE_ERROR: variableName not found]
-[TEMPLATE_ERROR: toolName - error message]
-\`\`\`
-
-## Custom Tools
-
-Define tools in \`src/tools.ts\`:
-
-\`\`\`typescript
-import { defineTools } from 'struere'
-
-export const tools = defineTools([
-  {
-    name: 'search_products',
-    description: 'Search the product catalog',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Search query' },
-        limit: { type: 'number', description: 'Max results' },
-      },
-      required: ['query'],
-    },
-    handler: async (params) => {
-      const results = await searchProducts(params.query, params.limit ?? 10)
-      return { products: results }
-    },
-  },
-])
-\`\`\`
-
-Custom tool handlers are executed in a sandboxed Cloudflare Worker environment. They can make HTTP requests to allowlisted domains:
-- api.openai.com, api.anthropic.com, api.stripe.com
-- api.sendgrid.com, api.twilio.com, hooks.slack.com
-- discord.com, api.github.com
-
-## Built-in Tools
-
-Agents have access to these built-in tools for data management:
-
-### Entity Tools
-
-| Tool | Description |
-|------|-------------|
-| \`entity.create\` | Create a new entity |
-| \`entity.get\` | Get entity by ID |
-| \`entity.query\` | Query entities by type/filters |
-| \`entity.update\` | Update entity data |
-| \`entity.delete\` | Soft-delete entity |
-| \`entity.link\` | Create entity relation |
-| \`entity.unlink\` | Remove entity relation |
-
-Example entity operations:
-\`\`\`json
-// entity.create
-{ "type": "customer", "data": { "name": "John", "email": "john@example.com" } }
-
-// entity.query
-{ "type": "customer", "filters": { "status": "active" }, "limit": 10 }
-
-// entity.update
-{ "id": "ent_123", "data": { "status": "vip" } }
-\`\`\`
-
-### Event Tools
-
-| Tool | Description |
-|------|-------------|
-| \`event.emit\` | Emit a custom event |
-| \`event.query\` | Query event history |
-
-Example event operations:
-\`\`\`json
-// event.emit
-{ "entityId": "ent_123", "eventType": "order.placed", "payload": { "amount": 99.99 } }
-
-// event.query
-{ "entityId": "ent_123", "eventType": "order.*", "limit": 20 }
-\`\`\`
-
-### Job Tools
-
-| Tool | Description |
-|------|-------------|
-| \`job.enqueue\` | Schedule a background job |
-| \`job.status\` | Get job status |
-
-Example job operations:
-\`\`\`json
-// job.enqueue
-{ "jobType": "send_email", "payload": { "to": "user@example.com" }, "scheduledFor": 1706745600000 }
-
-// job.status
-{ "id": "job_abc123" }
-\`\`\`
-
-### Agent Communication Tools
-
-| Tool | Description |
-|------|-------------|
-| \`agent.chat\` | Send a message to another agent and get its response |
-
-The \`agent.chat\` tool enables multi-agent workflows by letting agents delegate work to other agents within the same organization. The calling agent waits for the target agent's response.
-
-\`\`\`json
-// agent.chat
-{ "agent": "billing-agent", "message": "Check credits for guardian ent_abc", "context": { "guardianId": "ent_abc" } }
-// Returns: { "response": "...", "threadId": "...", "agentSlug": "billing-agent", "usage": {...} }
-\`\`\`
-
-**Safety:** Max depth of 3 levels (A→B→C), no self-calls, each agent has its own 10-step LLM iteration limit.
-
-## Evaluations (Evals)
-
-Evals test agent behavior with automated assertions and LLM-as-judge scoring.
-
-### Eval File Format
-
-Create YAML files in \`evals/\` (or \`tests/\` for legacy):
-
-\`\`\`yaml
-suite: "Order Flow Tests"
-slug: "order-flow-tests"
-agent: "my-agent-slug"
-description: "Test the complete order flow"
-judgeModel: "claude-haiku-4-5-20251001"
-judgePrompt: "Focus on workflow correctness. Penalize wrong tool usage or missing steps."
-
-cases:
-  - name: "Order initiation"
-    turns:
-      - user: "I want to order a pizza"
-        assertions:
-          - type: llm_judge
-            criteria: "Agent asks about pizza size or toppings"
-            weight: 3
-          - type: contains
-            value: "size"
-          - type: tool_called
-            value: "entity.query"
-
-  - name: "Order completion"
-    turns:
-      - user: "Large pepperoni please"
-        assertions:
-          - type: tool_called
-            value: "entity.create"
-          - type: tool_not_called
-            value: "entity.delete"
-          - type: llm_judge
-            criteria: "Agent confirms the order details"
-\`\`\`
-
-### Assertion Types
-
-| Type | Field | Description |
-|------|-------|-------------|
-| \`llm_judge\` | \`criteria\` | LLM evaluates response against criteria (1-5 score, pass >= 3) |
-| \`contains\` | \`value\` | Response contains substring (case-insensitive) |
-| \`matches\` | \`value\` | Response matches regex pattern |
-| \`tool_called\` | \`value\` | Specific tool was called during this turn |
-| \`tool_not_called\` | \`value\` | Specific tool was NOT called during this turn |
-
-Each assertion supports optional \`weight\` (1-5, default 1) for score weighting.
-
-### Running Evals
-
-\`\`\`bash
-struere eval                    # Run all suites
-struere eval --suite order-flow # Run specific suite
-struere eval --verbose          # Show judge reasoning
-struere eval --dry-run          # Parse only
-struere eval --json             # JSON output for CI/CD
-\`\`\`
-
-### Scaffold a new eval
-
-\`\`\`bash
-struere add eval my-suite
-\`\`\`
-
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| \`struere dev\` | Start development mode (live sync to Convex) |
-| \`struere build\` | Validate agent configuration |
-| \`struere deploy\` | Deploy agent to production |
-| \`struere eval\` | Run eval suites with LLM judge |
-| \`struere add eval <name>\` | Scaffold a new eval YAML file |
-| \`struere logs\` | View recent execution logs |
-| \`struere state\` | Inspect conversation thread state |
-
-## Thread Metadata
-
-Set thread metadata when creating conversations to provide context:
-
-\`\`\`typescript
-// Via API
-POST /v1/chat
-{
-  "agentId": "agent_123",
-  "message": "Hello",
-  "metadata": {
-    "customerId": "ent_customer_456",
-    "channel": "web",
-    "language": "en"
-  }
-}
-\`\`\`
-
-Access in system prompt:
-\`\`\`
-Customer: {{entity.get({"id": "{{thread.metadata.customerId}}"})}}
-Channel: {{thread.metadata.channel}}
-\`\`\`
-
-## Development Workflow
-
-1. **Edit agent configuration** in \`src/agent.ts\`
-2. **Run \`bun run dev\`** to sync changes to Convex
-3. **Test via API** or dashboard chat interface
-4. **Write tests** in \`tests/*.test.yaml\`
-5. **Deploy** with \`bun run deploy\`
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| \`/v1/chat\` | POST | Chat by agent ID |
-| \`/v1/agents/:slug/chat\` | POST | Chat by agent slug |
-
-Authentication: Bearer token (API key from dashboard)
-
-\`\`\`bash
-curl -X POST https://your-deployment.convex.cloud/v1/chat \\
-  -H "Authorization: Bearer sk_live_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{"agentId": "...", "message": "Hello"}'
-\`\`\`
-
-## Best Practices
-
-1. **System Prompts**: Use templates for dynamic data instead of hardcoding
-2. **Tools**: Keep tool handlers focused and stateless
-3. **Entities**: Model your domain data as entity types
-4. **Events**: Emit events for audit trails and analytics
-5. **Jobs**: Use jobs for async operations (emails, notifications)
-6. **Testing**: Write tests for critical conversation flows
-7. **Thread Metadata**: Use metadata for user-specific personalization
 `
 }
