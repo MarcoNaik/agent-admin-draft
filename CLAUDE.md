@@ -43,7 +43,7 @@ apps/                        packages/                   platform/
 │                         │  │  • Events (visibility filtered)        │      │ │
 │  ┌─────────────────┐    │  │  • Tools (permission checked)          │      │ │
 │  │   Webhooks      │    │  │  • Templates (permission-aware)        │      │ │
-│  │   - WhatsApp    │────┤  │  • Jobs (actor context preserved)      │      │ │
+│  │   - WhatsApp    │────┤  │  • Triggers (scheduled + immediate)    │      │ │
 │  │   - Flow        │    │  └────────────────────────────────────────┘      │ │
 │  └─────────────────┘    │                      │                           │ │
 │                         │  ┌───────────────────┴───────────────────┐      │ │
@@ -52,7 +52,7 @@ apps/                        packages/                   platform/
 │                         │  │  • 3 Roles with policies               │      │ │
 │                         │  │  • Scheduling constraints              │      │ │
 │                         │  │  • Credit consumption                  │      │ │
-│                         │  │  • Reminder/followup jobs              │      │ │
+│                         │  │  • Scheduled triggers (reminders)      │      │ │
 │                         │  └────────────────────────────────────────┘      │ │
 │                         └─────────────────────────────────────────────────┘ │
 │                                        │                                    │
@@ -84,9 +84,9 @@ apps/                        packages/                   platform/
 | **Organization Boundary** | Defense in depth (multiple protective layers) |
 | **Agent Config** | Stored in Convex DB as JSON (not JS bundles) |
 | **Custom Tools** | Handler code stored in Convex, executed on CF Worker |
-| **Built-in Tools** | Convex mutations (`entity.create`, `event.emit`, `job.enqueue`) |
+| **Built-in Tools** | Convex mutations (`entity.create`, `event.emit`, `agent.chat`) |
 | **LLM Calls** | Convex actions calling Anthropic API directly |
-| **Jobs** | Convex scheduled functions with actor context preservation |
+| **Triggers** | Immediate or scheduled with retry, tracked via triggerRuns table |
 | **Real-time** | Native Convex subscriptions (no polling) |
 | **CLI Workflow** | `struere dev` syncs config to Convex via HTTP |
 | **Auth** | Clerk with Convex integration |
@@ -113,7 +113,7 @@ apps/                        packages/                   platform/
 | **Conversation** | threads (env-scoped), messages |
 | **Business Data** | entityTypes (env-scoped), entities (env-scoped), entityRelations (env-scoped) |
 | **Events & Audit** | events (env-scoped), executions (env-scoped) |
-| **Jobs** | jobs (env-scoped, with actorContext) |
+| **Triggers** | triggers, triggerRuns (env-scoped, with schedule/retry) |
 | **RBAC** | roles (env-scoped), policies, scopeRules, fieldMasks, toolPermissions |
 | **Packs** | installedPacks (env-scoped, with customizations, upgradeHistory) |
 | **Integrations** | integrationConfigs, whatsappConnections, whatsappMessages |
@@ -156,7 +156,7 @@ Request
 ┌─────────────────────────────────┐
 │ 1. Build ActorContext           │
 │    - organizationId             │
-│    - actorType (user/agent/job) │
+│    - actorType (user/agent/system) │
 │    - actorId                    │
 │    - environment (dev/prod)     │
 │    - isOrgAdmin                 │
@@ -195,7 +195,7 @@ Request
 
 ### Security Properties
 
-1. **No privileged data paths** - Templates, tools, jobs all go through permissions
+1. **No privileged data paths** - Templates, tools, triggers all go through permissions
 2. **Defense in depth** - Organization boundary checked at multiple layers
 3. **Environment isolation** - All queries, roles, configs, entities, relations scoped to environment. Dev API keys cannot access production data.
 4. **Deny overrides allow** - Any deny policy blocks access
@@ -252,13 +252,6 @@ pending_payment ──[payment.success]──► scheduled
 | `scheduling.ts` | Booking validation, availability, overlap detection |
 | `workflows/session.ts` | Session lifecycle, credit consumption |
 
-### Job Handlers (`platform/convex/jobs/`)
-
-| File | Purpose |
-|------|---------|
-| `sessionReminder.ts` | 20-hour pre-session reminder |
-| `sessionFollowup.ts` | Post-session follow-up (trial/pack) |
-
 ## Integrations
 
 ### WhatsApp Integration (`platform/convex/lib/integrations/whatsapp.ts`)
@@ -273,7 +266,7 @@ pending_payment ──[payment.success]──► scheduled
 - Payment link generation
 - HMAC-SHA256 request signing
 - Webhook processing for status updates
-- Reconciliation job for missed webhooks
+- Reconciliation for missed webhooks
 
 ### Integration Functions (`platform/convex/`)
 
@@ -328,7 +321,7 @@ Core backend with real-time subscriptions and scheduled functions.
 - `entities.ts` - Permission-aware entity CRUD, search, relations — environment-filtered
 - `entityTypes.ts` - Admin-only entity type definitions
 - `events.ts` - Visibility-filtered event logging and queries
-- `jobs.ts` - Job scheduling with actor context preservation
+- `triggers.ts` - Trigger execution (immediate + scheduled), trigger run management
 - `threads.ts` - Conversation management
 - `roles.ts` - RBAC roles and policies
 - `apiKeys.ts` - API key management
@@ -342,7 +335,6 @@ Core backend with real-time subscriptions and scheduled functions.
 - `tools/` - Permission-aware built-in tool implementations
   - `entities.ts` - entity.create, entity.get, entity.query, etc.
   - `events.ts` - event.emit, event.query
-  - `jobs.ts` - job.enqueue, job.status
   - `helpers.ts` - Tool helper utilities
 - `lib/permissions/` - Permission engine
 - `lib/integrations/` - WhatsApp, Flow integrations
@@ -352,7 +344,6 @@ Core backend with real-time subscriptions and scheduled functions.
 - `lib/auth.ts` - Auth context helpers
 - `lib/utils.ts` - Common utilities (nanoid, slug generation)
 - `lib/templateEngine.ts` - System prompt template processing
-- `jobs/` - Job handlers (reminders, followups)
 - `migrations/` - Data migrations (environment backfill, FK removal)
 
 **Environment Variables**:
@@ -468,7 +459,7 @@ handler(args, context, sandboxedFetch)
 | `/entities/[type]` | Entity list (real-time) |
 | `/entities/[type]/[id]` | Entity detail |
 | `/entities/[type]/[id]/edit` | Entity edit |
-| `/jobs` | Job dashboard (real-time) |
+| `/triggers` | Triggers dashboard with scheduled runs |
 | `/api-keys` | API key management |
 | `/usage` | Usage statistics |
 | `/settings` | Organization settings |
@@ -481,7 +472,6 @@ handler(args, context, sandboxedFetch)
 - `agents-list-realtime.tsx` - Real-time agents list with CRUD
 - `entities-list-realtime.tsx` - Real-time entity list with search
 - `events-timeline-realtime.tsx` - Real-time event timeline
-- `jobs-dashboard-realtime.tsx` - Real-time job dashboard with stats
 - `components/entities/entity-actions.tsx` - Entity CRUD buttons
 
 ### Key Hooks (use-convex-data.ts)
@@ -494,7 +484,7 @@ handler(args, context, sandboxedFetch)
 
 **Events**: useEvents, useEntityEvents, useEventTypes, useEmitEvent
 
-**Jobs**: useJobs, useJob, useJobStats, useEnqueueJob, useRetryJob, useCancelJob
+**Trigger Runs**: useTriggerRuns, useTriggerRunStats, useRetryTriggerRun, useCancelTriggerRun
 
 **Roles**: useRoles, useRole, useRoleWithPolicies, useCreateRole, useUpdateRole, useDeleteRole, useAddPolicy, useRemovePolicy, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles
 
@@ -527,31 +517,26 @@ npm install struere
 npx struere init
 ```
 
-### Project Structure (v2)
+### Project Structure
 ```
 my-org/
 ├── struere.json              # Organization config (v2.0)
 ├── agents/
 │   ├── scheduler.ts          # Agent definition
-│   ├── support.ts
-│   └── index.ts              # Re-exports all agents
+│   └── support.ts
 ├── entity-types/
 │   ├── teacher.ts            # Entity type schema
-│   ├── student.ts
-│   └── index.ts
+│   └── student.ts
 ├── roles/
 │   ├── admin.ts              # Role + policies + scope rules + field masks
-│   ├── teacher.ts
-│   └── index.ts
+│   └── teacher.ts
 ├── triggers/
-│   ├── notify-on-session.ts  # Trigger definition
-│   └── index.ts              # Re-exports all triggers
-├── tools/
-│   └── index.ts              # Shared custom tools
-└── struere.config.ts
+│   └── notify-on-session.ts  # Trigger definition
+└── tools/
+    └── index.ts              # Shared custom tools
 ```
 
-### struere.json (v2 Schema)
+### struere.json Schema
 ```json
 {
   "version": "2.0",
@@ -576,7 +561,7 @@ import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole, d
 - `defineTrigger(config)` - Creates trigger automation rules
 
 ### Key Types
-- **AgentConfigV2**: name, slug, version, systemPrompt, model, tools (string array of tool names)
+- **AgentConfig**: name, slug, version, systemPrompt, model, tools (string array of tool names)
 - **EntityTypeConfig**: name, slug, schema, searchFields, displayConfig
 - **RoleConfig**: name, description, policies, scopeRules, fieldMasks
 - **PolicyConfig**: resource, actions, effect, priority
@@ -675,6 +660,8 @@ export default defineTrigger({
 
 **Trigger execution**: Async (scheduled after mutation), system actor, fail-fast, emits `trigger.executed`/`trigger.failed` events. Fires from dashboard CRUD, agent tool calls, and API mutations.
 
+**Scheduled triggers**: Triggers can include `schedule` (delay/at/offset/cancelPrevious) and `retry` (maxAttempts/backoffMs) options. Scheduled triggers create `triggerRuns` records with status tracking (pending → running → completed/failed/dead). The `at` field supports template expressions like `"{{trigger.data.startTime}}"` resolved against entity data.
+
 ### Built-in Tools Reference
 
 Agents can enable any combination of these built-in tools:
@@ -690,8 +677,6 @@ Agents can enable any combination of these built-in tools:
 | `entity.unlink` | Entity | Remove a relation between entities |
 | `event.emit` | Event | Emit a custom event for audit logging |
 | `event.query` | Event | Query historical events with filters |
-| `job.enqueue` | Job | Schedule a background job |
-| `job.status` | Job | Check the status of a scheduled job |
 | `agent.chat` | Agent | Send a message to another agent and get its response |
 
 **Tool Parameters:**
@@ -706,8 +691,6 @@ Agents can enable any combination of these built-in tools:
 "entity.unlink": { fromEntityId: string, toEntityId: string, relationType: string }
 "event.emit": { eventType: string, entityId?: string, payload?: object }
 "event.query": { eventType?: string, entityId?: string, since?: number, limit?: number }
-"job.enqueue": { jobType: string, payload?: object, runAt?: number }
-"job.status": { jobId: string }
 "agent.chat": { agent: string, message: string, context?: object }
 ```
 
@@ -890,6 +873,7 @@ export default defineAgent({
 | `deploy` | Deploy all agents to production |
 | `add <type> <name>` | Scaffold new agent/entity-type/role/trigger |
 | `status` | Compare local vs remote state |
+| `pull` | Pull remote resources to local files |
 | `login/logout` | Browser-based OAuth authentication |
 | `whoami` | Display current logged-in user |
 
@@ -912,6 +896,7 @@ Commands automatically run prerequisites without manual intervention:
 | `deploy.ts` | Deploy all agents to production |
 | `add.ts` | Scaffold new resources |
 | `status.ts` | Compare local vs remote state |
+| `pull.ts` | Pull remote resources to local files |
 | `login.ts` | Browser-based OAuth flow |
 | `logout.ts` | Clear credentials |
 | `whoami.ts` | Display current user/org |
@@ -921,7 +906,7 @@ Commands automatically run prerequisites without manual intervention:
 |------|---------|
 | `loader.ts` | Load agents, entity types, roles, triggers from directories |
 | `extractor.ts` | Build sync payload from loaded resources |
-| `project.ts` | Load/save struere.json (v1 and v2) |
+| `project.ts` | Load/save struere.json |
 | `convex.ts` | API calls (syncOrganization, getSyncState, deployAllAgents) |
 | `scaffold.ts` | Create files for new resources |
 | `credentials.ts` | Auth token management |
@@ -983,8 +968,7 @@ Body: { path: "sync:syncOrganization", args: { agents, entityTypes, roles } }
 - `src/cli/templates/` - Project scaffolding templates
 
 ### Configuration Files
-- `struere.json` - Organization metadata (v2 schema)
-- `struere.config.ts` - Framework config (port, CORS, logging)
+- `struere.json` - Organization metadata
 - `~/.struere/credentials.json` - Auth tokens
 
 ### Environment Variables
@@ -1095,8 +1079,6 @@ All tools are permission-aware and pass actor context:
 | `entity.unlink` | `tools.entities.entityUnlink` | Remove relation |
 | `event.emit` | `tools.events.eventEmit` | Emit custom event |
 | `event.query` | `tools.events.eventQuery` | Query events (visibility filtered) |
-| `job.enqueue` | `tools.jobs.jobEnqueue` | Schedule job (preserves actor) |
-| `job.status` | `tools.jobs.jobStatus` | Get job status |
 | `agent.chat` | `tools.agents.agentChat` | Delegate to another agent (internalAction) |
 
 ### Multi-Agent Communication (`agent.chat`)
@@ -1176,7 +1158,7 @@ All data and permissions are isolated by environment (`"development"` | `"produc
 | agentConfigs | toolPermissions |
 | threads, messages | |
 | events, executions | |
-| jobs | |
+| triggerRuns | |
 | apiKeys | |
 | installedPacks | |
 
