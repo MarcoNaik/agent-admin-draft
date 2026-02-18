@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Doc } from "@convex/_generated/dataModel"
-import { Loader2, Plus, DollarSign, Info } from "lucide-react"
+import { Loader2, CreditCard, DollarSign, Info, CheckCircle2, X } from "lucide-react"
 import {
   useCreditBalance,
   useCreditTransactions,
-  useAddCredits,
-  useAdjustBalance,
+  useCreateCheckoutSession,
 } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatRelativeTime } from "@/lib/format"
@@ -16,22 +16,23 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
-function AddCreditsForm() {
-  const addCredits = useAddCredits()
+function PurchaseCreditsForm() {
+  const createCheckout = useCreateCheckoutSession()
   const [amount, setAmount] = useState("")
-  const [description, setDescription] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const cents = Math.round(parseFloat(amount) * 100)
-    if (isNaN(cents) || cents <= 0) return
+    if (isNaN(cents) || cents < 100) return
     setLoading(true)
     try {
-      await addCredits({ amount: cents, description: description || undefined })
-      setAmount("")
-      setDescription("")
-    } finally {
+      const result = await createCheckout({
+        amount: cents,
+        successUrl: `${window.location.origin}${window.location.pathname}?success=true`,
+      })
+      window.location.href = result.checkoutUrl
+    } catch {
       setLoading(false)
     }
   }
@@ -45,33 +46,40 @@ function AddCreditsForm() {
           <input
             type="number"
             step="0.01"
-            min="0.01"
+            min="1.00"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="50.00"
+            placeholder="10.00"
             className="w-32 pl-7 pr-3 py-1.5 bg-background-tertiary border rounded-md text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
-      <div className="space-y-1 flex-1">
-        <label className="text-xs text-content-secondary">Description (optional)</label>
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Manual top-up"
-          className="w-full px-3 py-1.5 bg-background-tertiary border rounded-md text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
       <button
         type="submit"
-        disabled={loading || !amount}
+        disabled={loading || !amount || parseFloat(amount) < 1}
         className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
       >
-        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-        Add Credits
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
+        Buy Credits
       </button>
     </form>
+  )
+}
+
+function SuccessBanner() {
+  const [dismissed, setDismissed] = useState(false)
+  if (dismissed) return null
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25">
+      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+      <p className="text-sm text-emerald-300 flex-1">
+        Payment successful! Your credits have been added to your balance.
+      </p>
+      <button onClick={() => setDismissed(true)} className="text-emerald-400 hover:text-emerald-300">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
   )
 }
 
@@ -80,6 +88,7 @@ function TransactionBadge({ type }: { type: string }) {
     addition: "bg-emerald-500/10 text-emerald-400",
     deduction: "bg-red-500/10 text-red-400",
     adjustment: "bg-blue-500/10 text-blue-400",
+    purchase: "bg-violet-500/10 text-violet-400",
   }
 
   return (
@@ -92,6 +101,8 @@ function TransactionBadge({ type }: { type: string }) {
 export default function BillingPage() {
   const balance = useCreditBalance()
   const transactions = useCreditTransactions(100)
+  const searchParams = useSearchParams()
+  const showSuccess = searchParams.get("success") === "true"
 
   if (balance === undefined) {
     return (
@@ -113,6 +124,8 @@ export default function BillingPage() {
         <h1 className="text-lg font-semibold text-content-primary">Billing</h1>
         <p className="text-sm text-content-secondary">Credit balance and transaction history</p>
       </div>
+
+      {showSuccess && <SuccessBanner />}
 
       <Card className="bg-background-secondary">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -137,10 +150,10 @@ export default function BillingPage() {
 
       <Card className="bg-background-secondary">
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-content-primary">Add Credits</CardTitle>
+          <CardTitle className="text-base font-semibold text-content-primary">Buy Credits</CardTitle>
         </CardHeader>
         <CardContent>
-          <AddCreditsForm />
+          <PurchaseCreditsForm />
         </CardContent>
       </Card>
 
