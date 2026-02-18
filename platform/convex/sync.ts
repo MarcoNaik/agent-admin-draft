@@ -153,6 +153,16 @@ export const syncOrganization = mutation({
             as: v.optional(v.string()),
           })
         ),
+        schedule: v.optional(v.object({
+          delay: v.optional(v.number()),
+          at: v.optional(v.string()),
+          offset: v.optional(v.number()),
+          cancelPrevious: v.optional(v.boolean()),
+        })),
+        retry: v.optional(v.object({
+          maxAttempts: v.optional(v.number()),
+          backoffMs: v.optional(v.number()),
+        })),
       })
     )),
   },
@@ -300,6 +310,8 @@ export const getSyncState = query({
         name: t.name,
         entityType: t.entityType,
         action: t.action,
+        hasSchedule: !!t.schedule,
+        hasRetry: !!t.retry,
       })),
     }
   },
@@ -461,6 +473,8 @@ export const getPullState = query({
         action: t.action,
         condition: t.condition,
         actions: t.actions,
+        schedule: t.schedule,
+        retry: t.retry,
       })),
     }
   },

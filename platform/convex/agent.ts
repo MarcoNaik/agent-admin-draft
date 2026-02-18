@@ -1014,29 +1014,6 @@ async function executeBuiltinTool(
         limit: args.limit as number | undefined,
       })
 
-    case "job.enqueue":
-      if (!args.jobType) throw new Error("job.enqueue requires 'jobType' parameter")
-      return await ctx.runMutation(internal.tools.jobs.jobEnqueue, {
-        organizationId,
-        actorId,
-        actorType,
-        environment,
-        jobType: args.jobType as string,
-        payload: args.payload,
-        scheduledFor: args.scheduledFor as number | undefined,
-        priority: args.priority as number | undefined,
-        maxAttempts: args.maxAttempts as number | undefined,
-        idempotencyKey: args.idempotencyKey as string | undefined,
-        entityId: args.entityId as string | undefined,
-      })
-
-    case "job.status":
-      if (!args.id) throw new Error("job.status requires 'id' parameter")
-      return await ctx.runQuery(internal.tools.jobs.jobStatus, {
-        organizationId,
-        id: args.id as string,
-      })
-
     case "calendar.list":
       if (!args.userId) throw new Error("calendar.list requires 'userId' parameter")
       if (!args.timeMin) throw new Error("calendar.list requires 'timeMin' parameter")
