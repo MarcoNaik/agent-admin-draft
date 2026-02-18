@@ -42,7 +42,7 @@ export default function DangerZonePage() {
             <ul className="text-sm text-content-secondary list-disc list-inside space-y-1">
               <li>All agents and their configurations</li>
               <li>All entity types and entities</li>
-              <li>All events, jobs, and execution history</li>
+              <li>All events, triggers, and execution history</li>
               <li>All API keys and integrations</li>
               <li>All team member access</li>
             </ul>
