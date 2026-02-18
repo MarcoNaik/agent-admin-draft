@@ -5,12 +5,12 @@ import chokidar from 'chokidar'
 import { join } from 'path'
 import { existsSync, writeFileSync } from 'fs'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
-import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
+import { hasProject, loadProject } from '../utils/project'
 import { performLogin } from './login'
 import { syncOrganization } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
-import { getClaudeMDV2 } from '../templates'
+import { getClaudeMD } from '../templates'
 import { runInit } from './init'
 import { generateTypeDeclarations } from '../utils/plugin'
 
@@ -31,15 +31,7 @@ export const devCommand = new Command('dev')
       console.log()
     }
 
-    const version = getProjectVersion(cwd)
-    if (version === '1.0') {
-      console.log(chalk.yellow('This is a v1 agent-centric project.'))
-      console.log(chalk.yellow('Please migrate to v2 structure or use an older CLI version.'))
-      console.log()
-      process.exit(1)
-    }
-
-    const project = loadProjectV2(cwd)
+    const project = loadProject(cwd)
     if (!project) {
       console.log(chalk.red('Failed to load struere.json'))
       process.exit(1)
@@ -67,7 +59,7 @@ export const devCommand = new Command('dev')
 
     const claudeMdPath = join(cwd, 'CLAUDE.md')
     if (!existsSync(claudeMdPath)) {
-      writeFileSync(claudeMdPath, getClaudeMDV2(project.organization.name))
+      writeFileSync(claudeMdPath, getClaudeMD(project.organization.name))
       console.log(chalk.green('✓'), 'Created CLAUDE.md')
     }
 
@@ -175,12 +167,11 @@ export const devCommand = new Command('dev')
       dirs.tools,
       dirs.evals,
       dirs.triggers,
-      join(cwd, 'struere.config.ts'),
     ].filter((p) => existsSync(p))
 
     const watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
-      ignored: /node_modules/,
+      ignored: [/node_modules/, /\.struere-tmp-/],
       persistent: true,
       usePolling: false,
     })
@@ -245,15 +236,10 @@ export const devCommand = new Command('dev')
       }
     })
 
-    let isClosing = false
-    process.on('SIGINT', async () => {
-      if (isClosing) {
-        process.exit(0)
-      }
-      isClosing = true
+    process.on('SIGINT', () => {
       console.log()
       console.log(chalk.gray('Stopping...'))
-      await watcher.close()
-      process.exit(0)
+      watcher.close().finally(() => process.exit(0))
+      setTimeout(() => process.exit(0), 1000)
     })
   })

@@ -2,7 +2,7 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { loadCredentials, getApiKey } from '../utils/credentials'
-import { hasProject, loadProjectV2, getProjectVersion } from '../utils/project'
+import { hasProject, loadProject } from '../utils/project'
 import { getSyncState } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { performLogin } from './login'
@@ -28,15 +28,7 @@ export const statusCommand = new Command('status')
       console.log()
     }
 
-    const version = getProjectVersion(cwd)
-    if (version === '1.0') {
-      console.log(chalk.yellow('This is a v1 agent-centric project.'))
-      console.log(chalk.yellow('The status command requires v2 structure.'))
-      console.log()
-      process.exit(1)
-    }
-
-    const project = loadProjectV2(cwd)
+    const project = loadProject(cwd)
     if (!project) {
       console.log(chalk.red('Failed to load struere.json'))
       process.exit(1)

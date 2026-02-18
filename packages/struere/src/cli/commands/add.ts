@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
-import { hasProject, getProjectVersion } from '../utils/project'
+import { hasProject } from '../utils/project'
 import { scaffoldAgent, scaffoldEntityType, scaffoldRole, scaffoldEval, scaffoldTrigger } from '../utils/scaffold'
 import { runInit } from './init'
 
@@ -21,14 +21,6 @@ export const addCommand = new Command('add')
         process.exit(1)
       }
       console.log()
-    }
-
-    const version = getProjectVersion(cwd)
-    if (version === '1.0') {
-      console.log(chalk.yellow('This is a v1 agent-centric project.'))
-      console.log(chalk.yellow('The add command requires v2 structure.'))
-      console.log()
-      process.exit(1)
     }
 
     const slug = slugify(name)
@@ -87,7 +79,7 @@ export const addCommand = new Command('add')
             console.log(chalk.gray('  →'), file)
           }
           console.log()
-          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere eval'), chalk.gray('to execute'))
+          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere dev'), chalk.gray('to sync'))
         } else {
           console.log(chalk.yellow('Eval suite already exists:'), `evals/${slug}.eval.yaml`)
         }

@@ -156,7 +156,7 @@ function printNextSteps() {
   console.log(chalk.gray('You can now use:'))
   console.log(chalk.gray('  •'), chalk.cyan('struere dev'), chalk.gray('- Start cloud-connected dev server'))
   console.log(chalk.gray('  •'), chalk.cyan('struere deploy'), chalk.gray('- Deploy your agent'))
-  console.log(chalk.gray('  •'), chalk.cyan('struere logs'), chalk.gray('- View agent logs'))
+  console.log(chalk.gray('  •'), chalk.cyan('struere status'), chalk.gray('- Compare local vs remote state'))
   console.log()
 }
 

@@ -5,8 +5,8 @@ import { select } from '@inquirer/prompts'
 import { basename } from 'path'
 import { loadCredentials } from '../utils/credentials'
 import { performLogin } from './login'
-import { hasProject, getProjectVersion } from '../utils/project'
-import { scaffoldProjectV2 } from '../utils/scaffold'
+import { hasProject } from '../utils/project'
+import { scaffoldProject } from '../utils/scaffold'
 import { listMyOrganizations, OrgInfo } from '../utils/convex'
 import { generateTypeDeclarations } from '../utils/plugin'
 
@@ -60,7 +60,7 @@ export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boole
 
   spinner.start('Creating project structure')
 
-  const scaffoldResult = scaffoldProjectV2(cwd, {
+  const scaffoldResult = scaffoldProject(cwd, {
     projectName,
     orgId: org.id,
     orgSlug: org.slug,
@@ -96,21 +96,11 @@ export const initCommand = new Command('init')
     console.log()
 
     if (hasProject(cwd)) {
-      const version = getProjectVersion(cwd)
-      if (version === '2.0') {
-        console.log(chalk.yellow('This project is already initialized (v2.0).'))
-        console.log()
-        console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to start development'))
-        console.log()
-        return
-      } else if (version === '1.0') {
-        console.log(chalk.yellow('This is a v1 agent-centric project.'))
-        console.log(chalk.yellow('The new CLI uses an organization-centric structure.'))
-        console.log()
-        console.log(chalk.gray('Please create a new project directory for the v2 structure.'))
-        console.log()
-        return
-      }
+      console.log(chalk.yellow('This project is already initialized.'))
+      console.log()
+      console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to start development'))
+      console.log()
+      return
     }
 
     let credentials = loadCredentials()
@@ -171,7 +161,7 @@ export const initCommand = new Command('init')
 
     spinner.start('Creating project structure')
 
-    const scaffoldResult = scaffoldProjectV2(cwd, {
+    const scaffoldResult = scaffoldProject(cwd, {
       projectName,
       orgId: selectedOrg.id,
       orgSlug: selectedOrg.slug,
