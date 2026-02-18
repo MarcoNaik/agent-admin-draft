@@ -1,5 +1,5 @@
 import type { LoadedResources } from './loader'
-import type { AgentConfigV2, ToolReference, TriggerConfig } from '../../types'
+import type { AgentConfig, ToolReference, TriggerConfig } from '../../types'
 
 function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' {
   if (modelName.startsWith('gpt-') || modelName.startsWith('o1') || modelName.startsWith('o3') || modelName.startsWith('o4')) return 'openai'
@@ -211,7 +211,7 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
 }
 
 function extractAgentPayload(
-  agent: AgentConfigV2,
+  agent: AgentConfig,
   customToolsMap: Map<string, ToolReference>
 ): SyncPayload['agents'][0] {
   let systemPrompt: string
