@@ -27,10 +27,9 @@ export async function syncAgents(
   organizationId: Id<"organizations">,
   agents: AgentInput[],
   environment: "development" | "production",
-  userId?: Id<"users">,
-  preserveUnmanaged?: boolean
-): Promise<{ created: string[]; updated: string[]; deleted: string[]; preserved: string[] }> {
-  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], preserved: [] as string[] }
+  userId?: Id<"users">
+): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
+  const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
   const now = Date.now()
 
   const existingAgents = await ctx.db
@@ -72,15 +71,15 @@ export async function syncAgents(
 
   for (const existing of activeAgents) {
     if (!inputSlugs.has(existing.slug)) {
-      if (preserveUnmanaged) {
-        result.preserved.push(existing.slug)
-      } else {
-        await ctx.db.patch(existing._id, {
-          status: "deleted",
-          updatedAt: now,
-        })
-        result.deleted.push(existing.slug)
+      const configs = await ctx.db
+        .query("agentConfigs")
+        .withIndex("by_agent_env", (q) => q.eq("agentId", existing._id))
+        .collect()
+      for (const config of configs) {
+        await ctx.db.delete(config._id)
       }
+      await ctx.db.delete(existing._id)
+      result.deleted.push(existing.slug)
     }
   }
 

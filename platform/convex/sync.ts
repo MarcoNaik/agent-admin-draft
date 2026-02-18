@@ -155,7 +155,6 @@ export const syncOrganization = mutation({
         ),
       })
     )),
-    preserveUnmanagedAgents: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
@@ -179,8 +178,7 @@ export const syncOrganization = mutation({
       auth.organizationId,
       args.agents,
       args.environment,
-      auth.userId,
-      args.preserveUnmanagedAgents !== false
+      auth.userId
     )
 
     let evalSuitesResult
