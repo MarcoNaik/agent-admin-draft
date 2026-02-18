@@ -13,6 +13,13 @@ interface TriggerParams {
   previousData?: Record<string, unknown>
 }
 
+interface TriggerSchedule {
+  delay?: number
+  at?: string
+  offset?: number
+  cancelPrevious?: boolean
+}
+
 export async function checkAndScheduleTriggers(
   ctx: MutationCtx,
   params: TriggerParams
@@ -40,17 +47,117 @@ export async function checkAndScheduleTriggers(
   })
 
   for (const trigger of matching) {
-    await ctx.scheduler.runAfter(0, internal.triggers.execute, {
-      triggerId: trigger._id,
-      entityId: params.entityId,
-      entityTypeSlug: params.entityTypeSlug,
-      action: params.action,
-      data: params.data,
-      previousData: params.previousData,
-      organizationId: params.organizationId,
-      environment: params.environment,
-    })
+    if (trigger.schedule) {
+      await scheduleTrigerRun(ctx, trigger, params)
+    } else {
+      await ctx.scheduler.runAfter(0, internal.triggers.execute, {
+        triggerId: trigger._id,
+        entityId: params.entityId,
+        entityTypeSlug: params.entityTypeSlug,
+        action: params.action,
+        data: params.data,
+        previousData: params.previousData,
+        organizationId: params.organizationId,
+        environment: params.environment,
+      })
+    }
   }
+}
+
+async function scheduleTrigerRun(
+  ctx: MutationCtx,
+  trigger: {
+    _id: Id<"triggers">
+    slug: string
+    organizationId: Id<"organizations">
+    environment: "development" | "production"
+    schedule?: TriggerSchedule | null
+    retry?: { maxAttempts?: number; backoffMs?: number } | null
+  },
+  params: TriggerParams
+): Promise<void> {
+  const now = Date.now()
+  const schedule = trigger.schedule!
+  const scheduledFor = resolveScheduledTime(schedule, params.data, now)
+
+  if (schedule.cancelPrevious) {
+    const pendingRuns = await ctx.db
+      .query("triggerRuns")
+      .withIndex("by_trigger_entity", (q) =>
+        q.eq("triggerId", trigger._id).eq("entityId", params.entityId)
+      )
+      .collect()
+
+    for (const run of pendingRuns) {
+      if (run.status === "pending") {
+        await ctx.db.patch(run._id, {
+          status: "dead",
+          errorMessage: "Cancelled: new run superseded",
+          completedAt: now,
+        })
+      }
+    }
+  }
+
+  const maxAttempts = trigger.retry?.maxAttempts ?? 1
+  const backoffMs = trigger.retry?.backoffMs ?? 60000
+
+  const runId = await ctx.db.insert("triggerRuns", {
+    organizationId: params.organizationId,
+    environment: params.environment,
+    triggerId: trigger._id,
+    triggerSlug: trigger.slug,
+    entityId: params.entityId,
+    status: "pending",
+    data: params.data,
+    previousData: params.previousData,
+    scheduledFor,
+    attempts: 0,
+    maxAttempts,
+    backoffMs,
+    createdAt: now,
+  })
+
+  const delay = Math.max(0, scheduledFor - now)
+  await ctx.scheduler.runAfter(delay, internal.triggers.executeScheduled, { runId })
+}
+
+export function resolveScheduledTime(
+  schedule: TriggerSchedule,
+  data: Record<string, unknown>,
+  now: number
+): number {
+  if (schedule.delay) {
+    return now + schedule.delay
+  }
+
+  if (schedule.at) {
+    const resolved = resolveTemplateValue(schedule.at, data)
+    const baseTime = typeof resolved === "number" ? resolved : Number(resolved)
+
+    if (isNaN(baseTime)) {
+      return now
+    }
+
+    const offset = schedule.offset ?? 0
+    return baseTime + offset
+  }
+
+  return now
+}
+
+function resolveTemplateValue(template: string, data: Record<string, unknown>): unknown {
+  const match = template.match(/^\{\{(.+)\}\}$/)
+  if (!match) return template
+
+  const path = match[1].trim()
+  const prefixed = path.startsWith("trigger.data.")
+    ? path.slice("trigger.data.".length)
+    : path.startsWith("trigger.")
+      ? path.slice("trigger.".length)
+      : path
+
+  return getNestedValue(data, prefixed)
 }
 
 export function evaluateCondition(
