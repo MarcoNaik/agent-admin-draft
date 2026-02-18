@@ -12,6 +12,7 @@ import {
   useVerifyCalendarConnection,
   useIntegrationConfig,
 } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,8 +51,9 @@ function StatusBadge({ status }: { status: string }) {
 export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: boolean } = {}) {
   const { user: clerkUser } = useUser()
   const clerk = useClerk()
-  const integrationConfig = useIntegrationConfig("google")
-  const connection = useCalendarConnection("production")
+  const { environment } = useEnvironment()
+  const integrationConfig = useIntegrationConfig("google", environment)
+  const connection = useCalendarConnection(environment)
   const connectCalendar = useConnectCalendar()
   const disconnectCalendar = useDisconnectCalendar()
   const selectCalendar = useSelectCalendar()
@@ -92,7 +94,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const loadCalendars = async () => {
     setLoadingCalendars(true)
     try {
-      const result = await listUserCalendars({ environment: "production" })
+      const result = await listUserCalendars({ environment })
       setCalendars(result as Array<{ id: string; summary: string; primary: boolean }>)
     } catch (err) {
       console.error("Failed to load calendars:", err)
@@ -115,7 +117,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const handleConnect = async () => {
     setConnecting(true)
     try {
-      await connectCalendar({ environment: "production" })
+      await connectCalendar({ environment })
       await loadCalendars()
     } catch (err) {
       console.error("Failed to connect:", err)
@@ -128,7 +130,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
     if (!confirm("Are you sure you want to disconnect Google Calendar?")) return
     setDisconnecting(true)
     try {
-      await disconnectCalendar({ environment: "production" })
+      await disconnectCalendar({ environment })
       setCalendars([])
       setVerifyResult(null)
     } catch (err) {
@@ -142,7 +144,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
     setVerifying(true)
     setVerifyResult(null)
     try {
-      const result = await verifyConnection({ environment: "production" })
+      const result = await verifyConnection({ environment })
       setVerifyResult(result)
     } catch (err) {
       setVerifyResult({ success: false, message: err instanceof Error ? err.message : "Verification failed" })
@@ -153,7 +155,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
 
   const handleCalendarChange = async (calendarId: string) => {
     try {
-      await selectCalendar({ environment: "production", calendarId })
+      await selectCalendar({ environment, calendarId })
     } catch (err) {
       console.error("Failed to select calendar:", err)
     }
