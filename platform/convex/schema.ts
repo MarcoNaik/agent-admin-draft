@@ -8,6 +8,7 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     clerkOrgId: v.optional(v.string()),
+    polarCustomerId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -556,7 +557,7 @@ export default defineSchema({
 
   creditTransactions: defineTable({
     organizationId: v.id("organizations"),
-    type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment")),
+    type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment"), v.literal("purchase")),
     amount: v.number(),
     balanceAfter: v.number(),
     description: v.string(),
