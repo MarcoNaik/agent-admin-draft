@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Database,
   Bell,
-  Clock,
   Code,
   Shield,
   Check,
@@ -36,7 +35,7 @@ interface Tool {
 }
 
 const BUILTIN_TOOL_DEFINITIONS: Record<string, {
-  category: "entity" | "event" | "job"
+  category: "entity" | "event"
   description: string
   parameters: {
     type: string
@@ -159,30 +158,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
       required: [],
     },
   },
-  "job.enqueue": {
-    category: "job",
-    description: "Schedule a background job for async processing",
-    parameters: {
-      type: "object",
-      properties: {
-        jobType: { type: "string", description: "Job type to execute" },
-        payload: { type: "object", description: "Job input data" },
-        runAt: { type: "number", description: "Scheduled execution time (optional)" },
-      },
-      required: ["jobType"],
-    },
-  },
-  "job.status": {
-    category: "job",
-    description: "Check the status of a scheduled job",
-    parameters: {
-      type: "object",
-      properties: {
-        jobId: { type: "string", description: "Job ID to check" },
-      },
-      required: ["jobId"],
-    },
-  },
 }
 
 const CATEGORY_INFO = {
@@ -195,11 +170,6 @@ const CATEGORY_INFO = {
     label: "Event Tools",
     description: "Audit logging and queries",
     icon: Bell,
-  },
-  job: {
-    label: "Job Tools",
-    description: "Background job scheduling",
-    icon: Clock,
   },
   custom: {
     label: "Custom Tools",
@@ -301,7 +271,7 @@ function CategorySection({
   enabledToolNames,
   defaultExpanded = true,
 }: {
-  category: "entity" | "event" | "job" | "custom"
+  category: "entity" | "event" | "custom"
   tools: Array<{ name: string; def?: typeof BUILTIN_TOOL_DEFINITIONS[string]; tool?: Tool }>
   enabledToolNames: Set<string>
   defaultExpanded?: boolean
@@ -487,14 +457,6 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
       tool: configuredTools.find((t: Tool) => t.name === name),
     }))
 
-  const jobTools = Object.entries(BUILTIN_TOOL_DEFINITIONS)
-    .filter(([_, def]) => def.category === "job")
-    .map(([name, def]) => ({
-      name,
-      def,
-      tool: configuredTools.find((t: Tool) => t.name === name),
-    }))
-
   const customToolItems = customTools.map((t: Tool) => ({
     name: t.name,
     tool: t,
@@ -560,11 +522,6 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
           <CategorySection
             category="event"
             tools={eventTools}
-            enabledToolNames={enabledToolNames}
-          />
-          <CategorySection
-            category="job"
-            tools={jobTools}
             enabledToolNames={enabledToolNames}
           />
           {customToolItems.length > 0 && (

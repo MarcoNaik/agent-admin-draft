@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, Clock, ExternalLink, RefreshCw } from "lucide-react"
+import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, ExternalLink, RefreshCw } from "lucide-react"
 import { useAgentWithConfig, useCompileSystemPrompt } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
@@ -24,14 +24,12 @@ interface Tool {
 const TOOL_CATEGORIES: Record<string, { icon: typeof Database; color: string; bgColor: string }> = {
   entity: { icon: Database, color: "text-blue-500", bgColor: "bg-blue-500/10" },
   event: { icon: Bell, color: "text-amber-500", bgColor: "bg-amber-500/10" },
-  job: { icon: Clock, color: "text-purple-500", bgColor: "bg-purple-500/10" },
   custom: { icon: Code, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
 }
 
 function getToolCategory(name: string): keyof typeof TOOL_CATEGORIES {
   if (name.startsWith("entity.")) return "entity"
   if (name.startsWith("event.")) return "event"
-  if (name.startsWith("job.")) return "job"
   return "custom"
 }
 
@@ -318,7 +316,6 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
                   const customCount = config.tools.length - builtinCount
                   const entityCount = config.tools.filter((t: Tool) => t.name.startsWith("entity.")).length
                   const eventCount = config.tools.filter((t: Tool) => t.name.startsWith("event.")).length
-                  const jobCount = config.tools.filter((t: Tool) => t.name.startsWith("job.")).length
                   return (
                     <>
                       {entityCount > 0 && (
@@ -331,12 +328,6 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
                         <span className="flex items-center gap-1 text-xs text-content-tertiary">
                           <Bell className="h-3 w-3 text-amber-500" />
                           {eventCount} event
-                        </span>
-                      )}
-                      {jobCount > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-content-tertiary">
-                          <Clock className="h-3 w-3 text-purple-500" />
-                          {jobCount} job
                         </span>
                       )}
                       {customCount > 0 && (
@@ -369,7 +360,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
           <div className="p-8 text-center">
             <p className="text-sm text-content-secondary mb-2">No tools configured</p>
             <p className="text-xs text-content-tertiary mb-3">
-              11 built-in tools available for entities, events, and jobs
+              9 built-in tools available for entities and events
             </p>
             <Link
               href={`/agents/${agentId}/functions`}
