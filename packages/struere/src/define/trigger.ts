@@ -31,5 +31,28 @@ export function defineTrigger(config: TriggerConfig): TriggerConfig {
     }
   }
 
+  if (config.schedule) {
+    const { delay, at } = config.schedule
+    if (delay !== undefined && at !== undefined) {
+      throw new Error('Trigger schedule cannot have both "delay" and "at"')
+    }
+    if (delay !== undefined && (typeof delay !== 'number' || delay <= 0)) {
+      throw new Error('Trigger schedule.delay must be a positive number')
+    }
+    if (at !== undefined && typeof at !== 'string') {
+      throw new Error('Trigger schedule.at must be a string template expression')
+    }
+  }
+
+  if (config.retry) {
+    const { maxAttempts, backoffMs } = config.retry
+    if (maxAttempts !== undefined && (typeof maxAttempts !== 'number' || maxAttempts < 1)) {
+      throw new Error('Trigger retry.maxAttempts must be >= 1')
+    }
+    if (backoffMs !== undefined && (typeof backoffMs !== 'number' || backoffMs <= 0)) {
+      throw new Error('Trigger retry.backoffMs must be a positive number')
+    }
+  }
+
   return config
 }

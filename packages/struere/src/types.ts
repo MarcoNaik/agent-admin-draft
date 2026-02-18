@@ -208,6 +208,18 @@ export interface TriggerAction {
   as?: string
 }
 
+export interface TriggerSchedule {
+  delay?: number
+  at?: string
+  offset?: number
+  cancelPrevious?: boolean
+}
+
+export interface TriggerRetry {
+  maxAttempts?: number
+  backoffMs?: number
+}
+
 export interface TriggerConfig {
   name: string
   slug: string
@@ -217,6 +229,8 @@ export interface TriggerConfig {
     action: 'created' | 'updated' | 'deleted'
     condition?: Record<string, unknown>
   }
+  schedule?: TriggerSchedule
+  retry?: TriggerRetry
   actions: TriggerAction[]
 }
 
