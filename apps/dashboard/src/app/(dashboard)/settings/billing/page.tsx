@@ -127,9 +127,9 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+      <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/25">
         <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
-        <p className="text-sm text-blue-300/80">
+        <p className="text-sm text-blue-300">
           When your credit balance reaches $0, API requests using platform keys will stop working.
           Agents configured with custom provider API keys are not affected.
         </p>
