@@ -1,9 +1,9 @@
 import { v } from "convex/values"
-import { internalAction, internalMutation, internalQuery, query } from "./_generated/server"
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { resolveTemplateVars } from "./lib/triggers"
-import { getAuthContext } from "./lib/auth"
+import { getAuthContext, requireAuth } from "./lib/auth"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -17,8 +17,6 @@ const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref
   "entity.unlink": { type: "mutation", ref: "entityUnlink" },
   "event.emit": { type: "mutation", ref: "eventEmit" },
   "event.query": { type: "query", ref: "eventQuery" },
-  "job.enqueue": { type: "mutation", ref: "jobEnqueue" },
-  "job.status": { type: "query", ref: "jobStatus" },
   "calendar.list": { type: "action", ref: "calendarList" },
   "calendar.create": { type: "action", ref: "calendarCreate" },
   "calendar.update": { type: "action", ref: "calendarUpdate" },
@@ -27,6 +25,83 @@ const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref
   "whatsapp.send": { type: "action", ref: "whatsappSend" },
   "whatsapp.getConversation": { type: "action", ref: "whatsappGetConversation" },
   "whatsapp.getStatus": { type: "action", ref: "whatsappGetStatus" },
+}
+
+async function executeActionPipeline(
+  ctx: any,
+  params: {
+    organizationId: Id<"organizations">
+    environment: "development" | "production"
+    entityId: Id<"entities">
+    entityTypeSlug: string
+    action: string
+    data: Record<string, unknown>
+    previousData?: Record<string, unknown>
+    trigger: { slug: string; name: string; actions: Array<{ tool: string; args: any; as?: string }> }
+  }
+): Promise<{ success: boolean; executionLog: Array<Record<string, unknown>> }> {
+  const templateContext: Record<string, unknown> = {
+    trigger: {
+      entityId: params.entityId,
+      entityType: params.entityTypeSlug,
+      action: params.action,
+      data: params.data,
+      previousData: params.previousData,
+    },
+    steps: {} as Record<string, unknown>,
+  }
+
+  const steps = templateContext.steps as Record<string, unknown>
+  const executionLog: Array<Record<string, unknown>> = []
+
+  for (let i = 0; i < params.trigger.actions.length; i++) {
+    const triggerAction = params.trigger.actions[i]
+    const resolvedArgs = resolveTemplateVars(
+      triggerAction.args,
+      templateContext
+    ) as Record<string, unknown>
+
+    const startTime = Date.now()
+
+    try {
+      const result = await executeToolAction(ctx, {
+        organizationId: params.organizationId,
+        environment: params.environment,
+        tool: triggerAction.tool,
+        args: resolvedArgs,
+      })
+
+      executionLog.push({
+        tool: triggerAction.tool,
+        as: triggerAction.as,
+        args: resolvedArgs,
+        status: "success",
+        result,
+        durationMs: Date.now() - startTime,
+      })
+
+      if (triggerAction.as) {
+        steps[triggerAction.as] = result
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+
+      executionLog.push({
+        tool: triggerAction.tool,
+        as: triggerAction.as,
+        args: resolvedArgs,
+        status: "failed",
+        error: errorMessage,
+        stack: errorStack,
+        durationMs: Date.now() - startTime,
+      })
+
+      return { success: false, executionLog }
+    }
+  }
+
+  return { success: true, executionLog }
 }
 
 export const execute = internalAction({
@@ -49,105 +124,345 @@ export const execute = internalAction({
       return
     }
 
-    const templateContext: Record<string, unknown> = {
-      trigger: {
-        entityId: args.entityId,
-        entityType: args.entityTypeSlug,
-        action: args.action,
-        data: args.data,
-        previousData: args.previousData,
-      },
-      steps: {} as Record<string, unknown>,
-    }
-
-    const steps = templateContext.steps as Record<string, unknown>
-    const executionLog: Array<{
-      tool: string
-      as?: string
-      args: Record<string, unknown>
-      status: "success" | "failed"
-      result?: unknown
-      error?: string
-      stack?: string
-      durationMs: number
-    }> = []
-
-    for (let i = 0; i < trigger.actions.length; i++) {
-      const triggerAction = trigger.actions[i]
-      const resolvedArgs = resolveTemplateVars(
-        triggerAction.args,
-        templateContext
-      ) as Record<string, unknown>
-
-      const startTime = Date.now()
-
-      try {
-        const result = await executeToolAction(ctx, {
-          organizationId: args.organizationId,
-          environment: args.environment,
-          tool: triggerAction.tool,
-          args: resolvedArgs,
-        })
-
-        executionLog.push({
-          tool: triggerAction.tool,
-          as: triggerAction.as,
-          args: resolvedArgs,
-          status: "success",
-          result,
-          durationMs: Date.now() - startTime,
-        })
-
-        if (triggerAction.as) {
-          steps[triggerAction.as] = result
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        const errorStack = error instanceof Error ? error.stack : undefined
-
-        executionLog.push({
-          tool: triggerAction.tool,
-          as: triggerAction.as,
-          args: resolvedArgs,
-          status: "failed",
-          error: errorMessage,
-          stack: errorStack,
-          durationMs: Date.now() - startTime,
-        })
-
-        await ctx.runMutation(internal.triggers.emitTriggerEvent, {
-          organizationId: args.organizationId,
-          environment: args.environment,
-          entityId: args.entityId,
-          eventType: "trigger.failed",
-          payload: {
-            triggerSlug: trigger.slug,
-            triggerName: trigger.name,
-            failedAction: triggerAction.tool,
-            failedActionIndex: i,
-            totalActions: trigger.actions.length,
-            error: errorMessage,
-            stack: errorStack,
-            executionLog,
-            triggerData: args.data,
-          },
-        })
-        return
-      }
-    }
-
-    await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+    const result = await executeActionPipeline(ctx, {
       organizationId: args.organizationId,
       environment: args.environment,
       entityId: args.entityId,
-      eventType: "trigger.executed",
-      payload: {
-        triggerSlug: trigger.slug,
-        triggerName: trigger.name,
-        actionsCount: trigger.actions.length,
-        executionLog,
-      },
+      entityTypeSlug: args.entityTypeSlug,
+      action: args.action,
+      data: args.data,
+      previousData: args.previousData,
+      trigger: { slug: trigger.slug, name: trigger.name, actions: trigger.actions },
     })
+
+    if (result.success) {
+      await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        entityId: args.entityId,
+        eventType: "trigger.executed",
+        payload: {
+          triggerSlug: trigger.slug,
+          triggerName: trigger.name,
+          actionsCount: trigger.actions.length,
+          executionLog: result.executionLog,
+        },
+      })
+    } else {
+      const lastLog = result.executionLog[result.executionLog.length - 1]
+      await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        entityId: args.entityId,
+        eventType: "trigger.failed",
+        payload: {
+          triggerSlug: trigger.slug,
+          triggerName: trigger.name,
+          failedAction: lastLog?.tool,
+          failedActionIndex: result.executionLog.length - 1,
+          totalActions: trigger.actions.length,
+          error: lastLog?.error,
+          stack: lastLog?.stack,
+          executionLog: result.executionLog,
+          triggerData: args.data,
+        },
+      })
+    }
+  },
+})
+
+export const executeScheduled = internalAction({
+  args: {
+    runId: v.id("triggerRuns"),
+  },
+  handler: async (ctx, args) => {
+    const claimed = await ctx.runMutation(internal.triggers.claimRun, {
+      runId: args.runId,
+    })
+
+    if (!claimed) {
+      return
+    }
+
+    const run = await ctx.runQuery(internal.triggers.getRun, { runId: args.runId })
+    if (!run) return
+
+    const trigger = await ctx.runQuery(internal.triggers.get, {
+      triggerId: run.triggerId,
+    })
+
+    if (!trigger || !trigger.enabled) {
+      await ctx.runMutation(internal.triggers.completeRun, {
+        runId: args.runId,
+        result: { skipped: true, reason: "Trigger disabled or deleted" },
+      })
+      return
+    }
+
+    const entityTypeSlug = trigger.entityType
+
+    try {
+      const result = await executeActionPipeline(ctx, {
+        organizationId: run.organizationId,
+        environment: run.environment,
+        entityId: run.entityId,
+        entityTypeSlug,
+        action: trigger.action,
+        data: run.data as Record<string, unknown>,
+        previousData: run.previousData as Record<string, unknown> | undefined,
+        trigger: { slug: trigger.slug, name: trigger.name, actions: trigger.actions },
+      })
+
+      if (result.success) {
+        await ctx.runMutation(internal.triggers.completeRun, {
+          runId: args.runId,
+          result: { executionLog: result.executionLog },
+        })
+
+        await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+          organizationId: run.organizationId,
+          environment: run.environment,
+          entityId: run.entityId,
+          eventType: "trigger.scheduled.completed",
+          payload: {
+            triggerSlug: trigger.slug,
+            triggerName: trigger.name,
+            runId: args.runId,
+            actionsCount: trigger.actions.length,
+            executionLog: result.executionLog,
+          },
+        })
+      } else {
+        const lastLog = result.executionLog[result.executionLog.length - 1]
+        await ctx.runMutation(internal.triggers.failRun, {
+          runId: args.runId,
+          errorMessage: (lastLog?.error as string) ?? "Action pipeline failed",
+        })
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      await ctx.runMutation(internal.triggers.failRun, {
+        runId: args.runId,
+        errorMessage,
+      })
+    }
+  },
+})
+
+export const claimRun = internalMutation({
+  args: {
+    runId: v.id("triggerRuns"),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId)
+    if (!run || run.status !== "pending") {
+      return false
+    }
+
+    await ctx.db.patch(args.runId, {
+      status: "running",
+      startedAt: Date.now(),
+      attempts: run.attempts + 1,
+    })
+
+    return true
+  },
+})
+
+export const completeRun = internalMutation({
+  args: {
+    runId: v.id("triggerRuns"),
+    result: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId)
+    if (!run) return
+
+    await ctx.db.patch(args.runId, {
+      status: "completed",
+      result: args.result,
+      completedAt: Date.now(),
+    })
+  },
+})
+
+export const failRun = internalMutation({
+  args: {
+    runId: v.id("triggerRuns"),
+    errorMessage: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId)
+    if (!run) return
+
+    const shouldRetry = run.attempts < run.maxAttempts
+
+    if (shouldRetry) {
+      const backoffMs = Math.min(run.backoffMs * Math.pow(2, run.attempts - 1), 3600000)
+
+      await ctx.db.patch(args.runId, {
+        status: "pending",
+        errorMessage: args.errorMessage,
+      })
+
+      await ctx.scheduler.runAfter(backoffMs, internal.triggers.executeScheduled, {
+        runId: args.runId,
+      })
+    } else {
+      await ctx.db.patch(args.runId, {
+        status: "dead",
+        errorMessage: args.errorMessage,
+        completedAt: Date.now(),
+      })
+
+      await ctx.db.insert("events", {
+        organizationId: run.organizationId,
+        environment: run.environment,
+        entityId: run.entityId,
+        eventType: "trigger.scheduled.dead",
+        schemaVersion: 1,
+        actorId: "system",
+        actorType: "system",
+        payload: {
+          triggerSlug: run.triggerSlug,
+          runId: args.runId,
+          attempts: run.attempts,
+          errorMessage: args.errorMessage,
+        },
+        timestamp: Date.now(),
+      })
+    }
+  },
+})
+
+export const getRun = internalQuery({
+  args: { runId: v.id("triggerRuns") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.runId)
+  },
+})
+
+export const cancelRun = mutation({
+  args: { runId: v.id("triggerRuns") },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const run = await ctx.db.get(args.runId)
+
+    if (!run || run.organizationId !== auth.organizationId) {
+      throw new Error("Run not found")
+    }
+
+    if (run.status !== "pending") {
+      throw new Error("Can only cancel pending runs")
+    }
+
+    await ctx.db.patch(args.runId, {
+      status: "dead",
+      errorMessage: "Cancelled by user",
+      completedAt: Date.now(),
+    })
+
+    return { success: true }
+  },
+})
+
+export const retryRun = mutation({
+  args: { runId: v.id("triggerRuns") },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const run = await ctx.db.get(args.runId)
+
+    if (!run || run.organizationId !== auth.organizationId) {
+      throw new Error("Run not found")
+    }
+
+    if (run.status !== "failed" && run.status !== "dead") {
+      throw new Error("Can only retry failed or dead runs")
+    }
+
+    await ctx.db.patch(args.runId, {
+      status: "pending",
+      attempts: 0,
+      errorMessage: undefined,
+      scheduledFor: Date.now(),
+    })
+
+    await ctx.scheduler.runAfter(0, internal.triggers.executeScheduled, {
+      runId: args.runId,
+    })
+
+    return { success: true }
+  },
+})
+
+export const listRuns = query({
+  args: {
+    environment: v.optional(environmentValidator),
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("dead")
+    )),
+    triggerSlug: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+    const limit = args.limit ?? 50
+
+    let runs
+    if (args.status) {
+      runs = await ctx.db
+        .query("triggerRuns")
+        .withIndex("by_org_env_status", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("status", args.status!)
+        )
+        .order("desc")
+        .take(limit)
+    } else {
+      runs = await ctx.db
+        .query("triggerRuns")
+        .withIndex("by_org_env_status", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment)
+        )
+        .order("desc")
+        .take(limit)
+    }
+
+    if (args.triggerSlug) {
+      return runs.filter((r) => r.triggerSlug === args.triggerSlug)
+    }
+
+    return runs
+  },
+})
+
+export const getRunStats = query({
+  args: {
+    environment: v.optional(environmentValidator),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+
+    const statuses = ["pending", "running", "completed", "failed", "dead"] as const
+    const stats: Record<string, number> = {}
+
+    for (const status of statuses) {
+      const count = await ctx.db
+        .query("triggerRuns")
+        .withIndex("by_org_env_status", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("status", status)
+        )
+        .collect()
+
+      stats[status] = count.length
+    }
+
+    return stats
   },
 })
 
@@ -235,24 +550,6 @@ async function executeToolAction(
         eventType: args.eventType as string | undefined,
         since: args.since as number | undefined,
         limit: args.limit as number | undefined,
-      })
-
-    case "job.enqueue":
-      return await ctx.runMutation(internal.tools.jobs.jobEnqueue, {
-        organizationId, actorId, actorType, environment,
-        jobType: args.jobType as string,
-        payload: args.payload,
-        scheduledFor: args.scheduledFor as number | undefined,
-        priority: args.priority as number | undefined,
-        maxAttempts: args.maxAttempts as number | undefined,
-        idempotencyKey: args.idempotencyKey as string | undefined,
-        entityId: args.entityId as string | undefined,
-      })
-
-    case "job.status":
-      return await ctx.runQuery(internal.tools.jobs.jobStatus, {
-        organizationId,
-        id: args.id as string,
       })
 
     case "calendar.list":
