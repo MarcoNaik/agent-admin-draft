@@ -30,8 +30,15 @@ async function gatewayRequest(
   return response
 }
 
-export async function connectViaGateway(orgId: string): Promise<{ status: string; phoneNumber?: string }> {
-  const response = await gatewayRequest("/connect", { orgId })
+export async function connectViaGateway(
+  orgId: string,
+  method?: "qr" | "pairing_code",
+  phoneNumber?: string
+): Promise<{ status: string; phoneNumber?: string }> {
+  const body: Record<string, unknown> = { orgId }
+  if (method) body.method = method
+  if (phoneNumber) body.phoneNumber = phoneNumber
+  const response = await gatewayRequest("/connect", body)
   return (await response.json()) as { status: string; phoneNumber?: string }
 }
 
