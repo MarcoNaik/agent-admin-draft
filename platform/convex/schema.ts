@@ -304,6 +304,7 @@ export default defineSchema({
     inputTokens: v.number(),
     outputTokens: v.number(),
     durationMs: v.number(),
+    model: v.optional(v.string()),
     status: v.union(v.literal("success"), v.literal("error"), v.literal("timeout")),
     errorMessage: v.optional(v.string()),
     createdAt: v.number(),
