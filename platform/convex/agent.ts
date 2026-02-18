@@ -294,6 +294,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     inputTokens: totalInputTokens,
     outputTokens: totalOutputTokens,
     durationMs,
+    model: config.model.name,
     status: "success",
   })
 
