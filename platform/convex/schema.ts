@@ -172,46 +172,35 @@ export default defineSchema({
     .index("by_org_env_timestamp", ["organizationId", "environment", "timestamp"])
     .index("by_org_env_type", ["organizationId", "environment", "eventType"]),
 
-  jobs: defineTable({
+  triggerRuns: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,
-    entityId: v.optional(v.id("entities")),
-    jobType: v.string(),
-    idempotencyKey: v.optional(v.string()),
+    triggerId: v.id("triggers"),
+    triggerSlug: v.string(),
+    entityId: v.id("entities"),
     status: v.union(
       v.literal("pending"),
-      v.literal("claimed"),
       v.literal("running"),
       v.literal("completed"),
       v.literal("failed"),
       v.literal("dead")
     ),
-    priority: v.number(),
-    payload: v.any(),
-    result: v.optional(v.any()),
-    errorMessage: v.optional(v.string()),
+    data: v.any(),
+    previousData: v.optional(v.any()),
+    scheduledFor: v.number(),
     attempts: v.number(),
     maxAttempts: v.number(),
-    claimedBy: v.optional(v.string()),
-    claimedAt: v.optional(v.number()),
-    scheduledFor: v.number(),
+    backoffMs: v.number(),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    result: v.optional(v.any()),
+    errorMessage: v.optional(v.string()),
     createdAt: v.number(),
-    actorContext: v.optional(
-      v.object({
-        actorType: v.string(),
-        actorId: v.string(),
-        roleIds: v.array(v.string()),
-      })
-    ),
   })
-    .index("by_org_status", ["organizationId", "status"])
     .index("by_org_env_status", ["organizationId", "environment", "status"])
-    .index("by_idempotency", ["organizationId", "idempotencyKey"])
-    .index("by_pending", ["status", "scheduledFor", "priority"])
-    .index("by_entity", ["entityId"])
-    .index("by_type", ["jobType"]),
+    .index("by_trigger", ["triggerId"])
+    .index("by_trigger_entity", ["triggerId", "entityId"])
+    .index("by_org_env_trigger_status", ["organizationId", "environment", "triggerId", "status"]),
 
   roles: defineTable({
     organizationId: v.id("organizations"),
@@ -380,6 +369,7 @@ export default defineSchema({
 
   integrationConfigs: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
     config: v.any(),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
@@ -387,8 +377,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_org", ["organizationId"])
-    .index("by_org_provider", ["organizationId", "provider"])
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_provider", ["organizationId", "environment", "provider"])
     .index("by_provider", ["provider"])
     .index("by_provider_status", ["provider", "status"]),
 
@@ -405,6 +395,16 @@ export default defineSchema({
       tool: v.string(),
       args: v.any(),
       as: v.optional(v.string()),
+    })),
+    schedule: v.optional(v.object({
+      delay: v.optional(v.number()),
+      at: v.optional(v.string()),
+      offset: v.optional(v.number()),
+      cancelPrevious: v.optional(v.boolean()),
+    })),
+    retry: v.optional(v.object({
+      maxAttempts: v.optional(v.number()),
+      backoffMs: v.optional(v.number()),
     })),
     enabled: v.boolean(),
     createdAt: v.number(),
