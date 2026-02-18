@@ -6,15 +6,18 @@ import { Boom } from "@hapi/boom"
 import pino from "pino"
 import { makeSQLiteAuthState, hasAuthState, DATA_DIR } from "./auth-state.js"
 import { handleMessages } from "./message-handler.js"
-import { sendQRToConvex, sendStatusToConvex } from "./convex-client.js"
+import { sendQRToConvex, sendStatusToConvex, sendPairingCodeToConvex } from "./convex-client.js"
 import { readdirSync } from "fs"
 
 const logger = pino({ name: "connection-manager" })
 
+type ConnectionMethod = "qr" | "pairing_code"
+
 interface Connection {
   socket: WASocket
-  status: "connecting" | "qr_ready" | "connected" | "disconnected"
+  status: "connecting" | "qr_ready" | "pairing_code_ready" | "connected" | "disconnected"
   phoneNumber?: string
+  method: ConnectionMethod
   closeDb: () => void
 }
 
@@ -32,14 +35,14 @@ export function getStatus(orgId: string): {
   return { status: conn.status, phoneNumber: conn.phoneNumber }
 }
 
-export async function connect(orgId: string): Promise<void> {
+export async function connect(orgId: string, method: ConnectionMethod = "qr", phoneNumber?: string): Promise<void> {
   if (connectingOrgs.has(orgId)) {
     logger.info({ orgId }, "Connection attempt already in progress")
     return
   }
 
   const existing = connections.get(orgId)
-  if (existing && (existing.status === "connected" || existing.status === "connecting" || existing.status === "qr_ready")) {
+  if (existing && (existing.status === "connected" || existing.status === "connecting" || existing.status === "qr_ready" || existing.status === "pairing_code_ready")) {
     logger.info({ orgId, status: existing.status }, "Connection already in progress or established")
     return
   }
@@ -58,7 +61,7 @@ export async function connect(orgId: string): Promise<void> {
   connectingOrgs.add(orgId)
   try {
     await sendStatusToConvex(orgId, "connecting")
-    await startSocket(orgId)
+    await startSocket(orgId, method, phoneNumber)
   } finally {
     connectingOrgs.delete(orgId)
   }
@@ -119,7 +122,7 @@ export async function reconnectAll(): Promise<void> {
   }
 }
 
-async function startSocket(orgId: string): Promise<void> {
+async function startSocket(orgId: string, method: ConnectionMethod = "qr", phoneNumber?: string): Promise<void> {
   const { version } = await fetchLatestBaileysVersion()
   const { state, saveCreds, clearState, closeDb } = makeSQLiteAuthState(orgId)
 
@@ -140,16 +143,29 @@ async function startSocket(orgId: string): Promise<void> {
   const conn: Connection = {
     socket,
     status: "connecting",
+    method,
     closeDb,
   }
   connections.set(orgId, conn)
+
+  if (method === "pairing_code" && phoneNumber && !state.creds.registered) {
+    try {
+      const code = await socket.requestPairingCode(phoneNumber)
+      logger.info({ orgId, code }, "Pairing code generated")
+      conn.status = "pairing_code_ready"
+      await sendPairingCodeToConvex(orgId, code)
+      await sendStatusToConvex(orgId, "pairing_code_ready")
+    } catch (err) {
+      logger.error({ orgId, err }, "Failed to request pairing code")
+    }
+  }
 
   socket.ev.on("creds.update", saveCreds)
 
   socket.ev.on("connection.update", async (update: Partial<ConnectionState>) => {
     const { connection, lastDisconnect, qr } = update
 
-    if (qr) {
+    if (qr && conn.method !== "pairing_code") {
       conn.status = "qr_ready"
       logger.info({ orgId }, "QR code generated")
       await sendQRToConvex(orgId, qr)
