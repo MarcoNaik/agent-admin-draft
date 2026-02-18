@@ -42,8 +42,8 @@ export async function connect(orgId: string, method: ConnectionMethod = "qr", ph
   }
 
   const existing = connections.get(orgId)
-  if (existing && (existing.status === "connected" || existing.status === "connecting" || existing.status === "qr_ready" || existing.status === "pairing_code_ready")) {
-    logger.info({ orgId, status: existing.status }, "Connection already in progress or established")
+  if (existing && existing.status === "connected") {
+    logger.info({ orgId, status: existing.status }, "Already connected")
     return
   }
 
@@ -144,6 +144,7 @@ async function startSocket(orgId: string, method: ConnectionMethod = "qr", phone
     socket,
     status: "connecting",
     method,
+    phoneNumber,
     closeDb,
   }
   connections.set(orgId, conn)
@@ -198,11 +199,13 @@ async function startSocket(orgId: string, method: ConnectionMethod = "qr", phone
     }
 
     if (connection === "close") {
+      const prevMethod = conn.method
+      const prevPhone = conn.phoneNumber
       conn.status = "disconnected"
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut
 
-      logger.info({ orgId, statusCode, shouldReconnect }, "Connection closed")
+      logger.info({ orgId, statusCode, shouldReconnect, prevMethod }, "Connection closed")
 
       socket.ev.removeAllListeners("creds.update")
       socket.ev.removeAllListeners("connection.update")
@@ -213,7 +216,7 @@ async function startSocket(orgId: string, method: ConnectionMethod = "qr", phone
         closeDb()
         connectingOrgs.add(orgId)
         try {
-          await startSocket(orgId)
+          await startSocket(orgId, prevMethod, prevPhone)
         } finally {
           connectingOrgs.delete(orgId)
         }
