@@ -3,6 +3,23 @@ import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 
+function base64Decode(str: string): Uint8Array {
+  const binary = atob(str)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
+function base64Encode(bytes: Uint8Array): string {
+  let binary = ""
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
 const http = httpRouter()
 
 http.route({
@@ -400,6 +417,77 @@ http.route({
       } catch (error) {
         continue
       }
+    }
+
+    return new Response("OK", { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/webhook/polar",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
+    if (!webhookSecret) {
+      return new Response("Webhook secret not configured", { status: 500 })
+    }
+
+    const webhookId = request.headers.get("webhook-id")
+    const webhookTimestamp = request.headers.get("webhook-timestamp")
+    const webhookSignature = request.headers.get("webhook-signature")
+
+    if (!webhookId || !webhookTimestamp || !webhookSignature) {
+      return new Response("Missing webhook headers", { status: 400 })
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const ts = parseInt(webhookTimestamp)
+    if (Math.abs(now - ts) > 300) {
+      return new Response("Timestamp too old", { status: 400 })
+    }
+
+    const body = await request.text()
+
+    const secretBytes = base64Decode(webhookSecret.replace("whsec_", ""))
+    const key = await crypto.subtle.importKey(
+      "raw",
+      secretBytes.buffer as ArrayBuffer,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    )
+    const toSign = new TextEncoder().encode(`${webhookId}.${webhookTimestamp}.${body}`)
+    const signatureBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, toSign.buffer as ArrayBuffer))
+    const expectedSig = base64Encode(signatureBytes)
+
+    const signatures = webhookSignature.split(" ")
+    const verified = signatures.some((sig) => {
+      const parts = sig.split(",")
+      return parts[1] === expectedSig
+    })
+
+    if (!verified) {
+      return new Response("Invalid signature", { status: 400 })
+    }
+
+    const event = JSON.parse(body) as {
+      type: string
+      data: {
+        id: string
+        amount: number
+        customer: { external_id: string; id: string }
+        metadata: Record<string, string>
+      }
+    }
+
+    if (event.type === "order.paid") {
+      const order = event.data
+      await ctx.runMutation(internal.billing.addCreditsFromPolar, {
+        organizationId: order.customer.external_id,
+        amount: order.amount,
+        polarOrderId: order.id,
+        polarCustomerId: order.customer.id,
+      })
     }
 
     return new Response("OK", { status: 200 })
