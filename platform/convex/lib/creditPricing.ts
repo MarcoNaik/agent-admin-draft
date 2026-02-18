@@ -58,5 +58,5 @@ function resolvePricing(model: string): ModelPricing {
 export function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
   const pricing = resolvePricing(model)
   const costUsd = (inputTokens * pricing.inputPerMTok + outputTokens * pricing.outputPerMTok) / 1_000_000
-  return Math.ceil(costUsd * 100)
+  return Math.round(costUsd * 1_000_000)
 }

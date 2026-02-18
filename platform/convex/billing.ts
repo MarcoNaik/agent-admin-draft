@@ -5,6 +5,13 @@ import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import { QueryCtx, MutationCtx } from "./_generated/server"
 
+function formatMicrodollars(microdollars: number): string {
+  const dollars = microdollars / 1_000_000
+  if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
+  if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
+  return `$${dollars.toFixed(6)}`
+}
+
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
     .query("userOrganizations")
@@ -173,7 +180,7 @@ export const adjustBalance = mutation({
       type: "adjustment",
       amount: Math.abs(difference),
       balanceAfter: args.newBalance,
-      description: args.description ?? `Balance adjusted from $${(balanceDoc.balance / 100).toFixed(2)} to $${(args.newBalance / 100).toFixed(2)}`,
+      description: args.description ?? `Balance adjusted from ${formatMicrodollars(balanceDoc.balance)} to ${formatMicrodollars(args.newBalance)}`,
       createdBy: auth.userId,
       createdAt: Date.now(),
     })
@@ -264,7 +271,8 @@ export const addCreditsFromPolar = internalMutation({
     }
 
     const balanceDoc = await getOrCreateBalance(ctx, org._id)
-    const newBalance = balanceDoc.balance + args.amount
+    const microdollars = args.amount * 10_000
+    const newBalance = balanceDoc.balance + microdollars
 
     await ctx.db.patch(balanceDoc._id, {
       balance: newBalance,
@@ -274,9 +282,9 @@ export const addCreditsFromPolar = internalMutation({
     await ctx.db.insert("creditTransactions", {
       organizationId: org._id,
       type: "purchase",
-      amount: args.amount,
+      amount: microdollars,
       balanceAfter: newBalance,
-      description: `Credit purchase via Polar ($${(args.amount / 100).toFixed(2)})`,
+      description: `Credit purchase via Polar (${formatMicrodollars(microdollars)})`,
       metadata: { polarOrderId: args.polarOrderId },
       createdAt: Date.now(),
     })

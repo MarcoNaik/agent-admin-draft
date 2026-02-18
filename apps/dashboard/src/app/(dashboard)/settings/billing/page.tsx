@@ -12,8 +12,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatRelativeTime } from "@/lib/format"
 
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
+function formatMicrodollars(microdollars: number): string {
+  const dollars = microdollars / 1_000_000
+  if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
+  if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
+  return `$${dollars.toFixed(6)}`
 }
 
 function PurchaseCreditsForm() {
@@ -133,7 +136,7 @@ export default function BillingPage() {
           <DollarSign className="h-4 w-4 text-content-tertiary" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-content-primary">{formatCents(balance.balance)}</div>
+          <div className="text-3xl font-bold text-content-primary">{formatMicrodollars(balance.balance)}</div>
           <p className="text-xs text-content-tertiary mt-1">
             Last updated {formatRelativeTime(balance.updatedAt)}
           </p>
@@ -195,10 +198,10 @@ export default function BillingPage() {
                         <TransactionBadge type={tx.type} />
                       </td>
                       <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-red-400" : "text-emerald-400"}`}>
-                        {tx.type === "deduction" ? "-" : "+"}{formatCents(tx.amount)}
+                        {tx.type === "deduction" ? "-" : "+"}{formatMicrodollars(tx.amount)}
                       </td>
                       <td className="text-right py-2 px-4 text-content-primary">
-                        {formatCents(tx.balanceAfter)}
+                        {formatMicrodollars(tx.balanceAfter)}
                       </td>
                       <td className="py-2 pl-4 text-content-secondary truncate max-w-[200px]">
                         {tx.description}
