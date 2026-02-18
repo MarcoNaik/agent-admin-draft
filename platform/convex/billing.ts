@@ -1,5 +1,6 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery, internalMutation } from "./_generated/server"
+import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import { QueryCtx, MutationCtx } from "./_generated/server"
@@ -178,5 +179,110 @@ export const adjustBalance = mutation({
     })
 
     return args.newBalance
+  },
+})
+
+export const createCheckoutSession = action({
+  args: {
+    amount: v.number(),
+    successUrl: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ checkoutUrl: string }> => {
+    const auth: { userId: Id<"users">; organizationId: Id<"organizations"> } | null =
+      await ctx.runQuery(internal.chat.getAuthInfo)
+    if (!auth) {
+      throw new Error("Not authenticated")
+    }
+
+    const isAdmin: boolean = await ctx.runQuery(internal.integrations.isOrgAdminInternal, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!isAdmin) {
+      throw new Error("Admin access required")
+    }
+
+    if (args.amount < 100) {
+      throw new Error("Minimum purchase is $1.00")
+    }
+
+    const polarServer = process.env.POLAR_SERVER === "production" ? "api" : "api.sandbox"
+    const resp = await fetch(`https://${polarServer}.polar.sh/v1/checkouts/`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.POLAR_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        products: [process.env.POLAR_PRODUCT_ID],
+        amount: args.amount,
+        success_url: args.successUrl,
+        customer_external_id: auth.organizationId,
+        metadata: {
+          organizationId: auth.organizationId,
+          userId: auth.userId,
+        },
+      }),
+    })
+
+    if (!resp.ok) {
+      const text = await resp.text()
+      throw new Error(`Polar checkout failed: ${text}`)
+    }
+
+    const checkout = await resp.json() as { url: string }
+    return { checkoutUrl: checkout.url }
+  },
+})
+
+export const addCreditsFromPolar = internalMutation({
+  args: {
+    organizationId: v.string(),
+    amount: v.number(),
+    polarOrderId: v.string(),
+    polarCustomerId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .filter((q) => q.eq(q.field("_id"), args.organizationId as Id<"organizations">))
+      .first()
+    if (!org) {
+      throw new Error("Organization not found")
+    }
+
+    const existing = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
+      .order("desc")
+      .collect()
+    const duplicate = existing.find(
+      (tx) => tx.metadata?.polarOrderId === args.polarOrderId
+    )
+    if (duplicate) {
+      return
+    }
+
+    const balanceDoc = await getOrCreateBalance(ctx, org._id)
+    const newBalance = balanceDoc.balance + args.amount
+
+    await ctx.db.patch(balanceDoc._id, {
+      balance: newBalance,
+      updatedAt: Date.now(),
+    })
+
+    await ctx.db.insert("creditTransactions", {
+      organizationId: org._id,
+      type: "purchase",
+      amount: args.amount,
+      balanceAfter: newBalance,
+      description: `Credit purchase via Polar ($${(args.amount / 100).toFixed(2)})`,
+      metadata: { polarOrderId: args.polarOrderId },
+      createdAt: Date.now(),
+    })
+
+    if (args.polarCustomerId && !org.polarCustomerId) {
+      await ctx.db.patch(org._id, { polarCustomerId: args.polarCustomerId })
+    }
   },
 })
