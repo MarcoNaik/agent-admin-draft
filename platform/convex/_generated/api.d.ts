@@ -11,6 +11,7 @@
 import type * as agent from "../agent.js";
 import type * as agents from "../agents.js";
 import type * as apiKeys from "../apiKeys.js";
+import type * as billing from "../billing.js";
 import type * as calendar from "../calendar.js";
 import type * as chat from "../chat.js";
 import type * as entities from "../entities.js";
@@ -22,6 +23,7 @@ import type * as executions from "../executions.js";
 import type * as http from "../http.js";
 import type * as integrations from "../integrations.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_creditPricing from "../lib/creditPricing.js";
 import type * as lib_integrations_flow from "../lib/integrations/flow.js";
 import type * as lib_integrations_googleCalendar from "../lib/integrations/googleCalendar.js";
 import type * as lib_integrations_whatsapp from "../lib/integrations/whatsapp.js";
@@ -76,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agents: typeof agents;
   apiKeys: typeof apiKeys;
+  billing: typeof billing;
   calendar: typeof calendar;
   chat: typeof chat;
   entities: typeof entities;
@@ -87,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   integrations: typeof integrations;
   "lib/auth": typeof lib_auth;
+  "lib/creditPricing": typeof lib_creditPricing;
   "lib/integrations/flow": typeof lib_integrations_flow;
   "lib/integrations/googleCalendar": typeof lib_integrations_googleCalendar;
   "lib/integrations/whatsapp": typeof lib_integrations_whatsapp;

@@ -267,6 +267,8 @@ export const record = internalMutation({
     model: v.optional(v.string()),
     status: v.union(v.literal("success"), v.literal("error"), v.literal("timeout")),
     errorMessage: v.optional(v.string()),
+    usedPlatformKey: v.optional(v.boolean()),
+    creditsConsumed: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("executions", {
@@ -285,6 +287,8 @@ export const record = internalMutation({
       model: args.model,
       status: args.status,
       errorMessage: args.errorMessage,
+      usedPlatformKey: args.usedPlatformKey,
+      creditsConsumed: args.creditsConsumed,
       createdAt: Date.now(),
     })
   },

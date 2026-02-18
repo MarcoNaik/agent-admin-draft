@@ -307,6 +307,8 @@ export default defineSchema({
     model: v.optional(v.string()),
     status: v.union(v.literal("success"), v.literal("error"), v.literal("timeout")),
     errorMessage: v.optional(v.string()),
+    usedPlatformKey: v.optional(v.boolean()),
+    creditsConsumed: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
@@ -545,6 +547,27 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_org_email", ["organizationId", "email"]),
+
+  creditBalances: defineTable({
+    organizationId: v.id("organizations"),
+    balance: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
+
+  creditTransactions: defineTable({
+    organizationId: v.id("organizations"),
+    type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment")),
+    amount: v.number(),
+    balanceAfter: v.number(),
+    description: v.string(),
+    executionId: v.optional(v.id("executions")),
+    createdBy: v.optional(v.id("users")),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_execution", ["executionId"]),
 
   evalResults: defineTable({
     organizationId: v.id("organizations"),

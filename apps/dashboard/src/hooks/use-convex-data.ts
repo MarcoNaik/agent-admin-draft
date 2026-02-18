@@ -492,3 +492,19 @@ export function useDeleteProviderConfig() {
 export function useTestProviderConnection() {
   return useAction(api.providers.testConnection)
 }
+
+export function useCreditBalance() {
+  return useQuery(api.billing.getBalance, {})
+}
+
+export function useCreditTransactions(limit?: number) {
+  return useQuery(api.billing.getTransactions, { limit })
+}
+
+export function useAddCredits() {
+  return useMutation(api.billing.addCredits)
+}
+
+export function useAdjustBalance() {
+  return useMutation(api.billing.adjustBalance)
+}

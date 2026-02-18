@@ -3,6 +3,7 @@ import { internalAction, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { hashApiKey, generateId } from "./lib/utils"
+import { calculateCost } from "./lib/creditPricing"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
@@ -229,6 +230,14 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     provider: config.model.provider,
   })
 
+  const usedPlatformKey = providerKey === null
+  if (usedPlatformKey) {
+    const balance = await ctx.runQuery(internal.billing.getBalanceInternal, { organizationId })
+    if (balance <= 0) {
+      throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
+    }
+  }
+
   const result = await generateText({
     model: createModel(config.model, providerKey?.apiKey),
     system: processedSystemPrompt,
@@ -282,7 +291,9 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     })
     .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
 
-  await ctx.runMutation(internal.executions.record, {
+  const creditsConsumed = usedPlatformKey ? calculateCost(config.model.name, totalInputTokens, totalOutputTokens) : 0
+
+  const executionId = await ctx.runMutation(internal.executions.record, {
     organizationId,
     agentId,
     threadId,
@@ -296,7 +307,23 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     durationMs,
     model: config.model.name,
     status: "success",
+    usedPlatformKey,
+    creditsConsumed,
   })
+
+  if (usedPlatformKey && creditsConsumed > 0) {
+    await ctx.runMutation(internal.billing.deductCredits, {
+      organizationId,
+      amount: creditsConsumed,
+      description: `${config.model.name} — ${totalInputTokens} in / ${totalOutputTokens} out`,
+      executionId,
+      metadata: {
+        model: config.model.name,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+      },
+    })
+  }
 
   return {
     threadId,

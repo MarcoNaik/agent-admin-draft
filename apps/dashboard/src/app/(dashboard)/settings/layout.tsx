@@ -10,6 +10,7 @@ import {
   Key,
   Cpu,
   BarChart3,
+  CreditCard,
   AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,12 @@ const settingsNav: {
     href: "/settings/providers",
     icon: Cpu,
     description: "LLM provider API keys",
+  },
+  {
+    name: "Billing",
+    href: "/settings/billing",
+    icon: CreditCard,
+    description: "Credit balance and history",
   },
   {
     name: "Usage",
