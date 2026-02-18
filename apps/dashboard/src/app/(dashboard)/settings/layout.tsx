@@ -9,6 +9,7 @@ import {
   Plug,
   Key,
   Cpu,
+  BarChart3,
   AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -49,6 +50,12 @@ const settingsNav: {
     href: "/settings/providers",
     icon: Cpu,
     description: "LLM provider API keys",
+  },
+  {
+    name: "Usage",
+    href: "/settings/usage",
+    icon: BarChart3,
+    description: "Token and execution stats",
   },
 ]
 
