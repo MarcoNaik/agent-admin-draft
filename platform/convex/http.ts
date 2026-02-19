@@ -466,6 +466,7 @@ http.route({
       data: {
         id: string
         amount: number
+        subtotal_amount: number
         customer: { external_id: string; id: string }
         metadata: Record<string, string>
       }
@@ -479,7 +480,7 @@ http.route({
       }
       await ctx.runMutation(internal.billing.addCreditsFromPolar, {
         organizationId,
-        amount: order.amount,
+        amount: order.subtotal_amount,
         polarOrderId: order.id,
         polarCustomerId: order.customer?.id,
       })
