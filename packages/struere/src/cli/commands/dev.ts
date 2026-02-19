@@ -4,10 +4,11 @@ import ora from 'ora'
 import chokidar from 'chokidar'
 import { join } from 'path'
 import { existsSync, writeFileSync } from 'fs'
+import { confirm } from '@inquirer/prompts'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProject } from '../utils/project'
 import { performLogin } from './login'
-import { syncOrganization } from '../utils/convex'
+import { syncOrganization, getSyncState } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { getClaudeMD } from '../templates'
@@ -16,7 +17,8 @@ import { generateTypeDeclarations } from '../utils/plugin'
 
 export const devCommand = new Command('dev')
   .description('Sync all resources to development environment')
-  .action(async () => {
+  .option('--force', 'Skip destructive sync confirmation')
+  .action(async (options) => {
     const spinner = ora()
     const cwd = process.cwd()
 
@@ -96,23 +98,86 @@ export const devCommand = new Command('dev')
     }
 
     let initialSyncOk = false
+    let loadedResources: Awaited<ReturnType<typeof loadAllResources>> | null = null
 
     spinner.start('Loading resources')
 
     try {
-      const resources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites, ${resources.triggers.length} triggers`)
+      loadedResources = await loadAllResources(cwd)
+      spinner.succeed(`Loaded ${loadedResources.agents.length} agents, ${loadedResources.entityTypes.length} entity types, ${loadedResources.roles.length} roles, ${loadedResources.customTools.length} custom tools, ${loadedResources.evalSuites.length} eval suites, ${loadedResources.triggers.length} triggers`)
 
-      for (const err of resources.errors) {
+      for (const err of loadedResources.errors) {
         console.log(chalk.red('  ✖'), err)
       }
 
-      if (resources.errors.length === 0) {
+      if (loadedResources.errors.length === 0) {
         initialSyncOk = true
       }
     } catch (error) {
       spinner.fail('Failed to load resources')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+    }
+
+    if (initialSyncOk && !options.force && loadedResources) {
+      spinner.start('Checking remote state')
+      try {
+        const { state: remoteState } = await getSyncState(project.organization.id, 'development')
+        spinner.stop()
+
+        if (remoteState) {
+          const payload = extractSyncPayload(loadedResources)
+          const localSlugs = {
+            agents: new Set(payload.agents.map((a) => a.slug)),
+            entityTypes: new Set(payload.entityTypes.map((et) => et.slug)),
+            roles: new Set(payload.roles.map((r) => r.name)),
+            evalSuites: new Set((payload.evalSuites || []).map((es) => es.slug)),
+            triggers: new Set((payload.triggers || []).map((t) => t.slug)),
+          }
+
+          const deletions: Array<{ type: string; remote: number; local: number; deleted: string[] }> = []
+
+          const deletedAgents = remoteState.agents.filter((a) => !localSlugs.agents.has(a.slug)).map((a) => a.name)
+          if (deletedAgents.length > 0) deletions.push({ type: 'Agents', remote: remoteState.agents.length, local: payload.agents.length, deleted: deletedAgents })
+
+          const deletedEntityTypes = remoteState.entityTypes.filter((et) => !localSlugs.entityTypes.has(et.slug)).map((et) => et.name)
+          if (deletedEntityTypes.length > 0) deletions.push({ type: 'Entity types', remote: remoteState.entityTypes.length, local: payload.entityTypes.length, deleted: deletedEntityTypes })
+
+          const deletedRoles = remoteState.roles.filter((r) => !localSlugs.roles.has(r.name)).map((r) => r.name)
+          if (deletedRoles.length > 0) deletions.push({ type: 'Roles', remote: remoteState.roles.length, local: payload.roles.length, deleted: deletedRoles })
+
+          const remoteEvalSuites = remoteState.evalSuites || []
+          const deletedEvalSuites = remoteEvalSuites.filter((es) => !localSlugs.evalSuites.has(es.slug)).map((es) => es.name)
+          if (deletedEvalSuites.length > 0) deletions.push({ type: 'Eval suites', remote: remoteEvalSuites.length, local: (payload.evalSuites || []).length, deleted: deletedEvalSuites })
+
+          const remoteTriggers = remoteState.triggers || []
+          const deletedTriggers = remoteTriggers.filter((t) => !localSlugs.triggers.has(t.slug)).map((t) => t.name)
+          if (deletedTriggers.length > 0) deletions.push({ type: 'Triggers', remote: remoteTriggers.length, local: (payload.triggers || []).length, deleted: deletedTriggers })
+
+          if (deletions.length > 0) {
+            console.log(chalk.yellow.bold('  Warning: this sync will DELETE remote resources:'))
+            console.log()
+            for (const d of deletions) {
+              console.log(chalk.yellow(`    ${d.type}:`.padEnd(20)), `${d.remote} remote → ${d.local} local`, chalk.red(`(${d.deleted.length} will be deleted)`))
+              for (const name of d.deleted) {
+                console.log(chalk.red(`      - ${name}`))
+              }
+            }
+            console.log()
+            console.log(chalk.gray('  Run'), chalk.cyan('struere pull'), chalk.gray('first to download remote resources.'))
+            console.log()
+
+            const shouldContinue = await confirm({ message: 'Continue anyway?', default: false })
+            if (!shouldContinue) {
+              console.log()
+              console.log(chalk.gray('Aborted.'))
+              process.exit(0)
+            }
+            console.log()
+          }
+        }
+      } catch {
+        spinner.stop()
+      }
     }
 
     if (initialSyncOk) {
