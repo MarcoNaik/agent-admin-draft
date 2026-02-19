@@ -48,6 +48,7 @@ import type * as lib_utils from "../lib/utils.js";
 import type * as lib_workflows_session from "../lib/workflows/session.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_addEnvironment from "../migrations/addEnvironment.js";
+import type * as migrations_centsToMicrodollars from "../migrations/centsToMicrodollars.js";
 import type * as organizations from "../organizations.js";
 import type * as payments from "../payments.js";
 import type * as permissions from "../permissions.js";
@@ -115,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   "lib/workflows/session": typeof lib_workflows_session;
   migrations: typeof migrations;
   "migrations/addEnvironment": typeof migrations_addEnvironment;
+  "migrations/centsToMicrodollars": typeof migrations_centsToMicrodollars;
   organizations: typeof organizations;
   payments: typeof payments;
   permissions: typeof permissions;
