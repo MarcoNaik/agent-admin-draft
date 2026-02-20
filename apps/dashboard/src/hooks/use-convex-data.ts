@@ -373,6 +373,18 @@ export function useSendWhatsAppTemplate() {
   return useAction(api.whatsappActions.sendTemplate)
 }
 
+export function useCreateWhatsAppTemplate() {
+  return useAction(api.whatsappActions.createTemplate)
+}
+
+export function useDeleteWhatsAppTemplate() {
+  return useAction(api.whatsappActions.deleteTemplate)
+}
+
+export function useGetWhatsAppTemplateStatus() {
+  return useAction(api.whatsappActions.getTemplateStatus)
+}
+
 export function useAgentBySlug(slug: string) {
   return useQuery(api.chat.getAgentBySlug, { slug })
 }
