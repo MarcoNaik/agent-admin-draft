@@ -26,7 +26,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_creditPricing from "../lib/creditPricing.js";
 import type * as lib_integrations_flow from "../lib/integrations/flow.js";
 import type * as lib_integrations_googleCalendar from "../lib/integrations/googleCalendar.js";
-import type * as lib_integrations_whatsapp from "../lib/integrations/whatsapp.js";
+import type * as lib_integrations_kapso from "../lib/integrations/kapso.js";
 import type * as lib_llm from "../lib/llm.js";
 import type * as lib_permissions_context from "../lib/permissions/context.js";
 import type * as lib_permissions_evaluate from "../lib/permissions/evaluate.js";
@@ -49,6 +49,8 @@ import type * as lib_workflows_session from "../lib/workflows/session.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_addEnvironment from "../migrations/addEnvironment.js";
 import type * as migrations_centsToMicrodollars from "../migrations/centsToMicrodollars.js";
+import type * as migrations_deleteBaileysConnections from "../migrations/deleteBaileysConnections.js";
+import type * as migrations_multiNumberWhatsApp from "../migrations/multiNumberWhatsApp.js";
 import type * as organizations from "../organizations.js";
 import type * as payments from "../payments.js";
 import type * as permissions from "../permissions.js";
@@ -68,6 +70,7 @@ import type * as tools_whatsapp from "../tools/whatsapp.js";
 import type * as triggers from "../triggers.js";
 import type * as users from "../users.js";
 import type * as whatsapp from "../whatsapp.js";
+import type * as whatsappActions from "../whatsappActions.js";
 
 import type {
   ApiFromModules,
@@ -94,7 +97,7 @@ declare const fullApi: ApiFromModules<{
   "lib/creditPricing": typeof lib_creditPricing;
   "lib/integrations/flow": typeof lib_integrations_flow;
   "lib/integrations/googleCalendar": typeof lib_integrations_googleCalendar;
-  "lib/integrations/whatsapp": typeof lib_integrations_whatsapp;
+  "lib/integrations/kapso": typeof lib_integrations_kapso;
   "lib/llm": typeof lib_llm;
   "lib/permissions/context": typeof lib_permissions_context;
   "lib/permissions/evaluate": typeof lib_permissions_evaluate;
@@ -117,6 +120,8 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   "migrations/addEnvironment": typeof migrations_addEnvironment;
   "migrations/centsToMicrodollars": typeof migrations_centsToMicrodollars;
+  "migrations/deleteBaileysConnections": typeof migrations_deleteBaileysConnections;
+  "migrations/multiNumberWhatsApp": typeof migrations_multiNumberWhatsApp;
   organizations: typeof organizations;
   payments: typeof payments;
   permissions: typeof permissions;
@@ -136,6 +141,7 @@ declare const fullApi: ApiFromModules<{
   triggers: typeof triggers;
   users: typeof users;
   whatsapp: typeof whatsapp;
+  whatsappActions: typeof whatsappActions;
 }>;
 
 /**
