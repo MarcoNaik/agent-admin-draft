@@ -1,7 +1,9 @@
+"use node"
+
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
 import { internal } from "../_generated/api"
-import { sendViaGateway } from "../lib/integrations/whatsapp"
+import { sendTextMessage } from "../lib/integrations/kapso"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
@@ -13,26 +15,45 @@ export const whatsappSend = internalAction({
     environment: environmentValidator,
     to: v.string(),
     text: v.string(),
+    connectionId: v.optional(v.id("whatsappConnections")),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionInternal, {
-      organizationId: args.organizationId,
-      environment: args.environment,
-    })
+    let connection: any
 
-    if (!connection || connection.status !== "connected") {
-      throw new Error("WhatsApp is not connected for this organization")
+    if (args.connectionId) {
+      connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+        connectionId: args.connectionId,
+      })
+    } else if (args.actorType === "agent") {
+      connection = await ctx.runQuery(internal.whatsapp.getConnectionByAgentInternal, {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        agentId: args.actorId as any,
+      })
     }
 
-    const result = await sendViaGateway(
-      args.organizationId as string,
+    if (!connection) {
+      const connections: any[] = await ctx.runQuery(internal.whatsapp.listConnectionsInternal, {
+        organizationId: args.organizationId,
+        environment: args.environment,
+      })
+      connection = connections.find((c: any) => c.status === "connected")
+    }
+
+    if (!connection || connection.status !== "connected" || !connection.kapsoPhoneNumberId) {
+      throw new Error("No connected WhatsApp number found for this organization")
+    }
+
+    const result = await sendTextMessage(
+      connection.kapsoPhoneNumberId,
       args.to,
       args.text
     )
 
     await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
       organizationId: args.organizationId,
+      connectionId: connection._id,
       phoneNumber: args.to,
       messageId: result.messageId,
       text: args.text,
@@ -53,6 +74,7 @@ export const whatsappGetConversation = internalAction({
     actorType: v.string(),
     environment: environmentValidator,
     phoneNumber: v.string(),
+    connectionId: v.optional(v.id("whatsappConnections")),
     limit: v.optional(v.number()),
   },
   returns: v.any(),
@@ -60,6 +82,7 @@ export const whatsappGetConversation = internalAction({
     return await ctx.runQuery(internal.whatsapp.getConversationMessagesInternal, {
       organizationId: args.organizationId,
       phoneNumber: args.phoneNumber,
+      connectionId: args.connectionId,
       limit: args.limit,
     })
   },
@@ -74,20 +97,26 @@ export const whatsappGetStatus = internalAction({
   },
   returns: v.any(),
   handler: async (ctx, args): Promise<unknown> => {
-    const connection: any = await ctx.runQuery(internal.whatsapp.getConnectionInternal, {
+    const connections: any[] = await ctx.runQuery(internal.whatsapp.listConnectionsInternal, {
       organizationId: args.organizationId,
       environment: args.environment,
     })
 
-    if (!connection) {
-      return { connected: false, status: "not_configured" }
+    if (connections.length === 0) {
+      return { connected: false, status: "not_configured", connections: [] }
     }
 
     return {
-      connected: connection.status === "connected",
-      status: connection.status,
-      phoneNumber: connection.phoneNumber,
-      lastConnectedAt: connection.lastConnectedAt,
+      connected: connections.some((c: any) => c.status === "connected"),
+      status: connections.some((c: any) => c.status === "connected") ? "connected" : "disconnected",
+      connections: connections.map((c: any) => ({
+        id: c._id,
+        status: c.status,
+        label: c.label,
+        phoneNumber: c.phoneNumber,
+        agentId: c.agentId,
+        lastConnectedAt: c.lastConnectedAt,
+      })),
     }
   },
 })
