@@ -313,24 +313,24 @@ export function useSetIntegrationStatus() {
   return useMutation(api.integrations.setConfigStatus)
 }
 
-export function useWhatsAppConnection(environment: Environment) {
-  return useQuery(api.whatsapp.getConnection, { environment })
+export function useWhatsAppConnections(environment: Environment) {
+  return useQuery(api.whatsapp.listConnections, { environment })
 }
 
-export function useConnectWhatsApp() {
-  return useMutation(api.whatsapp.connectWhatsApp)
+export function useAddPhoneNumber() {
+  return useMutation(api.whatsapp.addPhoneNumber)
 }
 
-export function useDisconnectWhatsApp() {
-  return useMutation(api.whatsapp.disconnectWhatsApp)
+export function useDisconnectPhoneNumber() {
+  return useMutation(api.whatsapp.disconnectPhoneNumber)
 }
 
-export function useReconnectWhatsApp() {
-  return useMutation(api.whatsapp.reconnectWhatsApp)
+export function useSetPhoneAgent() {
+  return useMutation(api.whatsapp.setPhoneAgent)
 }
 
-export function useSetWhatsAppAgent() {
-  return useMutation(api.whatsapp.setWhatsAppAgent)
+export function useUpdatePhoneLabel() {
+  return useMutation(api.whatsapp.updatePhoneLabel)
 }
 
 export function useEnableWhatsApp() {
@@ -339,6 +339,34 @@ export function useEnableWhatsApp() {
 
 export function useDisableWhatsApp() {
   return useMutation(api.whatsapp.disableWhatsApp)
+}
+
+export function useWhatsAppMessageStatuses(threadId: Id<"threads"> | null) {
+  return useQuery(api.whatsapp.getMessageStatuses, threadId ? { threadId } : "skip")
+}
+
+export function useWhatsAppTimeline(threadId: Id<"threads"> | null) {
+  return useQuery(api.whatsapp.getWhatsAppTimeline, threadId ? { threadId } : "skip")
+}
+
+export function useSendWhatsAppMedia() {
+  return useAction(api.whatsappActions.sendMedia)
+}
+
+export function useSendWhatsAppInteractive() {
+  return useAction(api.whatsappActions.sendInteractive)
+}
+
+export function useGenerateUploadUrl() {
+  return useMutation(api.whatsapp.generateUploadUrl)
+}
+
+export function useListWhatsAppTemplates() {
+  return useAction(api.whatsappActions.listTemplates)
+}
+
+export function useSendWhatsAppTemplate() {
+  return useAction(api.whatsappActions.sendTemplate)
 }
 
 export function useAgentBySlug(slug: string) {
