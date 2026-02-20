@@ -25,8 +25,9 @@ import { Doc, Id } from "@convex/_generated/dataModel"
 import { InviteUserDialog } from "@/components/invite-user-dialog"
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
+type UserWithRole = Doc<"users"> & { role: "admin" | "member" }
 
-function UserRow({ user, roles, entityTypes }: { user: Doc<"users">; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[] }) {
+function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[] }) {
   const { environment } = useEnvironment()
   const updateUser = useUpdateUser()
   const assignRole = useAssignRoleToUser()
@@ -243,7 +244,7 @@ export default function UsersPage() {
           {users.length === 0 ? (
             <div className="py-8 text-center text-content-secondary">No users found</div>
           ) : (
-            users.map((user: Doc<"users">) => (
+            users.map((user: UserWithRole) => (
               <UserRow key={user._id} user={user} roles={assignableRoles} entityTypes={entityTypes ?? []} />
             ))
           )}
