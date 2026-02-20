@@ -125,12 +125,14 @@ function PhoneNumberCard({
   onDisconnect,
   onAgentChange,
   onLabelUpdate,
+  onReconnect,
 }: {
   connection: any
   agents: any[]
   onDisconnect: (connectionId: Id<"whatsappConnections">) => void
   onAgentChange: (connectionId: Id<"whatsappConnections">, agentId?: string) => void
   onLabelUpdate: (connectionId: Id<"whatsappConnections">, label: string) => void
+  onReconnect: (label?: string) => void
 }) {
   const [disconnecting, setDisconnecting] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
@@ -265,9 +267,14 @@ function PhoneNumberCard({
         )}
 
         {connection.status === "disconnected" && (
-          <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
-            {disconnecting ? "Removing..." : "Remove"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => onReconnect(connection.label)}>
+              Reconnect
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
+              {disconnecting ? "Removing..." : "Remove"}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -353,6 +360,15 @@ export default function WhatsAppSettingsPage() {
       })
     } catch {
       setError("Failed to update agent assignment")
+    }
+  }
+
+  const handleReconnect = async (label?: string) => {
+    setError(null)
+    try {
+      await addPhoneNumber({ environment, label: label || undefined })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reconnect phone number")
     }
   }
 
@@ -496,6 +512,7 @@ export default function WhatsAppSettingsPage() {
                 onDisconnect={handleDisconnect}
                 onAgentChange={handleAgentChange}
                 onLabelUpdate={handleLabelUpdate}
+                onReconnect={handleReconnect}
               />
             ))}
           </div>
