@@ -55,6 +55,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://struere.dev"),
   title: "Struere: Agent Factory",
   description: "Build a service business with AI. No coding. Real clients. Real money.",
+  icons: { icon: "/favicon.svg" },
   openGraph: {
     title: "Struere: Agent Factory",
     description: "Build a service business with AI. No coding. Real clients. Real money.",

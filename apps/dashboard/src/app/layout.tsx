@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://app.struere.dev"),
   title: "Struere - AI Agent Platform",
   description: "Build, deploy, and manage AI agents at scale",
+  icons: { icon: "/favicon.svg" },
 }
 
 export default function RootLayout({
