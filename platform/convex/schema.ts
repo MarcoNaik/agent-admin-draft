@@ -339,7 +339,8 @@ export default defineSchema({
     status: v.union(
       v.literal("disconnected"),
       v.literal("pending_setup"),
-      v.literal("connected")
+      v.literal("connected"),
+      v.literal("pairing_code_ready")
     ),
     label: v.optional(v.string()),
     kapsoCustomerId: v.optional(v.string()),
