@@ -44,7 +44,16 @@ export async function syncRoles(
     .collect()
 
   const nonSystemRoles = existingRoles.filter((r) => !r.isSystem)
-  const existingByName = new Map(nonSystemRoles.map((r) => [r.name, r]))
+
+  const existingByName = new Map<string, (typeof nonSystemRoles)[number]>()
+  for (const r of nonSystemRoles) {
+    if (existingByName.has(r.name)) {
+      await deleteRoleWithRelations(ctx, r._id)
+    } else {
+      existingByName.set(r.name, r)
+    }
+  }
+
   const inputNames = new Set(roles.map((r) => r.name))
 
   for (const role of roles) {
