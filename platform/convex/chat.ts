@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { action, query, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
-import { sendViaGateway } from "./lib/integrations/whatsapp"
+import { parseWhatsAppExternalId } from "./whatsapp"
 
 interface AuthInfo {
   userId: Id<"users">
@@ -126,20 +126,39 @@ export const replyToThread = action({
     })
 
     if (thread.externalId?.startsWith("whatsapp:")) {
-      const phone = thread.externalId.replace("whatsapp:", "")
+      const parsed = parseWhatsAppExternalId(thread.externalId)
+      if (!parsed) {
+        return { success: true, whatsappStatus: "failed" as const }
+      }
+
+      const { connectionId, customerPhone } = parsed
+
+      const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+        connectionId: connectionId as Id<"whatsappConnections">,
+      }) as { kapsoPhoneNumberId?: string; status: string } | null
+
       let messageId = `failed_${Date.now()}`
       let status: "sent" | "failed" = "sent"
 
-      try {
-        const result = await sendViaGateway(auth.organizationId as string, phone, args.message)
-        messageId = result.messageId
-      } catch {
+      if (connection?.kapsoPhoneNumberId && connection.status === "connected") {
+        try {
+          const result = await ctx.runAction(internal.whatsappActions.sendTextToPhone, {
+            kapsoPhoneNumberId: connection.kapsoPhoneNumberId,
+            to: customerPhone,
+            text: args.message,
+          }) as { messageId: string }
+          messageId = result.messageId
+        } catch {
+          status = "failed"
+        }
+      } else {
         status = "failed"
       }
 
       await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
         organizationId: auth.organizationId,
-        phoneNumber: phone,
+        connectionId: connectionId as Id<"whatsappConnections">,
+        phoneNumber: customerPhone,
         messageId,
         text: args.message,
         threadId: args.threadId,
