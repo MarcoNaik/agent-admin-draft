@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #F5F1E8;
+  color: #1B4332;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(27, 67, 50, 0.15);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(27, 67, 50, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(27, 67, 50, 0.35);
+}
+
+@layer base {
+  .prose h1 { @apply text-2xl font-bold mt-8 mb-4 font-mono; }
+  .prose h2 { @apply text-xl font-bold mt-8 mb-3 font-mono border-b border-forest/10 pb-2; }
+  .prose h3 { @apply text-lg font-bold mt-6 mb-2 font-mono; }
+  .prose h4 { @apply text-base font-bold mt-4 mb-2 font-mono; }
+  .prose p { @apply my-3 leading-relaxed; }
+  .prose ul { @apply my-3 pl-6 list-disc; }
+  .prose ol { @apply my-3 pl-6 list-decimal; }
+  .prose li { @apply my-1; }
+  .prose a { @apply text-forest-light underline underline-offset-2 hover:text-forest-accent transition-colors; }
+  .prose blockquote { @apply border-l-2 border-forest/20 pl-4 my-4 text-forest-muted italic; }
+  .prose hr { @apply my-6 border-forest/10; }
+  .prose table { @apply w-full my-4 text-sm; }
+  .prose thead { @apply border-b border-forest/20; }
+  .prose th { @apply text-left py-2 px-3 font-bold font-mono text-xs uppercase tracking-wide; }
+  .prose td { @apply py-2 px-3 border-b border-forest/5; }
+  .prose tr:hover td { @apply bg-forest/[0.02]; }
+  .prose strong { @apply font-bold; }
+  .prose code:not(pre code) {
+    @apply bg-cream-dark px-1.5 py-0.5 rounded text-sm font-code;
+  }
+  .prose pre {
+    @apply my-4 rounded-lg overflow-x-auto text-sm;
+  }
+  .prose img { @apply my-4 rounded-lg; }
+}
+
+.hljs {
+  background: #1B4332 !important;
+  color: #E8E4D4 !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-type { color: #7DCEA0; }
+
+.hljs-string,
+.hljs-template-variable { color: #F9E79F; }
+
+.hljs-comment { color: rgba(232, 228, 212, 0.4); font-style: italic; }
+
+.hljs-number,
+.hljs-literal { color: #AED6F1; }
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-tag { color: #F5B7B1; }
+
+.hljs-title,
+.hljs-section { color: #85C1E9; }
+
+.hljs-built_in { color: #BB8FCE; }
+
+.hljs-params { color: #E8E4D4; }
+
+.hljs-meta { color: rgba(232, 228, 212, 0.6); }
