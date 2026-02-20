@@ -1,15 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { QRCodeSVG } from "qrcode.react"
-import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, QrCode, Smartphone, RefreshCw, Power, PowerOff, Hash, AlertCircle } from "lucide-react"
+import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, Smartphone, Power, PowerOff, AlertCircle, ExternalLink, Clock, Plus, Pencil, Check, X } from "lucide-react"
 import {
-  useWhatsAppConnection,
-  useConnectWhatsApp,
-  useDisconnectWhatsApp,
-  useReconnectWhatsApp,
-  useSetWhatsAppAgent,
+  useWhatsAppConnections,
+  useAddPhoneNumber,
+  useDisconnectPhoneNumber,
+  useSetPhoneAgent,
+  useUpdatePhoneLabel,
   useAgents,
   useIntegrationConfig,
   useEnableWhatsApp,
@@ -19,9 +18,7 @@ import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -29,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Id } from "@convex/_generated/dataModel"
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -39,19 +37,11 @@ function StatusBadge({ status }: { status: string }) {
           Connected
         </Badge>
       )
-    case "qr_ready":
-    case "pairing_code_ready":
+    case "pending_setup":
       return (
         <Badge className="flex items-center gap-1 bg-amber-500/20 text-amber-500 border-amber-500/30">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Awaiting Link
-        </Badge>
-      )
-    case "connecting":
-      return (
-        <Badge className="flex items-center gap-1 bg-blue-500/20 text-blue-500 border-blue-500/30">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Connecting
+          <Clock className="h-3 w-3" />
+          Awaiting Setup
         </Badge>
       )
     default:
@@ -64,44 +54,254 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
+function IntegrationToggle({
+  isEnabled,
+  toggling,
+  onEnable,
+  onDisable,
+}: {
+  isEnabled: boolean
+  toggling: boolean
+  onEnable: () => void
+  onDisable: () => void
+}) {
+  return (
+    <Card className="mb-6 bg-background-secondary">
+      <CardHeader>
+        <CardTitle className="text-base text-content-primary">Integration Status</CardTitle>
+        <CardDescription className="text-content-secondary">
+          {isEnabled
+            ? "WhatsApp integration is enabled for your organization"
+            : "Enable the WhatsApp integration to get started"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isEnabled ? (
+              <>
+                <Power className="h-4 w-4 text-green-500" />
+                <Badge variant="secondary">Enabled</Badge>
+              </>
+            ) : (
+              <>
+                <PowerOff className="h-4 w-4 text-content-tertiary" />
+                <span className="text-sm text-content-secondary">Not enabled</span>
+              </>
+            )}
+          </div>
+          {isEnabled ? (
+            <Button variant="outline" size="sm" onClick={onDisable} disabled={toggling}>
+              {toggling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Disabling...
+                </>
+              ) : (
+                "Disable"
+              )}
+            </Button>
+          ) : (
+            <Button size="sm" onClick={onEnable} disabled={toggling}>
+              {toggling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enabling...
+                </>
+              ) : (
+                "Enable WhatsApp"
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function PhoneNumberCard({
+  connection,
+  agents,
+  onDisconnect,
+  onAgentChange,
+  onLabelUpdate,
+}: {
+  connection: any
+  agents: any[]
+  onDisconnect: (connectionId: Id<"whatsappConnections">) => void
+  onAgentChange: (connectionId: Id<"whatsappConnections">, agentId?: string) => void
+  onLabelUpdate: (connectionId: Id<"whatsappConnections">, label: string) => void
+}) {
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [editingLabel, setEditingLabel] = useState(false)
+  const [labelValue, setLabelValue] = useState(connection.label ?? "")
+
+  const handleDisconnect = async () => {
+    if (!confirm("Are you sure you want to disconnect this number?")) return
+    setDisconnecting(true)
+    try {
+      await onDisconnect(connection._id)
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  const handleLabelSave = () => {
+    onLabelUpdate(connection._id, labelValue.trim())
+    setEditingLabel(false)
+  }
+
+  return (
+    <Card className="bg-background-secondary">
+      <CardContent className="pt-6 space-y-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+              connection.status === "connected" ? "bg-green-500/10" : connection.status === "pending_setup" ? "bg-amber-500/10" : "bg-muted"
+            }`}>
+              <Smartphone className={`h-5 w-5 ${
+                connection.status === "connected" ? "text-green-500" : connection.status === "pending_setup" ? "text-amber-500" : "text-content-tertiary"
+              }`} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                {editingLabel ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      value={labelValue}
+                      onChange={(e) => setLabelValue(e.target.value)}
+                      className="h-7 w-40 text-sm"
+                      placeholder="Label"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleLabelSave()
+                        if (e.key === "Escape") setEditingLabel(false)
+                      }}
+                      autoFocus
+                    />
+                    <button type="button" onClick={handleLabelSave} className="text-green-500 hover:text-green-400">
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={() => setEditingLabel(false)} className="text-content-tertiary hover:text-content-secondary">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-content-primary">
+                      {connection.label || (connection.phoneNumber ? `+${connection.phoneNumber}` : "New Number")}
+                    </p>
+                    {connection.status !== "disconnected" && (
+                      <button type="button" onClick={() => { setLabelValue(connection.label ?? ""); setEditingLabel(true) }} className="text-content-tertiary hover:text-content-secondary">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+              {connection.label && connection.phoneNumber && (
+                <p className="text-xs text-content-tertiary">+{connection.phoneNumber}</p>
+              )}
+              {connection.lastConnectedAt && connection.status === "connected" && (
+                <p className="text-xs text-content-tertiary">
+                  Connected since {new Date(connection.lastConnectedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+          <StatusBadge status={connection.status} />
+        </div>
+
+        {connection.status === "pending_setup" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10">
+              <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+              <p className="text-xs text-content-secondary">
+                Complete the Facebook login and phone number verification on Kapso
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {connection.setupLinkUrl && (
+                <Button size="sm" asChild>
+                  <a href={connection.setupLinkUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    Complete Setup
+                  </a>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
+                {disconnecting ? "Cancelling..." : "Cancel"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {connection.status === "connected" && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-content-secondary">Assigned Agent</label>
+              <Select
+                value={connection.agentId ?? "none"}
+                onValueChange={(value) => onAgentChange(connection._id, value === "none" ? undefined : value)}
+              >
+                <SelectTrigger className="bg-background-tertiary h-9 text-sm">
+                  <SelectValue placeholder="Select an agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No agent (messages stored only)</SelectItem>
+                  {agents
+                    .filter((a: any) => a.status === "active")
+                    .map((agent: any) => (
+                      <SelectItem key={agent._id} value={agent._id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
+              {disconnecting ? "Disconnecting..." : "Disconnect"}
+            </Button>
+          </div>
+        )}
+
+        {connection.status === "disconnected" && (
+          <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
+            {disconnecting ? "Removing..." : "Remove"}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function WhatsAppSettingsPage() {
   const router = useRouter()
   const { environment } = useEnvironment()
-  const connection = useWhatsAppConnection(environment)
+  const connections = useWhatsAppConnections(environment)
   const agents = useAgents()
-  const connectWhatsApp = useConnectWhatsApp()
-  const disconnectWhatsApp = useDisconnectWhatsApp()
-  const reconnectWhatsApp = useReconnectWhatsApp()
-  const setWhatsAppAgent = useSetWhatsAppAgent()
+  const addPhoneNumber = useAddPhoneNumber()
+  const disconnectPhoneNumber = useDisconnectPhoneNumber()
+  const setPhoneAgent = useSetPhoneAgent()
+  const updatePhoneLabel = useUpdatePhoneLabel()
   const integrationConfig = useIntegrationConfig("whatsapp", environment)
   const enableWhatsApp = useEnableWhatsApp()
   const disableWhatsApp = useDisableWhatsApp()
 
-  const [connecting, setConnecting] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
-  const [reconnecting, setReconnecting] = useState(false)
   const [toggling, setToggling] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<string>("qr")
-  const [pairingPhoneNumber, setPairingPhoneNumber] = useState("")
-
-  const status = connection?.status ?? "disconnected"
-
-  useEffect(() => {
-    if (status === "qr_ready") setActiveTab("qr")
-    if (status === "pairing_code_ready") setActiveTab("pairing_code")
-  }, [status])
+  const [labelInput, setLabelInput] = useState("")
+  const [showLabelInput, setShowLabelInput] = useState(false)
 
   const isEnabled = integrationConfig?.status === "active"
-  const isWaitingForLink = status === "qr_ready" || status === "pairing_code_ready"
-  const needsConnection = status === "disconnected" || isWaitingForLink
+  const hasPendingSetup = connections?.some((c: any) => c.status === "pending_setup")
 
   const handleEnable = async () => {
     setToggling(true)
     setError(null)
     try {
       await enableWhatsApp({ environment })
-    } catch (err) {
+    } catch {
       setError("Failed to enable WhatsApp integration")
     } finally {
       setToggling(false)
@@ -114,64 +314,54 @@ export default function WhatsAppSettingsPage() {
     setError(null)
     try {
       await disableWhatsApp({ environment })
-    } catch (err) {
+    } catch {
       setError("Failed to disable WhatsApp integration")
     } finally {
       setToggling(false)
     }
   }
 
-  const handleConnect = async (method: "qr" | "pairing_code") => {
-    setConnecting(true)
+  const handleAddPhone = async () => {
+    setAdding(true)
     setError(null)
     try {
-      await connectWhatsApp({
-        environment,
-        method,
-        phoneNumber: method === "pairing_code" ? pairingPhoneNumber.replace(/\D/g, "") : undefined,
+      await addPhoneNumber({ environment, label: labelInput.trim() || undefined })
+      setLabelInput("")
+      setShowLabelInput(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add phone number")
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const handleDisconnect = async (connectionId: Id<"whatsappConnections">) => {
+    setError(null)
+    try {
+      await disconnectPhoneNumber({ connectionId })
+    } catch {
+      setError("Failed to disconnect phone number")
+    }
+  }
+
+  const handleAgentChange = async (connectionId: Id<"whatsappConnections">, agentId?: string) => {
+    setError(null)
+    try {
+      await setPhoneAgent({
+        connectionId,
+        agentId: agentId as Id<"agents"> | undefined,
       })
-    } catch (err) {
-      setError(method === "qr" ? "Failed to generate QR code" : "Failed to generate pairing code")
-    } finally {
-      setConnecting(false)
-    }
-  }
-
-  const handleDisconnect = async () => {
-    if (!confirm("Are you sure you want to disconnect WhatsApp?")) return
-    setDisconnecting(true)
-    setError(null)
-    try {
-      await disconnectWhatsApp({ environment })
-    } catch (err) {
-      setError("Failed to disconnect WhatsApp")
-    } finally {
-      setDisconnecting(false)
-    }
-  }
-
-  const handleReconnect = async () => {
-    if (!confirm("This will reset your WhatsApp connection and require re-linking. Continue?")) return
-    setReconnecting(true)
-    setError(null)
-    try {
-      await reconnectWhatsApp({ environment })
-    } catch (err) {
-      setError("Failed to reset connection")
-    } finally {
-      setReconnecting(false)
-    }
-  }
-
-  const handleAgentChange = async (value: string) => {
-    setError(null)
-    try {
-      await setWhatsAppAgent({
-        agentId: value === "none" ? undefined : (value as any),
-        environment,
-      })
-    } catch (err) {
+    } catch {
       setError("Failed to update agent assignment")
+    }
+  }
+
+  const handleLabelUpdate = async (connectionId: Id<"whatsappConnections">, label: string) => {
+    setError(null)
+    try {
+      await updatePhoneLabel({ connectionId, label })
+    } catch {
+      setError("Failed to update label")
     }
   }
 
@@ -184,6 +374,9 @@ export default function WhatsAppSettingsPage() {
       </div>
     )
   }
+
+  const activeConnections = (connections ?? []).filter((c: any) => c.status !== "disconnected")
+  const disconnectedConnections = (connections ?? []).filter((c: any) => c.status === "disconnected")
 
   return (
     <div className="mx-auto max-w-3xl p-6">
@@ -203,10 +396,12 @@ export default function WhatsAppSettingsPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-content-primary">WhatsApp</h1>
-            {isEnabled && <StatusBadge status={status} />}
+            {isEnabled && activeConnections.length > 0 && (
+              <Badge variant="secondary">{activeConnections.filter((c: any) => c.status === "connected").length} connected</Badge>
+            )}
           </div>
           <p className="text-content-secondary mt-1">
-            Connect your WhatsApp account to enable AI-powered conversations
+            Connect WhatsApp Business numbers via Kapso to enable AI-powered conversations
           </p>
         </div>
       </div>
@@ -218,273 +413,110 @@ export default function WhatsAppSettingsPage() {
         </div>
       )}
 
-      <Card className="mb-6 bg-background-secondary">
-        <CardHeader>
-          <CardTitle className="text-base text-content-primary">Integration Status</CardTitle>
-          <CardDescription className="text-content-secondary">
-            {isEnabled
-              ? "WhatsApp integration is enabled for your organization"
-              : "Enable the WhatsApp integration to get started"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {isEnabled ? (
-                <>
-                  <Power className="h-4 w-4 text-green-500" />
-                  <Badge variant="secondary">Enabled</Badge>
-                </>
-              ) : (
-                <>
-                  <PowerOff className="h-4 w-4 text-content-tertiary" />
-                  <span className="text-sm text-content-secondary">Not enabled</span>
-                </>
-              )}
-            </div>
-            {isEnabled ? (
-              <Button variant="outline" size="sm" onClick={handleDisable} disabled={toggling}>
-                {toggling ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Disabling...
-                  </>
-                ) : (
-                  "Disable"
-                )}
-              </Button>
-            ) : (
-              <Button size="sm" onClick={handleEnable} disabled={toggling}>
-                {toggling ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enabling...
-                  </>
-                ) : (
-                  "Enable WhatsApp"
-                )}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <IntegrationToggle
+        isEnabled={isEnabled}
+        toggling={toggling}
+        onEnable={handleEnable}
+        onDisable={handleDisable}
+      />
 
       {isEnabled ? (
         <>
           <Card className="mb-6 bg-background-secondary">
             <CardHeader>
-              <CardTitle className="text-base text-content-primary">Connection</CardTitle>
-              <CardDescription className="text-content-secondary">
-                {status === "connected"
-                  ? "Your WhatsApp account is connected and ready to receive messages"
-                  : "Choose a method to link your WhatsApp account"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {status === "connecting" && (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                  <p className="text-sm text-content-secondary">Connecting to WhatsApp...</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base text-content-primary">Phone Numbers</CardTitle>
+                  <CardDescription className="text-content-secondary">
+                    Manage your WhatsApp Business numbers
+                  </CardDescription>
                 </div>
-              )}
-
-              {status === "connected" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10">
-                    <Smartphone className="h-5 w-5 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium text-content-primary">
-                        {connection?.phoneNumber ? `+${connection.phoneNumber}` : "Connected"}
-                      </p>
-                      <p className="text-xs text-content-tertiary">
-                        {connection?.lastConnectedAt
-                          ? `Connected since ${new Date(connection.lastConnectedAt).toLocaleString()}`
-                          : "Active connection"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleReconnect} disabled={reconnecting}>
-                      {reconnecting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Resetting...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Reset Connection
-                        </>
-                      )}
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
-                      {disconnecting ? "Disconnecting..." : "Disconnect"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {needsConnection && (
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="qr" className="flex-1 gap-2">
-                      <QrCode className="h-4 w-4" />
-                      QR Code
-                    </TabsTrigger>
-                    <TabsTrigger value="pairing_code" className="flex-1 gap-2">
-                      <Hash className="h-4 w-4" />
-                      Phone Number
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="qr" className="space-y-4">
-                    {status === "qr_ready" && connection?.qrCode ? (
-                      <div className="flex flex-col items-center gap-4 pt-4">
-                        <div className="rounded-xl bg-white p-4">
-                          <QRCodeSVG
-                            value={connection.qrCode}
-                            size={256}
-                            level="M"
-                          />
-                        </div>
-                        <p className="text-sm text-content-secondary text-center max-w-sm">
-                          Open WhatsApp on your phone, go to Settings &rarr; Linked Devices &rarr; Link a Device, then scan this QR code
-                        </p>
-                        <Button variant="outline" size="sm" onClick={() => handleConnect("qr")} disabled={connecting}>
-                          {connecting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Refreshing...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Refresh QR Code
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-4 py-6">
-                        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-                          <QrCode className="h-8 w-8 text-content-tertiary" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-content-primary">Scan with WhatsApp</p>
-                          <p className="text-xs text-content-tertiary mt-1">
-                            A QR code will appear for you to scan with your phone
-                          </p>
-                        </div>
-                        <Button onClick={() => handleConnect("qr")} disabled={connecting}>
-                          {connecting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Generating QR Code...
-                            </>
-                          ) : (
-                            "Generate QR Code"
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="pairing_code" className="space-y-4">
-                    {status === "pairing_code_ready" && connection?.pairingCode ? (
-                      <div className="flex flex-col items-center gap-4 pt-4">
-                        <div className="rounded-xl bg-background-tertiary p-6">
-                          <p className="text-3xl font-mono font-bold tracking-[0.3em] text-content-primary text-center">
-                            {connection.pairingCode.slice(0, 4)}-{connection.pairingCode.slice(4)}
-                          </p>
-                        </div>
-                        <p className="text-sm text-content-secondary text-center max-w-sm">
-                          Open WhatsApp on your phone, go to Settings &rarr; Linked Devices &rarr; Link a Device &rarr; Link with phone number instead, then enter this code
-                        </p>
-                        <Button variant="outline" size="sm" onClick={() => handleConnect("pairing_code")} disabled={connecting}>
-                          {connecting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Refreshing...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Refresh Pairing Code
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 pt-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="phone-number" className="text-content-primary">Phone Number</Label>
-                          <Input
-                            id="phone-number"
-                            placeholder="e.g. 27821234567"
-                            value={pairingPhoneNumber}
-                            onChange={(e) => setPairingPhoneNumber(e.target.value)}
-                            className="bg-background-tertiary"
-                          />
-                          <p className="text-xs text-content-tertiary">
-                            Enter the full phone number with country code, digits only
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => handleConnect("pairing_code")}
-                          disabled={connecting || !pairingPhoneNumber.replace(/\D/g, "")}
-                          className="w-full"
-                        >
-                          {connecting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Generating Pairing Code...
-                            </>
-                          ) : (
-                            "Get Pairing Code"
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="mb-6 bg-background-secondary">
-            <CardHeader>
-              <CardTitle className="text-base text-content-primary">Agent Configuration</CardTitle>
-              <CardDescription className="text-content-secondary">
-                Select which AI agent handles incoming WhatsApp messages
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-content-primary">Responding Agent</Label>
-                <Select
-                  value={connection?.agentId ?? "none"}
-                  onValueChange={handleAgentChange}
-                >
-                  <SelectTrigger className="bg-background-tertiary">
-                    <SelectValue placeholder="Select an agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No agent (messages stored only)</SelectItem>
-                    {(agents ?? [])
-                      .filter((a: any) => a.status === "active")
-                      .map((agent: any) => (
-                        <SelectItem key={agent._id} value={agent._id}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-content-tertiary">
-                  When an agent is selected, incoming WhatsApp messages will automatically be routed to the agent for a response
-                </p>
+                {!showLabelInput && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowLabelInput(true)}
+                    disabled={adding || !!hasPendingSetup}
+                    title={hasPendingSetup ? "Complete the pending setup first" : undefined}
+                  >
+                    <Plus className="mr-2 h-3 w-3" />
+                    Add Number
+                  </Button>
+                )}
               </div>
-            </CardContent>
+            </CardHeader>
+            {showLabelInput && (
+              <CardContent className="pt-0">
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-border/50 bg-background-tertiary">
+                  <Input
+                    value={labelInput}
+                    onChange={(e) => setLabelInput(e.target.value)}
+                    placeholder="Label (e.g. Sales, Support)"
+                    className="flex-1 text-sm h-9"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddPhone()
+                      if (e.key === "Escape") { setShowLabelInput(false); setLabelInput("") }
+                    }}
+                    autoFocus
+                  />
+                  <Button size="sm" onClick={handleAddPhone} disabled={adding}>
+                    {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Set Up"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowLabelInput(false); setLabelInput("") }}>
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            )}
           </Card>
+
+          {activeConnections.length === 0 && !showLabelInput && (
+            <Card className="mb-6 bg-background-secondary">
+              <CardContent className="py-8">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                    <MessageSquare className="h-8 w-8 text-content-tertiary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-content-primary">No phone numbers connected</p>
+                    <p className="text-xs text-content-tertiary mt-1">
+                      Add a WhatsApp Business number to start receiving messages
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="space-y-4">
+            {activeConnections.map((connection: any) => (
+              <PhoneNumberCard
+                key={connection._id}
+                connection={connection}
+                agents={agents ?? []}
+                onDisconnect={handleDisconnect}
+                onAgentChange={handleAgentChange}
+                onLabelUpdate={handleLabelUpdate}
+              />
+            ))}
+          </div>
+
+          {disconnectedConnections.length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs text-content-tertiary mb-3">Disconnected</p>
+              <div className="space-y-3">
+                {disconnectedConnections.map((connection: any) => (
+                  <PhoneNumberCard
+                    key={connection._id}
+                    connection={connection}
+                    agents={agents ?? []}
+                    onDisconnect={handleDisconnect}
+                    onAgentChange={handleAgentChange}
+                    onLabelUpdate={handleLabelUpdate}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <Card className="mb-6 bg-background-secondary">
