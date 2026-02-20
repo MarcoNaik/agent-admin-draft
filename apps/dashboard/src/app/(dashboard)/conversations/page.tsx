@@ -9,6 +9,7 @@ import {
   useReplyToThread,
   useWhatsAppMessageStatuses,
   useWhatsAppTimeline,
+  useWhatsAppConnections,
   useListWhatsAppTemplates,
   useSendWhatsAppTemplate,
   useSendWhatsAppMedia,
@@ -1085,6 +1086,7 @@ function ThreadView({
 
 export default function ChatPage() {
   const [agentFilter, setAgentFilter] = useState<string>("all")
+  const [connectionFilter, setConnectionFilter] = useState<string>("all")
   const [showEvals, setShowEvals] = useState(false)
   const [selectedThreadId, setSelectedThreadId] = useState<Id<"threads"> | null>(null)
   const { isAdmin } = useRoleContext()
@@ -1092,6 +1094,7 @@ export default function ChatPage() {
   const { environment } = useEnvironment()
   const filteredAgentId = agentFilter !== "all" ? (agentFilter as Id<"agents">) : undefined
   const threads = useThreadsWithPreviews(filteredAgentId, environment)
+  const whatsappConnections = useWhatsAppConnections(environment)
 
   if (threads === undefined) {
     return (
@@ -1101,9 +1104,17 @@ export default function ChatPage() {
     )
   }
 
-  const visibleThreads = showEvals
+  const selectedConnection = connectionFilter !== "all"
+    ? (whatsappConnections ?? []).find((c: any) => c._id === connectionFilter)
+    : null
+
+  const visibleThreads = (showEvals
     ? threads
     : threads.filter((t: typeof threads[number]) => !t.participantName.startsWith("eval:"))
+  ).filter((t: typeof threads[number]) => {
+    if (!selectedConnection) return true
+    return t.businessPhoneNumber === selectedConnection.phoneNumber
+  })
 
   const agentOptions = new Map<string, string>()
   for (const t of visibleThreads) {
@@ -1131,6 +1142,23 @@ export default function ChatPage() {
               ))}
             </SelectContent>
           </Select>
+          {whatsappConnections && whatsappConnections.length > 0 && (
+            <Select value={connectionFilter} onValueChange={setConnectionFilter}>
+              <SelectTrigger className="w-full h-9 text-sm">
+                <SelectValue placeholder="All numbers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All numbers</SelectItem>
+                {whatsappConnections
+                  .filter((c: any) => c.status === "connected")
+                  .map((c: any) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.label || (c.phoneNumber ? formatPhoneNumber(`+${c.phoneNumber}`) : "Unknown")}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          )}
           {isAdmin && (
             <div className="flex items-center justify-between cursor-pointer">
               <label htmlFor="show-evals" className="flex items-center gap-1.5 text-xs text-content-secondary cursor-pointer">
