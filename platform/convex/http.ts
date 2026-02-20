@@ -256,112 +256,193 @@ http.route({
 })
 
 http.route({
-  path: "/webhook/whatsapp/inbound",
+  path: "/webhook/kapso/project",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
-    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
-      return new Response("Forbidden", { status: 403 })
+    const body = await request.text()
+    const signature = request.headers.get("X-Kapso-Signature") ?? ""
+
+    const secret = process.env.KAPSO_WEBHOOK_SECRET
+    if (!secret) {
+      return new Response("Webhook secret not configured", { status: 500 })
     }
 
-    const body = await request.json() as {
-      orgId: string
-      from: string
-      messageId: string
+    const encoder = new TextEncoder()
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    )
+    const sig = new Uint8Array(
+      await crypto.subtle.sign("HMAC", key, encoder.encode(body))
+    )
+    const expected = Array.from(sig).map((b) => b.toString(16).padStart(2, "0")).join("")
+
+    if (expected !== signature) {
+      return new Response("Invalid signature", { status: 403 })
+    }
+
+    const event = JSON.parse(body) as {
       type: string
-      text?: string
-      timestamp: number
+      data: {
+        phone_number_id?: string
+        phone_number?: string
+        customer?: { external_customer_id?: string; id?: string }
+      }
     }
 
-    const org = await ctx.runQuery(internal.organizations.getInternal, {
-      organizationId: body.orgId as Id<"organizations">,
-    })
+    if (event.type === "whatsapp.phone_number.created") {
+      const phoneNumberId = event.data.phone_number_id
+      const kapsoCustomerId = event.data.customer?.id
+      const phoneNumber = event.data.phone_number
 
-    if (!org) {
-      return new Response("Organization not found", { status: 404 })
+      if (phoneNumberId && kapsoCustomerId) {
+        await ctx.runMutation(internal.whatsapp.handlePhoneConnected, {
+          kapsoCustomerId,
+          kapsoPhoneNumberId: phoneNumberId,
+          phoneNumber,
+        })
+      }
     }
 
-    const isNew = await ctx.runMutation(internal.whatsapp.processInboundMessage, {
-      organizationId: body.orgId as Id<"organizations">,
-      from: body.from,
-      messageId: body.messageId,
-      timestamp: body.timestamp,
-      type: body.type,
-      text: body.text,
-    })
+    return new Response("OK", { status: 200 })
+  }),
+})
 
-    if (isNew && body.text && body.type === "text") {
-      await ctx.runMutation(internal.whatsapp.scheduleAgentRouting, {
-        organizationId: body.orgId as Id<"organizations">,
-        phoneNumber: body.from,
-        text: body.text,
+http.route({
+  path: "/webhook/kapso/messages",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.text()
+    const signature = request.headers.get("X-Kapso-Signature") ?? ""
+
+    const secret = process.env.KAPSO_WEBHOOK_SECRET
+    if (!secret) {
+      return new Response("Webhook secret not configured", { status: 500 })
+    }
+
+    const encoder = new TextEncoder()
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    )
+    const sig = new Uint8Array(
+      await crypto.subtle.sign("HMAC", key, encoder.encode(body))
+    )
+    const expected = Array.from(sig).map((b) => b.toString(16).padStart(2, "0")).join("")
+
+    if (expected !== signature) {
+      return new Response("Invalid signature", { status: 403 })
+    }
+
+    const event = JSON.parse(body) as {
+      type: string
+      data: {
+        phone_number_id?: string
+        from?: string
+        message_id?: string
+        timestamp?: number
+        type?: string
+        text?: { body?: string }
+        contacts?: Array<{ profile?: { name?: string } }>
+        status?: string
+        image?: { id?: string; caption?: string }
+        audio?: { id?: string }
+        video?: { id?: string; caption?: string }
+        document?: { id?: string; filename?: string; caption?: string }
+        interactive?: Record<string, unknown>
+      }
+    }
+
+    if (event.type === "whatsapp.message.received") {
+      const phoneNumberId = event.data.phone_number_id
+      if (!phoneNumberId) {
+        return new Response("Missing phone_number_id", { status: 400 })
+      }
+
+      const connection = await ctx.runQuery(internal.whatsapp.getConnectionByKapsoPhone, {
+        kapsoPhoneNumberId: phoneNumberId,
+      }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" } | null
+
+      if (!connection) {
+        return new Response("Unknown phone number", { status: 404 })
+      }
+
+      const from = event.data.from ?? ""
+      const messageId = event.data.message_id ?? `kapso_${Date.now()}`
+      const timestamp = event.data.timestamp ?? Date.now()
+      const msgType = event.data.type ?? "text"
+      const contactName = event.data.contacts?.[0]?.profile?.name
+
+      const mediaId = event.data.image?.id ?? event.data.audio?.id ?? event.data.video?.id ?? event.data.document?.id
+      const mediaCaption = event.data.image?.caption ?? event.data.video?.caption ?? event.data.document?.caption
+      const interactiveData = event.data.interactive
+
+      let text = event.data.text?.body
+      if (!text) {
+        if (mediaCaption) {
+          text = mediaCaption
+        } else if (msgType === "image") {
+          text = "[Sent an image]"
+        } else if (msgType === "video") {
+          text = "[Sent a video]"
+        } else if (msgType === "audio") {
+          text = "[Sent a voice message]"
+        } else if (msgType === "document") {
+          text = `[Sent a document${event.data.document?.filename ? `: ${event.data.document.filename}` : ""}]`
+        } else if (msgType === "interactive" && interactiveData) {
+          const ir = interactiveData as Record<string, any>
+          text = ir.button_reply?.title ?? ir.list_reply?.title ?? "[Interactive reply]"
+        }
+      }
+
+      const msgId = await ctx.runMutation(internal.whatsapp.processInboundMessage, {
+        organizationId: connection.organizationId,
+        connectionId: connection._id,
+        from,
+        messageId,
+        timestamp,
+        type: msgType,
+        text,
+        contactName,
+        mediaCaption,
+        interactiveData,
       })
+
+      if (msgId && mediaId) {
+        await ctx.runMutation(internal.whatsapp.scheduleMediaDownload, {
+          whatsappMessageId: msgId,
+          mediaId,
+          kapsoPhoneNumberId: phoneNumberId,
+        })
+      }
+
+      if (msgId && text) {
+        await ctx.runMutation(internal.whatsapp.scheduleAgentRouting, {
+          organizationId: connection.organizationId,
+          environment: connection.environment,
+          connectionId: connection._id,
+          phoneNumber: from,
+          text,
+        })
+      }
     }
 
-    return new Response("OK", { status: 200 })
-  }),
-})
-
-http.route({
-  path: "/webhook/whatsapp/qr",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
-    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
-      return new Response("Forbidden", { status: 403 })
+    if (event.type === "whatsapp.message.status_update") {
+      const messageId = event.data.message_id
+      const status = event.data.status
+      if (messageId && status) {
+        await ctx.runMutation(internal.whatsapp.updateMessageStatus, {
+          messageId,
+          status,
+        })
+      }
     }
-
-    const { orgId, qrCode } = await request.json() as { orgId: string; qrCode: string }
-
-    await ctx.runMutation(internal.whatsapp.updateQRCode, {
-      organizationId: orgId as Id<"organizations">,
-      qrCode,
-    })
-
-    return new Response("OK", { status: 200 })
-  }),
-})
-
-http.route({
-  path: "/webhook/whatsapp/pairing-code",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
-    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
-      return new Response("Forbidden", { status: 403 })
-    }
-
-    const { orgId, pairingCode } = await request.json() as { orgId: string; pairingCode: string }
-
-    await ctx.runMutation(internal.whatsapp.updatePairingCode, {
-      organizationId: orgId as Id<"organizations">,
-      pairingCode,
-    })
-
-    return new Response("OK", { status: 200 })
-  }),
-})
-
-http.route({
-  path: "/webhook/whatsapp/status",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
-    if (!gatewaySecret || request.headers.get("X-Gateway-Secret") !== gatewaySecret) {
-      return new Response("Forbidden", { status: 403 })
-    }
-
-    const { orgId, status, phoneNumber } = await request.json() as {
-      orgId: string
-      status: "disconnected" | "connecting" | "qr_ready" | "pairing_code_ready" | "connected"
-      phoneNumber?: string
-    }
-
-    await ctx.runMutation(internal.whatsapp.updateConnectionStatus, {
-      organizationId: orgId as Id<"organizations">,
-      status,
-      phoneNumber,
-    })
 
     return new Response("OK", { status: 200 })
   }),
