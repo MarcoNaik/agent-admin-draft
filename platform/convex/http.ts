@@ -255,36 +255,36 @@ http.route({
   }),
 })
 
+async function verifyKapsoSignature(rawBody: string, signatureHeader: string): Promise<boolean> {
+  const secret = process.env.KAPSO_WEBHOOK_SECRET
+  if (!secret) return false
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  )
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody))
+  )
+  const expected = Array.from(sig).map((b) => b.toString(16).padStart(2, "0")).join("")
+  return expected === signatureHeader
+}
+
 http.route({
   path: "/webhook/kapso/project",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = await request.text()
-    const signature = request.headers.get("X-Kapso-Signature") ?? ""
+    const rawBody = await request.text()
+    const signature = request.headers.get("X-Webhook-Signature") ?? ""
 
-    const secret = process.env.KAPSO_WEBHOOK_SECRET
-    if (!secret) {
-      return new Response("Webhook secret not configured", { status: 500 })
-    }
-
-    const encoder = new TextEncoder()
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    )
-    const sig = new Uint8Array(
-      await crypto.subtle.sign("HMAC", key, encoder.encode(body))
-    )
-    const expected = Array.from(sig).map((b) => b.toString(16).padStart(2, "0")).join("")
-
-    if (expected !== signature) {
+    if (!(await verifyKapsoSignature(rawBody, signature))) {
       return new Response("Invalid signature", { status: 403 })
     }
 
-    const event = JSON.parse(body) as {
+    const event = JSON.parse(rawBody) as {
       type: string
       data: {
         phone_number_id?: string
@@ -307,6 +307,15 @@ http.route({
       }
     }
 
+    if (event.type === "whatsapp.phone_number.deleted") {
+      const phoneNumberId = event.data.phone_number_id
+      if (phoneNumberId) {
+        await ctx.runMutation(internal.whatsapp.handlePhoneDeleted, {
+          kapsoPhoneNumberId: phoneNumberId,
+        })
+      }
+    }
+
     return new Response("OK", { status: 200 })
   }),
 })
@@ -315,52 +324,40 @@ http.route({
   path: "/webhook/kapso/messages",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = await request.text()
-    const signature = request.headers.get("X-Kapso-Signature") ?? ""
+    const rawBody = await request.text()
+    const signature = request.headers.get("X-Webhook-Signature") ?? ""
 
-    const secret = process.env.KAPSO_WEBHOOK_SECRET
-    if (!secret) {
-      return new Response("Webhook secret not configured", { status: 500 })
-    }
-
-    const encoder = new TextEncoder()
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    )
-    const sig = new Uint8Array(
-      await crypto.subtle.sign("HMAC", key, encoder.encode(body))
-    )
-    const expected = Array.from(sig).map((b) => b.toString(16).padStart(2, "0")).join("")
-
-    if (expected !== signature) {
+    if (!(await verifyKapsoSignature(rawBody, signature))) {
       return new Response("Invalid signature", { status: 403 })
     }
 
-    const event = JSON.parse(body) as {
-      type: string
-      data: {
-        phone_number_id?: string
-        from?: string
-        message_id?: string
-        timestamp?: number
-        type?: string
+    const eventType = request.headers.get("X-Webhook-Event") ?? ""
+    const parsed = JSON.parse(rawBody) as {
+      message: {
+        id: string
+        phone_number_id: string
+        type: string
+        from: string
+        timestamp: string
         text?: { body?: string }
-        contacts?: Array<{ profile?: { name?: string } }>
-        status?: string
         image?: { id?: string; caption?: string }
         audio?: { id?: string }
         video?: { id?: string; caption?: string }
         document?: { id?: string; filename?: string; caption?: string }
         interactive?: Record<string, unknown>
+        kapso?: {
+          direction?: string
+          contact_name?: string
+          media_url?: string
+        }
       }
+      conversation?: Record<string, unknown>
     }
 
-    if (event.type === "whatsapp.message.received") {
-      const phoneNumberId = event.data.phone_number_id
+    const message = parsed.message
+
+    if (eventType === "whatsapp.message.received") {
+      const phoneNumberId = message.phone_number_id
       if (!phoneNumberId) {
         return new Response("Missing phone_number_id", { status: 400 })
       }
@@ -373,17 +370,18 @@ http.route({
         return new Response("Unknown phone number", { status: 404 })
       }
 
-      const from = event.data.from ?? ""
-      const messageId = event.data.message_id ?? `kapso_${Date.now()}`
-      const timestamp = event.data.timestamp ?? Date.now()
-      const msgType = event.data.type ?? "text"
-      const contactName = event.data.contacts?.[0]?.profile?.name
+      const from = message.from ?? ""
+      const messageId = message.id ?? `kapso_${Date.now()}`
+      const timestamp = Number(message.timestamp) || Date.now()
+      const msgType = message.type ?? "text"
+      const contactName = message.kapso?.contact_name
+      const mediaUrl = message.kapso?.media_url
 
-      const mediaId = event.data.image?.id ?? event.data.audio?.id ?? event.data.video?.id ?? event.data.document?.id
-      const mediaCaption = event.data.image?.caption ?? event.data.video?.caption ?? event.data.document?.caption
-      const interactiveData = event.data.interactive
+      const mediaId = message.image?.id ?? message.audio?.id ?? message.video?.id ?? message.document?.id
+      const mediaCaption = message.image?.caption ?? message.video?.caption ?? message.document?.caption
+      const interactiveData = message.interactive
 
-      let text = event.data.text?.body
+      let text = message.text?.body
       if (!text) {
         if (mediaCaption) {
           text = mediaCaption
@@ -394,7 +392,7 @@ http.route({
         } else if (msgType === "audio") {
           text = "[Sent a voice message]"
         } else if (msgType === "document") {
-          text = `[Sent a document${event.data.document?.filename ? `: ${event.data.document.filename}` : ""}]`
+          text = `[Sent a document${message.document?.filename ? `: ${message.document.filename}` : ""}]`
         } else if (msgType === "interactive" && interactiveData) {
           const ir = interactiveData as Record<string, any>
           text = ir.button_reply?.title ?? ir.list_reply?.title ?? "[Interactive reply]"
@@ -412,6 +410,7 @@ http.route({
         contactName,
         mediaCaption,
         interactiveData,
+        mediaDirectUrl: mediaUrl,
       })
 
       if (msgId && mediaId) {
@@ -419,6 +418,7 @@ http.route({
           whatsappMessageId: msgId,
           mediaId,
           kapsoPhoneNumberId: phoneNumberId,
+          mediaUrl,
         })
       }
 
@@ -433,10 +433,14 @@ http.route({
       }
     }
 
-    if (event.type === "whatsapp.message.status_update") {
-      const messageId = event.data.message_id
-      const status = event.data.status
-      if (messageId && status) {
+    if (
+      eventType === "whatsapp.message.delivered" ||
+      eventType === "whatsapp.message.read" ||
+      eventType === "whatsapp.message.failed"
+    ) {
+      const messageId = message.id
+      const status = eventType.split(".").pop()!
+      if (messageId) {
         await ctx.runMutation(internal.whatsapp.updateMessageStatus, {
           messageId,
           status,
