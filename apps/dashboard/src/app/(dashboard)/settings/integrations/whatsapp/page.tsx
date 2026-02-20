@@ -840,6 +840,7 @@ export default function WhatsAppSettingsPage() {
                     key={connection._id}
                     connection={connection}
                     agents={agents ?? []}
+                    environment={environment}
                     onDisconnect={handleDisconnect}
                     onRemove={handleRemove}
                     onAgentChange={handleAgentChange}
