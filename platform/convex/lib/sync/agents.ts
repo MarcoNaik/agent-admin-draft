@@ -26,7 +26,7 @@ export async function syncAgents(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   agents: AgentInput[],
-  environment: "development" | "production",
+  environment: "development" | "production" | "eval",
   userId?: Id<"users">
 ): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
@@ -90,7 +90,7 @@ async function syncAgentConfig(
   ctx: MutationCtx,
   agentId: Id<"agents">,
   agent: AgentInput,
-  environment: "development" | "production",
+  environment: "development" | "production" | "eval",
   userId?: Id<"users">
 ): Promise<void> {
   const now = Date.now()

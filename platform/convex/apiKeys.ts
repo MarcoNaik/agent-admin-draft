@@ -54,7 +54,7 @@ export const create = mutation({
     name: v.string(),
     permissions: v.array(v.string()),
     expiresAt: v.optional(v.number()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)

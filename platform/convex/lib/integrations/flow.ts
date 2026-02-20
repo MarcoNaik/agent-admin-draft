@@ -10,7 +10,7 @@ interface FlowConfig {
 
 interface CreatePaymentLinkParams {
   organizationId: Id<"organizations">
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
   paymentId: Id<"entities">
   amount: number
   currency: string
@@ -36,7 +36,7 @@ interface FlowPaymentStatus {
 export async function getFlowConfig(
   ctx: QueryCtx,
   organizationId: Id<"organizations">,
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<FlowConfig> {
   const config = await ctx.db
     .query("integrationConfigs")
@@ -256,7 +256,7 @@ export async function createPaymentLink(
 export async function verifyPaymentStatus(
   ctx: ActionCtx,
   organizationId: Id<"organizations">,
-  environment: "development" | "production",
+  environment: "development" | "production" | "eval",
   token: string
 ): Promise<FlowPaymentStatus> {
   const config = await ctx.runQuery(
@@ -296,7 +296,7 @@ export async function verifyPaymentStatus(
 export async function checkFlowOrderStatus(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
-  environment: "development" | "production",
+  environment: "development" | "production" | "eval",
   flowOrderId: string
 ): Promise<FlowPaymentStatus> {
   const config = await getFlowConfig(ctx, organizationId, environment)

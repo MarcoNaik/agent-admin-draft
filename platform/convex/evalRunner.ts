@@ -659,7 +659,7 @@ async function resolveJudgeContext(
   template: string,
   organizationId: Id<"organizations">,
   agentId: Id<"agents">,
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<string> {
   const actor = buildSystemActorContext(organizationId, environment)
   const org = await ctx.runQuery(internal.evals.getOrgName, { organizationId })
@@ -690,7 +690,7 @@ async function resolveAgentSystemPrompt(
   ctx: ActionCtx,
   organizationId: Id<"organizations">,
   agentId: Id<"agents">,
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<string> {
   const config = await ctx.runQuery(internal.evals.getAgentConfig, { agentId, environment })
   if (!config?.systemPrompt) return ""

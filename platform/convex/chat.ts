@@ -14,7 +14,7 @@ export const send = action({
     agentId: v.id("agents"),
     message: v.string(),
     threadId: v.optional(v.id("threads")),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   returns: v.object({
     message: v.string(),
@@ -52,7 +52,7 @@ export const sendBySlug = action({
     slug: v.string(),
     message: v.string(),
     threadId: v.optional(v.id("threads")),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   returns: v.object({
     message: v.string(),

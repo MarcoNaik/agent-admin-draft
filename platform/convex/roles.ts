@@ -4,7 +4,7 @@ import { getAuthContext, requireAuth } from "./lib/auth"
 
 export const list = query({
   args: {
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
@@ -36,7 +36,7 @@ export const get = query({
 export const getByName = query({
   args: {
     name: v.string(),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
@@ -98,7 +98,7 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     isSystem: v.optional(v.boolean()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -445,7 +445,7 @@ export const createPendingAssignment = mutation({
   args: {
     email: v.string(),
     roleId: v.id("roles"),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -494,7 +494,7 @@ export const createPendingAssignment = mutation({
 export const listInternal = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   handler: async (ctx, args) => {
     if (args.environment) {

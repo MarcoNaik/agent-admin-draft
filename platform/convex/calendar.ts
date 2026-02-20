@@ -8,7 +8,7 @@ import {
   listCalendars as googleListCalendars,
 } from "./lib/integrations/googleCalendar"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 export const getConnection = query({
   args: {

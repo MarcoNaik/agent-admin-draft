@@ -6,7 +6,7 @@ import { getAuthContext, requireAuth } from "./lib/auth"
 export const listWithPreviews = query({
   args: {
     agentId: v.optional(v.id("agents")),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -129,7 +129,7 @@ export const listWithPreviews = query({
 export const list = query({
   args: {
     agentId: v.optional(v.id("agents")),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -215,7 +215,7 @@ export const create = mutation({
     agentId: v.id("agents"),
     externalId: v.optional(v.string()),
     metadata: v.optional(v.any()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -365,7 +365,7 @@ export const getOrCreate = internalMutation({
     externalId: v.optional(v.string()),
     userId: v.optional(v.id("users")),
     metadata: v.optional(v.any()),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
     conversationId: v.optional(v.string()),
     parentThreadId: v.optional(v.id("threads")),
   },

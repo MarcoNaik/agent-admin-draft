@@ -33,7 +33,7 @@ export async function syncRoles(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   roles: RoleInput[],
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
   const now = Date.now()
@@ -297,7 +297,7 @@ async function duplicateUserRolesForProduction(
 export async function getRoleNames(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<string[]> {
   const roles = await ctx.db
     .query("roles")

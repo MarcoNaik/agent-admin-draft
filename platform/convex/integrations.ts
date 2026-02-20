@@ -4,7 +4,7 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"))
 

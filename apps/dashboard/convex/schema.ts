@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 export default defineSchema({
   organizations: defineTable({

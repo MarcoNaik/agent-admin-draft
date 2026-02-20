@@ -70,7 +70,7 @@ async function scheduleTrigerRun(
     _id: Id<"triggers">
     slug: string
     organizationId: Id<"organizations">
-    environment: "development" | "production"
+    environment: "development" | "production" | "eval"
     schedule?: TriggerSchedule | null
     retry?: { maxAttempts?: number; backoffMs?: number } | null
   },

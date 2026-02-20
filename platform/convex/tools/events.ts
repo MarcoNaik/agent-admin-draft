@@ -9,7 +9,7 @@ import {
   ActorType,
 } from "../lib/permissions"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 async function filterVisibleEntityIds(
   ctx: Parameters<typeof canPerform>[0],

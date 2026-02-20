@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel"
 import { resolveTemplateVars } from "./lib/triggers"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref: string }> = {
   "entity.create": { type: "mutation", ref: "entityCreate" },
@@ -23,15 +23,20 @@ const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref
   "calendar.delete": { type: "action", ref: "calendarDelete" },
   "calendar.freeBusy": { type: "action", ref: "calendarFreeBusy" },
   "whatsapp.send": { type: "action", ref: "whatsappSend" },
+  "whatsapp.sendTemplate": { type: "action", ref: "whatsappSendTemplate" },
+  "whatsapp.sendInteractive": { type: "action", ref: "whatsappSendInteractive" },
+  "whatsapp.sendMedia": { type: "action", ref: "whatsappSendMedia" },
+  "whatsapp.listTemplates": { type: "action", ref: "whatsappListTemplates" },
   "whatsapp.getConversation": { type: "action", ref: "whatsappGetConversation" },
   "whatsapp.getStatus": { type: "action", ref: "whatsappGetStatus" },
+  "agent.chat": { type: "action", ref: "agentChat" },
 }
 
 async function executeActionPipeline(
   ctx: any,
   params: {
     organizationId: Id<"organizations">
-    environment: "development" | "production"
+    environment: "development" | "production" | "eval"
     entityId: Id<"entities">
     entityTypeSlug: string
     action: string
@@ -470,7 +475,7 @@ async function executeToolAction(
   ctx: any,
   params: {
     organizationId: Id<"organizations">
-    environment: "development" | "production"
+    environment: "development" | "production" | "eval"
     tool: string
     args: Record<string, unknown>
   }
@@ -609,6 +614,38 @@ async function executeToolAction(
         text: args.text as string,
       })
 
+    case "whatsapp.sendTemplate":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSendTemplate, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        templateName: args.templateName as string,
+        language: args.language as string,
+        components: args.components as any,
+      })
+
+    case "whatsapp.sendInteractive":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSendInteractive, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        bodyText: args.bodyText as string,
+        buttons: args.buttons as any,
+        footerText: args.footerText as string | undefined,
+      })
+
+    case "whatsapp.sendMedia":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSendMedia, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        mediaUrl: args.mediaUrl as string,
+        mediaType: args.mediaType as "image" | "audio",
+        caption: args.caption as string | undefined,
+      })
+
+    case "whatsapp.listTemplates":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappListTemplates, {
+        organizationId, actorId, actorType, environment,
+      })
+
     case "whatsapp.getConversation":
       return await ctx.runAction(internal.tools.whatsapp.whatsappGetConversation, {
         organizationId, actorId, actorType, environment,
@@ -621,8 +658,23 @@ async function executeToolAction(
         organizationId, actorId, actorType, environment,
       })
 
+    case "agent.chat":
+      return await ctx.runAction(internal.tools.agents.agentChat, {
+        organizationId, actorId, actorType, environment,
+        agentSlug: args.agent as string,
+        message: args.message as string,
+        context: args.context as Record<string, unknown> | undefined,
+        conversationId: undefined,
+        depth: 0,
+        callerAgentSlug: undefined,
+      })
+
     default:
-      throw new Error(`Unknown tool: ${tool}`)
+      return await ctx.runAction(internal.agent.executeCustomTool, {
+        toolName: tool,
+        args,
+        context: { organizationId, actorId: "system", actorType: "system" },
+      })
   }
 }
 

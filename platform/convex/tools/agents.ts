@@ -5,7 +5,7 @@ import { Id } from "../_generated/dataModel"
 import { generateId } from "../lib/utils"
 import { ActorContext, Environment } from "../lib/permissions/types"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const MAX_AGENT_DEPTH = 3
 

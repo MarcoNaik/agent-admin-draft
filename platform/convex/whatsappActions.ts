@@ -7,13 +7,16 @@ import { Id } from "./_generated/dataModel"
 import {
   createKapsoCustomer,
   createSetupLink,
-  registerCustomerWebhook,
+  registerProjectWebhook,
   registerPhoneWebhook,
   deletePhoneNumber,
   sendTextMessage,
   sendTemplateMessage,
   getKapsoWebhookSecret,
   listPhoneTemplates,
+  createPhoneTemplate,
+  deletePhoneTemplate,
+  getPhoneTemplateStatus,
   sendInteractiveButtons,
   sendImageMessage,
   sendAudioMessage,
@@ -22,7 +25,7 @@ import {
 } from "./lib/integrations/kapso"
 import { parseWhatsAppExternalId } from "./whatsapp"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 export const sendTextToPhone = internalAction({
   args: {
@@ -72,13 +75,16 @@ export const createKapsoSetup = internalAction({
       }
     }
 
-    const siteUrl = process.env.CONVEX_SITE_URL ?? ""
-    const secret = getKapsoWebhookSecret()
-    await registerCustomerWebhook(
-      kapsoCustomerId,
-      `${siteUrl}/webhook/kapso/project`,
-      secret
-    )
+    try {
+      const siteUrl = process.env.CONVEX_SITE_URL ?? ""
+      const secret = getKapsoWebhookSecret()
+      await registerProjectWebhook(
+        `${siteUrl}/webhook/kapso/project`,
+        secret
+      )
+    } catch (e) {
+      console.error("Failed to register project webhook:", e)
+    }
 
     const dashboardUrl = process.env.DASHBOARD_URL ?? ""
     const setupLink = await createSetupLink(
@@ -462,5 +468,97 @@ export const sendInteractive = action({
     })
 
     return { messageId: result.messageId }
+  },
+})
+
+export const createTemplate = action({
+  args: {
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+    name: v.string(),
+    language: v.string(),
+    category: v.string(),
+    components: v.array(v.any()),
+    allowCategoryChange: v.optional(v.boolean()),
+  },
+  returns: v.object({ id: v.string(), status: v.string(), category: v.string() }),
+  handler: async (ctx, args): Promise<{ id: string; status: string; category: string }> => {
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    if (!auth) throw new Error("Not authenticated")
+
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== auth.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    return await createPhoneTemplate(
+      connection.kapsoPhoneNumberId,
+      args.name,
+      args.language,
+      args.category,
+      args.components as Array<Record<string, unknown>>,
+      args.allowCategoryChange
+    )
+  },
+})
+
+export const deleteTemplate = action({
+  args: {
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+    name: v.string(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    if (!auth) throw new Error("Not authenticated")
+
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== auth.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    return await deletePhoneTemplate(connection.kapsoPhoneNumberId, args.name)
+  },
+})
+
+export const getTemplateStatus = action({
+  args: {
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+    name: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    if (!auth) throw new Error("Not authenticated")
+
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== auth.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    return await getPhoneTemplateStatus(connection.kapsoPhoneNumberId, args.name)
   },
 })

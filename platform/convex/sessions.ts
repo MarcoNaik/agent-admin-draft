@@ -58,7 +58,7 @@ export const createSession = mutation({
     meetingLink: v.optional(v.string()),
     entitlementId: v.optional(v.string()),
     guardianNotes: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({
     sessionId: v.id("entities"),
@@ -170,7 +170,7 @@ export const rescheduleSession = mutation({
     sessionId: v.id("entities"),
     newStartTime: v.number(),
     newDuration: v.optional(v.number()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({
     success: v.boolean(),
@@ -259,7 +259,7 @@ export const cancelSession = mutation({
   args: {
     sessionId: v.id("entities"),
     reason: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -328,7 +328,7 @@ export const completeSession = mutation({
     sessionId: v.id("entities"),
     reportContent: v.optional(v.string()),
     teacherNotes: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -426,7 +426,7 @@ export const completeSession = mutation({
 export const startSession = mutation({
   args: {
     sessionId: v.id("entities"),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -483,7 +483,7 @@ export const startSession = mutation({
 export const markNoShow = mutation({
   args: {
     sessionId: v.id("entities"),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {

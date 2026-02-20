@@ -240,7 +240,7 @@ export const reconcilePayments = internalMutation({
     const pendingPayments: Array<{
       _id: Id<"entities">
       organizationId: Id<"organizations">
-      environment: "development" | "production"
+      environment: "development" | "production" | "eval"
       data: PaymentData
       createdAt: number
     }> = []
@@ -392,7 +392,7 @@ export const createPayment = mutation({
     description: v.string(),
     sessionId: v.optional(v.string()),
     guardianId: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {

@@ -4,7 +4,7 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 
 
@@ -24,7 +24,7 @@ async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"
   }
 }
 
-async function requireWhatsAppEnabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, environment: "development" | "production") {
+async function requireWhatsAppEnabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, environment: "development" | "production" | "eval") {
   const integrationConfig = await ctx.db
     .query("integrationConfigs")
     .withIndex("by_org_env_provider", (q) =>
@@ -92,7 +92,13 @@ export const handlePhoneConnected = internalMutation({
     )
 
     if (!found) {
-      throw new Error(`No pending connection found for Kapso customer ${args.kapsoCustomerId}`)
+      const alreadyConnected = allConnections.find(
+        (conn) => conn.kapsoPhoneNumberId === args.kapsoPhoneNumberId && conn.status === "connected"
+      )
+      if (alreadyConnected) {
+        return null
+      }
+      return null
     }
 
     const now = Date.now()
@@ -532,9 +538,14 @@ export const storeOutboundMessage = internalMutation({
     connectionId: v.optional(v.id("whatsappConnections")),
     phoneNumber: v.string(),
     messageId: v.string(),
-    text: v.string(),
+    text: v.optional(v.string()),
     threadId: v.optional(v.id("threads")),
     status: v.optional(v.union(v.literal("sent"), v.literal("failed"))),
+    type: v.optional(v.string()),
+    interactiveData: v.optional(v.any()),
+    mediaDirectUrl: v.optional(v.string()),
+    mediaCaption: v.optional(v.string()),
+    mediaMimeType: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -544,11 +555,15 @@ export const storeOutboundMessage = internalMutation({
       direction: "outbound",
       phoneNumber: args.phoneNumber,
       messageId: args.messageId,
-      type: "text",
+      type: args.type ?? "text",
       text: args.text,
       threadId: args.threadId,
       status: args.status ?? "sent",
       createdAt: Date.now(),
+      interactiveData: args.interactiveData,
+      mediaDirectUrl: args.mediaDirectUrl,
+      mediaCaption: args.mediaCaption,
+      mediaMimeType: args.mediaMimeType,
     })
     return null
   },

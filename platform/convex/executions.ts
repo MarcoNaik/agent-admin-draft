@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
 import { getAuthContext } from "./lib/auth"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 export const list = query({
   args: {

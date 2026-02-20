@@ -9,7 +9,7 @@ import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
 import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps } from "./lib/llm"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 interface ToolCall {
   id: string
@@ -1112,6 +1112,47 @@ async function executeBuiltinTool(
         organizationId, actorId, actorType, environment,
         to: args.to as string,
         text: args.text as string,
+      })
+
+    case "whatsapp.sendTemplate":
+      if (!args.to) throw new Error("whatsapp.sendTemplate requires 'to' parameter")
+      if (!args.templateName) throw new Error("whatsapp.sendTemplate requires 'templateName' parameter")
+      if (!args.language) throw new Error("whatsapp.sendTemplate requires 'language' parameter")
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSendTemplate, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        templateName: args.templateName as string,
+        language: args.language as string,
+        components: args.components as any,
+      })
+
+    case "whatsapp.sendInteractive":
+      if (!args.to) throw new Error("whatsapp.sendInteractive requires 'to' parameter")
+      if (!args.bodyText) throw new Error("whatsapp.sendInteractive requires 'bodyText' parameter")
+      if (!args.buttons) throw new Error("whatsapp.sendInteractive requires 'buttons' parameter")
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSendInteractive, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        bodyText: args.bodyText as string,
+        buttons: args.buttons as any,
+        footerText: args.footerText as string | undefined,
+      })
+
+    case "whatsapp.sendMedia":
+      if (!args.to) throw new Error("whatsapp.sendMedia requires 'to' parameter")
+      if (!args.mediaUrl) throw new Error("whatsapp.sendMedia requires 'mediaUrl' parameter")
+      if (!args.mediaType) throw new Error("whatsapp.sendMedia requires 'mediaType' parameter")
+      return await ctx.runAction(internal.tools.whatsapp.whatsappSendMedia, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        mediaUrl: args.mediaUrl as string,
+        mediaType: args.mediaType as "image" | "audio",
+        caption: args.caption as string | undefined,
+      })
+
+    case "whatsapp.listTemplates":
+      return await ctx.runAction(internal.tools.whatsapp.whatsappListTemplates, {
+        organizationId, actorId, actorType, environment,
       })
 
     case "whatsapp.getConversation":

@@ -10,7 +10,7 @@ import {
 } from "./lib/permissions"
 import { Environment } from "./lib/permissions/types"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 async function filterVisibleEntityIds(
   ctx: Parameters<typeof canPerform>[0],

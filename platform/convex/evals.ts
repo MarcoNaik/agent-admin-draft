@@ -3,7 +3,7 @@ import { query, mutation, internalMutation, internalQuery } from "./_generated/s
 import { internal } from "./_generated/api"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const assertionValidator = v.object({
   type: v.union(

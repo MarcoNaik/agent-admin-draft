@@ -6,7 +6,7 @@ import { buildActorContext, assertCanPerform } from "./lib/permissions"
 
 export const list = query({
   args: {
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
@@ -40,7 +40,7 @@ export const get = query({
 export const getBySlug = query({
   args: {
     slug: v.string(),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
@@ -66,7 +66,7 @@ export const create = mutation({
     displayConfig: v.optional(v.any()),
     boundToRole: v.optional(v.string()),
     userIdField: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.id("entityTypes"),
   handler: async (ctx, args) => {
@@ -121,7 +121,7 @@ export const update = mutation({
     displayConfig: v.optional(v.any()),
     boundToRole: v.optional(v.string()),
     userIdField: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
@@ -159,7 +159,7 @@ export const update = mutation({
 export const remove = mutation({
   args: {
     id: v.id("entityTypes"),
-    environment: v.union(v.literal("development"), v.literal("production")),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -198,7 +198,7 @@ export const remove = mutation({
 export const listInternal = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    environment: v.optional(v.union(v.literal("development"), v.literal("production"))),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
   handler: async (ctx, args) => {
     if (args.environment) {

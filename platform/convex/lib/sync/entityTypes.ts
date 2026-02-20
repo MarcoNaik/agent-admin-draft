@@ -15,7 +15,7 @@ export async function syncEntityTypes(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   entityTypes: EntityTypeInput[],
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
   const now = Date.now()
@@ -85,7 +85,7 @@ export async function syncEntityTypes(
 export async function getEntityTypeSlugs(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<string[]> {
   const types = await ctx.db
     .query("entityTypes")

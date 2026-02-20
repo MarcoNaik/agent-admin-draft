@@ -39,7 +39,7 @@ export async function syncEvalSuites(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   suites: EvalSuiteInput[],
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<{ created: string[]; updated: string[]; deleted: string[]; skipped: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[], skipped: [] as string[] }
   const now = Date.now()

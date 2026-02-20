@@ -4,7 +4,7 @@ import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { canUseTool, getToolIdentity, ToolPermissionResult } from "./lib/permissions/tools"
 import { queryEntitiesAsActor, getEntityAsActor } from "./lib/permissions"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const actorContextValidator = v.object({
   organizationId: v.id("organizations"),

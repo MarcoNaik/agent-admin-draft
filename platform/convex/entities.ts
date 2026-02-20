@@ -20,7 +20,7 @@ import {
 import { Environment } from "./lib/permissions/types"
 import { checkAndScheduleTriggers } from "./lib/triggers"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 function filterDataByMask(
   data: Record<string, unknown>,

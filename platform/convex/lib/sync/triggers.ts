@@ -29,7 +29,7 @@ export async function syncTriggers(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   triggers: TriggerInput[],
-  environment: "development" | "production"
+  environment: "development" | "production" | "eval"
 ): Promise<{ created: string[]; updated: string[]; deleted: string[] }> {
   const result = { created: [] as string[], updated: [] as string[], deleted: [] as string[] }
   const now = Date.now()
