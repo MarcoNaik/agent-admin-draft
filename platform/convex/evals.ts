@@ -719,6 +719,27 @@ export const getEvalStats = query({
   },
 })
 
+export const listFixtureEntities = query({
+  args: { entityTypeSlug: v.string() },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const entityType = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", "eval").eq("slug", args.entityTypeSlug)
+      )
+      .first()
+    if (!entityType) return null
+    const entities = await ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", "eval").eq("entityTypeId", entityType._id)
+      )
+      .collect()
+    return { entityType, entities: entities.filter((e) => !e.deletedAt) }
+  },
+})
+
 export const deleteCasesBySuite = mutation({
   args: { suiteId: v.id("evalSuites") },
   handler: async (ctx, args) => {

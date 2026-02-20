@@ -481,6 +481,10 @@ export function useFixtures() {
   return useQuery(api.evals.listFixtures, {})
 }
 
+export function useFixtureEntities(entityTypeSlug: string) {
+  return useQuery(api.evals.listFixtureEntities, { entityTypeSlug })
+}
+
 export function useTriggers(environment?: Environment) {
   return useQuery(api.triggers.list, { environment })
 }
