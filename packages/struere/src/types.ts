@@ -125,6 +125,27 @@ export interface EvalResultSummary {
   }>
 }
 
+export interface FixtureEntity {
+  ref: string
+  type: string
+  data: Record<string, unknown>
+  status?: string
+}
+
+export interface FixtureRelation {
+  from: string
+  to: string
+  type: string
+  metadata?: Record<string, unknown>
+}
+
+export interface FixtureDefinition {
+  name: string
+  slug: string
+  entities: FixtureEntity[]
+  relations?: FixtureRelation[]
+}
+
 export interface EntityTypeConfig {
   name: string
   slug: string
