@@ -2,11 +2,11 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { getDocBySlug, getAllDocs } from "@/lib/content"
 import { getPrevNext } from "@/lib/navigation"
-import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { TableOfContents } from "@/components/table-of-contents"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { CopyMarkdownButton } from "@/components/copy-markdown-button"
 import { PrevNextNav } from "@/components/prev-next-nav"
+import { CodeCopyButtons } from "@/components/code-copy-buttons"
 
 export const dynamicParams = false
 
@@ -68,7 +68,8 @@ export default function DocPage({ params }: PageProps) {
           </div>
           <CopyMarkdownButton slug={slug} />
         </div>
-        <MarkdownRenderer content={doc.content} />
+        <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: doc.html }} />
+        <CodeCopyButtons />
         <PrevNextNav prev={prev} next={next} />
       </article>
       <TableOfContents content={doc.content} />

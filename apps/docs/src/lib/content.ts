@@ -1,8 +1,23 @@
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
+import { unified } from "unified"
+import remarkParse from "remark-parse"
+import remarkGfm from "remark-gfm"
+import remarkRehype from "remark-rehype"
+import rehypeHighlight from "rehype-highlight"
+import rehypeSlug from "rehype-slug"
+import rehypeStringify from "rehype-stringify"
 
 const CONTENT_DIR = path.join(process.cwd(), "content")
+
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkRehype)
+  .use(rehypeHighlight)
+  .use(rehypeSlug)
+  .use(rehypeStringify)
 
 export interface DocPage {
   slug: string
@@ -11,6 +26,7 @@ export interface DocPage {
   section: string
   order: number
   content: string
+  html: string
   rawContent: string
 }
 
@@ -31,6 +47,8 @@ export function getDocBySlug(slug: string): DocPage | null {
 
   const raw = fs.readFileSync(filePath, "utf-8")
   const { data, content } = matter(raw)
+  const stripped = stripLeadingHeading(content)
+  const html = processor.processSync(stripped).toString()
 
   return {
     slug,
@@ -38,7 +56,8 @@ export function getDocBySlug(slug: string): DocPage | null {
     description: data.description ?? "",
     section: data.section ?? "",
     order: data.order ?? 0,
-    content: stripLeadingHeading(content),
+    content: stripped,
+    html,
     rawContent: raw,
   }
 }
