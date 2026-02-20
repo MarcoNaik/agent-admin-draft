@@ -4,7 +4,7 @@ export type Action = "create" | "read" | "update" | "delete" | "list"
 
 export type ActorType = "user" | "agent" | "system" | "webhook"
 
-export type Environment = "development" | "production"
+export type Environment = "development" | "production" | "eval"
 
 export interface ActorContext {
   organizationId: Id<"organizations">
