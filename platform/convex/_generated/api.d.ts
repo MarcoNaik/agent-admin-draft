@@ -39,6 +39,7 @@ import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_sync_agents from "../lib/sync/agents.js";
 import type * as lib_sync_entityTypes from "../lib/sync/entityTypes.js";
 import type * as lib_sync_evalSuites from "../lib/sync/evalSuites.js";
+import type * as lib_sync_fixtures from "../lib/sync/fixtures.js";
 import type * as lib_sync_index from "../lib/sync/index.js";
 import type * as lib_sync_roles from "../lib/sync/roles.js";
 import type * as lib_sync_triggers from "../lib/sync/triggers.js";
@@ -110,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   "lib/sync/agents": typeof lib_sync_agents;
   "lib/sync/entityTypes": typeof lib_sync_entityTypes;
   "lib/sync/evalSuites": typeof lib_sync_evalSuites;
+  "lib/sync/fixtures": typeof lib_sync_fixtures;
   "lib/sync/index": typeof lib_sync_index;
   "lib/sync/roles": typeof lib_sync_roles;
   "lib/sync/triggers": typeof lib_sync_triggers;
