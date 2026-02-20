@@ -29,6 +29,7 @@ export const listWithPreviews = query({
 
     const agentCache = new Map<string, string>()
     const userCache = new Map<string, { name?: string; email: string }>()
+    const connectionCache = new Map<string, { phoneNumber?: string; label?: string }>()
 
     const results = []
     for (const thread of threads) {
@@ -46,6 +47,9 @@ export const listWithPreviews = query({
 
       let participantName = "Unknown"
       let participantType: "user" | "whatsapp" | "unknown" = "unknown"
+      let phoneNumber: string | undefined
+      let businessPhoneNumber: string | undefined
+      let connectionLabel: string | undefined
 
       if (thread.userId) {
         const userKey = thread.userId
@@ -62,12 +66,36 @@ export const listWithPreviews = query({
           }
         }
       } else if (thread.externalId) {
-        const match = thread.externalId.match(/^whatsapp:(.+)$/)
-        if (match) {
-          participantName = match[1]
+        const waMatch = thread.externalId.match(/^whatsapp:([^:]+):(.+)$/)
+        if (waMatch) {
+          const connId = waMatch[1]
+          phoneNumber = waMatch[2]
+          const metadata = thread.metadata as Record<string, unknown> | undefined
+          participantName = (metadata?.contactName as string) ?? phoneNumber
           participantType = "whatsapp"
+
+          if (connectionCache.has(connId)) {
+            const cached = connectionCache.get(connId)!
+            businessPhoneNumber = cached.phoneNumber
+            connectionLabel = cached.label
+          } else {
+            const conn = await ctx.db.get(connId as any)
+            if (conn) {
+              businessPhoneNumber = conn.phoneNumber
+              connectionLabel = conn.label
+              connectionCache.set(connId, { phoneNumber: conn.phoneNumber, label: conn.label })
+            }
+          }
         } else {
-          participantName = thread.externalId
+          const legacyMatch = thread.externalId.match(/^whatsapp:(.+)$/)
+          if (legacyMatch) {
+            phoneNumber = legacyMatch[1]
+            const metadata = thread.metadata as Record<string, unknown> | undefined
+            participantName = (metadata?.contactName as string) ?? phoneNumber
+            participantType = "whatsapp"
+          } else {
+            participantName = thread.externalId
+          }
         }
       }
 
@@ -86,6 +114,9 @@ export const listWithPreviews = query({
         agentName,
         participantName,
         participantType,
+        phoneNumber,
+        businessPhoneNumber,
+        connectionLabel,
         lastMessage,
       })
     }
