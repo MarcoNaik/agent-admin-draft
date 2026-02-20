@@ -3,11 +3,11 @@
 ## Overview
 
 Struere is a **permission-aware AI agent platform** monorepo with:
-- **apps/** - Frontend applications (dashboard, web)
+- **apps/** - Frontend applications (dashboard, docs, web)
 - **packages/** - Shared libraries (struere SDK + CLI)
 - **platform/** - Backend services (convex, tool-executor)
 
-**Tech Stack**: Next.js 14, Convex, Cloudflare Workers, Clerk Auth, TypeScript, Bun
+**Tech Stack**: Next.js 14, Convex, Hono/Fly.io, Clerk Auth, TypeScript, Bun
 
 **Core Capability**: Role-based access control (RBAC) with row-level security (scope rules) and column-level security (field masks) enforced across all operations. Full environment isolation (development/production) across all data and permission layers.
 
@@ -17,7 +17,8 @@ Struere is a **permission-aware AI agent platform** monorepo with:
 ```
 apps/                        packages/                   platform/
 ├── dashboard (Next.js)      └── struere (SDK + CLI)    ├── convex (Backend)
-└── web (Marketing)                                     └── tool-executor (CF Worker)
+├── docs (Next.js)                                      └── tool-executor (Hono/Fly.io)
+└── web (Marketing)
 ```
 
 ### System Architecture
@@ -35,34 +36,25 @@ apps/                        packages/                   platform/
 │  │  - Guardian View│    │  │  • Scope rules (row-level security)      │    │ │
 │  └─────────────────┘    │  │  • Field masks (column-level security)   │    │ │
 │                         │  │  • Environment isolation (dev/prod)      │    │ │
-│                         │  └─────────────────────────────────────────┘    │ │
-│  ┌─────────────────┐    │                      │                           │ │
-│  │   CLI           │    │  ┌───────────────────┴───────────────────┐      │ │
-│  │   (struere)     │────┤  │           SECURED OPERATIONS           │      │ │
-│  └─────────────────┘    │  │  • Entities (CRUD + relations)         │      │ │
-│                         │  │  • Events (visibility filtered)        │      │ │
-│  ┌─────────────────┐    │  │  • Tools (permission checked)          │      │ │
-│  │   Webhooks      │    │  │  • Templates (permission-aware)        │      │ │
-│  │   - WhatsApp    │────┤  │  • Triggers (scheduled + immediate)    │      │ │
-│  │   - Flow        │    │  └────────────────────────────────────────┘      │ │
-│  └─────────────────┘    │                      │                           │ │
-│                         │  ┌───────────────────┴───────────────────┐      │ │
-│                         │  │           TUTORING DOMAIN              │      │ │
-│                         │  │  • 6 Entity Types                      │      │ │
-│                         │  │  • 3 Roles with policies               │      │ │
-│                         │  │  • Scheduling constraints              │      │ │
-│                         │  │  • Credit consumption                  │      │ │
-│                         │  │  • Scheduled triggers (reminders)      │      │ │
-│                         │  └────────────────────────────────────────┘      │ │
-│                         └─────────────────────────────────────────────────┘ │
+│  ┌─────────────────┐    │  └─────────────────────────────────────────┘    │ │
+│  │   CLI           │    │                      │                           │ │
+│  │   (struere)     │────┤  ┌───────────────────┴───────────────────┐      │ │
+│  └─────────────────┘    │  │           SECURED OPERATIONS           │      │ │
+│                         │  │  • Entities (CRUD + relations)         │      │ │
+│  ┌─────────────────┐    │  │  • Events (visibility filtered)        │      │ │
+│  │   Webhooks      │    │  │  • Tools (permission checked)          │      │ │
+│  │   - Kapso (WA)  │────┤  │  • Templates (permission-aware)        │      │ │
+│  │   - Flow        │    │  │  • Triggers (scheduled + immediate)    │      │ │
+│  │   - Polar       │    │  └────────────────────────────────────────┘      │ │
+│  └─────────────────┘    └─────────────────────────────────────────────────┘ │
 │                                        │                                    │
 │                                        ▼                                    │
 │                         ┌─────────────────────────────────────────────────┐ │
-│                         │           CLOUDFLARE WORKER                      │ │
+│                         │           HONO NODE.JS SERVER                    │ │
 │                         │           (tool-executor.struere.dev)            │ │
-│                         │  • Custom tool execution                         │ │
-│                         │  • Sandboxed fetch (allowlist domains)           │ │
-│                         │  • Actor context passed                          │ │
+│                         │  • Custom tool execution (sandboxed)             │ │
+│                         │  • Fetch allowlist (8 domains)                   │ │
+│                         │  • Deployed on Fly.io                            │ │
 │                         └─────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -83,14 +75,15 @@ apps/                        packages/                   platform/
 | **Policy Evaluation** | Deny overrides allow (deny-safe model) |
 | **Organization Boundary** | Defense in depth (multiple protective layers) |
 | **Agent Config** | Stored in Convex DB as JSON (not JS bundles) |
-| **Custom Tools** | Handler code stored in Convex, executed on CF Worker |
-| **Built-in Tools** | Convex mutations (`entity.create`, `event.emit`, `agent.chat`) |
-| **LLM Calls** | Convex actions calling Anthropic API directly |
+| **Custom Tools** | Handler code stored in Convex, executed on Hono Node.js server (Fly.io) |
+| **Built-in Tools** | Convex mutations (`entity.create`, `event.emit`, `agent.chat`, `calendar.*`, `whatsapp.*`) |
+| **LLM Calls** | Convex actions calling LLM APIs directly (Anthropic, OpenAI, Google) |
 | **Triggers** | Immediate or scheduled with retry, tracked via triggerRuns table |
 | **Real-time** | Native Convex subscriptions (no polling) |
 | **CLI Workflow** | `struere dev` syncs config to Convex via HTTP |
 | **Auth** | Clerk with Convex integration |
 | **Package Manager** | Bun (not npm) |
+| **Default Model** | `claude-sonnet-4` (full ID: `claude-sonnet-4-20250514`) |
 
 ### HTTP Endpoints (Convex)
 
@@ -98,25 +91,27 @@ apps/                        packages/                   platform/
 |----------|--------|---------|
 | `/health` | GET | Health check |
 | `/v1/chat` | POST | Chat by agent ID (Bearer token) |
-| `/v1/agents/:slug/chat` | POST | Chat by agent slug (Bearer token) |
+| `/v1/agents/:slug/chat` | POST | Chat by agent slug (Bearer token, pathPrefix match) |
 | `/webhook/clerk` | POST | Clerk webhook for user/org sync |
-| `/webhook/whatsapp` | GET | WhatsApp hub challenge verification |
-| `/webhook/whatsapp` | POST | WhatsApp inbound messages |
+| `/webhook/kapso/project` | POST | Kapso WhatsApp phone connection |
+| `/webhook/kapso/messages` | POST | Kapso WhatsApp inbound messages |
 | `/webhook/flow` | POST | Flow payment status updates |
+| `/webhook/polar` | POST | Polar payment webhook |
 
 ### Database Schema
 
 | Category | Tables |
 |----------|--------|
-| **User & Org** | organizations, users, apiKeys (env-scoped), userRoles |
+| **User & Org** | organizations, users, userOrganizations, apiKeys (env-scoped), userRoles, pendingRoleAssignments |
 | **Agents** | agents (shared), agentConfigs (env-scoped via `by_agent_env`) |
 | **Conversation** | threads (env-scoped), messages |
 | **Business Data** | entityTypes (env-scoped), entities (env-scoped), entityRelations (env-scoped) |
 | **Events & Audit** | events (env-scoped), executions (env-scoped) |
 | **Triggers** | triggers, triggerRuns (env-scoped, with schedule/retry) |
 | **RBAC** | roles (env-scoped), policies, scopeRules, fieldMasks, toolPermissions |
-| **Packs** | installedPacks (env-scoped, with customizations, upgradeHistory) |
-| **Integrations** | integrationConfigs, whatsappConnections, whatsappMessages |
+| **Integrations** | integrationConfigs, whatsappConnections, whatsappMessages, providerConfigs, calendarConnections |
+| **Billing** | creditBalances, creditTransactions |
+| **Evals** | evalSuites, evalCases, evalRuns (env-scoped), evalResults |
 
 ### Environment-Aware Indexes
 
@@ -127,8 +122,6 @@ apps/                        packages/                   platform/
 | `by_org_env_type_status` | entities | organizationId, environment, entityTypeId, status |
 | `by_org_env_name` | roles | organizationId, environment, name |
 | `by_agent_env` | agentConfigs | agentId, environment |
-| `by_org_env` | installedPacks | organizationId, environment |
-| `by_org_env_pack` | installedPacks | organizationId, environment, packId |
 | `by_org_env_type` | events | organizationId, environment, eventType |
 
 **Note:** `entityRelations` has `environment` field but `by_from`/`by_to` indexes don't include it. Environment is enforced via post-index filter. The `by_org_isSystem` index on `roles` also lacks environment — system role lookups use `.collect()` + `.find()` by environment.
@@ -150,162 +143,49 @@ apps/                        packages/                   platform/
 ### Permission Flow
 
 ```
-Request
-    │
-    ▼
-┌─────────────────────────────────┐
-│ 1. Build ActorContext           │
-│    - organizationId             │
-│    - actorType (user/agent/system) │
-│    - actorId                    │
-│    - environment (dev/prod)     │
-│    - isOrgAdmin                 │
-│    - roleIds (eager resolved,   │
-│      filtered by environment)   │
-└─────────────┬───────────────────┘
-              │
-              ▼
-┌─────────────────────────────────┐
-│ 2. Check Permission             │
-│    - Find matching policies     │
-│    - Deny overrides allow       │
-│    - No roles = denied          │
-│    - System actor = allowed     │
-└─────────────┬───────────────────┘
-              │
-              ▼
-┌─────────────────────────────────┐
-│ 3. Apply Scope Rules            │
-│    - Filter by field match      │
-│    - Teacher sees own sessions  │
-│    - Guardian sees own children │
-└─────────────┬───────────────────┘
-              │
-              ▼
-┌─────────────────────────────────┐
-│ 4. Apply Field Masks            │
-│    - Allowlist (whitelist)      │
-│    - Teachers: no payment info  │
-│    - Guardians: no teacher notes│
-└─────────────┬───────────────────┘
-              │
-              ▼
-           Response
+Request → Build ActorContext (org, actor, environment, roles)
+        → Check Permission (deny overrides allow)
+        → Apply Scope Rules (row-level filtering)
+        → Apply Field Masks (column-level security)
+        → Response
 ```
 
 ### Security Properties
 
 1. **No privileged data paths** - Templates, tools, triggers all go through permissions
 2. **Defense in depth** - Organization boundary checked at multiple layers
-3. **Environment isolation** - All queries, roles, configs, entities, relations scoped to environment. Dev API keys cannot access production data.
+3. **Environment isolation** - All queries, roles, configs, entities, relations scoped to environment
 4. **Deny overrides allow** - Any deny policy blocks access
 5. **Fail safe** - New fields hidden by default (allowlist)
 6. **Audit trail** - Events capture actor for all mutations
 
-## Tutoring Domain
-
-### Entity Types
-
-| Type | Key Fields | Notes |
-|------|------------|-------|
-| `teacher` | name, email, subjects, availability, hourlyRate, userId | Linked to Clerk user |
-| `student` | name, grade, subjects, notes, guardianId, preferredTeacherId | Linked to guardian |
-| `guardian` | name, email, phone, whatsappNumber, billingAddress, userId | Primary contact |
-| `session` | teacherId, studentId, guardianId, startTime, duration, status | Full lifecycle |
-| `payment` | guardianId, amount, status, providerReference, sessionId | Flow integration |
-| `entitlement` | guardianId, studentId, totalCredits, remainingCredits, expiresAt | Pack credits |
-
-### Roles & Permissions
-
-| Role | Can See | Can Do |
-|------|---------|--------|
-| Admin | Everything | Everything |
-| Teacher | Own sessions, assigned students (limited fields) | Update sessions, submit reports |
-| Guardian | Children's sessions, own payments | Update student info |
-
-### Session Lifecycle
-
-```
-pending_payment ──[payment.success]──► scheduled
-                                          │
-                    ┌─────────────────────┼─────────────────────┐
-                    │                     │                     │
-                    ▼                     ▼                     ▼
-               cancelled            in_progress              no_show
-                                          │
-                                          ▼
-                                      completed
-```
-
-### Scheduling Constraints
-
-- 24-hour minimum booking lead time
-- 2-hour reschedule cutoff
-- Teacher availability validation
-- No double booking
-- Credit consumption on completion
-
-### Scheduling & Workflow Files (`platform/convex/lib/`)
-
-| File | Purpose |
-|------|---------|
-| `scheduling.ts` | Booking validation, availability, overlap detection |
-| `workflows/session.ts` | Session lifecycle, credit consumption |
-
 ## Integrations
 
-### WhatsApp Integration (`platform/convex/lib/integrations/whatsapp.ts`)
+### WhatsApp via Kapso (`platform/convex/lib/integrations/kapso.ts`)
 
-- Template message sending (approved templates only)
-- 24-hour window tracking for freeform messages
-- Inbound message processing via webhook
-- Conversation state management
+- WhatsApp messaging routed through Kapso service
+- Webhooks: `/webhook/kapso/project` (phone connection), `/webhook/kapso/messages` (inbound)
+- Tables: `whatsappConnections` (env-scoped), `whatsappMessages`
+- Agent routing: inbound → `scheduleAgentRouting` mutation → `routeInboundToAgent` action → `chatAuthenticated`
+
+### Google Calendar (`platform/convex/tools/calendar.ts`)
+
+- Calendar tools: `calendar.list`, `calendar.create`, `calendar.update`, `calendar.delete`, `calendar.freeBusy`
+- Table: `calendarConnections` (env-scoped)
 
 ### Flow Payments (`platform/convex/lib/integrations/flow.ts`)
 
-- Payment link generation
-- HMAC-SHA256 request signing
-- Webhook processing for status updates
-- Reconciliation for missed webhooks
+- Payment link generation, HMAC-SHA256 signing
+- Webhook: `/webhook/flow`
 
-### Integration Functions (`platform/convex/`)
+### Polar Payments
 
-| File | Purpose |
-|------|---------|
-| `whatsapp.ts` | WhatsApp mutations (send, receive, conversations) |
-| `payments.ts` | Payment mutations (create, mark paid/failed, reconcile) |
-| `integrations.ts` | Integration config management |
-| `sessions.ts` | Session CRUD with scheduling constraints |
+- Webhook: `/webhook/polar`
 
-## Pack System
+### Integration Config (`platform/convex/integrations.ts`)
 
-### Core Files (`platform/convex/lib/packs/`)
-
-| File | Purpose |
-|------|---------|
-| `version.ts` | `compareVersions()`, `isUpgrade()`, `isMajorUpgrade()` |
-| `migrate.ts` | Migration execution, field operations — all helpers accept environment, use `by_org_env_slug`/`by_org_env_type` indexes |
-
-### Pack Functions (`platform/convex/packs/`)
-
-| File | Purpose |
-|------|---------|
-| `tutoring.ts` | Complete pack definition with 6 types, 3 roles |
-| `index.ts` | Pack types with migrations, scope rules, field masks |
-
-### Current Packs
-
-| Pack | Version | Entity Types | Roles |
-|------|---------|--------------|-------|
-| Tutoring | 1.0.0 | 6 | 3 |
-
-### Migration Support
-
-- Add/remove/rename fields
-- Add entity types
-- Modify schemas
-- Run custom scripts
-- Customization preservation
+Supports 4 providers: `whatsapp` (Kapso), `flow`, `google` (calendar), `zoom`
+LLM provider configs stored in `providerConfigs` table: anthropic, openai, google
 
 ## Platform Services
 
@@ -314,57 +194,35 @@ pending_payment ──[payment.success]──► scheduled
 Core backend with real-time subscriptions and scheduled functions.
 
 **Key Files**:
-- `schema.ts` - Database schema
+- `schema.ts` - Database schema (33 tables)
 - `agents.ts` - Agent CRUD, syncDevelopment, deploy
-- `agent.ts` - LLM execution action (chat) with actor context, `buildActorContextForAgent` (environment-aware)
-- `chat.ts` - Authenticated chat actions (send, sendBySlug, getAgentBySlug) — uses `by_agent_env` for config lookup
-- `entities.ts` - Permission-aware entity CRUD, search, relations — environment-filtered
-- `entityTypes.ts` - Admin-only entity type definitions
+- `agent.ts` - LLM execution action (chat) with actor context
+- `chat.ts` - Authenticated chat actions (send, sendBySlug)
+- `entities.ts` - Permission-aware entity CRUD, search, relations
 - `events.ts` - Visibility-filtered event logging and queries
-- `triggers.ts` - Trigger execution (immediate + scheduled), trigger run management
+- `triggers.ts` - Trigger execution (immediate + scheduled)
 - `threads.ts` - Conversation management
 - `roles.ts` - RBAC roles and policies
-- `apiKeys.ts` - API key management
-- `executions.ts` - Usage tracking
-- `users.ts` - User queries + Clerk integration
-- `organizations.ts` - Organization queries
-- `packs.ts` - Pack installation/management with migrations
-- `permissions.ts` - Internal query wrappers for permissions
 - `http.ts` - HTTP endpoints including webhooks
-- `auth.config.ts` - Clerk authentication config
 - `tools/` - Permission-aware built-in tool implementations
   - `entities.ts` - entity.create, entity.get, entity.query, etc.
   - `events.ts` - event.emit, event.query
+  - `calendar.ts` - calendar.list, calendar.create, calendar.update, calendar.delete, calendar.freeBusy
+  - `whatsapp.ts` - whatsapp.send, whatsapp.getConversation, whatsapp.getStatus
+  - `agents.ts` - agent.chat (multi-agent delegation)
   - `helpers.ts` - Tool helper utilities
 - `lib/permissions/` - Permission engine
-- `lib/integrations/` - WhatsApp, Flow integrations
-- `lib/scheduling.ts` - Booking validation
-- `lib/workflows/` - Session lifecycle
-- `lib/packs/` - Pack versioning and migrations
-- `lib/auth.ts` - Auth context helpers
-- `lib/utils.ts` - Common utilities (nanoid, slug generation)
+- `lib/integrations/` - Kapso (WhatsApp), Flow integrations
 - `lib/templateEngine.ts` - System prompt template processing
-- `migrations/` - Data migrations (environment backfill, FK removal)
-
-**Environment Variables**:
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-TOOL_EXECUTOR_URL=https://tool-executor.struere.dev
-TOOL_EXECUTOR_SECRET=...
-CLERK_JWT_ISSUER_DOMAIN=...
-WHATSAPP_API_URL=...
-WHATSAPP_ACCESS_TOKEN=...
-FLOW_API_KEY=...
-FLOW_SECRET_KEY=...
-```
+- `lib/sync/` - CLI sync helpers (entityTypes, roles, agents, triggers)
 
 ### Tool Executor (platform/tool-executor)
 
-Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
+Hono Node.js server deployed on Fly.io for executing custom tool handlers in a sandboxed environment.
 
 **Key Files**:
 - `src/index.ts` - Hono app with endpoints
-- `wrangler.toml` - Worker configuration
+- `Dockerfile` + `fly.toml` - Fly.io deployment config
 
 **Endpoints**:
 - `GET /health` - Health check
@@ -372,795 +230,147 @@ Cloudflare Worker for executing custom tool handlers in a sandboxed environment.
 - `POST /validate` - Validate handler code syntax
 
 **Sandboxed Fetch Allowlist**:
-- api.openai.com, api.anthropic.com, api.stripe.com
-- api.sendgrid.com, api.twilio.com, hooks.slack.com
-- discord.com, api.github.com
+api.openai.com, api.anthropic.com, api.stripe.com, api.sendgrid.com, api.twilio.com, hooks.slack.com, discord.com, api.github.com
 
-**Execution Context**:
-```typescript
-handler(args, context, sandboxedFetch)
-// context: { organizationId, actorId, actorType }
-// sandboxedFetch: fetch wrapper with domain allowlist
-```
+## Docs App (apps/docs)
+
+LLM-first documentation site at `docs.struere.dev`.
+
+- Next.js 14 with static generation
+- Markdown content in `content/` directory with gray-matter frontmatter
+- LLM endpoints: `/llms.txt` (index), `/llms-full.txt` (full dump), `/{path}.md` (raw per-page)
+- Components: sidebar, mobile-nav, table-of-contents, markdown-renderer, code-block, copy-markdown-button
+- Brand: cream bg (#F5F1E8), forest green (#1B4332), monospace fonts (DM Mono, Fira Code)
+- Path traversal guard in `content.ts` via `isValidSlug()`
+- `content.ts` strips leading `# Heading` from content body to prevent duplicate headings
+- `generate-llms.ts` adds section grouping to `llms-full.txt`
 
 ## Dashboard App (apps/dashboard)
 
-### Framework & Architecture
-- **Next.js 14.1.0** with React 18.2, TypeScript, App Router
-- **Convex React** for real-time data via hooks
-- **Clerk** for authentication
-- Client Components for all data-fetching (real-time)
-- Dark theme only
-- Role-based navigation and views
-
-### Convex Integration
-- `convex.json` - Points to `../../platform/convex`
-- `src/providers/convex-provider.tsx` - ConvexProviderWithClerk wrapper
-- `src/providers/ensure-user.tsx` - User provisioning on first login
-- `src/hooks/use-convex-data.ts` - All typed Convex hooks (62+ hooks)
-
-### Context Providers
-- `AgentContext` - Current agent info when viewing agent details
-- `EnvironmentContext` - Dev/prod environment selection via URL query param
-- `RoleContext` - Current user role for permission-based UI
-
-### Role Detection & Context
-
-| File | Purpose |
-|------|---------|
-| `hooks/use-current-role.ts` | Role detection hook |
-| `contexts/role-context.tsx` | Role context provider |
-| `components/role-redirect.tsx` | Access control components |
-
-### Dashboard Modules
-
-#### Admin Module (default)
-
-- Full dashboard access
-- Agent management
-- Pack management
-- Integration settings
-- User/role management
-
-#### Teacher Module (`/teacher/*`)
-
-| Route | Feature |
-|-------|---------|
-| `/teacher/sessions` | Session list with filters |
-| `/teacher/sessions/[id]` | Detail + report form |
-| `/teacher/students` | Assigned students |
-| `/teacher/profile` | Own profile |
-
-**Teacher Components**:
-- `components/teacher/report-form.tsx` - Session report submission
-- `components/teacher/session-actions.tsx` - Role-aware action buttons
-
-#### Guardian Module (`/guardian/*`)
-
-| Route | Feature |
-|-------|---------|
-| `/guardian/sessions` | Children's sessions |
-| `/guardian/students` | Children's profiles |
-| `/guardian/payments` | Payment history |
-| `/guardian/profile` | Own profile |
-
-### Key Pages
-
-| Route | Purpose |
-|-------|---------|
-| `/agents` | List all agents (real-time) |
-| `/agents/new` | Create new agent |
-| `/agents/[id]` | Agent health dashboard |
-| `/agents/[id]/config` | Agent configuration |
-| `/agents/[id]/logs` | Execution logs |
-| `/agents/[id]/history` | Activity history |
-| `/agents/[id]/settings` | Agent settings |
-| `/entities` | Entity types list |
-| `/entities/[type]` | Entity list (real-time) |
-| `/entities/[type]/[id]` | Entity detail |
-| `/entities/[type]/[id]/edit` | Entity edit |
-| `/triggers` | Triggers dashboard with scheduled runs |
-| `/api-keys` | API key management |
-| `/usage` | Usage statistics |
-| `/settings` | Organization settings |
-| `/settings/integrations` | Integration settings |
-| `/settings/integrations/whatsapp` | WhatsApp config |
-| `/settings/integrations/flow` | Flow payments config |
-| `/settings/packs` | Pack catalog |
-
-### Real-time Components
-- `agents-list-realtime.tsx` - Real-time agents list with CRUD
-- `entities-list-realtime.tsx` - Real-time entity list with search
-- `events-timeline-realtime.tsx` - Real-time event timeline
-- `components/entities/entity-actions.tsx` - Entity CRUD buttons
-
-### Key Hooks (use-convex-data.ts)
-
-**Agents**: useAgents, useAgent, useAgentWithConfig, useCreateAgent, useUpdateAgent, useDeleteAgent, useDeployAgent
-
-**Entity Types**: useEntityTypes, useEntityType, useEntityTypeBySlug, useCreateEntityType, useUpdateEntityType, useDeleteEntityType
-
-**Entities**: useEntities, useEntity, useEntityWithType, useSearchEntities, useCreateEntity, useUpdateEntity, useDeleteEntity, useLinkEntities, useUnlinkEntities, useRelatedEntities
-
-**Events**: useEvents, useEntityEvents, useEventTypes, useEmitEvent
-
-**Trigger Runs**: useTriggerRuns, useTriggerRunStats, useRetryTriggerRun, useCancelTriggerRun
-
-**Roles**: useRoles, useRole, useRoleWithPolicies, useCreateRole, useUpdateRole, useDeleteRole, useAddPolicy, useRemovePolicy, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles
-
-**API Keys**: useApiKeys, useApiKey, useCreateApiKey, useUpdateApiKey, useDeleteApiKey
-
-**Executions**: useExecutions, useExecutionStats, useUsageByAgent, useRecentExecutions
-
-**Threads**: useThreads, useThread, useThreadWithMessages, useCreateThread, useDeleteThread, useAddMessage
-
-**Users/Orgs**: useUsers, useCurrentUser, useEnsureUser, useCurrentOrganization
-
-**Packs**: usePacks, usePack, useInstallPack, useUninstallPack, useUpgradePack
-
-**Integrations**: useIntegrationConfigs, useIntegrationConfig, useUpdateIntegrationConfig
-
-### Environment Variables
-```env
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_CONVEX_URL=https://struere.convex.cloud
-```
+- **Next.js 14.1.0** with React 18.2, Convex React, Clerk Auth
+- Real-time data via Convex hooks, dark theme, role-based navigation
+- `convex.json` points to `../../platform/convex`
+- `src/hooks/use-convex-data.ts` - All typed Convex hooks (62+)
+- Context providers: AgentContext, EnvironmentContext, RoleContext
+- Modules: Admin (default), Teacher (`/teacher/*`), Guardian (`/guardian/*`)
 
 ## Struere Package (packages/struere)
 
-Unified SDK and CLI package for building AI agents. **Organization-centric architecture** - manage all agents, entity types, roles, and permissions from a single project.
-
-### Installation
-```bash
-npm install struere
-npx struere init
-```
-
-### Project Structure
-```
-my-org/
-├── struere.json              # Organization config (v2.0)
-├── agents/
-│   ├── scheduler.ts          # Agent definition
-│   └── support.ts
-├── entity-types/
-│   ├── teacher.ts            # Entity type schema
-│   └── student.ts
-├── roles/
-│   ├── admin.ts              # Role + policies + scope rules + field masks
-│   └── teacher.ts
-├── triggers/
-│   └── notify-on-session.ts  # Trigger definition
-└── tools/
-    └── index.ts              # Shared custom tools
-```
-
-### struere.json Schema
-```json
-{
-  "version": "2.0",
-  "organization": {
-    "id": "org_abc123",
-    "slug": "acme-corp",
-    "name": "Acme Corp"
-  }
-}
-```
+Unified SDK and CLI for building AI agents. Organization-centric architecture.
 
 ### SDK Exports
 ```typescript
 import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole, defineTrigger } from 'struere'
 ```
 
-- `defineAgent(config)` - Creates/validates agent configurations
-- `defineTools(tools)` - Validates and wraps tool definitions
-- `defineConfig(config)` - Creates framework config with defaults
-- `defineEntityType(config)` - Creates entity type schema definitions
-- `defineRole(config)` - Creates role with policies, scope rules, field masks
-- `defineTrigger(config)` - Creates trigger automation rules
-
 ### Key Types
-- **AgentConfig**: name, slug, version, systemPrompt, model, tools (string array of tool names)
+- **AgentConfig**: name, slug, version, systemPrompt, model, tools
+- **ModelConfig**: provider (`anthropic` | `openai` | `google` | `custom`), name, temperature?, maxTokens?, apiKey?
 - **EntityTypeConfig**: name, slug, schema, searchFields, displayConfig
 - **RoleConfig**: name, description, policies, scopeRules, fieldMasks
-- **PolicyConfig**: resource, actions, effect, priority
-- **ScopeRuleConfig**: entityType, field, operator, value
+- **PolicyConfig**: resource, actions, effect (no `priority` field)
+- **ScopeRuleConfig**: entityType, field, operator (`eq` | `neq` | `in` | `contains`), value
 - **FieldMaskConfig**: entityType, fieldPath, maskType, maskConfig
 - **TriggerConfig**: name, slug, on (entityType, action, condition?), actions
-- **TriggerAction**: tool, args, as?
 
-### Definition Examples
+### Default Model
+`anthropic/claude-sonnet-4` (full ID: `claude-sonnet-4-20250514`) with temperature 0.7, maxTokens 4096
 
-**Agent** (`agents/scheduler.ts`):
-```typescript
-import { defineAgent } from 'struere'
-
-export default defineAgent({
-  name: "Scheduler",
-  slug: "scheduler",
-  version: "0.1.0",
-  systemPrompt: "You are a scheduling assistant...",
-  model: { provider: "anthropic", name: "claude-haiku-4-5" },
-  tools: ["entity.create", "entity.query", "event.emit"],
-})
-```
-
-**Entity Type** (`entity-types/teacher.ts`):
-```typescript
-import { defineEntityType } from 'struere'
-
-export default defineEntityType({
-  name: "Teacher",
-  slug: "teacher",
-  schema: {
-    type: "object",
-    properties: {
-      name: { type: "string" },
-      email: { type: "string", format: "email" },
-      hourlyRate: { type: "number" },
-    },
-    required: ["name", "email"],
-  },
-  searchFields: ["name", "email"],
-})
-```
-
-**Role** (`roles/teacher.ts`):
-```typescript
-import { defineRole } from 'struere'
-
-export default defineRole({
-  name: "teacher",
-  description: "Tutors who conduct sessions",
-  policies: [
-    { resource: "session", actions: ["list", "read", "update"], effect: "allow", priority: 50 },
-    { resource: "payment", actions: ["*"], effect: "deny", priority: 100 },
-  ],
-  scopeRules: [
-    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
-  ],
-  fieldMasks: [
-    { entityType: "session", fieldPath: "data.paymentId", maskType: "hide" },
-  ],
-})
-```
-
-**Trigger** (`triggers/notify-on-session.ts`):
-```typescript
-import { defineTrigger } from 'struere'
-
-export default defineTrigger({
-  name: "Notify on New Session",
-  slug: "notify-on-session",
-  on: {
-    entityType: "session",
-    action: "created",
-    condition: { "data.status": "scheduled" }
-  },
-  actions: [
-    {
-      tool: "entity.get",
-      args: { id: "{{trigger.data.teacherId}}" },
-      as: "teacher"
-    },
-    {
-      tool: "event.emit",
-      args: {
-        eventType: "session.notification",
-        entityId: "{{trigger.entityId}}",
-        payload: { teacher: "{{steps.teacher.data.name}}" }
-      }
-    }
-  ]
-})
-```
-
-**Trigger template variables**: `{{trigger.entityId}}`, `{{trigger.entityType}}`, `{{trigger.action}}`, `{{trigger.data.X}}`, `{{trigger.previousData.X}}`, `{{steps.NAME.X}}`
-
-**Trigger execution**: Async (scheduled after mutation), system actor, fail-fast, emits `trigger.executed`/`trigger.failed` events. Fires from dashboard CRUD, agent tool calls, and API mutations.
-
-**Scheduled triggers**: Triggers can include `schedule` (delay/at/offset/cancelPrevious) and `retry` (maxAttempts/backoffMs) options. Scheduled triggers create `triggerRuns` records with status tracking (pending → running → completed/failed/dead). The `at` field supports template expressions like `"{{trigger.data.startTime}}"` resolved against entity data.
-
-### Built-in Tools Reference
-
-Agents can enable any combination of these built-in tools:
+### Built-in Tools
 
 | Tool | Category | Description |
 |------|----------|-------------|
-| `entity.create` | Entity | Create a new entity of a specified type |
-| `entity.get` | Entity | Retrieve a single entity by ID |
-| `entity.query` | Entity | Query entities by type with filters |
-| `entity.update` | Entity | Update an existing entity's data |
-| `entity.delete` | Entity | Soft-delete an entity |
-| `entity.link` | Entity | Create a relation between two entities |
-| `entity.unlink` | Entity | Remove a relation between entities |
-| `event.emit` | Event | Emit a custom event for audit logging |
-| `event.query` | Event | Query historical events with filters |
-| `agent.chat` | Agent | Send a message to another agent and get its response |
+| `entity.create` | Entity | Create entity (params: type, data, status?) |
+| `entity.get` | Entity | Get entity by ID (params: id) |
+| `entity.query` | Entity | Query entities (params: type, filters?, status?, limit?) |
+| `entity.update` | Entity | Update entity (params: id, data, status?, type?) |
+| `entity.delete` | Entity | Soft-delete entity (params: id) |
+| `entity.link` | Entity | Create relation (params: fromId, toId, relationType, metadata?) |
+| `entity.unlink` | Entity | Remove relation (params: fromId, toId, relationType) |
+| `event.emit` | Event | Emit event (params: eventType, entityId?, payload?, entityTypeSlug?) |
+| `event.query` | Event | Query events (params: eventType?, entityId?, since?, limit?, entityTypeSlug?) |
+| `calendar.list` | Calendar | List calendar events |
+| `calendar.create` | Calendar | Create calendar event (endTime OR durationMinutes) |
+| `calendar.update` | Calendar | Update calendar event |
+| `calendar.delete` | Calendar | Delete calendar event |
+| `calendar.freeBusy` | Calendar | Check availability |
+| `whatsapp.send` | WhatsApp | Send WhatsApp message |
+| `whatsapp.getConversation` | WhatsApp | Get conversation history |
+| `whatsapp.getStatus` | WhatsApp | Check connection status |
+| `agent.chat` | Agent | Delegate to another agent (depth limit: 3, cycle detection) |
 
-**Tool Parameters:**
+### System Events
 
-```typescript
-"entity.create": { type: string, data: object, status?: string }
-"entity.get": { id: string }
-"entity.query": { type: string, filters?: object, status?: string, limit?: number }
-"entity.update": { id: string, data: object, status?: string }
-"entity.delete": { id: string }
-"entity.link": { fromEntityId: string, toEntityId: string, relationType: string }
-"entity.unlink": { fromEntityId: string, toEntityId: string, relationType: string }
-"event.emit": { eventType: string, entityId?: string, payload?: object }
-"event.query": { eventType?: string, entityId?: string, since?: number, limit?: number }
-"agent.chat": { agent: string, message: string, context?: object }
-```
-
-### Model Configuration
-
-**Available Providers:**
-| Provider | Model Names | Notes |
-|----------|-------------|-------|
-| `anthropic` | `claude-haiku-4-5`, `claude-sonnet-4`, `claude-opus-4-5` | Default provider |
-| `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Requires OPENAI_API_KEY |
-| `google` | `gemini-1.5-pro`, `gemini-1.5-flash` | Requires GOOGLE_API_KEY |
-
-**Model Pricing (Anthropic):**
-| Model | Input | Output | Best For |
-|-------|-------|--------|----------|
-| `claude-haiku-4-5` | $1/MTok | $5/MTok | **Default** - Best cost/intelligence ratio |
-| `claude-sonnet-4` | $3/MTok | $15/MTok | Complex reasoning, nuanced tasks |
-| `claude-opus-4-5` | $5/MTok | $25/MTok | Most capable, research-grade tasks |
-
-**Model Config Options:**
-```typescript
-model: {
-  provider: "anthropic",
-  name: "claude-haiku-4-5",
-  temperature?: 0.7,
-  maxTokens?: 4096,
-}
-```
-
-**Default Model:** `anthropic/claude-haiku-4-5` with temperature 0.7, maxTokens 4096
-
-### System Prompt Templates
-
-System prompts support `{{variable}}` syntax for simple variable resolution and `{{function(args)}}` for embedded queries.
-
-**Available Variables:**
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `{{currentTime}}` | string | ISO 8601 timestamp |
-| `{{datetime}}` | string | ISO 8601 timestamp (alias) |
-| `{{timestamp}}` | number | Unix timestamp in milliseconds |
-| `{{organizationName}}` | string | Organization name |
-| `{{organizationId}}` | string | Organization ID |
-| `{{agentName}}` | string | Agent's display name |
-| `{{agent.name}}` | string | Agent name |
-| `{{agent.slug}}` | string | Agent slug |
-| `{{userId}}` | string | Current user ID |
-| `{{threadId}}` | string | Thread ID |
-| `{{message}}` | string | Current user message |
-| `{{thread.metadata.X}}` | any | Thread metadata field X |
-| `{{entityTypes}}` | array | JSON array of all entity types |
-| `{{roles}}` | array | JSON array of all roles |
-
-**Function Calls (embedded queries):**
-```
-{{entity.query({"type": "customer", "limit": 5})}}
-{{entity.get({"id": "ent_123"})}}
-{{entity.get({"id": "{{thread.metadata.customerId}}"})}}
-```
-
-**Important:** Handlebars block helpers (`{{#each}}`, `{{#if}}`, `{{/each}}`) are NOT supported. Use `{{entityTypes}}` to get the JSON array directly.
-
-**Example System Prompt:**
-```typescript
-systemPrompt: `You are {{agentName}}, an assistant for {{organizationName}}.
-Current time: {{currentTime}}
-
-Available entity types: {{entityTypes}}
-
-Use entity.query to search for entities by type.`
-```
-
-**Entity Type Context Structure:**
-```typescript
-{
-  name: "Teacher",
-  slug: "teacher",
-  description: "Tutors who conduct sessions",
-  schema: { type: "object", properties: {...} },
-  searchFields: ["name", "email"]
-}
-```
-
-### Custom Tools Definition
-
-Custom tools are defined in `tools/index.ts` and can be used by any agent:
-
-```typescript
-import { defineTools } from 'struere'
-
-export default defineTools([
-  {
-    name: "send_email",
-    description: "Send an email to a recipient",
-    parameters: {
-      type: "object",
-      properties: {
-        to: { type: "string", description: "Recipient email address" },
-        subject: { type: "string", description: "Email subject line" },
-        body: { type: "string", description: "Email body content" },
-      },
-      required: ["to", "subject", "body"],
-    },
-    handler: async (args, context, fetch) => {
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.SENDGRID_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: args.to }] }],
-          from: { email: "noreply@example.com" },
-          subject: args.subject,
-          content: [{ type: "text/plain", value: args.body }],
-        }),
-      })
-      return { success: response.ok }
-    },
-  },
-  {
-    name: "get_weather",
-    description: "Get current weather for a location",
-    parameters: {
-      type: "object",
-      properties: {
-        city: { type: "string", description: "City name" },
-      },
-      required: ["city"],
-    },
-    handler: async (args, context, fetch) => {
-      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${args.city}&appid=${process.env.WEATHER_API_KEY}`)
-      return await res.json()
-    },
-  },
-])
-```
-
-**Handler Function Signature:**
-```typescript
-handler: (args: object, context: ExecutionContext, fetch: SandboxedFetch) => Promise<any>
-```
-
-**ExecutionContext:**
-```typescript
-{
-  organizationId: string,
-  actorId: string,
-  actorType: "user" | "agent" | "system",
-}
-```
-
-**Sandboxed Fetch Allowlist:**
-Custom tool handlers execute on Cloudflare Workers with fetch restricted to:
-- api.openai.com, api.anthropic.com, api.stripe.com
-- api.sendgrid.com, api.twilio.com, hooks.slack.com
-- discord.com, api.github.com
-
-**Using Custom Tools in Agents:**
-```typescript
-export default defineAgent({
-  name: "Support Agent",
-  slug: "support",
-  tools: [
-    "entity.query",
-    "entity.update",
-    "event.emit",
-    "send_email",
-    "get_weather",
-  ],
-})
-```
+Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` events (e.g., `session.created`). Relation events use `entity.linked`, `entity.unlinked`. Trigger events: `trigger.executed`, `trigger.failed`.
 
 ### CLI Commands
 | Command | Purpose |
 |---------|---------|
-| `init` | Initialize org-centric project, scaffold directories |
-| `dev` | Watch all files, sync everything to Convex on change |
+| `init` | Initialize org-centric project, scaffold directories, generate types |
+| `dev` | Watch all files (agents/, entity-types/, roles/, triggers/, tools/, evals/), sync to Convex |
 | `deploy` | Deploy all agents to production |
-| `add <type> <name>` | Scaffold new agent/entity-type/role/trigger |
+| `add <type> <name>` | Scaffold new agent/entity-type/role/trigger/eval/suite |
 | `status` | Compare local vs remote state |
 | `pull` | Pull remote resources to local files |
+| `entities` | Entity management commands |
 | `login/logout` | Browser-based OAuth authentication |
 | `whoami` | Display current logged-in user |
 
 ### CLI Auto-Run Behavior
-Commands automatically run prerequisites without manual intervention:
 - **No `struere.json`?** → Auto-runs `init`
 - **Not logged in?** → Auto-runs `login`
 
-### CLI Architecture
-
-**Entry Point**: `src/cli/index.ts`
-- Uses Commander.js for command parsing
-- Version check against npm on startup (2s timeout)
-
-**Command Files** (`src/cli/commands/`):
-| File | Purpose |
-|------|---------|
-| `init.ts` | Org-centric project initialization |
-| `dev.ts` | Bulk sync with chokidar file watching |
-| `deploy.ts` | Deploy all agents to production |
-| `add.ts` | Scaffold new resources |
-| `status.ts` | Compare local vs remote state |
-| `pull.ts` | Pull remote resources to local files |
-| `login.ts` | Browser-based OAuth flow |
-| `logout.ts` | Clear credentials |
-| `whoami.ts` | Display current user/org |
-
-**Utility Files** (`src/cli/utils/`):
-| File | Purpose |
-|------|---------|
-| `loader.ts` | Load agents, entity types, roles, triggers from directories |
-| `extractor.ts` | Build sync payload from loaded resources |
-| `project.ts` | Load/save struere.json |
-| `convex.ts` | API calls (syncOrganization, getSyncState, deployAllAgents) |
-| `scaffold.ts` | Create files for new resources |
-| `credentials.ts` | Auth token management |
-
-### CLI-Convex Sync Mechanism
-
-**Dev Command Flow** (`dev.ts`):
-1. Auto-init if no `struere.json`
-2. Auto-login if not authenticated
-3. Load all resources from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`
-4. Build sync payload via `extractSyncPayload()`
-5. Sync to Convex via `syncOrganization()` mutation
-6. Watch directories with chokidar
-7. Re-sync on any file change (add/change/delete)
-
-**Sync Payload**:
+### Sync Payload
 ```typescript
 {
-  agents: [...],      // All agent configs
-  entityTypes: [...], // All entity type schemas
-  roles: [...],       // All roles with policies, scope rules, field masks
-  triggers: [...]     // All trigger automation rules
+  agents: [...],
+  entityTypes: [...],
+  roles: [...],
+  triggers: [...]
 }
 ```
 
-**Sync HTTP Request**:
-```
-POST /api/mutation
-Authorization: Bearer {token}
-Body: { path: "sync:syncOrganization", args: { agents, entityTypes, roles } }
-```
-
-### Convex Sync Functions (`platform/convex/sync.ts`)
-
-| Function | Purpose |
-|----------|---------|
-| `syncOrganization` | Bulk sync all resources (upsert by slug/name) |
-| `getSyncState` | Get current remote state for comparison |
-| `deployAllAgents` | Deploy all agents to production |
-
-**Sync Helpers** (`platform/convex/lib/sync/`):
-| File | Purpose |
-|------|---------|
-| `entityTypes.ts` | Upsert entity types by slug |
-| `roles.ts` | Upsert roles with policies, scope rules, field masks |
-| `agents.ts` | Upsert agents with configs |
-| `triggers.ts` | Upsert triggers by slug |
-
-### Key Files
-- `src/index.ts` - SDK exports (defineAgent, defineEntityType, defineRole, defineTrigger, etc.)
-- `src/types.ts` - TypeScript type definitions
-- `src/define/agent.ts` - Agent definition function
-- `src/define/entityType.ts` - Entity type definition function
-- `src/define/role.ts` - Role definition function
-- `src/define/trigger.ts` - Trigger definition function
-- `src/cli/index.ts` - CLI entry point
-- `src/cli/commands/` - Command implementations
-- `src/cli/utils/` - Utilities
-- `src/cli/templates/` - Project scaffolding templates
-
-### Configuration Files
-- `struere.json` - Organization metadata
-- `~/.struere/credentials.json` - Auth tokens
-
-### Environment Variables
-- `STRUERE_CONVEX_URL` - Convex deployment URL (default: rapid-wildebeest-172.convex.cloud)
-- `STRUERE_API_KEY` - For production deployments
-- `STRUERE_AUTH_URL` - Auth callback URL (default: app.struere.dev)
-
-## Agent/Resource Creation Flow
-
-### Via CLI (`struere add`)
-```
-1. Auto-init if needed
-2. struere add agent my-agent
-3. Scaffold agents/my-agent.ts with template
-4. struere dev to sync
-```
-
-### Via CLI (`struere init`)
-```
-1. Auto-login if needed
-2. Create project structure (agents/, entity-types/, roles/, tools/)
-3. Write struere.json with organization info
-4. Run bun install
-```
-
-### Via Dashboard (/agents/new)
-```
-1. User fills form (name, slug, description)
-2. Click Create Agent
-3. useCreateAgent() mutation
-4. Convex creates agent record
-5. Redirect to /agents/{agentId}
-```
-
-### Database Structure
-
-**agents table** (shared across environments):
-- organizationId, name, slug, description
-- status: "active" | "paused" | "deleted"
-
-**agentConfigs table** (environment-scoped, looked up via `by_agent_env` index):
-- agentId, version, environment ("development" | "production")
-- name, systemPrompt
-- model: { provider, name, temperature?, maxTokens? }
-- tools: [{ name, description, parameters, handlerCode?, isBuiltin }]
-- createdAt, deployedBy
+Resources are upserted by slug (agents, entityTypes, triggers) or name (roles).
 
 ## Agent Execution Flow
-
-### Complete Execution Flow
 
 ```
 HTTP Request: POST /v1/chat
     │
     ▼
 [1] HTTP Router (http.ts)
-    • Extract Bearer token
-    • Validate API key (SHA-256 hash lookup)
-    • Call internal.agent.chat
+    • Extract Bearer token → validate API key (SHA-256 hash lookup)
     │
     ▼
 [2] Chat Action (agent.ts)
-    • Load agent and config (via by_agent_env index)
-    • Build ActorContext (with environment from API key)
-    • Get/create thread (environment-scoped)
-    • Load message history
-    • Build template context
+    • Load agent + config (via by_agent_env index)
+    • Build ActorContext (environment from API key)
     • Process system prompt templates (permission-aware)
     │
     ▼
 [3] LLM Loop (max 10 iterations)
-    │
-    ├──► Call Anthropic API
-    │    POST https://api.anthropic.com/v1/messages
-    │    • model, max_tokens, system, messages, tools
-    │
-    ├──► Process Tool Calls
-    │    ├─► Check tool permission (canUseTool)
-    │    ├─► Built-in: executeBuiltinTool()
-    │    │   └─► Permission-aware Convex mutation
-    │    │
-    │    └─► Custom: executeCustomTool()
-    │        └─► POST to Cloudflare Worker /execute
-    │            └─► Sandboxed execution with actor context
-    │
-    └──► Add tool results to messages
-         Continue loop or exit
+    • Call LLM API → process tool calls → permission check → execute → loop
     │
     ▼
 [4] Persist & Respond
-    • threads.appendMessages()
-    • executions.record() (tokens, duration, status)
+    • threads.appendMessages() + executions.record()
     • Return { threadId, message, usage }
 ```
 
-### Built-in Tool Implementations
-
-All tools are permission-aware and pass actor context:
-
-| Tool | Convex Mutation | Purpose |
-|------|-----------------|---------|
-| `entity.create` | `tools.entities.entityCreate` | Create entity + emit event |
-| `entity.get` | `tools.entities.entityGet` | Get entity by ID (field-masked) |
-| `entity.query` | `tools.entities.entityQuery` | Query with scope filters |
-| `entity.update` | `tools.entities.entityUpdate` | Update data + emit event |
-| `entity.delete` | `tools.entities.entityDelete` | Soft delete + emit event |
-| `entity.link` | `tools.entities.entityLink` | Create relation |
-| `entity.unlink` | `tools.entities.entityUnlink` | Remove relation |
-| `event.emit` | `tools.events.eventEmit` | Emit custom event |
-| `event.query` | `tools.events.eventQuery` | Query events (visibility filtered) |
-| `agent.chat` | `tools.agents.agentChat` | Delegate to another agent (internalAction) |
-
 ### Multi-Agent Communication (`agent.chat`)
 
-The `agent.chat` tool enables agents to delegate work to other agents within the same organization and environment. The calling agent waits for the target agent's response synchronously.
-
-**Flow**: Caller agent → `executeBuiltinTool` → `tools.agents.agentChat` (internalAction) → resolves target agent by slug → creates thread with shared `conversationId` → calls `executeChatAction` → target agent runs its own LLM loop with its own config/tools/permissions → response returns as tool result to caller.
-
-**Key files**:
-- `tools/agents.ts` — `agentChat` internalAction (target resolution, depth/cycle checks, thread creation, delegation)
-- `agent.ts` — `executeChatAction` internalAction (serializable wrapper around `executeChat`), `agent.chat` case in `executeBuiltinTool`
-
-**Safety**:
-- Depth limit: `MAX_AGENT_DEPTH = 3` (prevents unbounded chains)
-- Cycle detection: Target slug checked against caller slug
-- Per-agent iteration cap: Existing `stepCountIs(10)` limits each agent's LLM loop independently
-- Convex action timeout: Built-in timeout on actions prevents infinite hangs
-
-**Thread linking**: All threads in a multi-agent conversation share the same `conversationId` (stored on both threads and executions tables). Child threads also store `parentThreadId` linking back to the parent. Thread metadata includes `{ conversationId, parentAgentSlug, depth, parentContext }`.
-
-## Web App (apps/web)
-
-Marketing/landing page for Struere platform.
-
-- Next.js 14.1.0, React 18.2, Tailwind CSS 3.4
-- Dark theme (#0a1628 background)
-- Hero section with waitlist signup (Discord webhook integration)
-- 7 custom monospace fonts
-- Vercel deployment ready (iad1 region)
-
-## Development
-
-### Local Development
-```bash
-cd platform/convex && npx convex dev
-
-cd apps/dashboard && bun run dev
-
-cd platform/tool-executor && bun run dev
-```
-
-### CLI Development
-```bash
-cd packages/struere && bun run dev
-```
-
-### Deployment
-
-**CLI to npm**:
-```bash
-cd packages/struere
-npm publish
-```
-
-**Convex functions**:
-```bash
-cd platform/convex && npx convex deploy
-```
-
-**Tool executor**:
-```bash
-cd platform/tool-executor && wrangler deploy
-```
+Agents delegate to other agents via `agent.chat` tool. Safety: depth limit 3, cycle detection, per-agent 10-iteration cap, Convex action timeout. Threads share `conversationId`, child threads store `parentThreadId`.
 
 ## Environment Isolation
-
-### Overview
-
-All data and permissions are isolated by environment (`"development"` | `"production"`). The `Environment` type is defined in `lib/permissions/types.ts`.
-
-### Environment-Scoped Resources
 
 | Scoped per environment | Shared across environments |
 |------------------------|---------------------------|
 | entityTypes, entities, entityRelations | agents (name, slug, description) |
 | roles, policies, scopeRules, fieldMasks | users, organizations, userOrganizations |
-| agentConfigs | toolPermissions |
-| threads, messages | |
-| events, executions | |
-| triggerRuns | |
-| apiKeys | |
-| installedPacks | |
+| agentConfigs, threads, messages | toolPermissions |
+| events, executions, triggerRuns | |
+| apiKeys, integrationConfigs | |
+| whatsappConnections, calendarConnections | |
 
 ### ActorContext
 
@@ -1175,38 +385,28 @@ interface ActorContext {
 }
 ```
 
-### System Role Resolution
+## Development
 
-The `by_org_isSystem` index does not include environment. System role lookups use `.collect()` + `.find()` to filter by environment:
-- `buildActorContext()` in `lib/permissions/context.ts`
-- `buildActorContextForAgent()` in `agent.ts`
-- `getSystemRoleIds()` in `lib/permissions/tools.ts`
+### Local Development
+```bash
+cd platform/convex && npx convex dev
+cd apps/dashboard && bun run dev
+cd platform/tool-executor && bun run dev
+cd apps/docs && bun run dev
+```
 
-### Tool Identity
-
-`getToolIdentity()` in "system" mode returns a full ActorContext including `environment` and `isOrgAdmin: true`.
-
-### Entity Relation Filtering
-
-`entityRelations` `by_from`/`by_to` indexes lack environment. All relation queries in `entities.ts` (link, unlink, getRelated) and `tools/entities.ts` (entityLink, entityUnlink) apply a post-index filter: `.filter((q) => q.eq(q.field("environment"), environment))`.
-
-### API Key Environment
-
-API keys carry an `environment` field. When a chat request arrives via API key, the environment is extracted from the key and threaded through the entire request: config lookup, thread creation, actor context, tool execution, event logging.
-
-### Migrations
-
-Backfill mutations in `migrations/addEnvironment.ts` set `environment` on all pre-existing records. Each batch filters for `environment === undefined` (naturally idempotent). `removeAgentConfigFKs` removes the old `developmentConfigId`/`productionConfigId` fields from agents.
+### Deployment
+- **CLI to npm**: `cd packages/struere && npm publish`
+- **Convex**: `cd platform/convex && npx convex deploy`
+- **Tool executor**: `cd platform/tool-executor && fly deploy`
+- **Docs**: Vercel (auto-deploy)
 
 ## Known Limitations
 
-1. **Query performance** - Some queries filter in memory after index lookup (documented trade-off for V1)
-2. **Relation environment filtering** - `entityRelations` `by_from`/`by_to` indexes lack environment; filtered post-index
-3. **System role index** - `by_org_isSystem` lacks environment field; uses collect + find pattern
-4. **Relation scope patterns** - Only `field_match` implemented, complex relations require code patterns
-5. **Event payload masking** - Event payloads may contain unmasked historical data
-6. **Single payment provider** - Only Flow implemented
-7. **Legacy index usage** - Some files (`sessions.ts`, `payments.ts`, `scheduling.ts`, `entityTypes.ts`) still use `by_org_slug`/`by_org_type` on entityTypes/entities tables instead of environment-aware indexes
+1. **Query performance** - Some queries filter in memory after index lookup
+2. **Relation environment filtering** - `entityRelations` indexes lack environment; filtered post-index
+3. **System role index** - `by_org_isSystem` lacks environment field; uses collect + find
+4. **Event payload masking** - Event payloads may contain unmasked historical data
 
 ## Server Management
 
