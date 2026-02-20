@@ -336,14 +336,16 @@ export default defineSchema({
   whatsappConnections: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,
-    status: v.string(),
+    status: v.union(
+      v.literal("disconnected"),
+      v.literal("pending_setup"),
+      v.literal("connected")
+    ),
     label: v.optional(v.string()),
-    kapsoCustomerId: v.optional(v.string()),
+    kapsoCustomerId: v.string(),
     kapsoPhoneNumberId: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     setupLinkUrl: v.optional(v.string()),
-    pairingCode: v.optional(v.string()),
-    qrCode: v.optional(v.string()),
     agentId: v.optional(v.id("agents")),
     lastConnectedAt: v.optional(v.number()),
     lastDisconnectedAt: v.optional(v.number()),
@@ -369,6 +371,7 @@ export default defineSchema({
     mediaFileName: v.optional(v.string()),
     mediaCaption: v.optional(v.string()),
     interactiveData: v.optional(v.any()),
+    mediaDirectUrl: v.optional(v.string()),
     status: v.union(v.literal("sent"), v.literal("delivered"), v.literal("read"), v.literal("failed"), v.literal("received")),
     createdAt: v.number(),
   })
