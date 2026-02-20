@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, Smartphone, Power, PowerOff, AlertCircle, ExternalLink, Clock, Plus, Pencil, Check, X } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ArrowLeft, Loader2, MessageSquare, Wifi, WifiOff, Smartphone, Power, PowerOff, AlertCircle, ExternalLink, Clock, Plus, Pencil, Check, X, RefreshCw, Trash2, FileText } from "lucide-react"
 import {
   useWhatsAppConnections,
   useAddPhoneNumber,
@@ -14,6 +14,9 @@ import {
   useIntegrationConfig,
   useEnableWhatsApp,
   useDisableWhatsApp,
+  useListWhatsAppTemplates,
+  useCreateWhatsAppTemplate,
+  useDeleteWhatsAppTemplate,
 } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -27,7 +30,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Id } from "@convex/_generated/dataModel"
+
+type Environment = "development" | "production"
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -120,9 +134,259 @@ function IntegrationToggle({
   )
 }
 
+function TemplateStatusBadge({ status }: { status: string }) {
+  switch (status?.toUpperCase()) {
+    case "APPROVED":
+      return <Badge className="bg-green-500/20 text-green-500 border-green-500/30">Approved</Badge>
+    case "PENDING":
+      return <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30">Pending</Badge>
+    case "REJECTED":
+      return <Badge className="bg-red-500/20 text-red-500 border-red-500/30">Rejected</Badge>
+    case "PAUSED":
+      return <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30">Paused</Badge>
+    default:
+      return <Badge variant="outline">{status}</Badge>
+  }
+}
+
+function CreateTemplateDialog({
+  connectionId,
+  environment,
+  onCreated,
+}: {
+  connectionId: Id<"whatsappConnections">
+  environment: Environment
+  onCreated: () => void
+}) {
+  const createTemplate = useCreateWhatsAppTemplate()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState("")
+  const [language, setLanguage] = useState("en_US")
+  const [category, setCategory] = useState("UTILITY")
+  const [componentsJson, setComponentsJson] = useState('[\n  {\n    "type": "BODY",\n    "text": "Hello {{1}}",\n    "example": {\n      "body_text": [["World"]]\n    }\n  }\n]')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleCreate = async () => {
+    setError(null)
+    let components: Array<Record<string, unknown>>
+    try {
+      components = JSON.parse(componentsJson)
+    } catch {
+      setError("Invalid JSON in components field")
+      return
+    }
+    if (!Array.isArray(components)) {
+      setError("Components must be a JSON array")
+      return
+    }
+    if (!name.trim()) {
+      setError("Template name is required")
+      return
+    }
+    setCreating(true)
+    try {
+      await createTemplate({ environment, connectionId, name: name.trim(), language, category, components })
+      setOpen(false)
+      setName("")
+      setComponentsJson('[\n  {\n    "type": "BODY",\n    "text": "Hello {{1}}",\n    "example": {\n      "body_text": [["World"]]\n    }\n  }\n]')
+      onCreated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create template")
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="mr-2 h-3 w-3" />
+          Create Template
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create Template</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. order_update"
+              className="text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Language</Label>
+              <Input
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                placeholder="en_US"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UTILITY">Utility</SelectItem>
+                  <SelectItem value="MARKETING">Marketing</SelectItem>
+                  <SelectItem value="AUTHENTICATION">Authentication</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Components (JSON)</Label>
+            <Textarea
+              value={componentsJson}
+              onChange={(e) => setComponentsJson(e.target.value)}
+              rows={8}
+              className="text-sm font-mono"
+            />
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20">
+              <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
+              <p className="text-xs text-red-500">{error}</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={creating}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleCreate} disabled={creating}>
+              {creating ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+              {creating ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TemplatesSection({
+  connectionId,
+  environment,
+}: {
+  connectionId: Id<"whatsappConnections">
+  environment: Environment
+}) {
+  const listTemplates = useListWhatsAppTemplates()
+  const deleteTemplate = useDeleteWhatsAppTemplate()
+  const [templates, setTemplates] = useState<any[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  const loadTemplates = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await listTemplates({ connectionId, environment }) as { data?: any[] }
+      setTemplates(result?.data ?? [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load templates")
+    } finally {
+      setLoading(false)
+    }
+  }, [listTemplates, connectionId, environment])
+
+  useEffect(() => {
+    loadTemplates()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDelete = async (name: string) => {
+    if (!confirm(`Delete template "${name}"? This cannot be undone.`)) return
+    setDeleting(name)
+    try {
+      await deleteTemplate({ environment, connectionId, name })
+      await loadTemplates()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete template")
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  return (
+    <div className="space-y-3 pt-3 border-t border-border/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-content-tertiary" />
+          <span className="text-xs font-medium text-content-secondary">Message Templates</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={loadTemplates} disabled={loading} className="h-7 px-2">
+            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+          <CreateTemplateDialog connectionId={connectionId} environment={environment} onCreated={loadTemplates} />
+        </div>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20">
+          <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
+          <p className="text-xs text-red-500">{error}</p>
+        </div>
+      )}
+
+      {loading && !templates && (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-content-tertiary" />
+        </div>
+      )}
+
+      {templates && templates.length === 0 && (
+        <p className="text-xs text-content-tertiary py-2">No templates yet</p>
+      )}
+
+      {templates && templates.length > 0 && (
+        <div className="space-y-2">
+          {templates.map((t: any) => (
+            <div key={t.id || t.name} className="flex items-center justify-between p-2 rounded-lg bg-background-tertiary">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-content-primary truncate">{t.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-content-tertiary">{t.language}</span>
+                    <span className="text-xs text-content-tertiary">{t.category}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <TemplateStatusBadge status={t.status} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-content-tertiary hover:text-red-500"
+                  onClick={() => handleDelete(t.name)}
+                  disabled={deleting === t.name}
+                >
+                  {deleting === t.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PhoneNumberCard({
   connection,
   agents,
+  environment,
   onDisconnect,
   onRemove,
   onAgentChange,
@@ -131,6 +395,7 @@ function PhoneNumberCard({
 }: {
   connection: any
   agents: any[]
+  environment: Environment
   onDisconnect: (connectionId: Id<"whatsappConnections">) => void
   onRemove: (connectionId: Id<"whatsappConnections">) => void
   onAgentChange: (connectionId: Id<"whatsappConnections">, agentId?: string) => void
@@ -263,6 +528,7 @@ function PhoneNumberCard({
                 </SelectContent>
               </Select>
             </div>
+            <TemplatesSection connectionId={connection._id} environment={environment} />
             <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
               {disconnecting ? "Disconnecting..." : "Disconnect"}
             </Button>
@@ -290,6 +556,7 @@ function PhoneNumberCard({
 
 export default function WhatsAppSettingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { environment } = useEnvironment()
   const connections = useWhatsAppConnections(environment)
   const agents = useAgents()
@@ -307,6 +574,22 @@ export default function WhatsAppSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState("")
   const [showLabelInput, setShowLabelInput] = useState(false)
+  const [setupSuccess, setSetupSuccess] = useState(false)
+
+  useEffect(() => {
+    const status = searchParams.get("status")
+    if (status === "completed") {
+      setSetupSuccess(true)
+      const url = new URL(window.location.href)
+      url.searchParams.delete("status")
+      url.searchParams.delete("setup_link_id")
+      url.searchParams.delete("phone_number_id")
+      url.searchParams.delete("business_account_id")
+      url.searchParams.delete("provisioned_phone_number_id")
+      url.searchParams.delete("display_phone_number")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [searchParams])
 
   const isEnabled = integrationConfig?.status === "active"
   const hasPendingSetup = connections?.some((c: any) => c.status === "pending_setup")
@@ -439,6 +722,18 @@ export default function WhatsAppSettingsPage() {
         </div>
       </div>
 
+      {setupSuccess && (
+        <div className="flex items-center justify-between gap-2 p-3 mb-6 rounded-lg bg-green-500/10 border border-green-500/20">
+          <div className="flex items-center gap-2">
+            <Wifi className="h-4 w-4 text-green-500 shrink-0" />
+            <p className="text-sm text-green-500">WhatsApp setup completed. Your number is being connected.</p>
+          </div>
+          <button type="button" onClick={() => setSetupSuccess(false)} className="text-green-500 hover:text-green-400">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-2 p-3 mb-6 rounded-lg bg-red-500/10 border border-red-500/20">
           <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
@@ -526,6 +821,7 @@ export default function WhatsAppSettingsPage() {
                 key={connection._id}
                 connection={connection}
                 agents={agents ?? []}
+                environment={environment}
                 onDisconnect={handleDisconnect}
                 onRemove={handleRemove}
                 onAgentChange={handleAgentChange}
