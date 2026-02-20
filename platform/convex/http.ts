@@ -284,31 +284,27 @@ http.route({
       return new Response("Invalid signature", { status: 403 })
     }
 
-    const event = JSON.parse(rawBody) as {
-      type: string
-      data: {
-        phone_number_id?: string
-        phone_number?: string
-        customer?: { external_customer_id?: string; id?: string }
-      }
+    const eventType = request.headers.get("X-Webhook-Event") ?? ""
+    const parsed = JSON.parse(rawBody) as {
+      phone_number_id?: string
+      customer?: { id?: string }
+      project?: { id?: string }
     }
 
-    if (event.type === "whatsapp.phone_number.created") {
-      const phoneNumberId = event.data.phone_number_id
-      const kapsoCustomerId = event.data.customer?.id
-      const phoneNumber = event.data.phone_number
+    if (eventType === "whatsapp.phone_number.created") {
+      const phoneNumberId = parsed.phone_number_id
+      const kapsoCustomerId = parsed.customer?.id
 
       if (phoneNumberId && kapsoCustomerId) {
         await ctx.runMutation(internal.whatsapp.handlePhoneConnected, {
           kapsoCustomerId,
           kapsoPhoneNumberId: phoneNumberId,
-          phoneNumber,
         })
       }
     }
 
-    if (event.type === "whatsapp.phone_number.deleted") {
-      const phoneNumberId = event.data.phone_number_id
+    if (eventType === "whatsapp.phone_number.deleted") {
+      const phoneNumberId = parsed.phone_number_id
       if (phoneNumberId) {
         await ctx.runMutation(internal.whatsapp.handlePhoneDeleted, {
           kapsoPhoneNumberId: phoneNumberId,
@@ -335,47 +331,59 @@ http.route({
     const parsed = JSON.parse(rawBody) as {
       message: {
         id: string
-        phone_number_id: string
         type: string
-        from: string
         timestamp: string
         text?: { body?: string }
         image?: { id?: string; caption?: string }
         audio?: { id?: string }
         video?: { id?: string; caption?: string }
         document?: { id?: string; filename?: string; caption?: string }
-        interactive?: Record<string, unknown>
+        interactive?: { type?: string; button_reply?: { id?: string; title?: string }; list_reply?: { id?: string; title?: string } }
+        reaction?: { message_id?: string; emoji?: string }
+        location?: { latitude?: number; longitude?: number; name?: string; address?: string }
         kapso?: {
           direction?: string
-          contact_name?: string
+          status?: string
           media_url?: string
+          media_data?: { url?: string; filename?: string; content_type?: string }
+          content?: string
+          transcript?: { text?: string }
         }
       }
-      conversation?: Record<string, unknown>
+      conversation?: {
+        id?: string
+        phone_number?: string
+        phone_number_id?: string
+        kapso?: {
+          contact_name?: string
+        }
+      }
+      phone_number_id?: string
+      is_new_conversation?: boolean
     }
 
     const message = parsed.message
+    const phoneNumberId = parsed.phone_number_id ?? parsed.conversation?.phone_number_id ?? ""
 
     if (eventType === "whatsapp.message.received") {
-      const phoneNumberId = message.phone_number_id
       if (!phoneNumberId) {
         return new Response("Missing phone_number_id", { status: 400 })
       }
 
       const connection = await ctx.runQuery(internal.whatsapp.getConnectionByKapsoPhone, {
         kapsoPhoneNumberId: phoneNumberId,
-      }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" } | null
+      }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | null
 
       if (!connection) {
         return new Response("Unknown phone number", { status: 404 })
       }
 
-      const from = message.from ?? ""
+      const from = parsed.conversation?.phone_number?.replace("+", "") ?? ""
       const messageId = message.id ?? `kapso_${Date.now()}`
-      const timestamp = Number(message.timestamp) || Date.now()
+      const timestamp = Number(message.timestamp) * 1000 || Date.now()
       const msgType = message.type ?? "text"
-      const contactName = message.kapso?.contact_name
-      const mediaUrl = message.kapso?.media_url
+      const contactName = parsed.conversation?.kapso?.contact_name
+      const mediaUrl = message.kapso?.media_url ?? message.kapso?.media_data?.url
 
       const mediaId = message.image?.id ?? message.audio?.id ?? message.video?.id ?? message.document?.id
       const mediaCaption = message.image?.caption ?? message.video?.caption ?? message.document?.caption
@@ -385,6 +393,8 @@ http.route({
       if (!text) {
         if (mediaCaption) {
           text = mediaCaption
+        } else if (msgType === "audio" && message.kapso?.transcript?.text) {
+          text = message.kapso.transcript.text
         } else if (msgType === "image") {
           text = "[Sent an image]"
         } else if (msgType === "video") {
@@ -394,8 +404,11 @@ http.route({
         } else if (msgType === "document") {
           text = `[Sent a document${message.document?.filename ? `: ${message.document.filename}` : ""}]`
         } else if (msgType === "interactive" && interactiveData) {
-          const ir = interactiveData as Record<string, any>
-          text = ir.button_reply?.title ?? ir.list_reply?.title ?? "[Interactive reply]"
+          text = interactiveData.button_reply?.title ?? interactiveData.list_reply?.title ?? "[Interactive reply]"
+        } else if (msgType === "reaction") {
+          text = message.reaction?.emoji ?? "[Reaction]"
+        } else if (msgType === "location") {
+          text = message.location?.name ?? message.location?.address ?? "[Shared a location]"
         }
       }
 
@@ -434,6 +447,7 @@ http.route({
     }
 
     if (
+      eventType === "whatsapp.message.sent" ||
       eventType === "whatsapp.message.delivered" ||
       eventType === "whatsapp.message.read" ||
       eventType === "whatsapp.message.failed"
