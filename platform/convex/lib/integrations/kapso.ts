@@ -79,23 +79,24 @@ export async function createSetupLink(
   return json.data
 }
 
-export async function registerCustomerWebhook(
-  kapsoCustomerId: string,
+export async function registerProjectWebhook(
   webhookUrl: string,
   secret: string
 ): Promise<void> {
   await kapsoPlatformRequest(
-    "PUT",
-    `/customers/${kapsoCustomerId}`,
+    "POST",
+    `/whatsapp/webhooks`,
     {
       whatsapp_webhook: {
-        kind: "kapso",
         url: webhookUrl,
         secret_key: secret,
+        kind: "kapso",
+        payload_version: "v2",
         events: [
           "whatsapp.phone_number.created",
           "whatsapp.phone_number.deleted",
         ],
+        active: true,
       },
     }
   )
@@ -116,19 +117,22 @@ export async function registerPhoneWebhook(
   secret: string
 ): Promise<void> {
   await kapsoPlatformRequest(
-    "PUT",
-    `/whatsapp/phone_numbers/${phoneNumberId}`,
+    "POST",
+    `/whatsapp/phone_numbers/${phoneNumberId}/webhooks`,
     {
       whatsapp_webhook: {
-        kind: "kapso",
         url: webhookUrl,
         secret_key: secret,
+        kind: "kapso",
+        payload_version: "v2",
         events: [
           "whatsapp.message.received",
+          "whatsapp.message.sent",
           "whatsapp.message.delivered",
           "whatsapp.message.read",
           "whatsapp.message.failed",
         ],
+        active: true,
       },
     }
   )
@@ -190,18 +194,110 @@ export async function verifyKapsoWebhookSignature(
   return hexSignature === signatureHeader
 }
 
+export async function resolveWabaId(phoneNumberId: string): Promise<string> {
+  const response = await kapsoPlatformRequest(
+    "GET",
+    `/whatsapp/phone_numbers?phone_number_id=${encodeURIComponent(phoneNumberId)}`
+  )
+  const json = (await response.json()) as { data: Array<{ business_account_id?: string }> }
+  const wabaId = json.data?.[0]?.business_account_id
+  if (!wabaId) throw new Error("Could not resolve WABA ID from phone number")
+  return wabaId
+}
+
+async function metaProxyFetch(
+  method: string,
+  path: string,
+  body?: Record<string, unknown>
+): Promise<Response> {
+  const url = `${KAPSO_META_PROXY_URL}/v24.0/${path}`
+  const response = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": getKapsoApiKey(),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Meta proxy error (${response.status}): ${text}`)
+  }
+  return response
+}
+
 export async function listPhoneTemplates(
   phoneNumberId: string
 ): Promise<unknown> {
+  const wabaId = await resolveWabaId(phoneNumberId)
   const client = getWhatsAppClient()
-  const phoneInfo = await client.request<{ id: string; waba_id?: string }>(
-    "GET",
-    `/${phoneNumberId}`,
-    { query: { fields: "id,waba_id" }, responseType: "json" }
-  )
-  const wabaId = phoneInfo.waba_id
-  if (!wabaId) throw new Error("Could not resolve WABA ID from phone number")
   return await client.templates.list({ businessAccountId: wabaId })
+}
+
+export async function createPhoneTemplate(
+  phoneNumberId: string,
+  name: string,
+  language: string,
+  category: string,
+  components: Array<Record<string, unknown>>,
+  allowCategoryChange?: boolean
+): Promise<{ id: string; status: string; category: string }> {
+  const wabaId = await resolveWabaId(phoneNumberId)
+  const payload: Record<string, unknown> = {
+    name,
+    language,
+    category,
+    components,
+  }
+  if (allowCategoryChange !== undefined) {
+    payload.allow_category_change = allowCategoryChange
+  }
+  const response = await metaProxyFetch(
+    "POST",
+    `${wabaId}/message_templates`,
+    payload
+  )
+  const json = (await response.json()) as { id: string; status: string; category: string }
+  return json
+}
+
+export async function deletePhoneTemplate(
+  phoneNumberId: string,
+  name: string
+): Promise<{ success: boolean }> {
+  const wabaId = await resolveWabaId(phoneNumberId)
+  const url = `${KAPSO_META_PROXY_URL}/v24.0/${wabaId}/message_templates?name=${encodeURIComponent(name)}`
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "X-API-Key": getKapsoApiKey(),
+    },
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Meta proxy error (${response.status}): ${text}`)
+  }
+  const json = (await response.json()) as { success: boolean }
+  return json
+}
+
+export async function getPhoneTemplateStatus(
+  phoneNumberId: string,
+  name: string
+): Promise<unknown> {
+  const wabaId = await resolveWabaId(phoneNumberId)
+  const url = `${KAPSO_META_PROXY_URL}/v24.0/${wabaId}/message_templates?name=${encodeURIComponent(name)}&fields=name,status,category,language,components`
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "X-API-Key": getKapsoApiKey(),
+    },
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Meta proxy error (${response.status}): ${text}`)
+  }
+  return await response.json()
 }
 
 export async function sendInteractiveButtons(
