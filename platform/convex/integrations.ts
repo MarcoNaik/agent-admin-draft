@@ -217,6 +217,21 @@ export const getConfigForTest = internalQuery({
   },
 })
 
+export const patchConfigInternal = internalMutation({
+  args: {
+    configId: v.id("integrationConfigs"),
+    config: v.any(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.configId, {
+      config: args.config,
+      updatedAt: Date.now(),
+    })
+    return null
+  },
+})
+
 export const patchConfigStatus = internalMutation({
   args: {
     configId: v.id("integrationConfigs"),
@@ -286,14 +301,13 @@ export const testConnection = action({
 
     try {
       if (args.provider === "whatsapp") {
-        const gatewayUrl = process.env.WHATSAPP_GATEWAY_URL
-        if (!gatewayUrl) {
-          return { success: false, message: "WhatsApp Gateway URL not configured" }
+        const apiKey = process.env.KAPSO_API_KEY
+        if (!apiKey) {
+          return { success: false, message: "KAPSO_API_KEY not configured" }
         }
 
-        const gatewaySecret = process.env.WHATSAPP_GATEWAY_SECRET
-        const response = await fetch(`${gatewayUrl}/health`, {
-          headers: gatewaySecret ? { "X-Gateway-Secret": gatewaySecret } : {},
+        const response = await fetch("https://api.kapso.ai/platform/v1/customers?per_page=1", {
+          headers: { "X-API-Key": apiKey },
         })
 
         if (!response.ok) {
@@ -301,7 +315,7 @@ export const testConnection = action({
             configId: config._id,
             status: "error",
           })
-          return { success: false, message: "WhatsApp Gateway is not reachable" }
+          return { success: false, message: "Kapso API key is invalid or unreachable" }
         }
 
         await ctx.runMutation(internal.integrations.patchConfigStatus, {
@@ -309,7 +323,7 @@ export const testConnection = action({
           status: "active",
           lastVerifiedAt: now,
         })
-        return { success: true, message: "WhatsApp Gateway is reachable" }
+        return { success: true, message: "Kapso API connection verified" }
       }
 
       if (args.provider === "flow") {
