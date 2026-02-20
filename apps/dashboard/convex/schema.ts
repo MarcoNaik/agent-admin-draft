@@ -371,6 +371,7 @@ export default defineSchema({
     mediaFileName: v.optional(v.string()),
     mediaCaption: v.optional(v.string()),
     interactiveData: v.optional(v.any()),
+    mediaDirectUrl: v.optional(v.string()),
     status: v.union(v.literal("sent"), v.literal("delivered"), v.literal("read"), v.literal("failed"), v.literal("received")),
     createdAt: v.number(),
   })
