@@ -266,7 +266,7 @@ export const devCommand = new Command('dev')
 
     const watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
-      ignored: [/node_modules/, /\.struere-tmp-/],
+      ignored: [/node_modules/, /\.struere-tmp-/, /evals\/runs\//],
       persistent: true,
       usePolling: false,
     })
