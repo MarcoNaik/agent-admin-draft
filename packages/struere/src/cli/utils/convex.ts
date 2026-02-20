@@ -284,7 +284,7 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
   }
 
   if (json.status === 'error') {
-    return { success: false, error: json.errorMessage || 'Unknown error from Convex' }
+    return { success: false, error: json.errorData?.message || json.errorMessage || 'Unknown error from Convex' }
   }
 
   return { success: false, error: `Unexpected response: ${text}` }
