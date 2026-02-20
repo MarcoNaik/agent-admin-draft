@@ -347,6 +347,8 @@ export default defineSchema({
     kapsoPhoneNumberId: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     setupLinkUrl: v.optional(v.string()),
+    pairingCode: v.optional(v.string()),
+    qrCode: v.optional(v.string()),
     agentId: v.optional(v.id("agents")),
     lastConnectedAt: v.optional(v.number()),
     lastDisconnectedAt: v.optional(v.number()),
