@@ -336,12 +336,7 @@ export default defineSchema({
   whatsappConnections: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,
-    status: v.union(
-      v.literal("disconnected"),
-      v.literal("pending_setup"),
-      v.literal("connected"),
-      v.literal("pairing_code_ready")
-    ),
+    status: v.string(),
     label: v.optional(v.string()),
     kapsoCustomerId: v.optional(v.string()),
     kapsoPhoneNumberId: v.optional(v.string()),
