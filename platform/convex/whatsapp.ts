@@ -6,6 +6,8 @@ import { requireAuth } from "./lib/auth"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"))
 
+
+
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
     .query("userOrganizations")
@@ -125,6 +127,12 @@ export const disconnectPhoneNumber = mutation({
       throw new Error("Connection not found")
     }
 
+    if (connection.kapsoPhoneNumberId) {
+      await ctx.scheduler.runAfter(0, internal.whatsappActions.disconnectFromKapso, {
+        kapsoPhoneNumberId: connection.kapsoPhoneNumberId,
+      })
+    }
+
     await ctx.db.patch(args.connectionId, {
       status: "disconnected",
       kapsoPhoneNumberId: undefined,
@@ -133,6 +141,32 @@ export const disconnectPhoneNumber = mutation({
       lastDisconnectedAt: Date.now(),
       updatedAt: Date.now(),
     })
+
+    return null
+  },
+})
+
+export const removeConnection = mutation({
+  args: {
+    connectionId: v.id("whatsappConnections"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
+
+    const connection = await ctx.db.get(args.connectionId)
+    if (!connection || connection.organizationId !== auth.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (connection.kapsoPhoneNumberId) {
+      await ctx.scheduler.runAfter(0, internal.whatsappActions.disconnectFromKapso, {
+        kapsoPhoneNumberId: connection.kapsoPhoneNumberId,
+      })
+    }
+
+    await ctx.db.delete(args.connectionId)
 
     return null
   },
@@ -354,6 +388,31 @@ export const createConnection = internalMutation({
   },
 })
 
+export const handlePhoneDeleted = internalMutation({
+  args: {
+    kapsoPhoneNumberId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const connection = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_kapso_phone", (q) =>
+        q.eq("kapsoPhoneNumberId", args.kapsoPhoneNumberId)
+      )
+      .first()
+
+    if (connection) {
+      await ctx.db.patch(connection._id, {
+        status: "disconnected",
+        lastDisconnectedAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    }
+
+    return null
+  },
+})
+
 export const processInboundMessage = internalMutation({
   args: {
     organizationId: v.id("organizations"),
@@ -366,6 +425,7 @@ export const processInboundMessage = internalMutation({
     contactName: v.optional(v.string()),
     mediaCaption: v.optional(v.string()),
     interactiveData: v.optional(v.any()),
+    mediaDirectUrl: v.optional(v.string()),
   },
   returns: v.union(v.id("whatsappMessages"), v.null()),
   handler: async (ctx, args) => {
@@ -388,6 +448,7 @@ export const processInboundMessage = internalMutation({
       text: args.text,
       mediaCaption: args.mediaCaption,
       interactiveData: args.interactiveData,
+      mediaDirectUrl: args.mediaDirectUrl,
       status: "received",
       createdAt: args.timestamp,
     })
@@ -433,6 +494,7 @@ export const scheduleMediaDownload = internalMutation({
     whatsappMessageId: v.id("whatsappMessages"),
     mediaId: v.string(),
     kapsoPhoneNumberId: v.string(),
+    mediaUrl: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -440,6 +502,7 @@ export const scheduleMediaDownload = internalMutation({
       whatsappMessageId: args.whatsappMessageId,
       mediaId: args.mediaId,
       kapsoPhoneNumberId: args.kapsoPhoneNumberId,
+      mediaUrl: args.mediaUrl,
     })
     return null
   },
