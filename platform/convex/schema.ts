@@ -342,7 +342,7 @@ export default defineSchema({
       v.literal("connected")
     ),
     label: v.optional(v.string()),
-    kapsoCustomerId: v.string(),
+    kapsoCustomerId: v.optional(v.string()),
     kapsoPhoneNumberId: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     setupLinkUrl: v.optional(v.string()),
