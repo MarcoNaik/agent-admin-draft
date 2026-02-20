@@ -22,6 +22,13 @@ const BUILTIN_TOOLS = [
   'calendar.update',
   'calendar.delete',
   'calendar.freeBusy',
+  'whatsapp.send',
+  'whatsapp.sendTemplate',
+  'whatsapp.sendInteractive',
+  'whatsapp.sendMedia',
+  'whatsapp.listTemplates',
+  'whatsapp.getConversation',
+  'whatsapp.getStatus',
   'agent.chat',
 ]
 
@@ -132,6 +139,22 @@ export interface SyncPayload {
       backoffMs?: number
     }
   }>
+  fixtures?: Array<{
+    name: string
+    slug: string
+    entities: Array<{
+      ref: string
+      type: string
+      data: Record<string, unknown>
+      status?: string
+    }>
+    relations?: Array<{
+      from: string
+      to: string
+      type: string
+      metadata?: Record<string, unknown>
+    }>
+  }>
 }
 
 export function extractSyncPayload(resources: LoadedResources): SyncPayload {
@@ -217,7 +240,26 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
       }))
     : undefined
 
-  return { agents, entityTypes, roles, evalSuites, triggers }
+  const fixtures = resources.fixtures.length > 0
+    ? resources.fixtures.map((f) => ({
+        name: f.name,
+        slug: f.slug,
+        entities: f.entities.map((e) => ({
+          ref: e.ref,
+          type: e.type,
+          data: e.data,
+          status: e.status,
+        })),
+        relations: f.relations?.map((r) => ({
+          from: r.from,
+          to: r.to,
+          type: r.type,
+          metadata: r.metadata,
+        })),
+      }))
+    : undefined
+
+  return { agents, entityTypes, roles, evalSuites, triggers, fixtures }
 }
 
 function extractAgentPayload(
@@ -296,6 +338,13 @@ function getBuiltinToolDescription(name: string): string {
     'calendar.update': 'Update an existing Google Calendar event',
     'calendar.delete': 'Delete a Google Calendar event',
     'calendar.freeBusy': 'Check free/busy availability on a user\'s Google Calendar',
+    'whatsapp.send': 'Send a text message via WhatsApp',
+    'whatsapp.sendTemplate': 'Send a pre-approved template message via WhatsApp (works outside 24h window)',
+    'whatsapp.sendInteractive': 'Send an interactive button message via WhatsApp (max 3 buttons)',
+    'whatsapp.sendMedia': 'Send an image or audio message via WhatsApp',
+    'whatsapp.listTemplates': 'List available WhatsApp message templates',
+    'whatsapp.getConversation': 'Get WhatsApp conversation history with a phone number',
+    'whatsapp.getStatus': 'Get WhatsApp connection status for this organization',
     'agent.chat': 'Send a message to another agent and get its response',
   }
   return descriptions[name] || name
@@ -437,6 +486,93 @@ function getBuiltinToolParameters(name: string): unknown {
         timeMax: { type: 'string', description: 'End of time range (ISO 8601 datetime)' },
       },
       required: ['userId', 'timeMin', 'timeMax'],
+    },
+    'whatsapp.send': {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Recipient phone number in E.164 format (e.g., "+15551234567")' },
+        text: { type: 'string', description: 'The text message to send' },
+      },
+      required: ['to', 'text'],
+    },
+    'whatsapp.sendTemplate': {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Recipient phone number in E.164 format (e.g., "+15551234567")' },
+        templateName: { type: 'string', description: 'Name of the approved template to send' },
+        language: { type: 'string', description: 'Template language code (e.g., "en_US")' },
+        components: {
+          type: 'array',
+          description: 'Optional template components with parameter values',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', description: 'Component type (e.g., "body", "header")' },
+              parameters: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', description: 'Parameter type (e.g., "text")' },
+                    text: { type: 'string', description: 'Parameter text value' },
+                    parameterName: { type: 'string', description: 'Named parameter name (for NAMED format templates)' },
+                  },
+                  required: ['type'],
+                },
+              },
+            },
+            required: ['type', 'parameters'],
+          },
+        },
+      },
+      required: ['to', 'templateName', 'language'],
+    },
+    'whatsapp.sendInteractive': {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Recipient phone number in E.164 format (e.g., "+15551234567")' },
+        bodyText: { type: 'string', description: 'The message body text' },
+        buttons: {
+          type: 'array',
+          description: 'Action buttons (1-3 buttons, max 20 chars per title)',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Unique button identifier returned on click' },
+              title: { type: 'string', description: 'Button label shown to user (max 20 characters)' },
+            },
+            required: ['id', 'title'],
+          },
+        },
+        footerText: { type: 'string', description: 'Optional footer text below the buttons' },
+      },
+      required: ['to', 'bodyText', 'buttons'],
+    },
+    'whatsapp.sendMedia': {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Recipient phone number in E.164 format (e.g., "+15551234567")' },
+        mediaUrl: { type: 'string', description: 'Public URL of the media file to send' },
+        mediaType: { type: 'string', enum: ['image', 'audio'], description: 'Type of media to send' },
+        caption: { type: 'string', description: 'Optional caption (only supported for images)' },
+      },
+      required: ['to', 'mediaUrl', 'mediaType'],
+    },
+    'whatsapp.listTemplates': {
+      type: 'object',
+      properties: {},
+    },
+    'whatsapp.getConversation': {
+      type: 'object',
+      properties: {
+        phoneNumber: { type: 'string', description: 'Phone number to get conversation history for' },
+        limit: { type: 'number', description: 'Maximum number of messages to return' },
+      },
+      required: ['phoneNumber'],
+    },
+    'whatsapp.getStatus': {
+      type: 'object',
+      properties: {},
     },
     'agent.chat': {
       type: 'object',

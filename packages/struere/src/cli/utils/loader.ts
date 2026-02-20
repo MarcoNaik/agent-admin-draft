@@ -1,24 +1,28 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
-import { join, dirname } from 'path'
+import { join, dirname, basename } from 'path'
 import YAML from 'yaml'
-import type { AgentConfig, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig } from '../../types'
+import type { AgentConfig, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig, FixtureDefinition } from '../../types'
 import { VIRTUAL_MODULE_SOURCE } from './plugin'
 
 const IMPORT_STRUERE_RE = /import\s+\{[^}]*\}\s*from\s*['"]struere['"]\s*;?\n?/g
 
+let importCounter = 0
+
 async function importUserFile(filePath: string): Promise<Record<string, unknown>> {
   const source = readFileSync(filePath, 'utf-8')
+  const uid = `${Date.now()}-${importCounter++}`
 
   if (!source.includes("'struere'") && !source.includes('"struere"')) {
-    return await import(`${filePath}?update=${Date.now()}`)
+    return await import(`${filePath}?v=${uid}`)
   }
 
   const stripped = source.replace(IMPORT_STRUERE_RE, '')
   const inlined = VIRTUAL_MODULE_SOURCE.trim() + '\n' + stripped
-  const tmpPath = join(dirname(filePath), `.struere-tmp-${Date.now()}.ts`)
+  const name = basename(filePath, '.ts')
+  const tmpPath = join(dirname(filePath), `.struere-tmp-${name}-${uid}.ts`)
   writeFileSync(tmpPath, inlined)
   try {
-    return await import(`${tmpPath}?update=${Date.now()}`)
+    return await import(`${tmpPath}?v=${uid}`)
   } finally {
     try { unlinkSync(tmpPath) } catch {}
   }
@@ -31,6 +35,7 @@ export interface LoadedResources {
   customTools: ToolReference[]
   evalSuites: EvalSuiteDefinition[]
   triggers: TriggerConfig[]
+  fixtures: FixtureDefinition[]
   errors: string[]
 }
 
@@ -46,8 +51,10 @@ export async function loadAllResources(cwd: string): Promise<LoadedResources> {
   const { suites: evalSuites, errors: evalErrors } = loadEvalSuites(join(cwd, 'evals'))
   errors.push(...evalErrors)
   const triggers = await loadTsDirectory<TriggerConfig>(join(cwd, 'triggers'))
+  const { fixtures, errors: fixtureErrors } = loadFixtures(join(cwd, 'fixtures'))
+  errors.push(...fixtureErrors)
 
-  return { agents, entityTypes, roles, customTools, evalSuites, triggers, errors }
+  return { agents, entityTypes, roles, customTools, evalSuites, triggers, fixtures, errors }
 }
 
 async function loadTsDirectory<T>(dir: string): Promise<T[]> {
@@ -126,6 +133,31 @@ function loadEvalSuites(dir: string): { suites: EvalSuiteDefinition[]; errors: s
   return { suites, errors }
 }
 
+function loadFixtures(dir: string): { fixtures: FixtureDefinition[]; errors: string[] } {
+  const fixtures: FixtureDefinition[] = []
+  const errors: string[] = []
+
+  if (!existsSync(dir)) {
+    return { fixtures, errors }
+  }
+
+  const files = readdirSync(dir).filter(
+    (f) => f.endsWith('.fixture.yaml') || f.endsWith('.fixture.yml')
+  )
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(dir, file), 'utf-8')
+      const parsed = YAML.parse(content) as FixtureDefinition
+      fixtures.push(parsed)
+    } catch (err) {
+      errors.push(`Failed to parse ${file}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  return { fixtures, errors }
+}
+
 export function getResourceDirectories(cwd: string): {
   agents: string
   entityTypes: string
@@ -133,6 +165,7 @@ export function getResourceDirectories(cwd: string): {
   tools: string
   evals: string
   triggers: string
+  fixtures: string
 } {
   return {
     agents: join(cwd, 'agents'),
@@ -141,5 +174,6 @@ export function getResourceDirectories(cwd: string): {
     tools: join(cwd, 'tools'),
     evals: join(cwd, 'evals'),
     triggers: join(cwd, 'triggers'),
+    fixtures: join(cwd, 'fixtures'),
   }
 }

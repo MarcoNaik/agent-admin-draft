@@ -180,6 +180,45 @@ export interface SyncPayload {
       }>
     }>
   }>
+  triggers?: Array<{
+    name: string
+    slug: string
+    description?: string
+    entityType: string
+    action: string
+    condition?: Record<string, unknown>
+    actions: Array<{
+      tool: string
+      args: Record<string, unknown>
+      as?: string
+    }>
+    schedule?: {
+      delay?: number
+      at?: string
+      offset?: number
+      cancelPrevious?: boolean
+    }
+    retry?: {
+      maxAttempts?: number
+      backoffMs?: number
+    }
+  }>
+  fixtures?: Array<{
+    name: string
+    slug: string
+    entities: Array<{
+      ref: string
+      type: string
+      data: Record<string, unknown>
+      status?: string
+    }>
+    relations?: Array<{
+      from: string
+      to: string
+      type: string
+      metadata?: Record<string, unknown>
+    }>
+  }>
 }
 
 export interface SyncResult {
@@ -193,7 +232,7 @@ export interface SyncResult {
 
 export interface SyncOptions extends SyncPayload {
   organizationId?: string
-  environment: 'development' | 'production'
+  environment: 'development' | 'production' | 'eval'
 }
 
 export async function syncOrganization(payload: SyncOptions): Promise<SyncResult> {
@@ -259,7 +298,7 @@ export interface SyncState {
   triggers?: Array<{ slug: string; name: string; entityType: string; action: string }>
 }
 
-export async function getSyncState(organizationId?: string, environment?: 'development' | 'production'): Promise<{ state?: SyncState; error?: string }> {
+export async function getSyncState(organizationId?: string, environment?: 'development' | 'production' | 'eval'): Promise<{ state?: SyncState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   const token = apiKey || credentials?.token
@@ -345,7 +384,7 @@ export interface PullState {
 
 export async function getPullState(
   organizationId?: string,
-  environment: 'development' | 'production' = 'development'
+  environment: 'development' | 'production' | 'eval' = 'development'
 ): Promise<{ state?: PullState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
