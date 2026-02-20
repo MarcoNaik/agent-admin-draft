@@ -409,12 +409,12 @@ export function useSendChatMessageBySlug() {
   return useAction(api.chat.sendBySlug)
 }
 
-export function useEvalStats(environment?: Environment) {
-  return useQuery(api.evals.getEvalStats, { environment })
+export function useEvalStats() {
+  return useQuery(api.evals.getEvalStats, { environment: "eval" })
 }
 
-export function useEvalSuites(agentId: Id<"agents">, environment?: Environment) {
-  return useQuery(api.evals.listSuites, { agentId, environment })
+export function useEvalSuites(agentId: Id<"agents">) {
+  return useQuery(api.evals.listSuites, { agentId, environment: "eval" })
 }
 
 export function useEvalSuite(id: Id<"evalSuites"> | undefined) {
@@ -475,6 +475,10 @@ export function useCancelEvalRun() {
 
 export function useReorderEvalCases() {
   return useMutation(api.evals.reorderCases)
+}
+
+export function useFixtures() {
+  return useQuery(api.evals.listFixtures, {})
 }
 
 export function useTriggers(environment?: Environment) {
