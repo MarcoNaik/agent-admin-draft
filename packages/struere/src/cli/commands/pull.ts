@@ -10,6 +10,7 @@ import {
   generateAgentFile,
   generateEntityTypeFile,
   generateRoleFile,
+  generateTriggerFile,
   generateToolsFile,
   generateIndexFile,
   collectCustomTools,
@@ -106,6 +107,7 @@ export const pullCommand = new Command('pull')
     ensureDir(join(cwd, 'agents'))
     ensureDir(join(cwd, 'entity-types'))
     ensureDir(join(cwd, 'roles'))
+    ensureDir(join(cwd, 'triggers'))
     ensureDir(join(cwd, 'tools'))
 
     const agentSlugs: string[] = []
@@ -130,6 +132,13 @@ export const pullCommand = new Command('pull')
       writeOrSkip(`roles/${role.name}.ts`, content)
     }
 
+    const triggerSlugs: string[] = []
+    for (const trigger of state.triggers || []) {
+      triggerSlugs.push(trigger.slug)
+      const content = generateTriggerFile(trigger)
+      writeOrSkip(`triggers/${trigger.slug}.ts`, content)
+    }
+
     const customTools = collectCustomTools(state.agents)
     if (customTools.length > 0) {
       const content = generateToolsFile(customTools)
@@ -149,6 +158,11 @@ export const pullCommand = new Command('pull')
     if (roleNames.length > 0) {
       const content = generateIndexFile('roles', roleNames)
       if (content) writeOrSkip('roles/index.ts', content)
+    }
+
+    if (triggerSlugs.length > 0) {
+      const content = generateIndexFile('triggers', triggerSlugs)
+      if (content) writeOrSkip('triggers/index.ts', content)
     }
 
     if (options.dryRun) {

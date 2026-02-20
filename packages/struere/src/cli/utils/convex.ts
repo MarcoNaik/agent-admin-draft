@@ -324,10 +324,23 @@ export interface PullStateRole {
   fieldMasks: Array<{ entityType: string; fieldPath: string; maskType: string; maskConfig?: Record<string, unknown> }>
 }
 
+export interface PullStateTrigger {
+  name: string
+  slug: string
+  description?: string
+  entityType: string
+  action: string
+  condition?: Record<string, unknown>
+  actions: Array<{ tool: string; args: Record<string, unknown>; as?: string }>
+  schedule?: { delay?: number; at?: string; offset?: number; cancelPrevious?: boolean }
+  retry?: { maxAttempts?: number; backoffMs?: number }
+}
+
 export interface PullState {
   agents: PullStateAgent[]
   entityTypes: PullStateEntityType[]
   roles: PullStateRole[]
+  triggers: PullStateTrigger[]
 }
 
 export async function getPullState(

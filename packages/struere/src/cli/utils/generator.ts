@@ -1,4 +1,4 @@
-import type { PullStateAgent, PullStateEntityType, PullStateRole } from './convex'
+import type { PullStateAgent, PullStateEntityType, PullStateRole, PullStateTrigger } from './convex'
 
 const BUILTIN_TOOLS = [
   'entity.create',
@@ -196,7 +196,55 @@ ${toolEntries.join(',\n')},
 `
 }
 
-export function generateIndexFile(type: 'agents' | 'entity-types' | 'roles', slugs: string[]): string {
+export function generateTriggerFile(trigger: PullStateTrigger): string {
+  const onParts: string[] = [
+    `    entityType: "${trigger.entityType}"`,
+    `    action: "${trigger.action}"`,
+  ]
+  if (trigger.condition && Object.keys(trigger.condition).length > 0) {
+    onParts.push(`    condition: ${stringifyValue(trigger.condition, 4)}`)
+  }
+
+  const actionLines = trigger.actions.map((a) => {
+    const aParts: string[] = [
+      `      tool: "${a.tool}"`,
+      `      args: ${stringifyValue(a.args, 6)}`,
+    ]
+    if (a.as) {
+      aParts.push(`      as: "${a.as}"`)
+    }
+    return `    {\n${aParts.join(',\n')},\n    }`
+  })
+
+  const parts: string[] = [
+    `  name: "${trigger.name}"`,
+    `  slug: "${trigger.slug}"`,
+  ]
+
+  if (trigger.description) {
+    parts.push(`  description: "${trigger.description}"`)
+  }
+
+  parts.push(`  on: {\n${onParts.join(',\n')},\n  }`)
+  parts.push(`  actions: [\n${actionLines.join(',\n')},\n  ]`)
+
+  if (trigger.schedule) {
+    parts.push(`  schedule: ${stringifyValue(trigger.schedule, 2)}`)
+  }
+
+  if (trigger.retry) {
+    parts.push(`  retry: ${stringifyValue(trigger.retry, 2)}`)
+  }
+
+  return `import { defineTrigger } from 'struere'
+
+export default defineTrigger({
+${parts.join(',\n')},
+})
+`
+}
+
+export function generateIndexFile(type: 'agents' | 'entity-types' | 'roles' | 'triggers', slugs: string[]): string {
   if (slugs.length === 0) {
     return ''
   }
