@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Loader2, Plus, Play, FlaskConical, ChevronRight } from "lucide-react"
-import { useEvalSuites, useEvalRuns, useStartEvalRun } from "@/hooks/use-convex-data"
-import { useEnvironment } from "@/contexts/environment-context"
+import { Loader2, Plus, Play, FlaskConical, ChevronRight, Database, ChevronDown } from "lucide-react"
+import { useEvalSuites, useEvalRuns, useStartEvalRun, useFixtures } from "@/hooks/use-convex-data"
 import { Badge } from "@/components/ui/badge"
 import { formatRelativeTime } from "@/lib/format"
 import { Id } from "@convex/_generated/dataModel"
@@ -101,10 +100,66 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
   )
 }
 
+function FixturesSection() {
+  const fixtures = useFixtures()
+  const [expanded, setExpanded] = useState(true)
+
+  if (fixtures === undefined) return null
+  if (fixtures.length === 0) return null
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 w-full text-left mb-2"
+      >
+        <ChevronDown className={`h-4 w-4 text-content-tertiary transition-transform ${expanded ? "" : "-rotate-90"}`} />
+        <Database className="h-4 w-4 text-content-tertiary" />
+        <span className="text-sm font-medium text-content-secondary">Test Data</span>
+        <Badge variant="secondary" className="text-xs">{fixtures.length}</Badge>
+      </button>
+      {expanded && (
+        <div className="space-y-2 ml-6">
+          {fixtures.map((fixture: any) => {
+            const typeCounts = fixture.entityTypeCounts as Record<string, number> | undefined
+            return (
+              <div
+                key={fixture._id}
+                className="flex items-center justify-between rounded-md border bg-card p-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Database className="h-4 w-4 text-content-tertiary shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-content-primary truncate">{fixture.name}</div>
+                    <div className="text-xs text-content-tertiary mt-0.5">
+                      {formatRelativeTime(fixture.syncedAt)}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {typeCounts && Object.entries(typeCounts).map(([type, count]) => (
+                    <Badge key={type} variant="secondary" className="text-xs">
+                      {count} {type}
+                    </Badge>
+                  ))}
+                  {fixture.relationCount > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      {fixture.relationCount} relation{fixture.relationCount !== 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function EvalsPage({ params }: EvalsPageProps) {
   const { agentId } = params
-  const { environment } = useEnvironment()
-  const suites = useEvalSuites(agentId as Id<"agents">, environment)
+  const suites = useEvalSuites(agentId as Id<"agents">)
 
   if (suites === undefined) {
     return (
@@ -129,6 +184,8 @@ export default function EvalsPage({ params }: EvalsPageProps) {
           New Suite
         </Link>
       </div>
+
+      <FixturesSection />
 
       {suites.length === 0 ? (
         <div className="rounded-md border bg-card p-12 text-center">
