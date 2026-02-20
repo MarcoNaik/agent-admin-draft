@@ -1,12 +1,12 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import { hasProject } from '../utils/project'
-import { scaffoldAgent, scaffoldEntityType, scaffoldRole, scaffoldEval, scaffoldTrigger } from '../utils/scaffold'
+import { scaffoldAgent, scaffoldEntityType, scaffoldRole, scaffoldEval, scaffoldTrigger, scaffoldFixture } from '../utils/scaffold'
 import { runInit } from './init'
 
 export const addCommand = new Command('add')
   .description('Scaffold a new resource')
-  .argument('<type>', 'Resource type: agent, entity-type, role, or eval')
+  .argument('<type>', 'Resource type: agent, entity-type, role, eval, trigger, or fixture')
   .argument('<name>', 'Resource name')
   .action(async (type: string, name: string) => {
     const cwd = process.cwd()
@@ -97,6 +97,20 @@ export const addCommand = new Command('add')
         }
         break
 
+      case 'fixture':
+        result = scaffoldFixture(cwd, displayName, slug)
+        if (result.createdFiles.length > 0) {
+          console.log(chalk.green('✓'), `Created fixture "${displayName}"`)
+          for (const file of result.createdFiles) {
+            console.log(chalk.gray('  →'), file)
+          }
+          console.log()
+          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere dev'), chalk.gray('to sync'))
+        } else {
+          console.log(chalk.yellow('Fixture already exists:'), `fixtures/${slug}.fixture.yaml`)
+        }
+        break
+
       default:
         console.log(chalk.red('Unknown resource type:'), type)
         console.log()
@@ -106,6 +120,7 @@ export const addCommand = new Command('add')
         console.log(chalk.gray('  -'), chalk.cyan('role'), '- Create a role with permissions')
         console.log(chalk.gray('  -'), chalk.cyan('eval'), '- Create an eval suite (YAML)')
         console.log(chalk.gray('  -'), chalk.cyan('trigger'), '- Create an entity trigger')
+        console.log(chalk.gray('  -'), chalk.cyan('fixture'), '- Create a test data fixture (YAML)')
         console.log()
         process.exit(1)
     }

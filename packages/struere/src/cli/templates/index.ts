@@ -325,6 +325,29 @@ export function getPackageJson(name: string): string {
 }
 
 
+export function getFixtureYamlTemplate(name: string, slug: string): string {
+  return `name: "${name}"
+slug: "${slug}"
+
+entities:
+  - ref: "example-1"
+    type: "ENTITY_TYPE_HERE"
+    data:
+      name: "Example Entity"
+    status: "active"
+
+  - ref: "example-2"
+    type: "ENTITY_TYPE_HERE"
+    data:
+      name: "Another Entity"
+
+relations:
+  - from: "example-1"
+    to: "example-2"
+    type: "related_to"
+`
+}
+
 export function getTriggerTs(name: string, slug: string): string {
   return `import { defineTrigger } from 'struere'
 

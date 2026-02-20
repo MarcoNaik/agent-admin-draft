@@ -13,6 +13,7 @@ import {
   getTriggerTs,
   getExampleEvalYaml,
   getEvalYamlTemplate,
+  getFixtureYamlTemplate,
 } from '../templates'
 
 export interface ScaffoldOptions {
@@ -53,6 +54,7 @@ export function scaffoldProject(cwd: string, options: ScaffoldOptions): Scaffold
     'tools',
     'evals',
     'triggers',
+    'fixtures',
     '.struere',
   ]
 
@@ -206,6 +208,30 @@ export function scaffoldTrigger(cwd: string, name: string, slug: string): Scaffo
 
   writeFileSync(filePath, getTriggerTs(name, slug))
   result.createdFiles.push(`triggers/${fileName}`)
+
+  return result
+}
+
+export function scaffoldFixture(cwd: string, name: string, slug: string): ScaffoldResult {
+  const result: ScaffoldResult = {
+    createdFiles: [],
+    updatedFiles: [],
+  }
+
+  const fixturesDir = join(cwd, 'fixtures')
+  if (!existsSync(fixturesDir)) {
+    mkdirSync(fixturesDir, { recursive: true })
+  }
+
+  const fileName = `${slug}.fixture.yaml`
+  const filePath = join(fixturesDir, fileName)
+
+  if (existsSync(filePath)) {
+    return result
+  }
+
+  writeFileSync(filePath, getFixtureYamlTemplate(name, slug))
+  result.createdFiles.push(`fixtures/${fileName}`)
 
   return result
 }
