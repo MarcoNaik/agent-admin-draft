@@ -335,39 +335,48 @@ export default defineSchema({
 
   whatsappConnections: defineTable({
     organizationId: v.id("organizations"),
+    environment: environmentValidator,
     status: v.union(
       v.literal("disconnected"),
-      v.literal("connecting"),
-      v.literal("qr_ready"),
-      v.literal("pairing_code_ready"),
+      v.literal("pending_setup"),
       v.literal("connected")
     ),
+    label: v.optional(v.string()),
+    kapsoCustomerId: v.string(),
+    kapsoPhoneNumberId: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
-    qrCode: v.optional(v.string()),
-    pairingCode: v.optional(v.string()),
+    setupLinkUrl: v.optional(v.string()),
     agentId: v.optional(v.id("agents")),
-    environment: environmentValidator,
     lastConnectedAt: v.optional(v.number()),
     lastDisconnectedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_env", ["organizationId", "environment"]),
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_status", ["organizationId", "environment", "status"])
+    .index("by_kapso_phone", ["kapsoPhoneNumberId"]),
 
   whatsappMessages: defineTable({
     organizationId: v.id("organizations"),
+    connectionId: v.optional(v.id("whatsappConnections")),
     direction: v.union(v.literal("inbound"), v.literal("outbound")),
     phoneNumber: v.string(),
     messageId: v.string(),
     type: v.optional(v.string()),
     text: v.optional(v.string()),
     threadId: v.optional(v.id("threads")),
+    mediaStorageId: v.optional(v.id("_storage")),
+    mediaMimeType: v.optional(v.string()),
+    mediaFileName: v.optional(v.string()),
+    mediaCaption: v.optional(v.string()),
+    interactiveData: v.optional(v.any()),
     status: v.union(v.literal("sent"), v.literal("delivered"), v.literal("read"), v.literal("failed"), v.literal("received")),
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
     .index("by_org_phone", ["organizationId", "phoneNumber"])
+    .index("by_connection_phone", ["connectionId", "phoneNumber"])
     .index("by_message_id", ["messageId"]),
 
   integrationConfigs: defineTable({
