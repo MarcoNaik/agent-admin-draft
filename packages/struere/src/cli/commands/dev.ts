@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import chokidar from 'chokidar'
 import { join } from 'path'
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync } from 'fs'
 import { confirm } from '@inquirer/prompts'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProject } from '../utils/project'
@@ -11,7 +11,7 @@ import { performLogin } from './login'
 import { syncOrganization, getSyncState } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
-import { getClaudeMD } from '../templates'
+import { generateDocs } from './docs'
 import { runInit } from './init'
 import { generateTypeDeclarations } from '../utils/plugin'
 
@@ -61,8 +61,14 @@ export const devCommand = new Command('dev')
 
     const claudeMdPath = join(cwd, 'CLAUDE.md')
     if (!existsSync(claudeMdPath)) {
-      writeFileSync(claudeMdPath, getClaudeMD(project.organization.name))
-      console.log(chalk.green('✓'), 'Created CLAUDE.md')
+      try {
+        const { generated } = await generateDocs(cwd, ['claude'])
+        if (generated.length > 0) {
+          console.log(chalk.green('✓'), 'Created CLAUDE.md')
+        }
+      } catch {
+        console.log(chalk.yellow('⚠'), 'Could not fetch docs for CLAUDE.md')
+      }
     }
 
     const isAuthError = (error: unknown): boolean => {

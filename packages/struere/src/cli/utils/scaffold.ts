@@ -8,7 +8,6 @@ import {
   getEnvExample,
   getGitignore,
   getStruereJson,
-  getClaudeMD,
   getEntityTypeTs,
   getRoleTs,
   getTriggerTs,
@@ -70,7 +69,6 @@ export function scaffoldProject(cwd: string, options: ScaffoldOptions): Scaffold
     'tsconfig.json': getTsConfig(),
     '.env.example': getEnvExample(),
     '.gitignore': getGitignore(),
-    'CLAUDE.md': getClaudeMD(options.orgName),
     'tools/index.ts': getToolsIndexTs(),
     'evals/basic-agent-tests.eval.yaml': getExampleEvalYaml('my-agent'),
   }

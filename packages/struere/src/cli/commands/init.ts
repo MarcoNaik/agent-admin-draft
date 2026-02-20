@@ -9,6 +9,7 @@ import { hasProject } from '../utils/project'
 import { scaffoldProject } from '../utils/scaffold'
 import { listMyOrganizations, OrgInfo } from '../utils/convex'
 import { generateTypeDeclarations } from '../utils/plugin'
+import { generateDocs } from './docs'
 
 export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boolean> {
   const spinner = ora()
@@ -75,6 +76,15 @@ export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boole
 
   generateTypeDeclarations(cwd)
   console.log(chalk.green('✓'), 'Generated .struere/types.d.ts')
+
+  try {
+    const { generated } = await generateDocs(cwd, ['claude'])
+    for (const file of generated) {
+      console.log(chalk.green('✓'), `Created ${file}`)
+    }
+  } catch {
+    console.log(chalk.yellow('⚠'), 'Could not fetch docs for CLAUDE.md')
+  }
 
   console.log()
   console.log(chalk.green('✓'), 'Project initialized')
@@ -176,6 +186,15 @@ export const initCommand = new Command('init')
 
     generateTypeDeclarations(cwd)
     console.log(chalk.green('✓'), 'Generated .struere/types.d.ts')
+
+    try {
+      const { generated } = await generateDocs(cwd, ['claude'])
+      for (const file of generated) {
+        console.log(chalk.green('✓'), `Created ${file}`)
+      }
+    } catch {
+      console.log(chalk.yellow('⚠'), 'Could not fetch docs for CLAUDE.md')
+    }
 
     console.log()
     console.log(chalk.green('Success!'), 'Project initialized')
