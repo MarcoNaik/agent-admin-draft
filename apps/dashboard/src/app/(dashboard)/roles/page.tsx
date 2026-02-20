@@ -104,16 +104,16 @@ function BoldActions({ actions }: { actions: string[] }) {
 
 function ScopeRuleDescription({
   resource,
-  field,
-  operator,
-  value,
+  field = "",
+  operator = "",
+  value = "",
   actions,
   effect,
 }: {
   resource: string
-  field: string
-  operator: string
-  value: string
+  field?: string
+  operator?: string
+  value?: string
   actions: string[]
   effect: "allow" | "deny"
 }) {
@@ -238,15 +238,6 @@ function PermissionMatrix({
 }) {
   const resources = Object.keys(policiesByResource)
 
-  if (resources.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-14 text-content-tertiary">
-        <Lock className="h-7 w-7 mb-3 opacity-40" />
-        <p className="text-sm">No policies defined</p>
-      </div>
-    )
-  }
-
   const matrixData = useMemo(() => {
     const data: Record<string, Record<string, CellState>> = {}
     for (const resource of resources) {
@@ -282,6 +273,15 @@ function PermissionMatrix({
     }
     return data
   }, [policiesByResource])
+
+  if (resources.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-14 text-content-tertiary">
+        <Lock className="h-7 w-7 mb-3 opacity-40" />
+        <p className="text-sm">No policies defined</p>
+      </div>
+    )
+  }
 
   return (
     <TooltipProvider delayDuration={150}>
