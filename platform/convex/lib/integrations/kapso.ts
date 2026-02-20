@@ -51,10 +51,13 @@ export async function createKapsoCustomer(
   externalId: string
 ): Promise<{ id: string }> {
   const response = await kapsoPlatformRequest("POST", "/customers", {
-    name,
-    external_customer_id: externalId,
+    customer: {
+      name,
+      external_customer_id: externalId,
+    },
   })
-  return (await response.json()) as { id: string }
+  const json = (await response.json()) as { data: { id: string } }
+  return json.data
 }
 
 export async function createSetupLink(
@@ -66,11 +69,45 @@ export async function createSetupLink(
     "POST",
     `/customers/${kapsoCustomerId}/setup_links`,
     {
-      success_url: successUrl,
-      failure_url: failureUrl,
+      setup_link: {
+        success_redirect_url: successUrl,
+        failure_redirect_url: failureUrl,
+      },
     }
   )
-  return (await response.json()) as { url: string; id: string }
+  const json = (await response.json()) as { data: { url: string; id: string } }
+  return json.data
+}
+
+export async function registerCustomerWebhook(
+  kapsoCustomerId: string,
+  webhookUrl: string,
+  secret: string
+): Promise<void> {
+  await kapsoPlatformRequest(
+    "PUT",
+    `/customers/${kapsoCustomerId}`,
+    {
+      whatsapp_webhook: {
+        kind: "kapso",
+        url: webhookUrl,
+        secret_key: secret,
+        events: [
+          "whatsapp.phone_number.created",
+          "whatsapp.phone_number.deleted",
+        ],
+      },
+    }
+  )
+}
+
+export async function deletePhoneNumber(
+  phoneNumberId: string
+): Promise<void> {
+  await kapsoPlatformRequest(
+    "DELETE",
+    `/whatsapp/phone_numbers/${phoneNumberId}`
+  )
 }
 
 export async function registerPhoneWebhook(
@@ -79,11 +116,20 @@ export async function registerPhoneWebhook(
   secret: string
 ): Promise<void> {
   await kapsoPlatformRequest(
-    "POST",
-    `/whatsapp/phone_numbers/${phoneNumberId}/webhooks`,
+    "PUT",
+    `/whatsapp/phone_numbers/${phoneNumberId}`,
     {
-      url: webhookUrl,
-      secret,
+      whatsapp_webhook: {
+        kind: "kapso",
+        url: webhookUrl,
+        secret_key: secret,
+        events: [
+          "whatsapp.message.received",
+          "whatsapp.message.delivered",
+          "whatsapp.message.read",
+          "whatsapp.message.failed",
+        ],
+      },
     }
   )
 }
@@ -213,8 +259,8 @@ export async function downloadMedia(
   const data = await client.media.download({ mediaId, phoneNumberId, as: "arrayBuffer" }) as ArrayBuffer
   return {
     data,
-    mimeType: (metadata as any).mime_type ?? "application/octet-stream",
-    fileName: (metadata as any).file_name,
+    mimeType: (metadata as any).mimeType ?? "application/octet-stream",
+    fileName: (metadata as any).fileName,
   }
 }
 
