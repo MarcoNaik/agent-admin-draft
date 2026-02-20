@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
+import { Id } from "./_generated/dataModel"
 import { getAuthContext, requireAuth } from "./lib/auth"
 
 export const listWithPreviews = query({
@@ -79,7 +80,7 @@ export const listWithPreviews = query({
             businessPhoneNumber = cached.phoneNumber
             connectionLabel = cached.label
           } else {
-            const conn = await ctx.db.get(connId as any)
+            const conn = await ctx.db.get(connId as Id<"whatsappConnections">)
             if (conn) {
               businessPhoneNumber = conn.phoneNumber
               connectionLabel = conn.label
