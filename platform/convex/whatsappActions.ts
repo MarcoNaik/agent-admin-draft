@@ -7,7 +7,9 @@ import { Id } from "./_generated/dataModel"
 import {
   createKapsoCustomer,
   createSetupLink,
+  registerCustomerWebhook,
   registerPhoneWebhook,
+  deletePhoneNumber,
   sendTextMessage,
   sendTemplateMessage,
   getKapsoWebhookSecret,
@@ -71,10 +73,18 @@ export const createKapsoSetup = internalAction({
     }
 
     const siteUrl = process.env.CONVEX_SITE_URL ?? ""
+    const secret = getKapsoWebhookSecret()
+    await registerCustomerWebhook(
+      kapsoCustomerId,
+      `${siteUrl}/webhook/kapso/project`,
+      secret
+    )
+
+    const dashboardUrl = process.env.DASHBOARD_URL ?? ""
     const setupLink = await createSetupLink(
       kapsoCustomerId,
-      `${siteUrl}/webhook/kapso/setup-complete`,
-      `${siteUrl}/webhook/kapso/setup-failed`
+      `${dashboardUrl}/settings/integrations/whatsapp`,
+      `${dashboardUrl}/settings/integrations/whatsapp`
     )
 
     await ctx.runMutation(internal.whatsapp.createConnection, {
@@ -86,6 +96,17 @@ export const createKapsoSetup = internalAction({
       label: args.label,
     })
 
+    return null
+  },
+})
+
+export const disconnectFromKapso = internalAction({
+  args: {
+    kapsoPhoneNumberId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await deletePhoneNumber(args.kapsoPhoneNumberId)
     return null
   },
 })
@@ -177,10 +198,25 @@ export const downloadAndStoreMedia = internalAction({
     whatsappMessageId: v.id("whatsappMessages"),
     mediaId: v.string(),
     kapsoPhoneNumberId: v.string(),
+    mediaUrl: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { data, mimeType, fileName } = await downloadMedia(args.mediaId, args.kapsoPhoneNumberId)
+    let data: ArrayBuffer
+    let mimeType: string
+    let fileName: string | undefined
+
+    if (args.mediaUrl) {
+      const response = await fetch(args.mediaUrl)
+      data = await response.arrayBuffer()
+      mimeType = response.headers.get("content-type") ?? "application/octet-stream"
+    } else {
+      const result = await downloadMedia(args.mediaId, args.kapsoPhoneNumberId)
+      data = result.data
+      mimeType = result.mimeType
+      fileName = result.fileName
+    }
+
     const blob = new Blob([data], { type: mimeType })
     const storageId = await ctx.storage.store(blob)
     await ctx.runMutation(internal.whatsapp.attachMediaToMessage, {
