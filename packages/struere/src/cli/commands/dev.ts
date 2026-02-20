@@ -42,7 +42,7 @@ export const devCommand = new Command('dev')
     generateTypeDeclarations(cwd)
 
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
-    console.log(chalk.gray('Environment:'), chalk.cyan('development'))
+    console.log(chalk.gray('Environment:'), chalk.cyan('development'), '+', chalk.cyan('eval'))
     console.log()
 
     let credentials = loadCredentials()
@@ -92,14 +92,37 @@ export const devCommand = new Command('dev')
         throw new Error(resources.errors.join('\n'))
       }
       const payload = extractSyncPayload(resources)
-      const result = await syncOrganization({
-        ...payload,
+
+      const devResult = await syncOrganization({
+        agents: payload.agents,
+        entityTypes: payload.entityTypes,
+        roles: payload.roles,
+        triggers: payload.triggers,
         organizationId: project.organization.id,
         environment: 'development',
       })
-      if (!result.success) {
-        throw new Error(result.error || 'Sync failed')
+      if (!devResult.success) {
+        throw new Error(devResult.error || 'Dev sync failed')
       }
+
+      const hasEvalContent = (payload.evalSuites && payload.evalSuites.length > 0) ||
+        (payload.fixtures && payload.fixtures.length > 0)
+
+      if (hasEvalContent) {
+        const evalResult = await syncOrganization({
+          agents: payload.agents,
+          entityTypes: payload.entityTypes,
+          roles: payload.roles,
+          evalSuites: payload.evalSuites,
+          fixtures: payload.fixtures,
+          organizationId: project.organization.id,
+          environment: 'eval',
+        })
+        if (!evalResult.success) {
+          throw new Error(evalResult.error || 'Eval sync failed')
+        }
+      }
+
       return true
     }
 
@@ -110,7 +133,7 @@ export const devCommand = new Command('dev')
 
     try {
       loadedResources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${loadedResources.agents.length} agents, ${loadedResources.entityTypes.length} entity types, ${loadedResources.roles.length} roles, ${loadedResources.customTools.length} custom tools, ${loadedResources.evalSuites.length} eval suites, ${loadedResources.triggers.length} triggers`)
+      spinner.succeed(`Loaded ${loadedResources.agents.length} agents, ${loadedResources.entityTypes.length} entity types, ${loadedResources.roles.length} roles, ${loadedResources.customTools.length} custom tools, ${loadedResources.evalSuites.length} eval suites, ${loadedResources.triggers.length} triggers, ${loadedResources.fixtures.length} fixtures`)
 
       for (const err of loadedResources.errors) {
         console.log(chalk.red('  ✖'), err)
@@ -238,6 +261,7 @@ export const devCommand = new Command('dev')
       dirs.tools,
       dirs.evals,
       dirs.triggers,
+      dirs.fixtures,
     ].filter((p) => existsSync(p))
 
     const watcher = chokidar.watch(watchPaths, {
