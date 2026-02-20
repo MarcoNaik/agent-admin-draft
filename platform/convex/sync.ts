@@ -7,9 +7,10 @@ import {
   syncAgents,
   syncEvalSuites,
   syncTriggers,
+  syncFixtures,
 } from "./lib/sync"
 
-const environmentValidator = v.union(v.literal("development"), v.literal("production"))
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 export const syncOrganization = mutation({
   args: {
@@ -165,6 +166,22 @@ export const syncOrganization = mutation({
         })),
       })
     )),
+    fixtures: v.optional(v.array(v.object({
+      name: v.string(),
+      slug: v.string(),
+      entities: v.array(v.object({
+        ref: v.string(),
+        type: v.string(),
+        data: v.any(),
+        status: v.optional(v.string()),
+      })),
+      relations: v.optional(v.array(v.object({
+        from: v.string(),
+        to: v.string(),
+        type: v.string(),
+        metadata: v.optional(v.any()),
+      }))),
+    }))),
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
@@ -211,6 +228,16 @@ export const syncOrganization = mutation({
       )
     }
 
+    let fixturesResult
+    if (args.fixtures && args.fixtures.length > 0) {
+      fixturesResult = await syncFixtures(
+        ctx,
+        auth.organizationId,
+        args.fixtures,
+        args.environment
+      )
+    }
+
     return {
       success: true,
       entityTypes: entityTypeResult,
@@ -218,6 +245,7 @@ export const syncOrganization = mutation({
       agents: agentResult,
       evalSuites: evalSuitesResult,
       triggers: triggersResult,
+      fixtures: fixturesResult,
     }
   },
 })
