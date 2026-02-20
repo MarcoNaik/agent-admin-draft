@@ -11,6 +11,8 @@ import { statusCommand } from './commands/status'
 import { pullCommand } from './commands/pull'
 import { entitiesCommand } from './commands/entities'
 import { docsCommand } from './commands/docs'
+import { evalCommand } from './commands/eval'
+import { templatesCommand } from './commands/templates'
 import pkg from '../../package.json'
 
 const CURRENT_VERSION = pkg.version
@@ -64,5 +66,7 @@ program.addCommand(statusCommand)
 program.addCommand(pullCommand)
 program.addCommand(entitiesCommand)
 program.addCommand(docsCommand)
+program.addCommand(evalCommand)
+program.addCommand(templatesCommand)
 
 program.parse()
