@@ -529,6 +529,7 @@ export default function WhatsAppSettingsPage() {
                     onDisconnect={handleDisconnect}
                     onAgentChange={handleAgentChange}
                     onLabelUpdate={handleLabelUpdate}
+                    onReconnect={handleReconnect}
                   />
                 ))}
               </div>
