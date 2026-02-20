@@ -120,5 +120,55 @@ export async function syncFixtures(
     }
   }
 
+  const incomingSlugs = new Set(fixtures.map((f) => f.slug))
+
+  const existingFixtures = await ctx.db
+    .query("fixtures")
+    .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId).eq("environment", environment))
+    .collect()
+
+  for (const existing of existingFixtures) {
+    if (!incomingSlugs.has(existing.slug)) {
+      await ctx.db.delete(existing._id)
+    }
+  }
+
+  for (const fixture of fixtures) {
+    const entityTypeCounts: Record<string, number> = {}
+    for (const entity of fixture.entities) {
+      entityTypeCounts[entity.type] = (entityTypeCounts[entity.type] || 0) + 1
+    }
+
+    const existing = await ctx.db
+      .query("fixtures")
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", organizationId)
+          .eq("environment", environment)
+          .eq("slug", fixture.slug)
+      )
+      .first()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: fixture.name,
+        entityCount: fixture.entities.length,
+        relationCount: fixture.relations?.length ?? 0,
+        entityTypeCounts,
+        syncedAt: now,
+      })
+    } else {
+      await ctx.db.insert("fixtures", {
+        organizationId,
+        environment,
+        name: fixture.name,
+        slug: fixture.slug,
+        entityCount: fixture.entities.length,
+        relationCount: fixture.relations?.length ?? 0,
+        entityTypeCounts,
+        syncedAt: now,
+      })
+    }
+  }
+
   return { entitiesCreated, relationsCreated }
 }
