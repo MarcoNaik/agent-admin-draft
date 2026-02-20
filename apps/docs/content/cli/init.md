@@ -40,8 +40,10 @@ my-project/
 ├── entity-types/
 ├── roles/
 ├── triggers/
-└── tools/
-    └── index.ts
+├── tools/
+│   └── index.ts
+├── evals/
+└── fixtures/
 ```
 
 | Directory | Purpose |
@@ -51,6 +53,8 @@ my-project/
 | `roles/` | Role definitions with policies, scope rules, and field masks using `defineRole()` |
 | `triggers/` | Trigger automations using `defineTrigger()` |
 | `tools/` | Custom tool definitions using `defineTools()` |
+| `evals/` | Eval suite definitions as YAML |
+| `fixtures/` | Fixture data for eval environment as YAML |
 
 ## struere.json
 

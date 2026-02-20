@@ -210,21 +210,123 @@ Retrieve message history for a phone number:
 
 Check the current WhatsApp connection status for the organization.
 
-## Template Messages
+## Template Management
 
-For sending structured WhatsApp templates (pre-approved message formats), use the `sendTemplate` action:
+WhatsApp message templates are pre-approved message formats required for outbound messages outside the 24-hour messaging window. Struere supports full template lifecycle management — create, list, check status, delete — directly from the dashboard and API.
+
+Templates are stored on Meta's side and queried dynamically via the Kapso Meta proxy. There is no local caching table.
+
+### Template Categories
+
+| Category | Use Case |
+|----------|----------|
+| `UTILITY` | Transactional updates (order confirmations, appointment reminders) |
+| `MARKETING` | Promotional content and offers |
+| `AUTHENTICATION` | OTP/verification codes (special Meta rules apply) |
+
+### Template Status Flow
+
+```
+Created -> PENDING -> APPROVED
+                  \-> REJECTED
+                  \-> PAUSED
+```
+
+Templates must be approved by Meta before they can be sent. Status is checked by querying the Meta API directly.
+
+### Creating Templates
+
+Create templates via the dashboard (Settings > WhatsApp > Templates) or the `createTemplate` action:
 
 ```typescript
-await whatsapp.sendTemplate({
+await whatsappActions.createTemplate({
+  environment: "development",
+  connectionId: "connection_id",
+  name: "order_update",
+  language: "en_US",
+  category: "UTILITY",
+  components: [
+    {
+      type: "BODY",
+      text: "Hi {{customer_name}}, your order {{order_id}} is ready.",
+      example: {
+        body_text_named_params: [
+          { param_name: "customer_name", example: "Alex" },
+          { param_name: "order_id", example: "ORDER-123" },
+        ],
+      },
+    },
+  ],
+})
+```
+
+**Returns:** `{ id: string, status: string, category: string }`
+
+### Template Component Rules
+
+- **HEADER** (optional): TEXT, IMAGE, VIDEO, or DOCUMENT format
+- **BODY** (required): Main message text with optional variables
+- **FOOTER** (optional): Short footer text, no variables
+- **BUTTONS** (optional): QUICK_REPLY, URL, or PHONE_NUMBER
+
+Parameter formats:
+- **NAMED** (recommended): `{{customer_name}}` — use `parameter_format: "NAMED"` at creation
+- **POSITIONAL**: `{{1}}`, `{{2}}` — sequential, no gaps
+
+If variables appear in HEADER or BODY, you must include examples in the component.
+
+Button ordering: do not interleave QUICK_REPLY with URL/PHONE_NUMBER buttons.
+
+### Listing Templates
+
+```typescript
+await whatsappActions.listTemplates({
+  environment: "development",
+  connectionId: "connection_id",
+})
+```
+
+Returns all templates with name, status, category, language, and components.
+
+### Checking Template Status
+
+```typescript
+await whatsappActions.getTemplateStatus({
+  environment: "development",
+  connectionId: "connection_id",
+  name: "order_update",
+})
+```
+
+Returns the template details filtered by name, including current approval status.
+
+### Deleting Templates
+
+```typescript
+await whatsappActions.deleteTemplate({
+  environment: "development",
+  connectionId: "connection_id",
+  name: "order_update",
+})
+```
+
+Deletes the template from Meta. This cannot be undone.
+
+### Sending Template Messages
+
+For sending approved templates in a conversation, use the `sendTemplate` action:
+
+```typescript
+await whatsappActions.sendTemplate({
   threadId: "thread_id",
-  templateName: "session_reminder",
-  language: "en",
+  templateName: "order_update",
+  language: "en_US",
   components: [
     {
       type: "body",
       parameters: [
-        { type: "text", text: "Tuesday, March 15" },
-        { type: "text", text: "3:00 PM" },
+        { type: "text", parameter_name: "customer_name", text: "Alex" },
+        { type: "text", parameter_name: "order_id", text: "ORDER-123" },
       ],
     },
   ],
@@ -232,6 +334,15 @@ await whatsapp.sendTemplate({
 ```
 
 Template messages are stored with the text `[Template: templateName]` in the message history.
+
+### Dashboard Template Management
+
+Connected phone numbers display a **Message Templates** section in the WhatsApp settings page. From there you can:
+
+- View all templates with their name, language, category, and approval status
+- Create new templates with a JSON component editor
+- Delete templates (with confirmation)
+- Refresh the template list from Meta
 
 ## Disconnecting
 

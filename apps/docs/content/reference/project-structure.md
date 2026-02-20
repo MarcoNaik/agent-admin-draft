@@ -31,8 +31,12 @@ my-org/
 │   └── guardian.ts
 ├── triggers/
 │   └── notify-on-session.ts
-└── tools/
-    └── index.ts
+├── tools/
+│   └── index.ts
+├── evals/
+│   └── customer-support.eval.yaml
+└── fixtures/
+    └── classroom-data.fixture.yaml
 ```
 
 ## Directory Descriptions
@@ -136,6 +140,14 @@ export default defineTrigger({
 })
 ```
 
+### evals/
+
+Each file defines an eval suite as a YAML file with the `.eval.yaml` extension. Eval suites specify test cases with assertions that verify agent behavior. See [Evaluations](/platform/evals) for the full YAML format.
+
+### fixtures/
+
+Each file defines fixture data as a YAML file with the `.fixture.yaml` extension. Fixtures create controlled test entities and relations in the eval environment. See [Evaluations — Fixtures](/platform/evals#fixtures--test-data-for-evals) for the full YAML format.
+
 ### tools/
 
 Contains a single `index.ts` file that exports all custom tool definitions using `defineTools`. These tools are shared across all agents in the organization.
@@ -237,9 +249,9 @@ The Convex backend stores all platform data across the following table categorie
 
 ### Environment-Scoped vs Shared Tables
 
-Most tables are scoped by environment, meaning development and production data is fully isolated:
+Most tables are scoped by environment, meaning development, production, and eval data is fully isolated:
 
-**Environment-scoped:** `entityTypes`, `entities`, `entityRelations`, `roles`, `agentConfigs`, `threads`, `messages`, `events`, `executions`, `triggerRuns`, `apiKeys`, `integrationConfigs`, `whatsappConnections`
+**Environment-scoped:** `entityTypes`, `entities`, `entityRelations`, `roles`, `agentConfigs`, `threads`, `messages`, `events`, `executions`, `triggerRuns`, `apiKeys`, `evalSuites`, `evalRuns`, `integrationConfigs`, `whatsappConnections`
 
 **Shared across environments:** `agents`, `users`, `organizations`, `userOrganizations`, `toolPermissions`
 
@@ -247,15 +259,16 @@ The `agents` table stores the agent name, slug, and description which are shared
 
 ## CLI Sync Mechanism
 
-When you run `struere dev`, the CLI:
+When you run `struere dev`, the CLI performs a **dual sync**:
 
-1. Loads all resource files from `agents/`, `entity-types/`, `roles/`, `triggers/`, and `tools/`
+1. Loads all resource files from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/`
 2. Builds a sync payload containing all definitions
-3. Sends the payload to the Convex backend via the `syncOrganization` mutation
-4. Watches all directories with chokidar for file changes
-5. Re-syncs on any file change (add, modify, or delete)
+3. Syncs to the **development** environment (agents, entity types, roles, triggers)
+4. Syncs to the **eval** environment (agents, entity types, roles, eval suites, fixtures — triggers excluded)
+5. Watches all directories with chokidar for file changes
+6. Re-syncs on any file change (add, modify, or delete)
 
-The sync payload structure:
+The development sync payload:
 
 ```typescript
 {
@@ -266,4 +279,16 @@ The sync payload structure:
 }
 ```
 
-Resources are upserted by slug or name, so renaming a slug creates a new resource rather than updating the existing one. The `dev` command syncs to the **development** environment. Use `struere deploy` to promote to **production**.
+The eval sync payload:
+
+```typescript
+{
+  agents: AgentConfig[]
+  entityTypes: EntityTypeConfig[]
+  roles: RoleConfig[]
+  evalSuites: EvalSuiteConfig[]
+  fixtures: FixtureDefinition[]
+}
+```
+
+Resources are upserted by slug or name, so renaming a slug creates a new resource rather than updating the existing one. Fixture sync deletes all existing entities and relations in the eval environment and recreates them from YAML, ensuring a clean state on every sync. Use `struere deploy` to promote to **production**.

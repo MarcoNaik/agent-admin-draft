@@ -26,6 +26,13 @@ Struere provides a set of built-in tools that agents can use to interact with en
 | `calendar.delete` | Calendar | Delete a calendar event |
 | `calendar.freeBusy` | Calendar | Check free/busy availability |
 | `whatsapp.send` | WhatsApp | Send a WhatsApp message |
+| `whatsapp.sendTemplate` | WhatsApp | Send a WhatsApp template message |
+| `whatsapp.sendInteractive` | WhatsApp | Send an interactive button message |
+| `whatsapp.sendMedia` | WhatsApp | Send an image or audio message |
+| `whatsapp.listTemplates` | WhatsApp | List available message templates |
+| `whatsapp.createTemplate` | WhatsApp | Create a new message template on Meta |
+| `whatsapp.deleteTemplate` | WhatsApp | Delete a message template from Meta |
+| `whatsapp.getTemplateStatus` | WhatsApp | Check approval status of a template |
 | `whatsapp.getConversation` | WhatsApp | Get conversation history |
 | `whatsapp.getStatus` | WhatsApp | Check WhatsApp connection status |
 | `agent.chat` | Agent | Send a message to another agent and get its response |
@@ -561,6 +568,233 @@ Sends a text message to a WhatsApp number.
   status: "sent"
 }
 ```
+
+---
+
+### whatsapp.sendTemplate
+
+Sends a pre-approved WhatsApp template message. Templates must be created and approved in the Meta Business Manager before use.
+
+**Parameters:**
+
+```typescript
+{
+  to: string
+  templateName: string
+  language: string
+  components?: Array<{
+    type: string
+    parameters: Array<{
+      type: string
+      text?: string
+      parameterName?: string
+    }>
+  }>
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `to` | `string` | Yes | Recipient phone number (E.164 format) |
+| `templateName` | `string` | Yes | Name of the approved template |
+| `language` | `string` | Yes | Template language code (e.g., `"en_US"`, `"es"`) |
+| `components` | `array` | No | Template component parameters for dynamic content |
+
+**Returns:**
+
+```typescript
+{
+  messageId: string
+  to: string
+  status: "sent"
+}
+```
+
+---
+
+### whatsapp.sendInteractive
+
+Sends an interactive message with reply buttons. Supports 1-3 buttons per message.
+
+**Parameters:**
+
+```typescript
+{
+  to: string
+  bodyText: string
+  buttons: Array<{ id: string; title: string }>
+  footerText?: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `to` | `string` | Yes | Recipient phone number (E.164 format) |
+| `bodyText` | `string` | Yes | Message body text |
+| `buttons` | `array` | Yes | Array of 1-3 buttons, each with `id` and `title` |
+| `footerText` | `string` | No | Optional footer text displayed below buttons |
+
+**Returns:**
+
+```typescript
+{
+  messageId: string
+  to: string
+  status: "sent"
+}
+```
+
+---
+
+### whatsapp.sendMedia
+
+Sends an image or audio message to a WhatsApp number.
+
+**Parameters:**
+
+```typescript
+{
+  to: string
+  mediaUrl: string
+  mediaType: "image" | "audio"
+  caption?: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `to` | `string` | Yes | Recipient phone number (E.164 format) |
+| `mediaUrl` | `string` | Yes | Public URL of the media file |
+| `mediaType` | `string` | Yes | Type of media: `"image"` or `"audio"` |
+| `caption` | `string` | No | Caption text (only applies to images) |
+
+**Returns:**
+
+```typescript
+{
+  messageId: string
+  to: string
+  status: "sent"
+}
+```
+
+---
+
+### whatsapp.listTemplates
+
+Lists all approved message templates available for the organization's WhatsApp connection.
+
+**Parameters:**
+
+No parameters required.
+
+**Returns:**
+
+```typescript
+Array<{
+  name: string
+  language: string
+  status: string
+  category: string
+  components: Array<object>
+}>
+```
+
+---
+
+### whatsapp.createTemplate
+
+Creates a new message template on Meta via the Kapso proxy. Templates require Meta approval before they can be sent.
+
+**Parameters:**
+
+```typescript
+{
+  connectionId: Id<"whatsappConnections">
+  environment: "development" | "production"
+  name: string
+  language: string
+  category: "UTILITY" | "MARKETING" | "AUTHENTICATION"
+  components: Array<object>
+  allowCategoryChange?: boolean
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `connectionId` | `Id<"whatsappConnections">` | Yes | WhatsApp connection to create template for |
+| `environment` | `string` | Yes | Environment scope |
+| `name` | `string` | Yes | Template name (lowercase, underscores only) |
+| `language` | `string` | Yes | Language code (e.g., `en_US`) |
+| `category` | `string` | Yes | Template category |
+| `components` | `Array<object>` | Yes | Template components (HEADER, BODY, FOOTER, BUTTONS) |
+| `allowCategoryChange` | `boolean` | No | Allow Meta to reassign the category |
+
+**Returns:**
+
+```typescript
+{
+  id: string
+  status: string
+  category: string
+}
+```
+
+---
+
+### whatsapp.deleteTemplate
+
+Deletes a message template from Meta. This action is irreversible.
+
+**Parameters:**
+
+```typescript
+{
+  connectionId: Id<"whatsappConnections">
+  environment: "development" | "production"
+  name: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `connectionId` | `Id<"whatsappConnections">` | Yes | WhatsApp connection |
+| `environment` | `string` | Yes | Environment scope |
+| `name` | `string` | Yes | Template name to delete |
+
+**Returns:**
+
+```typescript
+{
+  success: boolean
+}
+```
+
+---
+
+### whatsapp.getTemplateStatus
+
+Checks the current approval status and details of a specific template by name.
+
+**Parameters:**
+
+```typescript
+{
+  connectionId: Id<"whatsappConnections">
+  environment: "development" | "production"
+  name: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `connectionId` | `Id<"whatsappConnections">` | Yes | WhatsApp connection |
+| `environment` | `string` | Yes | Environment scope |
+| `name` | `string` | Yes | Template name to check |
+
+**Returns:**
+
+Template data from Meta including name, status (`APPROVED`, `PENDING`, `REJECTED`, `PAUSED`), category, language, and components.
 
 ---
 

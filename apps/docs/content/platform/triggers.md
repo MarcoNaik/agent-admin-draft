@@ -147,13 +147,19 @@ pending ──► running ──► completed
 | Field | Type | Description |
 |-------|------|-------------|
 | `triggerId` | ID | Reference to the trigger definition |
+| `triggerSlug` | string | Slug of the trigger definition |
 | `entityId` | string | Entity that triggered the run |
 | `status` | enum | Current lifecycle status |
-| `scheduledAt` | number | When the run is scheduled to execute |
+| `data` | object | Entity data at time of trigger |
+| `previousData` | object | Entity data before the mutation (for updates) |
+| `scheduledFor` | number | When the run is scheduled to execute |
 | `startedAt` | number | When execution began |
 | `completedAt` | number | When execution finished |
-| `error` | string | Error message if failed |
-| `attempt` | number | Current retry attempt number |
+| `errorMessage` | string | Error message if failed |
+| `attempts` | number | Current retry attempt count |
+| `maxAttempts` | number | Maximum retry attempts configured |
+| `backoffMs` | number | Base backoff delay in milliseconds |
+| `result` | object | Execution result on completion |
 | `environment` | enum | Scoped to development or production |
 
 ## Retry Configuration
@@ -174,10 +180,10 @@ retry: {
 
 When a trigger fails:
 
-1. If `attempt < maxAttempts`, the run is rescheduled with `backoffMs` delay
-2. The status transitions from `failed` back to `pending`
+1. If `attempts < maxAttempts`, the run is rescheduled with exponential backoff: `backoffMs * 2^(attempts-1)`, capped at 1 hour
+2. The status transitions back to `pending`
 3. On the next attempt, it transitions to `running`
-4. If all retries are exhausted, the status becomes `dead`
+4. If all retries are exhausted, the status becomes `dead` and a `trigger.scheduled.dead` event is emitted
 
 ## Template Variable Resolution
 
@@ -252,6 +258,35 @@ Triggers fire from all mutation sources in the platform:
 | **API mutations** | External system calls the HTTP API |
 
 This ensures that automated workflows execute regardless of how the mutation originated.
+
+## Events
+
+Triggers emit events throughout their lifecycle:
+
+| Event | When |
+|-------|------|
+| `trigger.executed` | Immediate trigger completed successfully |
+| `trigger.failed` | Immediate trigger action failed |
+| `trigger.scheduled.completed` | Scheduled trigger run completed successfully |
+| `trigger.scheduled.dead` | Scheduled trigger run exhausted all retry attempts |
+
+## Available Tools
+
+Triggers can execute any built-in tool and custom tools. Actions run as the **system actor** with full permissions.
+
+### Built-in Tools
+
+| Category | Tools |
+|----------|-------|
+| Entity | `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete`, `entity.link`, `entity.unlink` |
+| Event | `event.emit`, `event.query` |
+| Calendar | `calendar.list`, `calendar.create`, `calendar.update`, `calendar.delete`, `calendar.freeBusy` |
+| WhatsApp | `whatsapp.send`, `whatsapp.sendTemplate`, `whatsapp.sendInteractive`, `whatsapp.sendMedia`, `whatsapp.listTemplates`, `whatsapp.getConversation`, `whatsapp.getStatus` |
+| Agent | `agent.chat` |
+
+### Custom Tools
+
+Triggers can also execute custom tools defined in the `tools/` directory. If the tool name doesn't match a built-in tool, the trigger engine delegates to the custom tool executor. Custom tool handlers run in the sandboxed Hono server on Fly.io.
 
 ## Dashboard Management
 

@@ -101,7 +101,7 @@ export default defineAgent({
 
 ### Environment Isolation
 
-All data, roles, configurations, and permissions are fully isolated between `development` and `production` environments. Development API keys cannot access production data. The CLI's `dev` command syncs to the development environment, while `deploy` pushes to production.
+All data, roles, configurations, and permissions are fully isolated between `development`, `production`, and `eval` environments. Development API keys cannot access production data. The CLI's `dev` command syncs to both development and eval environments, while `deploy` pushes to production. The eval environment is purpose-built for automated testing with controlled fixture data.
 
 ### Triggers and Automations
 

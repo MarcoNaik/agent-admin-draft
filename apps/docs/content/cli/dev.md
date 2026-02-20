@@ -7,7 +7,7 @@ order: 3
 
 # struere dev
 
-The `dev` command is your primary development workflow. It loads all resource definitions from your project, syncs them to the Convex backend in the **development** environment, and watches for file changes to re-sync automatically.
+The `dev` command is your primary development workflow. It loads all resource definitions from your project, syncs them to two environments — **development** and **eval** — and watches for file changes to re-sync automatically.
 
 ## Usage
 
@@ -27,18 +27,22 @@ The dev command follows this flow:
 
 1. **Auto-init** — If no `struere.json` exists, runs the initialization flow
 2. **Auto-login** — If not authenticated, opens a browser for OAuth
-3. **Load resources** — Reads all files from `agents/`, `entity-types/`, `roles/`, `triggers/`, and `tools/` directories
+3. **Load resources** — Reads all files from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/` directories
 4. **Build sync payload** — Assembles all resources into a single payload via `extractSyncPayload()`
-5. **Sync to Convex** — Sends the payload to the `syncOrganization` mutation
-6. **Watch for changes** — Uses chokidar to monitor all resource directories
-7. **Re-sync on change** — When any file is added, modified, or deleted, reloads and re-syncs
+5. **Sync to development** — Sends agents, entity types, roles, and triggers to the `syncOrganization` mutation with `environment: "development"`
+6. **Sync to eval** — Sends agents, entity types, roles, eval suites, and fixtures to `syncOrganization` with `environment: "eval"` (triggers excluded to prevent side effects)
+7. **Watch for changes** — Uses chokidar to monitor all resource directories
+8. **Re-sync on change** — When any file is added, modified, or deleted, reloads and re-syncs both environments
 
-## Sync Payload
+## Dual Sync
 
-The CLI assembles all your local definitions into a single sync payload:
+The CLI makes two sync calls on every change:
+
+**Development environment** — receives agents, entity types, roles, and triggers:
 
 ```typescript
 {
+  environment: "development",
   agents: [...],
   entityTypes: [...],
   roles: [...],
@@ -46,31 +50,22 @@ The CLI assembles all your local definitions into a single sync payload:
 }
 ```
 
-Each resource is upserted by its slug or name, so both new resources and updates are handled transparently.
+**Eval environment** — receives agents, entity types, roles, eval suites, and fixtures (no triggers):
 
-## Sync HTTP Request
-
-Under the hood, the CLI sends the payload to Convex via an HTTP mutation:
-
-```
-POST /api/mutation
-Authorization: Bearer {token}
-Content-Type: application/json
-
+```typescript
 {
-  "path": "sync:syncOrganization",
-  "args": {
-    "agents": [...],
-    "entityTypes": [...],
-    "roles": [...],
-    "triggers": [...]
-  }
+  environment: "eval",
+  agents: [...],
+  entityTypes: [...],
+  roles: [...],
+  evalSuites: [...],
+  fixtures: [...]
 }
 ```
 
-## Environment
+Each resource is upserted by its slug or name, so both new resources and updates are handled transparently.
 
-The `dev` command always syncs to the **development** environment. All entity types, roles, agent configurations, and triggers are scoped to development. This ensures your changes do not affect production data or behavior.
+Triggers are excluded from the eval environment to prevent side effects during test runs. Fixture sync deletes all existing entities and relations in the eval environment and recreates them from YAML, ensuring a clean, known state on every sync.
 
 To deploy to production, use `struere deploy`.
 
@@ -84,6 +79,7 @@ The CLI watches the following directories for changes:
 - `triggers/` — Trigger definition files
 - `tools/` — Custom tool definition files
 - `evals/` — Eval suite definition files
+- `fixtures/` — Fixture data files
 
 When a file is added, modified, or deleted, the CLI:
 
@@ -113,7 +109,7 @@ The backend processes the sync payload through these functions:
 
 | Function | Purpose |
 |----------|---------|
-| `syncOrganization` | Bulk upsert all resources (agents, entity types, roles, triggers) |
+| `syncOrganization` | Bulk upsert all resources (agents, entity types, roles, triggers, eval suites, fixtures) |
 | `getSyncState` | Return current remote state for comparison |
 
 The sync helpers upsert resources by slug, creating new records or updating existing ones as needed.

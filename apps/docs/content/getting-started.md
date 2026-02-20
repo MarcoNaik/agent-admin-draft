@@ -55,8 +55,12 @@ my-org/
 │   └── (your role definitions with policies)
 ├── triggers/
 │   └── (your trigger automations)
-└── tools/
-    └── index.ts
+├── tools/
+│   └── index.ts
+├── evals/
+│   └── (your eval suites as YAML)
+└── fixtures/
+    └── (your test data for evals as YAML)
 ```
 
 ### struere.json
@@ -159,8 +163,8 @@ You should see output like:
 The `dev` command will:
 
 1. Auto-login if you are not authenticated (opens a browser)
-2. Load all resource definitions from `agents/`, `entity-types/`, `roles/`, `triggers/`, and `tools/`
-3. Sync everything to your Convex backend in the **development** environment
+2. Load all resource definitions from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/`
+3. Sync to the **development** environment (agents, types, roles, triggers) and the **eval** environment (agents, types, roles, eval suites, fixtures)
 4. Watch for file changes and re-sync automatically
 
 Every time you save a file, the CLI re-syncs your changes.

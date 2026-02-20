@@ -1,21 +1,27 @@
 ---
 title: "Environment Isolation"
-description: "Development and production data separation"
+description: "Development, production, and eval data separation"
 section: "Platform Concepts"
 order: 6
 ---
 
 # Environment Isolation
 
-Struere enforces strict isolation between development and production environments. All data, permissions, and configurations are scoped to one of two environments, preventing accidental cross-environment data access.
+Struere enforces strict isolation between environments. All data, permissions, and configurations are scoped to an environment, preventing accidental cross-environment data access.
 
 ## Environments
 
-The platform defines two environments:
+The platform defines three environments:
 
 ```typescript
-type Environment = "development" | "production"
+type Environment = "development" | "production" | "eval"
 ```
+
+| Environment | Purpose |
+|-------------|---------|
+| `development` | Active development — where `struere dev` syncs your agents, types, roles, and triggers |
+| `production` | Live traffic — promoted via `struere deploy` |
+| `eval` | Automated testing — receives eval suites and fixture data for running evals against a controlled dataset |
 
 Every request carries an environment context that is threaded through the entire execution chain: config lookup, actor context building, data queries, event logging, and tool execution.
 
@@ -41,7 +47,8 @@ Resources are either scoped per environment (isolated) or shared across environm
 | `executions` | Usage tracking records |
 | `triggerRuns` | Scheduled trigger execution records |
 | `apiKeys` | API keys carry an environment field |
-| `installedPacks` | Pack installations |
+| `evalSuites` | Eval suite definitions |
+| `evalRuns` | Eval run records |
 
 ### Shared Resources
 
@@ -61,7 +68,7 @@ API keys carry an `environment` field that determines which environment the requ
 ```typescript
 {
   organizationId: Id<"organizations">,
-  environment: "development" | "production",
+  environment: "development" | "production" | "eval",
   keyHash: string,
   name: string,
 }
@@ -100,22 +107,23 @@ The CLI commands interact with specific environments:
 
 | Command | Environment |
 |---------|-------------|
-| `struere dev` | Syncs to **development** environment |
+| `struere dev` | Syncs to **development** (agents, types, roles, triggers) and **eval** (agents, types, roles, eval suites, fixtures) |
 | `struere deploy` | Promotes all agents to **production** environment |
 
-During development, `struere dev` watches files and syncs changes to the development environment only. Production data and configurations are not affected until `struere deploy` is explicitly run.
+During development, `struere dev` watches files and syncs changes to both the development and eval environments. Production data and configurations are not affected until `struere deploy` is explicitly run. The eval environment receives eval suites and fixture entities alongside the same schema definitions (types, roles) as development.
 
 ## Dashboard Environment Switching
 
 The dashboard supports environment switching via a URL query parameter. The `EnvironmentContext` provider reads the current environment from the URL and passes it to all data-fetching hooks. This allows admins to view and manage both development and production data from the same interface.
 
-## Pack Installation
+## Eval Environment
 
-Packs are installed per environment using the `by_org_env_pack` index. A pack can be installed in development for testing before being installed in production. Each installation tracks its own:
+The eval environment is purpose-built for automated testing. It mirrors the development schema (entity types, roles, agent configs) but also receives:
 
-- Customization overrides
-- Upgrade history
-- Version state
+- **Eval suites** — test case definitions synced from `evals/*.eval.yaml`
+- **Fixture entities** — pre-defined test data synced from `fixtures/*.fixture.yaml`
+
+Triggers are **not** synced to the eval environment, preventing side effects during test runs. On every sync, all existing entities and relations in the eval environment are deleted and recreated from fixture definitions, ensuring a clean, known state.
 
 ## Migrations
 

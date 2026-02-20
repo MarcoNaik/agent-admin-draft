@@ -16,10 +16,15 @@ The Struere CLI is your primary interface for defining, syncing, and deploying a
 | `struere init` | Initialize an organization-centric project, scaffold directories |
 | `struere dev` | Watch all files, sync everything to Convex on change |
 | `struere deploy` | Deploy all agents to production |
-| `struere add <type> <name>` | Scaffold a new agent, entity-type, role, trigger, or eval |
+| `struere add <type> <name>` | Scaffold a new agent, entity-type, role, trigger, eval, or fixture |
 | `struere entities` | Browse and manage entities interactively |
 | `struere status` | Compare local file definitions vs remote state |
 | `struere pull` | Pull remote resources to local files |
+| `struere eval run <suite>` | Run an eval suite and generate Markdown reports |
+| `struere templates list` | List WhatsApp message templates |
+| `struere templates create <name>` | Create a new message template |
+| `struere templates delete <name>` | Delete a message template |
+| `struere templates status <name>` | Check template approval status |
 | `struere login` | Browser-based OAuth authentication |
 | `struere logout` | Clear stored credentials |
 | `struere whoami` | Display the current logged-in user and organization |
@@ -84,6 +89,8 @@ src/cli/
 │   ├── add.ts            # Resource scaffolding
 │   ├── status.ts         # Local vs remote comparison
 │   ├── pull.ts           # Pull remote to local
+│   ├── eval.ts           # Eval suite runner
+│   ├── templates.ts      # WhatsApp template management
 │   ├── login.ts          # Browser-based OAuth
 │   ├── logout.ts         # Clear credentials
 │   └── whoami.ts         # Current user info
@@ -92,6 +99,8 @@ src/cli/
     ├── extractor.ts       # Build sync payload
     ├── project.ts         # Load/save struere.json
     ├── convex.ts          # API calls to Convex
+    ├── evals.ts           # Eval API helpers
+    ├── whatsapp.ts        # WhatsApp template API helpers
     ├── scaffold.ts        # File templates for new resources
     └── credentials.ts     # Auth token management
 ```
@@ -104,12 +113,13 @@ On every invocation, the CLI performs a version check against npm with a 2-secon
 
 The CLI syncs your local definitions to the Convex backend. The sync flow is:
 
-1. **Load** — Read all files from `agents/`, `entity-types/`, `roles/`, `triggers/`, and `tools/` directories
+1. **Load** — Read all files from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/` directories
 2. **Extract** — Build a sync payload using `extractSyncPayload()`
-3. **Sync** — Send the payload to the `syncOrganization` Convex mutation
-4. **Watch** (dev mode) — Monitor files with chokidar and re-sync on any change
+3. **Sync to development** — Send agents, entity types, roles, and triggers to `syncOrganization`
+4. **Sync to eval** — Send agents, entity types, roles, eval suites, and fixtures to `syncOrganization` (triggers excluded)
+5. **Watch** (dev mode) — Monitor files with chokidar and re-sync on any change
 
-The sync payload contains all agents, entity types, roles, and triggers. Resources are upserted by slug or name, meaning the CLI handles both creation and updates transparently.
+Resources are upserted by slug or name, meaning the CLI handles both creation and updates transparently. Fixture sync resets the eval environment on every sync (deletes all entities/relations, then recreates from YAML).
 
 ## Organization-Centric Design
 
@@ -120,5 +130,7 @@ Struere uses an organization-centric architecture. A single project defines all 
 - All roles in `roles/`
 - All triggers in `triggers/`
 - Shared custom tools in `tools/`
+- Eval suites in `evals/`
+- Fixture data in `fixtures/`
 
 This means you manage your entire platform configuration from a single codebase, with the CLI handling synchronization to the backend.

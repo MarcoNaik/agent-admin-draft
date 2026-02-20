@@ -81,11 +81,22 @@ interface TriggerAction {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `tool` | `string` | Tool name to execute (built-in or custom) |
+| `tool` | `string` | Any built-in tool (e.g., `entity.create`, `whatsapp.send`, `agent.chat`) or custom tool name |
 | `args` | `object` | Arguments passed to the tool, supports template variables |
 | `as` | `string` | Optional name for referencing this step's result in later steps |
 
 Actions execute in order. If any action fails, the trigger stops (fail-fast behavior).
+
+### Available Tools
+
+| Category | Tools |
+|----------|-------|
+| Entity | `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete`, `entity.link`, `entity.unlink` |
+| Event | `event.emit`, `event.query` |
+| Calendar | `calendar.list`, `calendar.create`, `calendar.update`, `calendar.delete`, `calendar.freeBusy` |
+| WhatsApp | `whatsapp.send`, `whatsapp.sendTemplate`, `whatsapp.sendInteractive`, `whatsapp.sendMedia`, `whatsapp.listTemplates`, `whatsapp.getConversation`, `whatsapp.getStatus` |
+| Agent | `agent.chat` |
+| Custom | Any custom tool defined in the `tools/` directory |
 
 ## Template Variables
 

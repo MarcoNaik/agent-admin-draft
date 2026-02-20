@@ -24,6 +24,7 @@ npx struere add <type> <name>
 | `role` | `roles/` | `defineRole()` |
 | `trigger` | `triggers/` | `defineTrigger()` |
 | `eval` / `suite` | `evals/` | `defineEvalSuite()` |
+| `fixture` | `fixtures/` | YAML fixture definition |
 
 ## Examples
 
@@ -125,6 +126,27 @@ export default defineTrigger({
     },
   ],
 })
+```
+
+### Scaffold a Fixture
+
+```bash
+npx struere add fixture classroom-data
+```
+
+Creates `fixtures/classroom-data.fixture.yaml`:
+
+```yaml
+name: "Classroom Data"
+slug: "classroom-data"
+
+entities:
+  - ref: "example-entity"
+    type: "ENTITY_TYPE_HERE"
+    data:
+      name: "Example"
+
+relations: []
 ```
 
 ## With Dev Running
