@@ -7,6 +7,7 @@ import {
   useWhatsAppConnections,
   useAddPhoneNumber,
   useDisconnectPhoneNumber,
+  useRemoveConnection,
   useSetPhoneAgent,
   useUpdatePhoneLabel,
   useAgents,
@@ -123,6 +124,7 @@ function PhoneNumberCard({
   connection,
   agents,
   onDisconnect,
+  onRemove,
   onAgentChange,
   onLabelUpdate,
   onReconnect,
@@ -130,6 +132,7 @@ function PhoneNumberCard({
   connection: any
   agents: any[]
   onDisconnect: (connectionId: Id<"whatsappConnections">) => void
+  onRemove: (connectionId: Id<"whatsappConnections">) => void
   onAgentChange: (connectionId: Id<"whatsappConnections">, agentId?: string) => void
   onLabelUpdate: (connectionId: Id<"whatsappConnections">, label: string) => void
   onReconnect: (label?: string) => void
@@ -271,7 +274,11 @@ function PhoneNumberCard({
             <Button size="sm" onClick={() => onReconnect(connection.label)}>
               Reconnect
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
+            <Button variant="outline" size="sm" onClick={async () => {
+              if (!confirm("Remove this connection?")) return
+              setDisconnecting(true)
+              try { await onRemove(connection._id) } finally { setDisconnecting(false) }
+            }} disabled={disconnecting}>
               {disconnecting ? "Removing..." : "Remove"}
             </Button>
           </div>
@@ -288,6 +295,7 @@ export default function WhatsAppSettingsPage() {
   const agents = useAgents()
   const addPhoneNumber = useAddPhoneNumber()
   const disconnectPhoneNumber = useDisconnectPhoneNumber()
+  const removeConnection = useRemoveConnection()
   const setPhoneAgent = useSetPhoneAgent()
   const updatePhoneLabel = useUpdatePhoneLabel()
   const integrationConfig = useIntegrationConfig("whatsapp", environment)
@@ -348,6 +356,15 @@ export default function WhatsAppSettingsPage() {
       await disconnectPhoneNumber({ connectionId })
     } catch {
       setError("Failed to disconnect phone number")
+    }
+  }
+
+  const handleRemove = async (connectionId: Id<"whatsappConnections">) => {
+    setError(null)
+    try {
+      await removeConnection({ connectionId })
+    } catch {
+      setError("Failed to remove connection")
     }
   }
 
@@ -510,6 +527,7 @@ export default function WhatsAppSettingsPage() {
                 connection={connection}
                 agents={agents ?? []}
                 onDisconnect={handleDisconnect}
+                onRemove={handleRemove}
                 onAgentChange={handleAgentChange}
                 onLabelUpdate={handleLabelUpdate}
                 onReconnect={handleReconnect}
@@ -527,6 +545,7 @@ export default function WhatsAppSettingsPage() {
                     connection={connection}
                     agents={agents ?? []}
                     onDisconnect={handleDisconnect}
+                    onRemove={handleRemove}
                     onAgentChange={handleAgentChange}
                     onLabelUpdate={handleLabelUpdate}
                     onReconnect={handleReconnect}

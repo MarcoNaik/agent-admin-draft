@@ -325,6 +325,10 @@ export function useDisconnectPhoneNumber() {
   return useMutation(api.whatsapp.disconnectPhoneNumber)
 }
 
+export function useRemoveConnection() {
+  return useMutation(api.whatsapp.removeConnection)
+}
+
 export function useSetPhoneAgent() {
   return useMutation(api.whatsapp.setPhoneAgent)
 }
