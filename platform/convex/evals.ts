@@ -18,6 +18,20 @@ const assertionValidator = v.object({
   weight: v.optional(v.number()),
 })
 
+export const listFixtures = query({
+  args: {
+    environment: v.optional(environmentValidator),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "eval"
+    return ctx.db
+      .query("fixtures")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
+      .collect()
+  },
+})
+
 export const listSuites = query({
   args: {
     agentId: v.id("agents"),
