@@ -579,6 +579,19 @@ export default defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_execution", ["executionId"]),
 
+  fixtures: defineTable({
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    name: v.string(),
+    slug: v.string(),
+    entityCount: v.number(),
+    relationCount: v.number(),
+    entityTypeCounts: v.any(),
+    syncedAt: v.number(),
+  })
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_org_env_slug", ["organizationId", "environment", "slug"]),
+
   evalResults: defineTable({
     organizationId: v.id("organizations"),
     runId: v.id("evalRuns"),
