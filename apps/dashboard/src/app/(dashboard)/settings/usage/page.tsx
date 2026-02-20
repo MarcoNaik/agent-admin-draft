@@ -20,7 +20,7 @@ export default function UsagePage() {
   const stats = useExecutionStats(undefined, environment)
   const agentUsage = useUsageByAgent(environment)
   const modelUsage = useUsageByModel(environment)
-  const evalStats = useEvalStats(environment)
+  const evalStats = useEvalStats()
   const recentExecs = useRecentExecutions(undefined, environment, 20)
   const agents = useAgents()
 
