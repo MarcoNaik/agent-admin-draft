@@ -12,3 +12,6 @@ export type { EvalSuiteInput } from "./evalSuites"
 
 export { syncTriggers } from "./triggers"
 export type { TriggerInput } from "./triggers"
+
+export { syncFixtures } from "./fixtures"
+export type { FixtureInput } from "./fixtures"
