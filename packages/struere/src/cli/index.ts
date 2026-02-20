@@ -9,6 +9,7 @@ import { whoamiCommand } from './commands/whoami'
 import { addCommand } from './commands/add'
 import { statusCommand } from './commands/status'
 import { pullCommand } from './commands/pull'
+import { entitiesCommand } from './commands/entities'
 import pkg from '../../package.json'
 
 const CURRENT_VERSION = pkg.version
@@ -60,5 +61,6 @@ program.addCommand(deployCommand)
 program.addCommand(addCommand)
 program.addCommand(statusCommand)
 program.addCommand(pullCommand)
+program.addCommand(entitiesCommand)
 
 program.parse()
