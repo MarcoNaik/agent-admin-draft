@@ -36,37 +36,38 @@ body {
 }
 
 @layer base {
-  .prose h1 { @apply text-2xl font-bold mt-8 mb-4 font-mono; }
-  .prose h2 { @apply text-xl font-bold mt-8 mb-3 font-mono border-b border-forest/10 pb-2; }
-  .prose h3 { @apply text-lg font-bold mt-6 mb-2 font-mono; }
-  .prose h4 { @apply text-base font-bold mt-4 mb-2 font-mono; }
-  .prose p { @apply my-3 leading-relaxed; }
-  .prose ul { @apply my-3 pl-6 list-disc; }
-  .prose ol { @apply my-3 pl-6 list-decimal; }
-  .prose li { @apply my-1; }
+  .prose h1 { @apply text-3xl font-bold mt-10 mb-5 font-mono tracking-tight; }
+  .prose h2 { @apply text-2xl font-bold mt-10 mb-4 font-mono tracking-tight border-b border-forest/10 pb-3; }
+  .prose h3 { @apply text-xl font-semibold mt-8 mb-3 font-mono tracking-tight; }
+  .prose h4 { @apply text-lg font-semibold mt-6 mb-2 font-mono; }
+  .prose p { @apply my-4 leading-[1.8] text-[15px]; }
+  .prose ul { @apply my-4 pl-6 list-disc; }
+  .prose ol { @apply my-4 pl-6 list-decimal; }
+  .prose li { @apply my-1.5 leading-[1.7] text-[15px]; }
   .prose a { @apply text-forest-light underline underline-offset-2 hover:text-forest-accent transition-colors; }
-  .prose blockquote { @apply border-l-2 border-forest/20 pl-4 my-4 text-forest-muted italic; }
-  .prose hr { @apply my-6 border-forest/10; }
-  .prose table { @apply w-full my-4 text-sm; }
+  .prose blockquote { @apply border-l-2 border-forest/20 pl-4 my-5 text-forest-muted italic; }
+  .prose hr { @apply my-8 border-forest/10; }
+  .prose table { @apply w-full my-6 text-sm; }
   .prose thead { @apply border-b border-forest/20; }
-  .prose th { @apply text-left py-2 px-3 font-bold font-mono text-xs uppercase tracking-wide; }
-  .prose td { @apply py-2 px-3 border-b border-forest/5; }
+  .prose th { @apply text-left py-2.5 px-3 font-bold font-mono text-xs uppercase tracking-wide; }
+  .prose td { @apply py-2.5 px-3 border-b border-forest/5; }
   .prose tr:hover td { @apply bg-forest/[0.02]; }
   .prose strong { @apply font-bold; }
   .prose code:not(pre code) {
-    @apply bg-cream-dark px-1.5 py-0.5 rounded text-sm font-code;
+    @apply bg-forest/[0.08] text-forest px-1.5 py-0.5 rounded text-[13px] font-code border border-forest/[0.06];
   }
   .prose pre {
-    @apply my-4 rounded-lg overflow-x-auto text-sm;
+    @apply my-6 rounded-lg overflow-x-auto text-[13px] leading-relaxed;
   }
-  .prose img { @apply my-4 rounded-lg; }
+  .prose img { @apply my-6 rounded-lg; }
 }
 
 .hljs {
   background: #1B4332 !important;
   color: #E8E4D4 !important;
-  padding: 1rem !important;
-  border-radius: 0.5rem;
+  padding: 1.25rem 1.5rem !important;
+  border-radius: 0.75rem;
+  line-height: 1.7;
 }
 
 .hljs-keyword,

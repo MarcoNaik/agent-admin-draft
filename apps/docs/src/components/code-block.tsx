@@ -31,13 +31,13 @@ export function CodeBlock({ children, ...props }: { children: ReactNode; [key: s
   return (
     <div className="relative group">
       {language && (
-        <span className="absolute top-2 left-3 text-[10px] uppercase tracking-wider text-cream/30 font-mono">
+        <span className="absolute top-2.5 left-4 text-[10px] uppercase tracking-wider text-cream/30 font-mono">
           {language}
         </span>
       )}
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 p-1.5 rounded bg-cream/10 text-cream/50 hover:text-cream/80 opacity-0 group-hover:opacity-100 transition-all"
+        className="absolute top-2.5 right-3 p-1.5 rounded bg-cream/10 text-cream/50 hover:text-cream/80 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
         aria-label="Copy code"
       >
         {copied ? <Check size={14} /> : <Copy size={14} />}

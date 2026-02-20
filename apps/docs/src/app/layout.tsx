@@ -1,9 +1,14 @@
 import type { Metadata } from "next"
-import { DM_Mono, Fira_Code } from "next/font/google"
+import { Inter, DM_Mono, Fira_Code } from "next/font/google"
 import { getNavigation } from "@/lib/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { MobileNav } from "@/components/mobile-nav"
 import "./globals.css"
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+})
 
 const dmMono = DM_Mono({
   weight: ["300", "400", "500"],
@@ -51,7 +56,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${dmMono.variable} ${firaCode.variable} font-mono`}>
+      <body className={`${inter.variable} ${dmMono.variable} ${firaCode.variable} font-sans`}>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-forest focus:text-cream focus:rounded">
           Skip to content
         </a>

@@ -36,8 +36,8 @@ export function TableOfContents({ content }: { content: string }) {
   if (headings.length === 0) return null
 
   return (
-    <aside className="hidden xl:block w-48 shrink-0">
-      <div className="sticky top-6">
+    <aside className="hidden xl:block w-56 shrink-0">
+      <div className="sticky top-8">
         <h4 className="text-xs font-bold uppercase tracking-wider text-forest-muted mb-3">
           On this page
         </h4>

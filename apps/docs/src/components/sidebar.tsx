@@ -48,7 +48,7 @@ export function SidebarContent({ navigation }: { navigation?: NavSection[] }) {
                 <li key={item.slug}>
                   <Link
                     href={`/${item.slug}`}
-                    className={`block px-2 py-1.5 text-sm rounded transition-colors ${
+                    className={`block px-2.5 py-1.5 text-[13px] rounded transition-colors ${
                       active
                         ? "bg-forest text-cream font-medium"
                         : "text-forest hover:bg-forest/5"

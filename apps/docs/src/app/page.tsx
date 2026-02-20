@@ -42,9 +42,9 @@ const cards = [
 
 export default function Home() {
   return (
-    <div className="px-6 py-8 lg:px-12 lg:py-10 max-w-4xl">
-      <h1 className="text-3xl font-bold text-forest mb-2">Struere Docs</h1>
-      <p className="text-forest-muted mb-8 max-w-2xl">
+    <div className="px-6 py-8 lg:px-16 lg:py-12">
+      <h1 className="text-4xl font-bold text-forest mb-3 font-mono tracking-tight">Struere Docs</h1>
+      <p className="text-forest-muted mb-8 text-base leading-relaxed max-w-3xl">
         Struere is a permission-aware AI agent platform. Define agents, entity types, roles, and triggers as code — then sync and deploy with the CLI.
       </p>
 
@@ -63,17 +63,17 @@ export default function Home() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((card) => (
           <Link
             key={card.href}
             href={card.href}
-            className="group flex gap-3 p-4 rounded-lg border border-forest/10 hover:border-forest/25 hover:bg-forest/[0.02] transition-all"
+            className="group flex gap-3.5 p-5 rounded-lg border border-forest/10 hover:border-forest/25 hover:bg-forest/[0.02] transition-all cursor-pointer"
           >
-            <card.icon size={18} className="text-forest-muted mt-0.5 shrink-0 group-hover:text-forest transition-colors" />
+            <card.icon size={20} className="text-forest-muted mt-0.5 shrink-0 group-hover:text-forest transition-colors" />
             <div>
-              <h3 className="text-sm font-bold text-forest mb-0.5">{card.title}</h3>
-              <p className="text-xs text-forest-muted leading-relaxed">{card.description}</p>
+              <h3 className="text-sm font-bold text-forest mb-1">{card.title}</h3>
+              <p className="text-sm text-forest-muted leading-relaxed">{card.description}</p>
             </div>
           </Link>
         ))}

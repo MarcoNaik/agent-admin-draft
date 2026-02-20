@@ -56,14 +56,14 @@ export default function DocPage({ params }: PageProps) {
   const { prev, next } = getPrevNext(slug)
 
   return (
-    <div className="flex gap-8 px-6 py-8 lg:px-12 lg:py-10 max-w-5xl">
-      <article className="flex-1 min-w-0 max-w-3xl">
+    <div className="flex gap-10 px-6 py-8 lg:px-16 lg:py-12">
+      <article className="flex-1 min-w-0 max-w-none">
         <Breadcrumb section={doc.section} title={doc.title} />
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-forest">{doc.title}</h1>
+            <h1 className="text-3xl font-bold text-forest font-mono tracking-tight">{doc.title}</h1>
             {doc.description && (
-              <p className="mt-1 text-sm text-forest-muted">{doc.description}</p>
+              <p className="mt-2 text-base text-forest-muted">{doc.description}</p>
             )}
           </div>
           <CopyMarkdownButton slug={slug} />

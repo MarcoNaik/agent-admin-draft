@@ -20,6 +20,7 @@ const config: Config = {
         },
       },
       fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-dm-mono)", "monospace"],
         code: ["var(--font-fira-code)", "monospace"],
       },
