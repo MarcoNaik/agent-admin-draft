@@ -308,6 +308,103 @@ async function executeTemplateFunction(
     }
   }
 
+  if (runQuery && name === "format_session_schedule") {
+    try {
+      const actorPayload = {
+        organizationId: context.actor.organizationId,
+        actorType: context.actor.actorType,
+        actorId: context.actor.actorId,
+        roleIds: context.actor.roleIds,
+        isOrgAdmin: context.actor.isOrgAdmin,
+        environment: context.actor.environment,
+      } as const
+
+      const [sessions, students, teachers] = await Promise.all([
+        runQuery(internal.permissions.queryEntitiesAsActorQuery, { actor: actorPayload, entityTypeSlug: "session" }),
+        runQuery(internal.permissions.queryEntitiesAsActorQuery, { actor: actorPayload, entityTypeSlug: "student" }),
+        runQuery(internal.permissions.queryEntitiesAsActorQuery, { actor: actorPayload, entityTypeSlug: "teacher" }),
+      ]) as [
+        Array<{ _id?: string; data?: Record<string, unknown> }>,
+        Array<{ _id?: string; data?: Record<string, unknown> }>,
+        Array<{ _id?: string; data?: Record<string, unknown> }>,
+      ]
+
+      const studentMap = new Map<string, string>()
+      for (const s of students) {
+        if (s._id && s.data?.name) studentMap.set(s._id, s.data.name as string)
+      }
+
+      const teacherMap = new Map<string, string>()
+      for (const t of teachers) {
+        if (t._id && t.data?.name) teacherMap.set(t._id, t.data.name as string)
+      }
+
+      const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+
+      const parsed: Array<{
+        id: string
+        dateKey: string
+        sortKey: string
+        time: string
+        status: string
+        studentId: string
+        teacherId: string
+        subject: string
+        duration: number
+      }> = []
+
+      for (const s of sessions) {
+        const status = s.data?.status as string | undefined
+        if (status !== "scheduled" && status !== "completed") continue
+        const scheduledAt = s.data?.scheduledAt as string | undefined
+        if (!scheduledAt) continue
+        const m = scheduledAt.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+        if (!m) continue
+        const [, yy, mm, dd, hh, min] = m
+        const dayOfWeek = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd)).getDay()
+        parsed.push({
+          id: s._id ?? "",
+          dateKey: `${dayNames[dayOfWeek]} ${dd}/${mm}/${yy}`,
+          sortKey: `${yy}-${mm}-${dd}T${hh}:${min}`,
+          time: `${hh}:${min}`,
+          status,
+          studentId: (s.data?.studentId as string) ?? "",
+          teacherId: (s.data?.teacherId as string) ?? "",
+          subject: (s.data?.subject as string) ?? "",
+          duration: (s.data?.duration as number) ?? 60,
+        })
+      }
+
+      parsed.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+
+      const grouped = new Map<string, typeof parsed>()
+      for (const p of parsed) {
+        if (!grouped.has(p.dateKey)) grouped.set(p.dateKey, [])
+        grouped.get(p.dateKey)!.push(p)
+      }
+
+      const lines: string[] = []
+      for (const [dateKey, daySessions] of grouped) {
+        lines.push(`${dateKey}:`)
+        for (const s of daySessions) {
+          const studentName = studentMap.get(s.studentId) ?? "Desconocido"
+          const teacherName = teacherMap.get(s.teacherId) ?? "Desconocido"
+          lines.push(`  ${s.time} — ${studentName} [student:${s.studentId}] (${s.subject}, ${s.duration} min) con ${teacherName} [id:${s.teacherId}] — ${s.status} [session:${s.id}]`)
+        }
+        lines.push("")
+      }
+
+      if (lines.length === 0) return "No hay sesiones agendadas."
+      return lines.join("\n")
+    } catch (error) {
+      if (error instanceof PermissionError) {
+        return "[No session data available]"
+      }
+      const message = error instanceof Error ? error.message : "execution failed"
+      return `[TEMPLATE_ERROR: ${name} - ${message}]`
+    }
+  }
+
   const tool = tools.find((t) => t.name === name)
 
   if (!tool) {
