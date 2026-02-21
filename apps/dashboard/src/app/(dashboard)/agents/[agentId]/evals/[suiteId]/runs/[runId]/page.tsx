@@ -32,6 +32,13 @@ import { Badge } from "@/components/ui/badge"
 import { formatDuration } from "@/lib/format"
 import { Id } from "@convex/_generated/dataModel"
 
+function formatMicrodollars(microdollars: number): string {
+  const dollars = microdollars / 1_000_000
+  if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
+  if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
+  return `$${dollars.toFixed(6)}`
+}
+
 interface RunResultsPageProps {
   params: { agentId: string; suiteId: string; runId: string }
 }
@@ -339,9 +346,17 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
             </div>
           )}
 
-          {result.judgeTokens && (
-            <div className="text-xs text-content-tertiary pt-2 border-t">
-              Judge tokens: {(result.judgeTokens.input + result.judgeTokens.output).toLocaleString()}
+          {(result.judgeTokens || result.judgeCost || result.agentCost) && (
+            <div className="text-xs text-content-tertiary pt-2 border-t flex gap-4 flex-wrap">
+              {result.judgeTokens && (
+                <span>Judge tokens: {(result.judgeTokens.input + result.judgeTokens.output).toLocaleString()}</span>
+              )}
+              {result.agentCost > 0 && (
+                <span>Agent cost: {formatMicrodollars(result.agentCost)}</span>
+              )}
+              {result.judgeCost > 0 && (
+                <span>Judge cost: {formatMicrodollars(result.judgeCost)}</span>
+              )}
             </div>
           )}
         </div>
@@ -365,6 +380,9 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
     lines.push(`| **Tokens** | ${(run.totalTokens.agent + run.totalTokens.judge).toLocaleString()} (Agent: ${run.totalTokens.agent.toLocaleString()}, Judge: ${run.totalTokens.judge.toLocaleString()}) |`)
   } else {
     lines.push(`| **Tokens** | — |`)
+  }
+  if (run.totalCost && (run.totalCost.agent + run.totalCost.judge) > 0) {
+    lines.push(`| **Cost** | ${formatMicrodollars(run.totalCost.agent + run.totalCost.judge)} (Agent: ${formatMicrodollars(run.totalCost.agent)}, Judge: ${formatMicrodollars(run.totalCost.judge)}) |`)
   }
   if (run.startedAt) {
     lines.push(`| **Started** | ${new Date(run.startedAt).toLocaleString()} |`)
@@ -687,6 +705,17 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
             </div>
           )}
         </div>
+        {run.totalCost && (run.totalCost.agent + run.totalCost.judge) > 0 && (
+          <div className="rounded-md border bg-card p-3 min-h-[80px]">
+            <div className="text-xs text-content-tertiary">Cost</div>
+            <div className="text-lg font-semibold text-content-primary mt-0.5">
+              {formatMicrodollars(run.totalCost.agent + run.totalCost.judge)}
+            </div>
+            <div className="text-xs text-content-tertiary">
+              Agent: {formatMicrodollars(run.totalCost.agent)} · Judge: {formatMicrodollars(run.totalCost.judge)}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
