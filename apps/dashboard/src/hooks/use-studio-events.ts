@@ -82,6 +82,7 @@ export function useStudioEvents(
   const eventSourceRef = useRef<EventSource | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const restoredRef = useRef(false)
+  const currentTurnIdRef = useRef<string | null>(null)
   const appendEvents = useMutation(api.sandboxSessions.appendEvents)
 
   const storedEvents = useQuery(
@@ -107,7 +108,7 @@ export function useStudioEvents(
 
     const restoredItems = new Map<string, ItemState>()
     for (const event of restored) {
-      processEventIntoItems(event, restoredItems)
+      processAcpEvent(event, restoredItems, currentTurnIdRef)
     }
     setItems(restoredItems)
 
@@ -126,7 +127,7 @@ export function useStudioEvents(
         return
       }
 
-      const url = `/api/studio/sessions/${sessionId}/events?offset=${lastSequenceRef.current}`
+      const url = `/api/studio/sessions/${sessionId}/events`
       const es = new EventSource(url)
       eventSourceRef.current = es
 
@@ -138,75 +139,42 @@ export function useStudioEvents(
 
       es.onmessage = (msg) => {
         try {
-          const event = JSON.parse(msg.data)
-          const sseId = msg.lastEventId ? parseInt(msg.lastEventId, 10) : 0
+          const raw = JSON.parse(msg.data)
+
+          const eventIndex = raw.eventIndex ?? 0
+          if (eventIndex > 0 && eventIndex <= lastSequenceRef.current) return
+          if (eventIndex > 0) lastSequenceRef.current = eventIndex
+
+          const payload = raw.payload ?? raw
+          const method = payload.method as string | undefined
+          const update = payload.params?.update as Record<string, unknown> | undefined
+          const sessionUpdate = update?.sessionUpdate as string | undefined
+
           const studioEvent: StudioEvent = {
-            sequence: sseId || Date.now(),
-            type: event.type,
-            sender: event.source === "daemon" ? "system" : (event.source ?? "agent"),
-            data: event.properties ?? event.data,
-            createdAt: event.time ? new Date(event.time).getTime() : Date.now(),
+            sequence: eventIndex || Date.now(),
+            type: sessionUpdate ?? method ?? "unknown",
+            sender: (raw.sender === "client" ? "user" : raw.sender === "agent" ? "agent" : "system") as "agent" | "user" | "system",
+            data: raw,
+            createdAt: raw.createdAt ?? Date.now(),
           }
 
-          if (sseId > 0) lastSequenceRef.current = Math.max(lastSequenceRef.current, sseId)
-
-          if (studioEvent.type === "turn.started") setTurnInProgress(true)
-          if (studioEvent.type === "turn.ended") setTurnInProgress(false)
-
-          if (studioEvent.type === "session.status") {
-            const status = (studioEvent.data as { status?: { type?: string } })?.status?.type
-            if (status === "busy") setTurnInProgress(true)
-            if (status === "idle") setTurnInProgress(false)
+          if (method === "session/prompt") {
+            setTurnInProgress(true)
           }
 
-          if (studioEvent.type === "session.ended" || studioEvent.type === "session.completed") {
-            setSessionEnded(true)
+          if (payload.result?.stopReason) {
             setTurnInProgress(false)
           }
 
-          if (studioEvent.type === "error") {
-            const errData = studioEvent.data as { message?: string }
-            setError(errData?.message ?? "Agent error")
-          }
-
-          if (studioEvent.type === "permission.requested") {
-            const d = studioEvent.data as PendingPermission
-            setPendingPermissions((prev) => {
-              const next = new Map(prev)
-              next.set(d.permission_id, d)
-              return next
-            })
-          }
-          if (studioEvent.type === "permission.resolved") {
-            const d = studioEvent.data as PendingPermission
-            setPendingPermissions((prev) => {
-              const next = new Map(prev)
-              next.delete(d.permission_id)
-              return next
-            })
-          }
-
-          if (studioEvent.type === "question.requested") {
-            const d = studioEvent.data as PendingQuestion
-            setPendingQuestions((prev) => {
-              const next = new Map(prev)
-              next.set(d.question_id, d)
-              return next
-            })
-          }
-          if (studioEvent.type === "question.resolved") {
-            const d = studioEvent.data as PendingQuestion
-            setPendingQuestions((prev) => {
-              const next = new Map(prev)
-              next.delete(d.question_id)
-              return next
-            })
+          if (sessionUpdate === "session_ended" || method === "session/ended") {
+            setSessionEnded(true)
+            setTurnInProgress(false)
           }
 
           setEvents((prev) => [...prev, studioEvent])
           setItems((prev) => {
             const next = new Map(prev)
-            processEventIntoItems(studioEvent, next)
+            processAcpEvent(studioEvent, next, currentTurnIdRef)
             return next
           })
 
@@ -246,20 +214,22 @@ export function useStudioEvents(
   }, [sessionId])
 
   const messages: StudioMessage[] = useMemo(() =>
-    Array.from(items.values()).map((item) => {
-      const textParts = item.content.filter((p) => p.type === "text")
-      const streamedText = textParts.map((p) => p.text ?? "").join("") + item.deltas.join("")
+    Array.from(items.values())
+      .filter((item) => item.kind === "message")
+      .map((item) => {
+        const textParts = item.content.filter((p) => p.type === "text")
+        const streamedText = textParts.map((p) => p.text ?? "").join("") + item.deltas.join("")
 
-      return {
-        id: item.itemId,
-        role: item.role as "user" | "assistant" | "system",
-        content: streamedText,
-        kind: item.kind,
-        parts: item.content,
-        isStreaming: item.status === "in_progress",
-        timestamp: item.createdAt,
-      }
-    }),
+        return {
+          id: item.itemId,
+          role: item.role as "user" | "assistant" | "system",
+          content: streamedText,
+          kind: item.kind,
+          parts: item.content,
+          isStreaming: item.status === "in_progress",
+          timestamp: item.createdAt,
+        }
+      }),
   [items])
 
   const sendMessage = useCallback(async (text: string) => {
@@ -346,105 +316,127 @@ export function useStudioEvents(
   }
 }
 
-function processEventIntoItems(event: StudioEvent, items: Map<string, ItemState>) {
-  const data = event.data as Record<string, unknown> | undefined
-  if (!data) return
+function processAcpEvent(
+  event: StudioEvent,
+  items: Map<string, ItemState>,
+  currentTurnIdRef: { current: string | null },
+) {
+  const raw = event.data as Record<string, unknown> | undefined
+  if (!raw) return
 
-  switch (event.type) {
-    case "message.part.updated": {
-      const part = data.part as Record<string, unknown> | undefined
-      if (!part) return
-      const msgId = (data.messageID ?? part.messageID) as string
-      if (!msgId) return
-      const existing = items.get(msgId)
-      if (existing) {
-        const partId = part.id as string
-        const idx = existing.content.findIndex((p) => (p as unknown as Record<string, unknown>).id === partId)
-        if (idx >= 0) {
-          existing.content[idx] = part as unknown as ContentPart
-        } else {
-          existing.content.push(part as unknown as ContentPart)
-        }
-      } else {
-        const sessionId = (data.sessionID ?? part.sessionID) as string | undefined
-        items.set(msgId, {
-          itemId: msgId,
-          role: "assistant",
-          kind: "message",
-          content: [part as unknown as ContentPart],
-          deltas: [],
-          status: "in_progress",
-          createdAt: event.createdAt,
-        })
+  const payload = (raw.payload ?? raw) as Record<string, unknown>
+  const method = payload.method as string | undefined
+  const params = payload.params as Record<string, unknown> | undefined
+  const update = params?.update as Record<string, unknown> | undefined
+  const sessionUpdate = update?.sessionUpdate as string | undefined
+
+  if (method === "session/prompt") {
+    const prompt = (params?.prompt as Array<{ type: string; text?: string }>) ?? []
+    const text = prompt.map((p) => p.text ?? "").join("")
+    if (!text) return
+
+    const turnId = `turn-${event.sequence}`
+    currentTurnIdRef.current = turnId
+
+    const userItemId = `user-${event.sequence}`
+    items.set(userItemId, {
+      itemId: userItemId,
+      role: "user",
+      kind: "message",
+      content: [{ type: "text", text }],
+      deltas: [],
+      status: "completed",
+      createdAt: event.createdAt,
+    })
+
+    const assistantItemId = `assistant-${turnId}`
+    items.set(assistantItemId, {
+      itemId: assistantItemId,
+      role: "assistant",
+      kind: "message",
+      content: [],
+      deltas: [],
+      status: "in_progress",
+      createdAt: event.createdAt,
+    })
+    return
+  }
+
+  if (!sessionUpdate) return
+
+  const turnId = currentTurnIdRef.current
+  if (!turnId) return
+  const assistantItemId = `assistant-${turnId}`
+
+  switch (sessionUpdate) {
+    case "agent_message_chunk": {
+      const content = update?.content as { text?: string; type?: string } | undefined
+      const text = content?.text
+      if (!text) return
+      const state = items.get(assistantItemId)
+      if (state) {
+        state.deltas.push(text)
       }
       break
     }
 
-    case "message.updated": {
-      const info = data.info as Record<string, unknown> | undefined
-      if (!info) return
-      const msgId = info.id as string
-      if (!msgId) return
-      const parts = (data.parts ?? info.parts) as ContentPart[] | undefined
-      const role = (info.role as string) ?? "assistant"
-      const existing = items.get(msgId)
-      if (existing) {
-        if (parts) {
-          existing.content = parts
-          existing.deltas = []
-        }
-        existing.role = role
-        existing.status = "completed"
-      } else {
-        items.set(msgId, {
-          itemId: msgId,
-          role,
-          kind: "message",
-          content: parts ?? [],
-          deltas: [],
-          status: "completed",
-          createdAt: event.createdAt,
-        })
-      }
+    case "agent_thought_chunk": {
       break
     }
 
-    case "item.started": {
-      const item = data.item as Record<string, unknown> | undefined
-      if (!item) return
-      const itemId = item.item_id as string
-      items.set(itemId, {
-        itemId,
-        role: (item.role as string) ?? "assistant",
-        kind: (item.kind as string) ?? "message",
-        content: (item.content as ContentPart[]) ?? [],
+    case "usage_update": {
+      const state = items.get(assistantItemId)
+      if (state) {
+        if (state.deltas.length > 0) {
+          const fullText = state.deltas.join("")
+          state.content = [{ type: "text", text: fullText }]
+          state.deltas = []
+        }
+        state.status = "completed"
+      }
+      currentTurnIdRef.current = null
+      break
+    }
+
+    case "tool_call_started":
+    case "tool_call_completed": {
+      const toolItemId = `tool-${event.sequence}`
+      const name = (update?.name ?? update?.tool) as string | undefined
+      const args = update?.arguments as string | undefined
+      const output = update?.output as string | undefined
+      items.set(toolItemId, {
+        itemId: toolItemId,
+        role: "assistant",
+        kind: "tool_call",
+        content: [{
+          type: sessionUpdate === "tool_call_started" ? "tool_call" : "tool_result",
+          name,
+          arguments: args,
+          output,
+        }],
         deltas: [],
-        status: "in_progress",
+        status: sessionUpdate === "tool_call_started" ? "in_progress" : "completed",
         createdAt: event.createdAt,
       })
       break
     }
 
-    case "item.delta": {
-      const itemId = data.item_id as string
-      const delta = data.delta as string
-      const state = items.get(itemId)
-      if (state && delta) {
-        state.deltas.push(delta)
-      }
-      break
-    }
-
-    case "item.completed": {
-      const item = data.item as Record<string, unknown> | undefined
-      if (!item) return
-      const itemId = item.item_id as string
-      const state = items.get(itemId)
-      if (state) {
-        state.content = (item.content as ContentPart[]) ?? state.content
-        state.deltas = []
-        state.status = "completed"
-      }
+    case "file_change": {
+      const fileItemId = `file-${event.sequence}`
+      items.set(fileItemId, {
+        itemId: fileItemId,
+        role: "assistant",
+        kind: "file_change",
+        content: [{
+          type: "file_ref",
+          path: update?.path as string | undefined,
+          action: update?.action as string | undefined,
+          diff: update?.diff as string | undefined,
+        }],
+        deltas: [],
+        status: "completed",
+        createdAt: event.createdAt,
+      })
       break
     }
   }
