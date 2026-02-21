@@ -27,13 +27,18 @@ export async function POST(
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
     }
 
-    await postMessageToSandbox(session.sandboxUrl, session.agentSessionId, message)
+    if (!session.acpServerId) {
+      return NextResponse.json({ error: "ACP server not available" }, { status: 400 })
+    }
+
+    await postMessageToSandbox(session.sandboxUrl, session.acpServerId, session.agentSessionId, message)
 
     convex.mutation(api.sandboxSessions.recordActivity, { id: sessionId }).catch(() => {})
 
     return NextResponse.json({ success: true })
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error"
+    console.error("[studio/sessions/message] POST failed:", msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

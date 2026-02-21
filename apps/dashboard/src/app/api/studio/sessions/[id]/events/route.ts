@@ -23,20 +23,16 @@ export async function GET(
     return new Response("Session not found or not ready", { status: 404 })
   }
 
-  const url = new URL(request.url)
-  const offset = url.searchParams.get("offset") ?? "0"
-
-  const upstreamUrl = new URL(`${session.sandboxUrl}/opencode/event`)
-
-  const upstreamHeaders: HeadersInit = { Accept: "text/event-stream" }
-  if (parseInt(offset, 10) > 0) {
-    upstreamHeaders["Last-Event-ID"] = offset
+  if (!session.acpServerId) {
+    return new Response("ACP server not available", { status: 404 })
   }
+
+  const upstreamUrl = `${session.sandboxUrl}/v1/acp/${session.acpServerId}`
 
   let upstream: Response
   try {
-    upstream = await fetch(upstreamUrl.toString(), {
-      headers: upstreamHeaders,
+    upstream = await fetch(upstreamUrl, {
+      headers: { Accept: "text/event-stream" },
       signal: request.signal,
     })
   } catch {

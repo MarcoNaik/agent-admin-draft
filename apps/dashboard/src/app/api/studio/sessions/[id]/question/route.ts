@@ -35,10 +35,14 @@ export async function POST(
       return NextResponse.json({ error: "questionId is required" }, { status: 400 })
     }
 
+    if (!session.acpServerId) {
+      return NextResponse.json({ error: "ACP server not available" }, { status: 400 })
+    }
+
     if (reject) {
-      await rejectQuestionFromSandbox(session.sandboxUrl, questionId)
+      await rejectQuestionFromSandbox(session.sandboxUrl, session.acpServerId, questionId)
     } else if (answers) {
-      await replyQuestionToSandbox(session.sandboxUrl, questionId, answers)
+      await replyQuestionToSandbox(session.sandboxUrl, session.acpServerId, questionId, answers)
     } else {
       return NextResponse.json({ error: "answers or reject is required" }, { status: 400 })
     }

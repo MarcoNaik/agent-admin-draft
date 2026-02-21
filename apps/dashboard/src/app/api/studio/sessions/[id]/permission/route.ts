@@ -26,7 +26,11 @@ export async function POST(
       return NextResponse.json({ error: "permissionId and reply are required" }, { status: 400 })
     }
 
-    await replyPermissionToSandbox(session.sandboxUrl, permissionId, reply)
+    if (!session.acpServerId) {
+      return NextResponse.json({ error: "ACP server not available" }, { status: 400 })
+    }
+
+    await replyPermissionToSandbox(session.sandboxUrl, session.acpServerId, permissionId, reply)
 
     return NextResponse.json({ success: true })
   } catch (error) {
