@@ -74,6 +74,7 @@ interface ExecuteChatParams {
   userId?: Id<"users">
   conversationId?: string
   depth?: number
+  evalRunId?: Id<"evalRuns">
 }
 
 async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
@@ -309,6 +310,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     status: "success",
     usedPlatformKey,
     creditsConsumed,
+    evalRunId: params.evalRunId,
   })
 
   if (usedPlatformKey && creditsConsumed > 0) {
@@ -510,6 +512,7 @@ export const chatAuthenticated = internalAction({
     message: v.string(),
     threadId: v.optional(v.id("threads")),
     environment: v.optional(environmentValidator),
+    evalRunId: v.optional(v.id("evalRuns")),
   },
   returns: v.object({
     message: v.string(),
@@ -568,6 +571,7 @@ export const chatAuthenticated = internalAction({
       config,
       thread,
       userId: args.userId,
+      evalRunId: args.evalRunId,
     })
   },
 })
