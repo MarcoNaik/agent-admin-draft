@@ -374,7 +374,7 @@ function processEventIntoItems(event: StudioEvent, items: Map<string, ItemState>
       const existing = items.get(msgId)
       if (existing) {
         const partId = part.id as string
-        const idx = existing.content.findIndex((p) => (p as Record<string, unknown>).id === partId)
+        const idx = existing.content.findIndex((p) => (p as unknown as Record<string, unknown>).id === partId)
         if (idx >= 0) {
           existing.content[idx] = part as unknown as ContentPart
         } else {
