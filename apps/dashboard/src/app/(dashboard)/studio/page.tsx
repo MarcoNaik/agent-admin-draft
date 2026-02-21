@@ -21,7 +21,8 @@ export default function StudioPage() {
   } = useStudioSession()
 
   const isActive = session?.status === "provisioning" || session?.status === "ready" || session?.status === "active" || session?.status === "idle"
-  const sessionId = session?._id
+  const isReady = session?.status === "ready" || session?.status === "active" || session?.status === "idle"
+  const sessionId = isReady ? session?._id : undefined
 
   const {
     messages,

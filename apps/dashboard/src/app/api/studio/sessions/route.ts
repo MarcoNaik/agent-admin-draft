@@ -93,6 +93,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ sessionId })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
+    console.error("[studio/sessions] POST failed:", message, error instanceof Error ? error.stack : "")
 
     if (sandboxId) {
       try {
