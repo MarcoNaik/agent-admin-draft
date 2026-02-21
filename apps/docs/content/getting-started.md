@@ -11,10 +11,8 @@ Before you begin, make sure you have:
 
 - **Node.js 18+** installed
 - **Bun** installed (`curl -fsSL https://bun.sh/install | bash`) — used as the package manager
-- A **Struere account** — sign up at [app.struere.dev](https://app.struere.dev) (uses Clerk for authentication)
-- An **Anthropic API key** — set on your Convex deployment as the `ANTHROPIC_API_KEY` environment variable
-
-Struere is a hosted platform backed by Convex. When you create an account and organization, your Convex deployment is provisioned automatically.
+- A **Struere account** — sign up at [app.struere.dev](https://app.struere.dev)
+- An **LLM provider** — either use Struere's built-in credits or bring your own API key (configured in **Settings > Providers** in the dashboard)
 
 ## Installation
 
@@ -38,7 +36,7 @@ This command will:
 2. Prompt you to select an organization
 3. Create the project directory structure
 4. Write a `struere.json` configuration file with your organization details
-5. Run `bun install` to install dependencies
+5. Generate `.struere/types.d.ts` for type definitions
 
 ### Project Structure
 
@@ -145,7 +143,7 @@ export default defineRole({
 
 ## Start Development
 
-Run the dev command to sync your definitions to the Convex backend:
+Run the dev command to sync your definitions to the platform:
 
 ```bash
 npx struere dev
@@ -186,7 +184,7 @@ First, create an API key in the dashboard under **Settings > API Keys**. Select 
 Then send a request using the slug-based endpoint:
 
 ```bash
-curl -X POST https://your-deployment.convex.site/v1/agents/my-first-agent/chat \
+curl -X POST https://api.struere.dev/v1/agents/my-first-agent/chat \
   -H "Authorization: Bearer sk_dev_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello, what can you do?"}'
@@ -206,7 +204,7 @@ You should receive a JSON response:
 }
 ```
 
-Your Convex deployment URL is shown in the dashboard under **Settings** or in your Convex dashboard at [dashboard.convex.dev](https://dashboard.convex.dev).
+Your API URL is shown in the dashboard under **Settings > API Keys**.
 
 ## Deploy to Production
 
