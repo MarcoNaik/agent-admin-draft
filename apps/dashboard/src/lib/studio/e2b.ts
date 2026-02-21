@@ -30,34 +30,39 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     allowInternetAccess: true,
   })
 
-  for (const file of config.files) {
-    await sandbox.files.write(file.path, file.content)
+  try {
+    for (const file of config.files) {
+      await sandbox.files.write(file.path, file.content)
+    }
+
+    await runChecked(
+      sandbox,
+      `curl -fsSL https://releases.rivet.dev/sandbox-agent/${SANDBOX_AGENT_VERSION}/install.sh | sh`,
+      { timeoutMs: 60_000 }
+    )
+
+    await runChecked(sandbox, `sandbox-agent install-agent ${config.agentType}`, {
+      timeoutMs: 120_000,
+    })
+
+    await runChecked(sandbox, "npm install -g struere@latest", {
+      timeoutMs: 60_000,
+    })
+
+    const corsFlag = config.corsOrigin
+      ? ` --cors-allow-origin "${config.corsOrigin}"`
+      : ""
+
+    await sandbox.commands.run(
+      `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT}${corsFlag}`,
+      { background: true, timeoutMs: 0 }
+    )
+
+    await waitForServer(sandbox, SANDBOX_AGENT_PORT)
+  } catch (error) {
+    await Sandbox.kill(sandbox.sandboxId).catch(() => {})
+    throw error
   }
-
-  await runChecked(
-    sandbox,
-    `curl -fsSL https://releases.rivet.dev/sandbox-agent/${SANDBOX_AGENT_VERSION}/install.sh | sh`,
-    { timeoutMs: 60_000 }
-  )
-
-  await runChecked(sandbox, `sandbox-agent install-agent ${config.agentType}`, {
-    timeoutMs: 120_000,
-  })
-
-  await runChecked(sandbox, "npm install -g struere@latest", {
-    timeoutMs: 60_000,
-  })
-
-  const corsFlag = config.corsOrigin
-    ? ` --cors-allow-origin "${config.corsOrigin}"`
-    : ""
-
-  await sandbox.commands.run(
-    `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT}${corsFlag}`,
-    { background: true, timeoutMs: 0 }
-  )
-
-  await waitForServer(sandbox, SANDBOX_AGENT_PORT)
 
   const sandboxUrl = `https://${sandbox.getHost(SANDBOX_AGENT_PORT)}`
 
