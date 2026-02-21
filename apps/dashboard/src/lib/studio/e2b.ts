@@ -55,7 +55,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       timeoutMs: 30_000,
     })
 
-    await runCmd(sandbox, "install-struere", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && npm install -g struere@latest', {
+    await runCmd(sandbox, "install-struere", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && sudo npm install -g struere@latest', {
       timeoutMs: 60_000,
     })
 
