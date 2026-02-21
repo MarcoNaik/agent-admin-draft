@@ -27,9 +27,6 @@ export async function GET(
   const offset = url.searchParams.get("offset") ?? "0"
 
   const upstreamUrl = new URL(`${session.sandboxUrl}/opencode/event`)
-  if (parseInt(offset, 10) > 0) {
-    upstreamUrl.searchParams.set("offset", offset)
-  }
 
   const upstreamHeaders: HeadersInit = { Accept: "text/event-stream" }
   if (parseInt(offset, 10) > 0) {

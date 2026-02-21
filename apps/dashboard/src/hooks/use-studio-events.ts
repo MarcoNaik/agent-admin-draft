@@ -139,15 +139,16 @@ export function useStudioEvents(
       es.onmessage = (msg) => {
         try {
           const event = JSON.parse(msg.data)
+          const sseId = msg.lastEventId ? parseInt(msg.lastEventId, 10) : 0
           const studioEvent: StudioEvent = {
-            sequence: event.sequence ?? Date.now(),
+            sequence: sseId || Date.now(),
             type: event.type,
             sender: event.source === "daemon" ? "system" : (event.source ?? "agent"),
-            data: event.data,
+            data: event.properties ?? event.data,
             createdAt: event.time ? new Date(event.time).getTime() : Date.now(),
           }
 
-          lastSequenceRef.current = Math.max(lastSequenceRef.current, studioEvent.sequence)
+          if (sseId > 0) lastSequenceRef.current = Math.max(lastSequenceRef.current, sseId)
 
           if (studioEvent.type === "turn.started") setTurnInProgress(true)
           if (studioEvent.type === "turn.ended") setTurnInProgress(false)
