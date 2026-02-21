@@ -605,6 +605,7 @@ export default defineSchema({
     sandboxId: v.optional(v.string()),
     agentType: v.union(v.literal("opencode"), v.literal("claude")),
     agentSessionId: v.optional(v.string()),
+    acpServerId: v.optional(v.string()),
     sandboxUrl: v.optional(v.string()),
     lastActivityAt: v.number(),
     idleTimeoutMs: v.number(),
