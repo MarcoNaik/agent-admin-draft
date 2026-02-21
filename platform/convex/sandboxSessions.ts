@@ -61,6 +61,7 @@ export const updateStatus = mutation({
     sandboxId: v.optional(v.string()),
     sandboxUrl: v.optional(v.string()),
     agentSessionId: v.optional(v.string()),
+    acpServerId: v.optional(v.string()),
     apiKeyId: v.optional(v.id("apiKeys")),
     errorMessage: v.optional(v.string()),
     stoppedAt: v.optional(v.number()),
@@ -76,6 +77,7 @@ export const updateStatus = mutation({
     if (args.sandboxId !== undefined) updates.sandboxId = args.sandboxId
     if (args.sandboxUrl !== undefined) updates.sandboxUrl = args.sandboxUrl
     if (args.agentSessionId !== undefined) updates.agentSessionId = args.agentSessionId
+    if (args.acpServerId !== undefined) updates.acpServerId = args.acpServerId
     if (args.apiKeyId !== undefined) updates.apiKeyId = args.apiKeyId
     if (args.errorMessage !== undefined) updates.errorMessage = args.errorMessage
     if (args.stoppedAt !== undefined) updates.stoppedAt = args.stoppedAt
