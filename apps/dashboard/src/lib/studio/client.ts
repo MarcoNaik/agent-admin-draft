@@ -30,10 +30,11 @@ export async function postMessageToSandbox(
   const res = await fetch(`${sandboxUrl}/opencode/session/${agentSessionId}/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ parts: [{ type: "text", text: message }] }),
   })
   if (!res.ok) {
-    throw new Error("Failed to send message to sandbox")
+    const body = await res.text().catch(() => "")
+    throw new Error(`Failed to send message to sandbox: ${res.status} ${body}`)
   }
 }
 
