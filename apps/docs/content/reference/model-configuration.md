@@ -11,30 +11,64 @@ Struere supports multiple LLM providers for agent execution. Each agent can be c
 
 ## Available Providers
 
-| Provider | Model Names | Notes |
-|----------|-------------|-------|
-| `anthropic` | `claude-haiku-4-5`, `claude-sonnet-4`, `claude-opus-4-5` | Default provider |
-| `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Requires `OPENAI_API_KEY` |
-| `google` | `gemini-1.5-pro`, `gemini-1.5-flash` | Requires `GOOGLE_API_KEY` |
-| `custom` | Any model name | Requires `apiKey` in model config. Use for self-hosted or alternative providers. |
+| Provider | Notes |
+|----------|-------|
+| `anthropic` | Default provider |
+| `openai` | Configure in Settings > Providers |
+| `google` | Configure in Settings > Providers |
+| `custom` | Requires `apiKey` in model config. Use for self-hosted or alternative providers. |
 
 ## Anthropic Models
 
-Anthropic models are the default provider and require the `ANTHROPIC_API_KEY` environment variable on your Convex deployment.
-
-### Pricing
+Anthropic is the default provider.
 
 | Model | Input (per MTok) | Output (per MTok) | Best For |
 |-------|-------------------|--------------------|----------|
-| `claude-haiku-4-5` | $1 | $5 | Best cost-to-intelligence ratio for high-volume tasks |
-| `claude-sonnet-4` | $3 | $15 | **Default** — Strong reasoning with balanced cost |
-| `claude-opus-4-5` | $5 | $25 | Most capable, research-grade tasks requiring deep analysis |
+| `claude-haiku-4-5` | $1 | $5 | High-volume, cost-sensitive tasks |
+| `claude-sonnet-4` | $3 | $15 | **Default** — Balanced reasoning and cost |
+| `claude-sonnet-4-5` | $3 | $15 | Improved coding and reasoning over Sonnet 4 |
+| `claude-opus-4-5` | $15 | $75 | Deep analysis and research-grade tasks |
+| `claude-sonnet-4-6` | $3 | $15 | Latest Sonnet — strongest reasoning |
+| `claude-opus-4-6` | $15 | $75 | Latest Opus — most capable model |
 
-### Choosing a Model
+## OpenAI Models
 
-- **claude-haiku-4-5** — Use for high-volume, cost-sensitive agents. Fast and capable enough for entity management, scheduling, and standard workflows.
+| Model | Input (per MTok) | Output (per MTok) | Best For |
+|-------|-------------------|--------------------|----------|
+| `gpt-5.2` | $1.75 | $14 | Latest GPT — most capable |
+| `gpt-5.1` | $1.25 | $10 | Strong general-purpose |
+| `gpt-5` | $1.25 | $10 | General-purpose, multimodal |
+| `gpt-5-mini` | $0.25 | $2 | Cost-effective GPT-5 |
+| `gpt-5-nano` | $0.05 | $0.40 | Ultra-low cost |
+| `gpt-4.1` | $2 | $8 | Reliable general-purpose |
+| `gpt-4.1-mini` | $0.40 | $1.60 | Lightweight GPT-4.1 |
+| `gpt-4.1-nano` | $0.10 | $0.40 | Budget-friendly |
+| `gpt-4o` | $2.50 | $10 | Multimodal |
+| `gpt-4o-mini` | $0.15 | $0.60 | Fast, cost-effective |
+| `o4-mini` | $1.10 | $4.40 | Latest efficient reasoning |
+| `o3` | $2 | $8 | Strong reasoning |
+| `o3-mini` | $1.10 | $4.40 | Efficient reasoning |
+| `o3-pro` | $20 | $80 | Maximum reasoning capability |
+| `o1` | $15 | $60 | Complex reasoning and analysis |
+| `o1-mini` | $1.10 | $4.40 | Lightweight reasoning |
+
+## Google Models
+
+| Model | Input (per MTok) | Output (per MTok) | Best For |
+|-------|-------------------|--------------------|----------|
+| `gemini-3-pro-preview` | $2 | $12 | Latest Gemini — preview |
+| `gemini-2.5-pro` | $1.25 | $10 | Most capable stable Gemini |
+| `gemini-2.5-flash` | $0.30 | $2.50 | Fast with strong reasoning |
+| `gemini-2.0-flash` | $0.10 | $0.40 | High-speed tasks |
+| `gemini-1.5-pro` | $1.25 | $5 | Long-context analysis |
+| `gemini-1.5-flash` | $0.075 | $0.30 | Budget-friendly with long context |
+
+## Choosing a Model
+
 - **claude-sonnet-4** — The default model. Strong reasoning with balanced cost, suitable for most agent tasks including multi-step planning and nuanced decision-making.
-- **claude-opus-4-5** — Use sparingly for agents that require the highest possible capability, such as complex analysis or research tasks.
+- **claude-haiku-4-5** — Use for high-volume, cost-sensitive agents. Fast and capable enough for entity management, scheduling, and standard workflows.
+- **claude-opus-4-6** — Use for agents that require the highest possible capability, such as complex analysis or research tasks.
+- **gpt-4o-mini** / **gemini-2.5-flash** — Good alternatives for cost-sensitive, high-throughput workloads.
 
 ## Configuration Options
 
@@ -56,7 +90,7 @@ model: {
 | `name` | `string` | `"claude-sonnet-4"` (full ID: `claude-sonnet-4-20250514`) | The model name |
 | `temperature` | `number` | `0.7` | Controls randomness. Lower values (0.0-0.3) produce more deterministic output. Higher values (0.7-1.0) produce more creative output. |
 | `maxTokens` | `number` | `4096` | Maximum number of tokens in the model's response |
-| `apiKey` | `string` | — | API key override. Required for `custom` provider. For standard providers, the key is read from environment variables. |
+| `apiKey` | `string` | — | API key override. Required for `custom` provider. For standard providers, configure keys in the dashboard under Settings > Providers. |
 
 ## Default Configuration
 
@@ -179,15 +213,16 @@ export default defineAgent({
 })
 ```
 
-## Required Environment Variables
+## Provider Configuration
 
-Set the appropriate API key on your Convex deployment depending on which providers your agents use:
+Each provider can run in one of two modes, configured in the dashboard under **Settings > Providers**:
 
-| Variable | Provider | Required |
-|----------|----------|----------|
-| `ANTHROPIC_API_KEY` | Anthropic | Yes (default provider) |
-| `OPENAI_API_KEY` | OpenAI | Only if using OpenAI models |
-| `GOOGLE_API_KEY` | Google | Only if using Google models |
+| Mode | Description |
+|------|-------------|
+| **Platform** | Uses Struere's built-in credits — no API key needed. Usage is deducted from your organization's credit balance. |
+| **Custom** | Bring your own API key. Enter your key in the dashboard and all LLM calls for that provider will use it directly. |
+
+You can configure each provider independently. For example, use platform credits for Anthropic while using your own OpenAI key.
 
 ## Token Usage
 
@@ -203,4 +238,4 @@ Token usage is tracked per interaction and returned in the chat API response:
 }
 ```
 
-Each tool call within the agent's LLM loop counts toward token usage. Multi-agent conversations (via `agent.chat`) track usage independently per agent in the chain. All usage is recorded in the `executions` table for monitoring and billing.
+Each tool call within the agent's LLM loop counts toward token usage. Multi-agent conversations (via `agent.chat`) track usage independently per agent in the chain. When using platform credits, token usage is automatically deducted from your organization's credit balance.
