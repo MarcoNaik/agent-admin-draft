@@ -309,13 +309,15 @@ export default defineSchema({
     errorMessage: v.optional(v.string()),
     usedPlatformKey: v.optional(v.boolean()),
     creditsConsumed: v.optional(v.number()),
+    evalRunId: v.optional(v.id("evalRuns")),
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
     .index("by_org_env", ["organizationId", "environment"])
     .index("by_agent", ["agentId"])
     .index("by_agent_env", ["agentId", "environment"])
-    .index("by_timestamp", ["createdAt"]),
+    .index("by_timestamp", ["createdAt"])
+    .index("by_eval_run", ["evalRunId"]),
 
   toolPermissions: defineTable({
     agentId: v.id("agents"),
@@ -372,6 +374,10 @@ export default defineSchema({
     mediaCaption: v.optional(v.string()),
     interactiveData: v.optional(v.any()),
     mediaDirectUrl: v.optional(v.string()),
+    pricingBillable: v.optional(v.boolean()),
+    pricingModel: v.optional(v.string()),
+    pricingCategory: v.optional(v.string()),
+    creditsConsumed: v.optional(v.number()),
     status: v.union(v.literal("sent"), v.literal("delivered"), v.literal("read"), v.literal("failed"), v.literal("received")),
     createdAt: v.number(),
   })
@@ -539,6 +545,10 @@ export default defineSchema({
       agent: v.number(),
       judge: v.number(),
     })),
+    totalCost: v.optional(v.object({
+      agent: v.number(),
+      judge: v.number(),
+    })),
     totalDurationMs: v.optional(v.number()),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
@@ -642,6 +652,8 @@ export default defineSchema({
       input: v.number(),
       output: v.number(),
     })),
+    judgeCost: v.optional(v.number()),
+    agentCost: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   })
