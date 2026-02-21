@@ -4,6 +4,7 @@ import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { generateText } from "ai"
 import { createModel } from "./lib/llm"
+import { calculateCost } from "./lib/creditPricing"
 import { processTemplates, TemplateContext } from "./lib/templateEngine"
 import { buildSystemActorContext } from "./lib/permissions/context"
 
@@ -44,6 +45,8 @@ interface CaseState {
   judgeInputTokens: number
   judgeOutputTokens: number
   totalAgentTokens: number
+  judgeCost: number
+  agentCost: number
   caseStartTime: number
   messageCountBeforeTurn?: number
   chatCompletedForCurrentTurn?: boolean
@@ -105,6 +108,8 @@ export const executeCase = internalAction({
       judgeInputTokens: 0,
       judgeOutputTokens: 0,
       totalAgentTokens: 0,
+      judgeCost: 0,
+      agentCost: 0,
       caseStartTime: Date.now(),
     }
 
@@ -187,12 +192,17 @@ export const executeCase = internalAction({
           message: turn.userMessage,
           threadId,
           environment: run.environment,
+          evalRunId: args.runId,
         })
 
         turnDurationMs = Date.now() - turnStartTime
         chatResultMessage = chatResult.message
         state.totalAgentTokens += chatResult.usage.totalTokens
         turnAgentTokens = { input: chatResult.usage.inputTokens, output: chatResult.usage.outputTokens }
+
+        const agentConfig = await ctx.runQuery(internal.evals.getAgentConfig, { agentId: run.agentId, environment: run.environment })
+        const agentModelName = agentConfig?.model?.name ?? "claude-sonnet-4"
+        state.agentCost += calculateCost(agentModelName, chatResult.usage.inputTokens, chatResult.usage.outputTokens)
 
         state.chatCompletedForCurrentTurn = true
         state.pendingTurnUsage = {
@@ -221,10 +231,12 @@ export const executeCase = internalAction({
 
         state.judgeInputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
         state.judgeOutputTokens += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeOutputTokens || 0), 0)
+        state.judgeCost += assertionResults.reduce((sum, r) => sum + ((r as any)._judgeCost || 0), 0)
 
         assertionResults = assertionResults.map(({ ...r }) => {
           delete (r as any)._judgeInputTokens
           delete (r as any)._judgeOutputTokens
+          delete (r as any)._judgeCost
           return r
         })
 
@@ -280,10 +292,12 @@ export const executeCase = internalAction({
 
         state.judgeInputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeInputTokens || 0), 0)
         state.judgeOutputTokens += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeOutputTokens || 0), 0)
+        state.judgeCost += finalAssertionResults.reduce((sum, r) => sum + ((r as any)._judgeCost || 0), 0)
 
         finalAssertionResults = finalAssertionResults.map(({ ...r }) => {
           delete (r as any)._judgeInputTokens
           delete (r as any)._judgeOutputTokens
+          delete (r as any)._judgeCost
           return r
         })
 
@@ -331,6 +345,8 @@ export const executeCase = internalAction({
         overallScore,
         totalDurationMs: caseDurationMs,
         judgeTokens,
+        judgeCost: state.judgeCost > 0 ? state.judgeCost : undefined,
+        agentCost: state.agentCost > 0 ? state.agentCost : undefined,
       })
 
       await ctx.runMutation(internal.evals.caseCompleted, {
@@ -339,6 +355,8 @@ export const executeCase = internalAction({
         overallScore,
         agentTokens: state.totalAgentTokens,
         judgeTokens: state.judgeInputTokens + state.judgeOutputTokens,
+        judgeCost: state.judgeCost,
+        agentCost: state.agentCost,
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -371,6 +389,8 @@ export const executeCase = internalAction({
         passed: false,
         agentTokens: state.totalAgentTokens,
         judgeTokens: state.judgeInputTokens + state.judgeOutputTokens,
+        judgeCost: state.judgeCost,
+        agentCost: state.agentCost,
       })
     }
   },
@@ -409,8 +429,8 @@ async function evaluateAssertions(
   agentPrompt?: string,
   priorTurns?: TurnResult[],
   suiteJudgePrompt?: string
-): Promise<(AssertionResult & { _judgeInputTokens?: number; _judgeOutputTokens?: number })[]> {
-  const results: (AssertionResult & { _judgeInputTokens?: number; _judgeOutputTokens?: number })[] = []
+): Promise<(AssertionResult & { _judgeInputTokens?: number; _judgeOutputTokens?: number; _judgeCost?: number })[]> {
+  const results: (AssertionResult & { _judgeInputTokens?: number; _judgeOutputTokens?: number; _judgeCost?: number })[] = []
 
   for (const assertion of assertions) {
     switch (assertion.type) {
@@ -500,6 +520,7 @@ async function evaluateAssertions(
           criteria: assertion.criteria,
           _judgeInputTokens: judgeResult.inputTokens || 0,
           _judgeOutputTokens: judgeResult.outputTokens || 0,
+          _judgeCost: judgeResult.cost || 0,
         })
         break
       }
@@ -524,6 +545,7 @@ async function judgeResponse(args: {
   reason: string
   inputTokens: number
   outputTokens: number
+  cost: number
 }> {
   const toolCallsText = args.toolCalls.length > 0
     ? `\n\nTool calls made:\n${args.toolCalls.map((tc) =>
@@ -601,6 +623,8 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const inputTokens = result.usage.inputTokens ?? 0
   const outputTokens = result.usage.outputTokens ?? 0
   const textContent = result.text
+  const modelName = args.model?.name || "claude-haiku-4-5-20251001"
+  const cost = calculateCost(modelName, inputTokens, outputTokens)
 
   try {
     const jsonMatch = textContent.match(/\{[\s\S]*\}/)
@@ -613,6 +637,7 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
       reason: parsed.reason || "No reason provided",
       inputTokens,
       outputTokens,
+      cost,
     }
   } catch {
     const partialMatch = textContent.match(/"passed"\s*:\s*(true|false)/)
@@ -626,6 +651,7 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
         reason: "Judge response was truncated",
         inputTokens,
         outputTokens,
+        cost,
       }
     }
     return {
@@ -634,6 +660,7 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
       reason: `Failed to parse judge response: ${textContent.slice(0, 200)}`,
       inputTokens,
       outputTokens,
+      cost,
     }
   }
 }
