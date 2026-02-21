@@ -3,6 +3,7 @@ import { query, mutation, internalMutation, internalQuery, QueryCtx, MutationCtx
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
+import { calculateWhatsAppCost } from "./lib/whatsappPricing"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -476,7 +477,13 @@ export const processInboundMessage = internalMutation({
 })
 
 export const updateMessageStatus = internalMutation({
-  args: { messageId: v.string(), status: v.string() },
+  args: {
+    messageId: v.string(),
+    status: v.string(),
+    pricingBillable: v.optional(v.boolean()),
+    pricingModel: v.optional(v.string()),
+    pricingCategory: v.optional(v.string()),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const msg = await ctx.db
@@ -487,7 +494,30 @@ export const updateMessageStatus = internalMutation({
     if (msg) {
       const validStatuses = ["sent", "delivered", "read", "failed"]
       if (validStatuses.includes(args.status)) {
-        await ctx.db.patch(msg._id, { status: args.status as "sent" | "delivered" | "read" | "failed" })
+        const patch: Record<string, unknown> = {
+          status: args.status as "sent" | "delivered" | "read" | "failed",
+        }
+
+        if (args.status === "sent" && args.pricingCategory && !msg.creditsConsumed) {
+          const billable = args.pricingBillable !== false
+          patch.pricingBillable = billable
+          patch.pricingModel = args.pricingModel
+          patch.pricingCategory = args.pricingCategory
+
+          const cost = calculateWhatsAppCost(msg.phoneNumber, args.pricingCategory, billable)
+          patch.creditsConsumed = cost
+
+          if (cost > 0) {
+            await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+              organizationId: msg.organizationId,
+              amount: cost,
+              description: `WhatsApp ${args.pricingCategory} to +${msg.phoneNumber}`,
+              metadata: { whatsappMessageId: msg._id, category: args.pricingCategory },
+            })
+          }
+        }
+
+        await ctx.db.patch(msg._id, patch)
       }
     }
 
