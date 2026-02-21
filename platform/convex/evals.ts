@@ -526,6 +526,8 @@ export const recordResult = internalMutation({
       input: v.number(),
       output: v.number(),
     })),
+    judgeCost: v.optional(v.number()),
+    agentCost: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -544,6 +546,8 @@ export const recordResult = internalMutation({
         totalDurationMs: args.totalDurationMs,
         errorMessage: args.errorMessage,
         judgeTokens: args.judgeTokens,
+        judgeCost: args.judgeCost,
+        agentCost: args.agentCost,
         completedAt: Date.now(),
       })
     }
@@ -557,6 +561,8 @@ export const caseCompleted = internalMutation({
     overallScore: v.optional(v.number()),
     agentTokens: v.number(),
     judgeTokens: v.number(),
+    judgeCost: v.optional(v.number()),
+    agentCost: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId)
@@ -574,11 +580,28 @@ export const caseCompleted = internalMutation({
       judge: prevJudge + args.judgeTokens,
     }
 
+    const prevAgentCost = run.totalCost?.agent ?? 0
+    const prevJudgeCost = run.totalCost?.judge ?? 0
+    const totalCost = {
+      agent: prevAgentCost + (args.agentCost ?? 0),
+      judge: prevJudgeCost + (args.judgeCost ?? 0),
+    }
+
     const updates: Record<string, unknown> = {
       completedCases,
       passedCases,
       failedCases,
       totalTokens,
+      totalCost,
+    }
+
+    if (args.judgeCost && args.judgeCost > 0) {
+      await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+        organizationId: run.organizationId,
+        amount: args.judgeCost,
+        description: `Eval judge — run ${args.runId}`,
+        metadata: { evalRunId: args.runId, type: "eval_judge" },
+      })
     }
 
     if (completedCases === run.totalCases) {
