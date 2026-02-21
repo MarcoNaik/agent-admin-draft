@@ -455,10 +455,36 @@ http.route({
       const messageId = message.id
       const status = eventType.split(".").pop()!
       if (messageId) {
-        await ctx.runMutation(internal.whatsapp.updateMessageStatus, {
-          messageId,
-          status,
-        })
+        const updateArgs: {
+          messageId: string
+          status: string
+          pricingBillable?: boolean
+          pricingModel?: string
+          pricingCategory?: string
+        } = { messageId, status }
+
+        if (status === "sent") {
+          const kapso = message.kapso as {
+            statuses?: Array<{
+              pricing?: {
+                billable?: boolean
+                pricing_model?: string
+                category?: string
+              }
+            }>
+          } | undefined
+          const statuses = kapso?.statuses
+          if (statuses && Array.isArray(statuses)) {
+            const pricingEntry = statuses.find((s) => s.pricing)
+            if (pricingEntry?.pricing) {
+              updateArgs.pricingBillable = pricingEntry.pricing.billable
+              updateArgs.pricingModel = pricingEntry.pricing.pricing_model
+              updateArgs.pricingCategory = pricingEntry.pricing.category
+            }
+          }
+        }
+
+        await ctx.runMutation(internal.whatsapp.updateMessageStatus, updateArgs)
       }
     }
 
