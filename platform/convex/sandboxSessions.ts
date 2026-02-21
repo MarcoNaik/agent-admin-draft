@@ -182,7 +182,7 @@ export const appendEvents = mutation({
       sequence: v.number(),
       eventType: v.string(),
       sender: v.union(v.literal("agent"), v.literal("user"), v.literal("system")),
-      payload: v.any(),
+      payload: v.optional(v.any()),
       createdAt: v.number(),
     })),
   },

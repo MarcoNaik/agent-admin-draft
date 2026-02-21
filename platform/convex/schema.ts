@@ -622,7 +622,7 @@ export default defineSchema({
     sequence: v.number(),
     eventType: v.string(),
     sender: v.union(v.literal("agent"), v.literal("user"), v.literal("system"), v.literal("daemon")),
-    payload: v.any(),
+    payload: v.optional(v.any()),
     createdAt: v.number(),
   })
     .index("by_session", ["sessionId"])
