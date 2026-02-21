@@ -96,6 +96,7 @@ export const getStats = query({
       0
     )
     const totalDuration = executions.reduce((sum, e) => sum + e.durationMs, 0)
+    const totalCreditsConsumed = executions.reduce((sum, e) => sum + (e.creditsConsumed ?? 0), 0)
 
     return {
       total,
@@ -106,6 +107,7 @@ export const getStats = query({
       totalInputTokens,
       totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
+      totalCreditsConsumed,
       averageDurationMs: total > 0 ? totalDuration / total : 0,
       averageInputTokens: total > 0 ? totalInputTokens / total : 0,
       averageOutputTokens: total > 0 ? totalOutputTokens / total : 0,
@@ -140,6 +142,7 @@ export const getUsageByAgent = query({
         outputTokens: number
         durationMs: number
         errors: number
+        creditsConsumed: number
       }
     >()
 
@@ -152,12 +155,14 @@ export const getUsageByAgent = query({
         outputTokens: 0,
         durationMs: 0,
         errors: 0,
+        creditsConsumed: 0,
       }
 
       existing.count++
       existing.inputTokens += exec.inputTokens
       existing.outputTokens += exec.outputTokens
       existing.durationMs += exec.durationMs
+      existing.creditsConsumed += exec.creditsConsumed ?? 0
       if (exec.status === "error") existing.errors++
 
       byAgent.set(agentId, existing)
@@ -193,6 +198,7 @@ export const getUsageByModel = query({
         inputTokens: number
         outputTokens: number
         errors: number
+        creditsConsumed: number
       }
     >()
 
@@ -204,11 +210,13 @@ export const getUsageByModel = query({
         inputTokens: 0,
         outputTokens: 0,
         errors: 0,
+        creditsConsumed: 0,
       }
 
       existing.count++
       existing.inputTokens += exec.inputTokens
       existing.outputTokens += exec.outputTokens
+      existing.creditsConsumed += exec.creditsConsumed ?? 0
       if (exec.status === "error") existing.errors++
 
       byModel.set(model, existing)
@@ -269,6 +277,7 @@ export const record = internalMutation({
     errorMessage: v.optional(v.string()),
     usedPlatformKey: v.optional(v.boolean()),
     creditsConsumed: v.optional(v.number()),
+    evalRunId: v.optional(v.id("evalRuns")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("executions", {
@@ -289,6 +298,7 @@ export const record = internalMutation({
       errorMessage: args.errorMessage,
       usedPlatformKey: args.usedPlatformKey,
       creditsConsumed: args.creditsConsumed,
+      evalRunId: args.evalRunId,
       createdAt: Date.now(),
     })
   },
