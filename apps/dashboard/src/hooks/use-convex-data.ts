@@ -564,3 +564,26 @@ export function useAdjustBalance() {
 export function useCreateCheckoutSession() {
   return useAction(api.billing.createCheckoutSession)
 }
+
+export function useActiveSandboxSession(environment?: Environment) {
+  return useQuery(api.sandboxSessions.getActive, { environment: environment ?? "development" })
+}
+
+export function useSandboxEvents(sessionId: Id<"sandboxSessions"> | undefined, afterSequence?: number) {
+  return useQuery(
+    api.sandboxSessions.getEvents,
+    sessionId ? { sessionId, afterSequence: afterSequence ?? -1 } : "skip"
+  )
+}
+
+export function useAppendSandboxEvents() {
+  return useMutation(api.sandboxSessions.appendEvents)
+}
+
+export function useCleanupSandboxSession() {
+  return useMutation(api.sandboxSessions.cleanup)
+}
+
+export function useRecordSandboxActivity() {
+  return useMutation(api.sandboxSessions.recordActivity)
+}

@@ -589,6 +589,45 @@ export default defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_execution", ["executionId"]),
 
+  sandboxSessions: defineTable({
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("provisioning"),
+      v.literal("ready"),
+      v.literal("active"),
+      v.literal("idle"),
+      v.literal("stopped"),
+      v.literal("error")
+    ),
+    sandboxProvider: v.literal("e2b"),
+    sandboxId: v.optional(v.string()),
+    agentType: v.union(v.literal("opencode"), v.literal("claude")),
+    agentSessionId: v.optional(v.string()),
+    sandboxUrl: v.optional(v.string()),
+    lastActivityAt: v.number(),
+    idleTimeoutMs: v.number(),
+    errorMessage: v.optional(v.string()),
+    apiKeyId: v.optional(v.id("apiKeys")),
+    createdAt: v.number(),
+    stoppedAt: v.optional(v.number()),
+  })
+    .index("by_org_env_user", ["organizationId", "environment", "userId"])
+    .index("by_org_env_status", ["organizationId", "environment", "status"])
+    .index("by_sandbox_id", ["sandboxId"]),
+
+  sandboxEvents: defineTable({
+    sessionId: v.id("sandboxSessions"),
+    sequence: v.number(),
+    eventType: v.string(),
+    sender: v.union(v.literal("agent"), v.literal("user"), v.literal("system"), v.literal("daemon")),
+    payload: v.any(),
+    createdAt: v.number(),
+  })
+    .index("by_session", ["sessionId"])
+    .index("by_session_sequence", ["sessionId", "sequence"]),
+
   fixtures: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,

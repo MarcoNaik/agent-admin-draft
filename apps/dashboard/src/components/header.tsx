@@ -33,6 +33,7 @@ type NavItem = {
 }
 
 const adminNavigation: NavItem[] = [
+  { name: "Studio", href: "/studio" },
   { name: "Conversations", href: "/conversations" },
   { name: "Entities", href: "/entities" },
   { name: "Roles", href: "/roles" },
