@@ -265,21 +265,6 @@ export function useStudioEvents(
   const sendMessage = useCallback(async (text: string) => {
     if (!sessionId) return
 
-    const userItemId = `user-${Date.now()}`
-    setItems((prev) => {
-      const next = new Map(prev)
-      next.set(userItemId, {
-        itemId: userItemId,
-        role: "user",
-        kind: "message",
-        content: [{ type: "text", text }],
-        deltas: [],
-        status: "completed",
-        createdAt: Date.now(),
-      })
-      return next
-    })
-
     try {
       await fetch(`/api/studio/sessions/${sessionId}/message`, {
         method: "POST",
