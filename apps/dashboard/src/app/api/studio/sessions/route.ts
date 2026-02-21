@@ -80,12 +80,20 @@ export async function POST(request: Request) {
       },
     })
 
+    const acpServersRes = await fetch(`${sandbox.sandboxUrl}/v1/acp`)
+    const acpServers = await acpServersRes.json() as { servers: Array<{ serverId: string; agent: string }> }
+    const acpServer = acpServers.servers.find((s) => s.agent === agentType)
+    if (!acpServer) {
+      throw new Error("ACP server not found after session creation")
+    }
+
     await convex.mutation(api.sandboxSessions.updateStatus, {
       id: sessionId,
       status: "ready",
       sandboxId: sandbox.sandboxId,
       sandboxUrl: sandbox.sandboxUrl,
-      agentSessionId: session.id,
+      agentSessionId: session.agentSessionId,
+      acpServerId: acpServer.serverId,
     })
 
     await sdk.dispose().catch(() => {})
