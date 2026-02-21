@@ -1,7 +1,7 @@
 "use client"
 
 import { Doc } from "@convex/_generated/dataModel"
-import { Activity, Zap, Clock, CheckCircle, Loader2 } from "lucide-react"
+import { Activity, Zap, Clock, CheckCircle, Loader2, DollarSign } from "lucide-react"
 import {
   useExecutionStats,
   useUsageByAgent,
@@ -14,6 +14,13 @@ import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
 import { formatDuration, formatRelativeTime } from "@/lib/format"
+
+function formatMicrodollars(microdollars: number): string {
+  const dollars = microdollars / 1_000_000
+  if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
+  if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
+  return `$${dollars.toFixed(6)}`
+}
 
 export default function UsagePage() {
   const { environment } = useEnvironment()
@@ -56,7 +63,7 @@ export default function UsagePage() {
         <p className="text-sm text-content-secondary">Token consumption, execution stats, and eval usage</p>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <Card className="bg-background-secondary">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-content-secondary">Total Executions</CardTitle>
@@ -108,6 +115,19 @@ export default function UsagePage() {
             <p className="text-xs text-content-secondary">Successful executions</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-background-secondary">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-content-secondary">Total Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-content-tertiary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-content-primary">
+              {stats.totalCreditsConsumed > 0 ? formatMicrodollars(stats.totalCreditsConsumed) : "-"}
+            </div>
+            <p className="text-xs text-content-secondary">Platform key usage</p>
+          </CardContent>
+        </Card>
       </div>
 
       {sortedAgentUsage.length > 0 && (
@@ -125,6 +145,7 @@ export default function UsagePage() {
                     <th className="text-right py-2 px-4 font-medium">Input tokens</th>
                     <th className="text-right py-2 px-4 font-medium">Output tokens</th>
                     <th className="text-right py-2 px-4 font-medium">Total tokens</th>
+                    <th className="text-right py-2 px-4 font-medium">Cost</th>
                     <th className="text-right py-2 pl-4 font-medium">Errors</th>
                   </tr>
                 </thead>
@@ -139,6 +160,9 @@ export default function UsagePage() {
                       <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.outputTokens)}</td>
                       <td className="text-right py-2 px-4 text-content-primary font-medium">
                         {formatNumber(row.inputTokens + row.outputTokens)}
+                      </td>
+                      <td className="text-right py-2 px-4 text-content-secondary">
+                        {row.creditsConsumed > 0 ? formatMicrodollars(row.creditsConsumed) : "-"}
                       </td>
                       <td className="text-right py-2 pl-4 text-content-secondary">
                         {row.errors > 0 ? (
@@ -171,11 +195,12 @@ export default function UsagePage() {
                     <th className="text-right py-2 px-4 font-medium">Input tokens</th>
                     <th className="text-right py-2 px-4 font-medium">Output tokens</th>
                     <th className="text-right py-2 px-4 font-medium">Total tokens</th>
+                    <th className="text-right py-2 px-4 font-medium">Cost</th>
                     <th className="text-right py-2 pl-4 font-medium">Errors</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {modelUsage.map((row: { model: string; count: number; inputTokens: number; outputTokens: number; errors: number }) => (
+                  {modelUsage.map((row: { model: string; count: number; inputTokens: number; outputTokens: number; errors: number; creditsConsumed: number }) => (
                     <tr key={row.model} className="border-b border-border/50">
                       <td className="py-2 pr-4 text-content-primary">
                         {row.model === "unknown" ? "Unknown" : row.model}
@@ -185,6 +210,9 @@ export default function UsagePage() {
                       <td className="text-right py-2 px-4 text-content-secondary">{formatNumber(row.outputTokens)}</td>
                       <td className="text-right py-2 px-4 text-content-primary font-medium">
                         {formatNumber(row.inputTokens + row.outputTokens)}
+                      </td>
+                      <td className="text-right py-2 px-4 text-content-secondary">
+                        {row.creditsConsumed > 0 ? formatMicrodollars(row.creditsConsumed) : "-"}
                       </td>
                       <td className="text-right py-2 pl-4 text-content-secondary">
                         {row.errors > 0 ? (
