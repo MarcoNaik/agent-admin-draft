@@ -15,12 +15,17 @@ export interface SandboxResult {
   sandboxUrl: string
 }
 
-async function runChecked(sandbox: Sandbox, cmd: string, opts: { timeoutMs: number }) {
-  const result = await sandbox.commands.run(cmd, opts)
-  if (result.exitCode !== 0) {
-    throw new Error(`Command failed (exit ${result.exitCode}): ${cmd}\n${result.stderr || result.stdout}`)
+async function runCmd(sandbox: Sandbox, label: string, cmd: string, opts: { timeoutMs: number }) {
+  try {
+    const result = await sandbox.commands.run(cmd, opts)
+    if (result.exitCode !== 0) {
+      throw new Error(`stderr: ${result.stderr}\nstdout: ${result.stdout}`)
+    }
+    return result
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new Error(`[${label}] failed: ${detail}`)
   }
-  return result
 }
 
 export async function createSandbox(config: SandboxConfig): Promise<SandboxResult> {
@@ -35,17 +40,18 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       await sandbox.files.write(file.path, file.content)
     }
 
-    await runChecked(
+    await runCmd(
       sandbox,
+      "install-sandbox-agent",
       `curl -fsSL https://releases.rivet.dev/sandbox-agent/${SANDBOX_AGENT_VERSION}/install.sh | sh`,
       { timeoutMs: 60_000 }
     )
 
-    await runChecked(sandbox, `sandbox-agent install-agent ${config.agentType}`, {
+    await runCmd(sandbox, "install-agent", `sandbox-agent install-agent ${config.agentType}`, {
       timeoutMs: 120_000,
     })
 
-    await runChecked(sandbox, "npm install -g struere@latest", {
+    await runCmd(sandbox, "install-struere", "npm install -g struere@latest", {
       timeoutMs: 60_000,
     })
 
