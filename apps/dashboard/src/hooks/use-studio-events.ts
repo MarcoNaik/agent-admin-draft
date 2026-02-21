@@ -153,7 +153,13 @@ export function useStudioEvents(
           if (studioEvent.type === "turn.started") setTurnInProgress(true)
           if (studioEvent.type === "turn.ended") setTurnInProgress(false)
 
-          if (studioEvent.type === "session.ended") {
+          if (studioEvent.type === "session.status") {
+            const status = (studioEvent.data as { status?: { type?: string } })?.status?.type
+            if (status === "busy") setTurnInProgress(true)
+            if (status === "idle") setTurnInProgress(false)
+          }
+
+          if (studioEvent.type === "session.ended" || studioEvent.type === "session.completed") {
             setSessionEnded(true)
             setTurnInProgress(false)
           }
@@ -360,11 +366,63 @@ function processEventIntoItems(event: StudioEvent, items: Map<string, ItemState>
   if (!data) return
 
   switch (event.type) {
-    case "turn.started":
+    case "message.part.updated": {
+      const part = data.part as Record<string, unknown> | undefined
+      if (!part) return
+      const msgId = (data.messageID ?? part.messageID) as string
+      if (!msgId) return
+      const existing = items.get(msgId)
+      if (existing) {
+        const partId = part.id as string
+        const idx = existing.content.findIndex((p) => (p as Record<string, unknown>).id === partId)
+        if (idx >= 0) {
+          existing.content[idx] = part as unknown as ContentPart
+        } else {
+          existing.content.push(part as unknown as ContentPart)
+        }
+      } else {
+        const sessionId = (data.sessionID ?? part.sessionID) as string | undefined
+        items.set(msgId, {
+          itemId: msgId,
+          role: "assistant",
+          kind: "message",
+          content: [part as unknown as ContentPart],
+          deltas: [],
+          status: "in_progress",
+          createdAt: event.createdAt,
+        })
+      }
       break
+    }
 
-    case "turn.ended":
+    case "message.updated": {
+      const info = data.info as Record<string, unknown> | undefined
+      if (!info) return
+      const msgId = info.id as string
+      if (!msgId) return
+      const parts = (data.parts ?? info.parts) as ContentPart[] | undefined
+      const role = (info.role as string) ?? "assistant"
+      const existing = items.get(msgId)
+      if (existing) {
+        if (parts) {
+          existing.content = parts
+          existing.deltas = []
+        }
+        existing.role = role
+        existing.status = "completed"
+      } else {
+        items.set(msgId, {
+          itemId: msgId,
+          role,
+          kind: "message",
+          content: parts ?? [],
+          deltas: [],
+          status: "completed",
+          createdAt: event.createdAt,
+        })
+      }
       break
+    }
 
     case "item.started": {
       const item = data.item as Record<string, unknown> | undefined
