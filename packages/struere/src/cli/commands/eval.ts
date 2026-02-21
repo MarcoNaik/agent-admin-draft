@@ -263,8 +263,11 @@ const runCommand = new Command('run')
     let filteredCaseIds: string[] | undefined
 
     if (options.case && options.case.length > 0) {
-      const nameSet = new Set(options.case.map((n) => n.toLowerCase()))
-      const matched = cases.filter((c) => nameSet.has(c.name.toLowerCase()))
+      const patterns = options.case.map((n) => n.toLowerCase())
+      const matched = cases.filter((c) => {
+        const name = c.name.toLowerCase()
+        return patterns.some((p) => name.includes(p))
+      })
       if (matched.length === 0) {
         spinner.fail('No cases matched')
         console.log(chalk.gray('  Available cases:'))
