@@ -2,8 +2,9 @@ import { auth } from "@clerk/nextjs/server"
 import { Id } from "@convex/_generated/dataModel"
 import { getConvexClient, getSessionForRequest } from "@/lib/studio/client"
 
-export const runtime = "edge"
 export const dynamic = "force-dynamic"
+
+const KEEPALIVE_INTERVAL_MS = 15_000
 
 export async function GET(
   request: Request,
@@ -46,9 +47,20 @@ export async function GET(
     return new Response("Failed to connect to sandbox event stream", { status: 502 })
   }
 
+  const encoder = new TextEncoder()
+  const keepaliveComment = encoder.encode(":keepalive\n\n")
+
   const stream = new ReadableStream({
     async start(controller) {
       const reader = upstream.body!.getReader()
+      const keepaliveTimer = setInterval(() => {
+        try {
+          controller.enqueue(keepaliveComment)
+        } catch {
+          clearInterval(keepaliveTimer)
+        }
+      }, KEEPALIVE_INTERVAL_MS)
+
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -58,6 +70,8 @@ export async function GET(
         controller.close()
       } catch {
         controller.close()
+      } finally {
+        clearInterval(keepaliveTimer)
       }
     },
     cancel() {
