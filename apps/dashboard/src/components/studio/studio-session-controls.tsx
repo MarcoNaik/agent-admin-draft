@@ -1,24 +1,14 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ChevronsUpDown, Square, Loader2 } from "lucide-react"
-
-type AgentType = "opencode" | "claude"
+import { Square, Loader2 } from "lucide-react"
 
 interface StudioSessionControlsProps {
   status: string | undefined
   isStarting: boolean
   isStopping: boolean
   isConnected: boolean
-  onStart: (agentType: AgentType) => void
   onStop: () => void
 }
 
@@ -45,34 +35,23 @@ export function StudioSessionControls({
   isStarting,
   isStopping,
   isConnected,
-  onStart,
   onStop,
 }: StudioSessionControlsProps) {
-  const [agentType, setAgentType] = useState<AgentType>("opencode")
-
   const isActive = status === "provisioning" || status === "ready" || status === "active" || status === "idle"
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b bg-background-secondary">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" disabled={isActive} className="gap-2">
-            {agentType === "opencode" ? "OpenCode" : "Claude Code"}
-            <ChevronsUpDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onSelect={() => setAgentType("opencode")}>
-            OpenCode
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setAgentType("claude")}>
-            Claude Code
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <span className="text-sm font-medium text-content-primary">Studio</span>
 
-      {status && (
-        <div className="flex items-center gap-2">
+      {isStarting && (
+        <div className="flex items-center gap-1.5">
+          <Loader2 className="h-3 w-3 animate-spin text-content-tertiary" />
+          <span className="text-xs text-content-tertiary">Starting...</span>
+        </div>
+      )}
+
+      {!isStarting && status && (
+        <div className="flex items-center gap-1.5">
           <span className={`h-2 w-2 rounded-full ${STATUS_COLORS[status] ?? "bg-muted-foreground"}`} />
           <span className="text-xs text-content-secondary">
             {STATUS_LABELS[status] ?? status}
@@ -88,22 +67,7 @@ export function StudioSessionControls({
 
       <div className="flex-1" />
 
-      {!isActive ? (
-        <Button
-          size="sm"
-          onClick={() => onStart(agentType)}
-          disabled={isStarting}
-        >
-          {isStarting ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              Starting...
-            </>
-          ) : (
-            "Start Session"
-          )}
-        </Button>
-      ) : (
+      {isActive && (
         <Button
           size="sm"
           variant="destructive"
