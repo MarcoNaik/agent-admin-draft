@@ -2,6 +2,9 @@ import { auth } from "@clerk/nextjs/server"
 import { Id } from "@convex/_generated/dataModel"
 import { getConvexClient, getSessionForRequest } from "@/lib/studio/client"
 
+export const runtime = "edge"
+export const dynamic = "force-dynamic"
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -43,11 +46,30 @@ export async function GET(
     return new Response("Failed to connect to sandbox event stream", { status: 502 })
   }
 
-  return new Response(upstream.body, {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = upstream.body!.getReader()
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          controller.enqueue(value)
+        }
+        controller.close()
+      } catch {
+        controller.close()
+      }
+    },
+    cancel() {
+      upstream.body!.cancel()
+    },
+  })
+
+  return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      "Connection": "keep-alive",
     },
   })
 }
