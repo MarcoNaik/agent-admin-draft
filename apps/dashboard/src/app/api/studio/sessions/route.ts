@@ -96,8 +96,6 @@ export async function POST(request: Request) {
       acpServerId: acpServer.serverId,
     })
 
-    await sdk.dispose().catch(() => {})
-
     return NextResponse.json({ sessionId })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
