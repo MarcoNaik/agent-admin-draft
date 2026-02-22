@@ -3,6 +3,13 @@
 import { useReveal } from "@/hooks/use-reveal"
 import { useI18n } from "@/lib/i18n"
 
+const aiProviders = [
+  { name: "GPT-4o", label: "OpenAI" },
+  { name: "Claude", label: "Anthropic" },
+  { name: "Gemini", label: "Google" },
+  { name: "Grok", label: "xAI" },
+]
+
 const available = [
   { icon: "\uD83D\uDCF1", name: "WhatsApp Business" },
   { icon: "\uD83D\uDCC5", name: "Google Calendar" },
@@ -37,6 +44,21 @@ export function Integrations() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
+          <p className="text-center text-xs font-medium uppercase tracking-widest text-charcoal/40 mb-4">
+            {t.integrations.aiModelsLabel}
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 mb-10">
+            {aiProviders.map((provider) => (
+              <div
+                key={provider.name}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/50 border border-amber/20 text-sm text-charcoal hover:-translate-y-0.5 hover:shadow-sm transition-all duration-300"
+              >
+                <span className="font-medium">{provider.name}</span>
+                <span className="text-[10px] text-charcoal/40">{provider.label}</span>
+              </div>
+            ))}
+          </div>
+
           <div className="flex flex-wrap justify-center gap-3 mb-8">
             {available.map((item) => (
               <div
