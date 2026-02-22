@@ -36,7 +36,17 @@ export async function POST(
       return NextResponse.json({ error: "ACP server not available" }, { status: 400 })
     }
 
-    await postMessageToSandbox(session.sandboxUrl, session.acpServerId, session.agentSessionId, message)
+    const response = await postMessageToSandbox(session.sandboxUrl, session.acpServerId, session.agentSessionId, message)
+
+    const usage = (response as Record<string, unknown>)?.result as Record<string, unknown> | undefined
+    const usageData = usage?.usage as Record<string, number> | undefined
+    if (usageData?.inputTokens && usageData?.outputTokens) {
+      convex.mutation(api.sandboxSessions.recordUsage, {
+        sessionId,
+        inputTokens: usageData.inputTokens,
+        outputTokens: usageData.outputTokens,
+      }).catch(() => {})
+    }
 
     convex.mutation(api.sandboxSessions.recordActivity, { id: sessionId }).catch(() => {})
 

@@ -223,22 +223,6 @@ export const appendEvents = mutation({
         payload: event.payload,
         createdAt: event.createdAt,
       })
-
-      const payload = event.payload as Record<string, unknown> | undefined
-      if (payload) {
-        const inner = payload.payload as Record<string, unknown> | undefined
-        const result = (payload.result ?? inner?.result) as Record<string, unknown> | undefined
-        if (result?.stopReason && result?.usage) {
-          const usage = result.usage as Record<string, number>
-          if (usage.inputTokens && usage.outputTokens) {
-            await ctx.scheduler.runAfter(0, internal.sandboxSessions.processUsageEvent, {
-              sessionId: args.sessionId,
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens,
-            })
-          }
-        }
-      }
     }
 
     await ctx.db.patch(args.sessionId, { lastActivityAt: Date.now() })
@@ -354,6 +338,27 @@ export const checkIdleSessions = internalMutation({
         })
       }
     }
+  },
+})
+
+export const recordUsage = mutation({
+  args: {
+    sessionId: v.id("sandboxSessions"),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const session = await ctx.db.get(args.sessionId)
+    if (!session || session.organizationId !== auth.organizationId) {
+      throw new Error("Session not found")
+    }
+
+    await ctx.scheduler.runAfter(0, internal.sandboxSessions.processUsageEvent, {
+      sessionId: args.sessionId,
+      inputTokens: args.inputTokens,
+      outputTokens: args.outputTokens,
+    })
   },
 })
 
