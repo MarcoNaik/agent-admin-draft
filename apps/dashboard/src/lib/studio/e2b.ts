@@ -83,6 +83,9 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
         $schema: "https://opencode.ai/config.json",
         provider: {
           openai: {
+            options: {
+              baseURL: "https://api.x.ai/v1",
+            },
             models: {
               "grok-4-1-fast": { name: "Grok 4.1 Fast" },
             },
