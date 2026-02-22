@@ -138,7 +138,12 @@ function ToolCallRow({ item }: { item: ItemState }) {
   const locations = part.locations ?? []
   const primaryPath = locations[0]?.path ? safeString(locations[0].path) : undefined
 
-  const hasDetail = part.rawInput || part.rawOutput || (part.toolContent && (part.toolContent as unknown[]).length > 0)
+  const outputSummary = getOutputSummary(part.rawOutput)
+  const inputEmpty = isEmptyInput(part.rawInput)
+  const inputPairs = !inputEmpty ? formatInputPairs(part.rawInput) : null
+  const cleanOutput = part.rawOutput ? getCleanOutput(part.rawOutput) : null
+
+  const hasDetail = !inputEmpty || (!!cleanOutput && cleanOutput.length > 0) || (part.toolContent && (part.toolContent as unknown[]).length > 0)
 
   return (
     <div className="py-0.5">
@@ -174,23 +179,32 @@ function ToolCallRow({ item }: { item: ItemState }) {
           <span className="text-content-tertiary truncate ml-1">{primaryPath}</span>
         )}
 
-        {isActive && (
+        {isActive ? (
           <span className="text-content-tertiary text-[10px] ml-auto shrink-0">running</span>
-        )}
+        ) : outputSummary ? (
+          <span className="text-content-tertiary text-[10px] ml-auto shrink-0">{outputSummary}</span>
+        ) : null}
       </button>
 
       {expanded && hasDetail && (
         <div className="ml-5 mt-1 rounded border bg-background-secondary overflow-hidden text-xs">
-          {part.rawInput && (
+          {inputPairs && (
+            <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-content-secondary">
+              {inputPairs.map(([k, v]) => (
+                <span key={k}><span className="text-content-tertiary">{k}:</span> {v}</span>
+              ))}
+            </div>
+          )}
+          {!inputEmpty && !inputPairs && part.rawInput && (
             <pre className="px-3 py-2 text-content-secondary overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
               {tryFormatJson(part.rawInput)}
             </pre>
           )}
-          {part.rawOutput && (
+          {cleanOutput && cleanOutput.length > 0 && (
             <>
-              <div className="border-t" />
+              {!inputEmpty && <div className="border-t" />}
               <pre className="px-3 py-2 text-content-secondary overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
-                {safeString(part.rawOutput)}
+                {cleanOutput}
               </pre>
             </>
           )}
@@ -407,4 +421,58 @@ function tryFormatJson(val: unknown): string {
   } catch {
     return str
   }
+}
+
+function getOutputSummary(raw: unknown): string | null {
+  const str = safeString(raw)
+  try {
+    const parsed = JSON.parse(str)
+    if (!parsed?.metadata) return null
+    const { count, matches } = parsed.metadata
+    if (typeof count === "number") return `${count} file${count !== 1 ? "s" : ""}`
+    if (typeof matches === "number") return `${matches} match${matches !== 1 ? "es" : ""}`
+  } catch {}
+  return null
+}
+
+function getCleanOutput(raw: unknown): string {
+  const str = safeString(raw)
+  try {
+    const parsed = JSON.parse(str)
+    if (typeof parsed?.output === "string") {
+      return parsed.output
+        .replace(/<path>.*?<\/path>\s*/g, "")
+        .replace(/<type>.*?<\/type>\s*/g, "")
+        .replace(/<content>\n?/g, "")
+        .replace(/\n?<\/content>/g, "")
+        .replace(/\n?\(End of file[^)]*\)\s*$/g, "")
+        .trim()
+    }
+  } catch {}
+  return str
+}
+
+function isEmptyInput(raw: unknown): boolean {
+  const str = safeString(raw).trim()
+  return !str || str === "{}" || str === "null"
+}
+
+function formatInputPairs(raw: unknown): [string, string][] | null {
+  const str = safeString(raw)
+  try {
+    const parsed = JSON.parse(str)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    const entries = Object.entries(parsed)
+    if (entries.length === 0 || entries.length > 5) return null
+    const pairs: [string, string][] = []
+    for (const [k, v] of entries) {
+      if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+        pairs.push([k, String(v)])
+      } else {
+        return null
+      }
+    }
+    return pairs
+  } catch {}
+  return null
 }
