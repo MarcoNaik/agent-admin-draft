@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server"
 import { Id } from "@convex/_generated/dataModel"
 import { getConvexClient, getSessionForRequest } from "@/lib/studio/client"
 
+export const runtime = "edge"
 export const dynamic = "force-dynamic"
 
 const KEEPALIVE_INTERVAL_MS = 15_000
@@ -53,25 +54,39 @@ export async function GET(
   const stream = new ReadableStream({
     async start(controller) {
       const reader = upstream.body!.getReader()
-      const keepaliveTimer = setInterval(() => {
-        try {
-          controller.enqueue(keepaliveComment)
-        } catch {
-          clearInterval(keepaliveTimer)
-        }
-      }, KEEPALIVE_INTERVAL_MS)
+      let closed = false
+      let keepaliveTimer: ReturnType<typeof setTimeout> | null = null
+
+      const scheduleKeepalive = () => {
+        if (closed) return
+        if (keepaliveTimer) clearTimeout(keepaliveTimer)
+        keepaliveTimer = setTimeout(() => {
+          if (closed) return
+          try {
+            controller.enqueue(keepaliveComment)
+          } catch {
+            closed = true
+            return
+          }
+          scheduleKeepalive()
+        }, KEEPALIVE_INTERVAL_MS)
+      }
+
+      scheduleKeepalive()
 
       try {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           controller.enqueue(value)
+          scheduleKeepalive()
         }
         controller.close()
       } catch {
         controller.close()
       } finally {
-        clearInterval(keepaliveTimer)
+        closed = true
+        if (keepaliveTimer) clearTimeout(keepaliveTimer)
       }
     },
     cancel() {

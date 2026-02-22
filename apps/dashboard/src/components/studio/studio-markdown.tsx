@@ -15,7 +15,7 @@ export const StudioMarkdown = memo(function StudioMarkdown({ content, isStreamin
   if (!content) return null
 
   return (
-    <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-background-tertiary prose-pre:border prose-pre:border-border prose-pre:rounded-md prose-code:text-amber-light prose-code:before:content-none prose-code:after:content-none prose-a:text-ocean-light prose-a:no-underline hover:prose-a:underline prose-strong:text-content-primary prose-headings:text-content-primary prose-p:text-content-primary prose-li:text-content-primary prose-td:text-content-primary prose-th:text-content-primary prose-blockquote:border-border prose-blockquote:text-content-secondary prose-hr:border-border">
+    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-background-tertiary prose-pre:border prose-pre:border-border prose-pre:rounded-md prose-code:text-amber prose-code:before:content-none prose-code:after:content-none prose-a:text-ocean prose-a:no-underline hover:prose-a:underline prose-strong:text-content-primary prose-headings:text-content-primary prose-p:text-content-primary prose-li:text-content-primary prose-td:text-content-primary prose-th:text-content-primary prose-blockquote:border-border prose-blockquote:text-content-secondary prose-hr:border-border">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
