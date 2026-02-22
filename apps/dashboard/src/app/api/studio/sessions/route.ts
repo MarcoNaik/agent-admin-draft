@@ -114,6 +114,7 @@ export async function POST(request: Request) {
     const envVars: Record<string, string> = {
       STRUERE_API_KEY: apiKeyResult.key,
       STRUERE_CONVEX_URL: convexUrl,
+      OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: "32768",
     }
     if (process.env.XAI_API_KEY) envVars.OPENAI_API_KEY = process.env.XAI_API_KEY
     if (process.env.ANTHROPIC_API_KEY) envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
