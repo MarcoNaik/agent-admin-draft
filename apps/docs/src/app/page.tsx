@@ -43,21 +43,21 @@ const cards = [
 export default function Home() {
   return (
     <div className="px-6 py-8 lg:px-16 lg:py-12">
-      <h1 className="text-4xl font-bold text-forest mb-3 font-mono tracking-tight">Struere Docs</h1>
-      <p className="text-forest-muted mb-8 text-base leading-relaxed max-w-3xl">
+      <h1 className="text-4xl font-bold text-charcoal-heading mb-3 font-display tracking-tight">Struere Docs</h1>
+      <p className="text-content-secondary mb-8 text-base leading-relaxed max-w-3xl">
         Struere is a permission-aware AI agent platform. Define agents, entity types, roles, and triggers as code — then sync and deploy with the CLI.
       </p>
 
       <div className="mb-10 flex gap-3">
         <Link
           href="/getting-started"
-          className="px-4 py-2 text-sm bg-forest text-cream rounded hover:bg-forest/90 transition-colors"
+          className="px-4 py-2 text-sm bg-ocean text-white rounded hover:bg-ocean-light transition-colors"
         >
           Get started
         </Link>
         <Link
           href="/introduction"
-          className="px-4 py-2 text-sm border border-forest/20 text-forest rounded hover:border-forest/40 transition-colors"
+          className="px-4 py-2 text-sm border border-border text-charcoal rounded hover:border-ocean/30 transition-colors"
         >
           Read the overview
         </Link>
@@ -68,26 +68,28 @@ export default function Home() {
           <Link
             key={card.href}
             href={card.href}
-            className="group flex gap-3.5 p-5 rounded-lg border border-forest/10 hover:border-forest/25 hover:bg-forest/[0.02] transition-all cursor-pointer"
+            className="group flex gap-3.5 p-5 rounded-lg border border-border hover:border-ocean/20 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all cursor-pointer"
           >
-            <card.icon size={20} className="text-forest-muted mt-0.5 shrink-0 group-hover:text-forest transition-colors" />
+            <card.icon size={20} className="text-content-tertiary mt-0.5 shrink-0 group-hover:text-ocean transition-colors" />
             <div>
-              <h3 className="text-sm font-bold text-forest mb-1">{card.title}</h3>
-              <p className="text-sm text-forest-muted leading-relaxed">{card.description}</p>
+              <h3 className="text-sm font-bold text-charcoal-heading mb-1">{card.title}</h3>
+              <p className="text-sm text-content-secondary leading-relaxed">{card.description}</p>
             </div>
           </Link>
         ))}
       </div>
 
-      <div className="mt-10 pt-6 border-t border-forest/10">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-forest-muted mb-3">For LLMs</h3>
-        <div className="flex gap-4 text-sm">
-          <Link href="/llms.txt" className="text-forest-muted hover:text-forest underline underline-offset-2 transition-colors">
-            llms.txt
-          </Link>
-          <Link href="/llms-full.txt" className="text-forest-muted hover:text-forest underline underline-offset-2 transition-colors">
-            llms-full.txt
-          </Link>
+      <div className="mt-10 pt-6 prismatic-border">
+        <div className="pt-6">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-3">For LLMs</h3>
+          <div className="flex gap-4 text-sm">
+            <Link href="/llms.txt" className="text-content-tertiary hover:text-ocean underline underline-offset-2 transition-colors">
+              llms.txt
+            </Link>
+            <Link href="/llms-full.txt" className="text-content-tertiary hover:text-ocean underline underline-offset-2 transition-colors">
+              llms-full.txt
+            </Link>
+          </div>
         </div>
       </div>
     </div>

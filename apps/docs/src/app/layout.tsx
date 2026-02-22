@@ -1,25 +1,29 @@
 import type { Metadata } from "next"
-import { Inter, DM_Mono, Fira_Code } from "next/font/google"
+import { DM_Sans, JetBrains_Mono, Fraunces, IBM_Plex_Mono } from "next/font/google"
 import { getNavigation } from "@/lib/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { MobileNav } from "@/components/mobile-nav"
 import "./globals.css"
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans",
 })
 
-const dmMono = DM_Mono({
-  weight: ["300", "400", "500"],
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-dm-mono",
+  variable: "--font-mono",
 })
 
-const firaCode = Fira_Code({
-  weight: ["300", "400", "500"],
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-fira-code",
+  variable: "--font-display",
+})
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-input",
 })
 
 export const metadata: Metadata = {
@@ -56,8 +60,8 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${dmMono.variable} ${firaCode.variable} font-sans`}>
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-forest focus:text-cream focus:rounded">
+      <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${fraunces.variable} ${ibmPlexMono.variable} font-sans`}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-ocean focus:text-white focus:rounded">
           Skip to content
         </a>
         <div className="flex min-h-screen">
@@ -67,6 +71,24 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+        <svg className="hidden" aria-hidden="true">
+          <filter id="liquid-noise">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.015"
+              numOctaves="3"
+              seed="1"
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale="6"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </svg>
       </body>
     </html>
   )

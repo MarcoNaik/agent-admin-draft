@@ -22,7 +22,7 @@ export function CopyMarkdownButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-forest-muted hover:text-forest border border-forest/15 hover:border-forest/30 rounded transition-all"
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-content-tertiary hover:text-charcoal border border-border hover:border-ocean/30 rounded transition-all"
     >
       {copied ? (
         <>

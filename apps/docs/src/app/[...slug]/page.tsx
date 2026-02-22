@@ -61,9 +61,9 @@ export default function DocPage({ params }: PageProps) {
         <Breadcrumb section={doc.section} title={doc.title} />
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-forest font-mono tracking-tight">{doc.title}</h1>
+            <h1 className="text-3xl font-bold text-charcoal-heading font-display tracking-tight">{doc.title}</h1>
             {doc.description && (
-              <p className="mt-2 text-base text-forest-muted">{doc.description}</p>
+              <p className="mt-2 text-base text-content-secondary">{doc.description}</p>
             )}
           </div>
           <CopyMarkdownButton slug={slug} />

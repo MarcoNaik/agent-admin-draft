@@ -38,7 +38,7 @@ export function TableOfContents({ content }: { content: string }) {
   return (
     <aside className="hidden xl:block w-56 shrink-0">
       <div className="sticky top-8">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-forest-muted mb-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-3">
           On this page
         </h4>
         <nav className="flex flex-col gap-1">
@@ -50,8 +50,8 @@ export function TableOfContents({ content }: { content: string }) {
                 h.level === 3 ? "pl-3" : ""
               } ${
                 activeId === h.id
-                  ? "text-forest font-medium"
-                  : "text-forest-muted hover:text-forest"
+                  ? "text-ocean font-medium"
+                  : "text-content-tertiary hover:text-charcoal"
               }`}
             >
               {h.text}
