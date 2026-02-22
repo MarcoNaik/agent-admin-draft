@@ -143,19 +143,13 @@ import { defineAgent, defineEntityType, defineRole, defineTrigger, defineTools }
     content: JSON.stringify({
       $schema: "https://opencode.ai/config.json",
       provider: {
-        xai: {
-          npm: "@ai-sdk/openai-compatible",
-          name: "xAI",
-          options: {
-            baseURL: "https://api.x.ai/v1",
-            apiKey: "{env:XAI_API_KEY}",
-          },
+        openai: {
           models: {
             "grok-4-1-fast": { name: "Grok 4.1 Fast" },
           },
         },
       },
-      model: "xai/grok-4-1-fast",
+      model: "openai/grok-4-1-fast",
       instructions: ["CLAUDE.md"],
     }, null, 2),
   },
@@ -173,7 +167,8 @@ async function main() {
     envs: {
       STRUERE_API_KEY,
       STRUERE_CONVEX_URL: CONVEX_URL,
-      XAI_API_KEY,
+      OPENAI_API_KEY: XAI_API_KEY,
+      OPENAI_BASE_URL: "https://api.x.ai/v1",
     },
     allowInternetAccess: true,
   });

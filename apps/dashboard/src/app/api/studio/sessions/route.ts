@@ -115,9 +115,14 @@ export async function POST(request: Request) {
       STRUERE_API_KEY: apiKeyResult.key,
       STRUERE_CONVEX_URL: convexUrl,
     }
-    if (process.env.XAI_API_KEY) envVars.XAI_API_KEY = process.env.XAI_API_KEY
-    if (process.env.ANTHROPIC_API_KEY) envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-    if (process.env.OPENAI_API_KEY) envVars.OPENAI_API_KEY = process.env.OPENAI_API_KEY
+    if (process.env.XAI_API_KEY) {
+      envVars.OPENAI_API_KEY = process.env.XAI_API_KEY
+      envVars.OPENAI_BASE_URL = "https://api.x.ai/v1"
+    } else if (process.env.ANTHROPIC_API_KEY) {
+      envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+    } else if (process.env.OPENAI_API_KEY) {
+      envVars.OPENAI_API_KEY = process.env.OPENAI_API_KEY
+    }
     if (process.env.E2B_API_KEY) envVars.E2B_API_KEY = process.env.E2B_API_KEY
 
     const sandbox = await createSandbox({
