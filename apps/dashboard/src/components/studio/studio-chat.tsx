@@ -12,6 +12,7 @@ interface StudioChatProps {
   sessionEnded?: boolean
   isConnected: boolean
   isSessionActive: boolean
+  isStarting: boolean
   onSendMessage: (text: string) => void
   children?: ReactNode
 }
@@ -20,16 +21,16 @@ export function StudioChat({
   items,
   turnInProgress,
   sessionEnded,
-  isConnected,
   isSessionActive,
+  isStarting,
   onSendMessage,
   children,
 }: StudioChatProps) {
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const inputDisabled = !isSessionActive || sessionEnded
-  const canSend = input.trim() && !inputDisabled && !turnInProgress
+  const inputDisabled = sessionEnded === true
+  const canSend = input.trim() && !inputDisabled && !turnInProgress && !isStarting
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -67,6 +68,14 @@ export function StudioChat({
     el.style.height = Math.min(el.scrollHeight, 200) + "px"
   }
 
+  const placeholder = sessionEnded
+    ? "Session ended"
+    : isStarting
+      ? "Starting session..."
+      : !isSessionActive
+        ? "Describe what you want to build..."
+        : "Type a message..."
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StudioMessageList items={items} turnInProgress={turnInProgress} />
@@ -80,13 +89,7 @@ export function StudioChat({
             value={input}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder={
-              sessionEnded
-                ? "Session ended"
-                : !isSessionActive
-                  ? "Start a session first..."
-                  : "Type a message..."
-            }
+            placeholder={placeholder}
             disabled={inputDisabled}
             rows={1}
             className="flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-sm font-input text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
