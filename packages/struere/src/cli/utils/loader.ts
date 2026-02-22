@@ -13,7 +13,12 @@ async function importUserFile(filePath: string): Promise<Record<string, unknown>
   const uid = `${Date.now()}-${importCounter++}`
 
   if (!source.includes("'struere'") && !source.includes('"struere"')) {
-    return await import(`${filePath}?v=${uid}`)
+    try {
+      return await import(`${filePath}?v=${uid}`)
+    } catch (err) {
+      const detail = err instanceof Error ? (err.stack || err.message) : String(err)
+      throw new Error(`Import error in ${basename(filePath)}:\n${detail}`)
+    }
   }
 
   const stripped = source.replace(IMPORT_STRUERE_RE, '')
@@ -23,6 +28,9 @@ async function importUserFile(filePath: string): Promise<Record<string, unknown>
   writeFileSync(tmpPath, inlined)
   try {
     return await import(`${tmpPath}?v=${uid}`)
+  } catch (err) {
+    const detail = err instanceof Error ? (err.stack || err.message) : String(err)
+    throw new Error(`Import error in ${name}.ts:\n${detail}`)
   } finally {
     try { unlinkSync(tmpPath) } catch {}
   }

@@ -28,7 +28,7 @@ export function StudioChat({
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const inputDisabled = !isSessionActive || !isConnected || sessionEnded
+  const inputDisabled = !isSessionActive || sessionEnded
   const canSend = input.trim() && !inputDisabled && !turnInProgress
 
   const handleSubmit = (e: FormEvent) => {
@@ -85,9 +85,7 @@ export function StudioChat({
                 ? "Session ended"
                 : !isSessionActive
                   ? "Start a session first..."
-                  : !isConnected
-                    ? "Connecting..."
-                    : "Type a message..."
+                  : "Type a message..."
             }
             disabled={inputDisabled}
             rows={1}

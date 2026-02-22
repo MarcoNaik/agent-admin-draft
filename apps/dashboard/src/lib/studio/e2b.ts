@@ -59,6 +59,11 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       timeoutMs: 60_000,
     })
 
+    await sandbox.commands.run(
+      'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere dev --force',
+      { background: true, timeoutMs: 0 }
+    )
+
     const corsFlag = config.corsOrigin
       ? ` --cors-allow-origin "${config.corsOrigin}"`
       : ""

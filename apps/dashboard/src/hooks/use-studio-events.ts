@@ -64,6 +64,14 @@ export interface PendingQuestion {
   status: string
 }
 
+interface TurnTracking {
+  turnId: string
+  lastChunkType: "thinking" | "message" | null
+  activeMessageId: string
+  activeThinkingId: string | null
+  subIdx: number
+}
+
 const MAX_RECONNECT_ATTEMPTS = 10
 const BASE_RECONNECT_DELAY = 1000
 
@@ -82,7 +90,7 @@ export function useStudioEvents(
   const eventSourceRef = useRef<EventSource | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const restoredRef = useRef(false)
-  const currentTurnIdRef = useRef<string | null>(null)
+  const turnTrackingRef = useRef<TurnTracking | null>(null)
   const appendEvents = useMutation(api.sandboxSessions.appendEvents)
 
   const storedEvents = useQuery(
@@ -109,8 +117,9 @@ export function useStudioEvents(
     const restoredItems = new Map<string, ItemState>()
     const restoredPermissions = new Map<string, PendingPermission>()
     const restoredQuestions = new Map<string, PendingQuestion>()
+    const restoredTracking: TurnTracking | null = null
     for (const event of restored) {
-      processAcpEvent(event, restoredItems, currentTurnIdRef, restoredPermissions, restoredQuestions)
+      processAcpEvent(event, restoredItems, turnTrackingRef, restoredPermissions, restoredQuestions)
     }
     setItems(restoredItems)
     setPendingPermissions(restoredPermissions)
@@ -185,7 +194,7 @@ export function useStudioEvents(
           setEvents((prev) => [...prev, studioEvent])
           setItems((prev) => {
             const next = new Map(prev)
-            processAcpEvent(studioEvent, next, currentTurnIdRef)
+            processAcpEvent(studioEvent, next, turnTrackingRef)
             return next
           })
 
@@ -338,10 +347,16 @@ export function useStudioEvents(
 
     const turnId = `turn-${Date.now()}`
     const userItemId = `user-${Date.now()}`
-    const assistantItemId = `assistant-${turnId}`
+    const assistantItemId = `assistant-${turnId}-0`
     const now = Date.now()
 
-    currentTurnIdRef.current = turnId
+    turnTrackingRef.current = {
+      turnId,
+      lastChunkType: "message",
+      activeMessageId: assistantItemId,
+      activeThinkingId: null,
+      subIdx: 1,
+    }
     setTurnInProgress(true)
     setItems((prev) => {
       const next = new Map(prev)
@@ -449,10 +464,22 @@ export function useStudioEvents(
   }
 }
 
+function finalizeItem(items: Map<string, ItemState>, itemId: string | null, contentType: "text" | "reasoning") {
+  if (!itemId) return
+  const state = items.get(itemId)
+  if (!state) return
+  if (state.deltas.length > 0) {
+    const fullText = state.deltas.join("")
+    state.content = [{ type: contentType, text: fullText, ...(contentType === "reasoning" ? { visibility: "public" } : {}) }]
+    state.deltas = []
+  }
+  state.status = "completed"
+}
+
 function processAcpEvent(
   event: StudioEvent,
   items: Map<string, ItemState>,
-  currentTurnIdRef: { current: string | null },
+  turnTrackingRef: { current: TurnTracking | null },
   pendingPermissions?: Map<string, PendingPermission>,
   pendingQuestions?: Map<string, PendingQuestion>,
 ) {
@@ -471,7 +498,15 @@ function processAcpEvent(
     if (!text) return
 
     const turnId = `turn-${event.sequence}`
-    currentTurnIdRef.current = turnId
+    const assistantItemId = `assistant-${turnId}-0`
+
+    turnTrackingRef.current = {
+      turnId,
+      lastChunkType: "message",
+      activeMessageId: assistantItemId,
+      activeThinkingId: null,
+      subIdx: 1,
+    }
 
     const userItemId = `user-${event.sequence}`
     items.set(userItemId, {
@@ -484,7 +519,6 @@ function processAcpEvent(
       createdAt: event.createdAt,
     })
 
-    const assistantItemId = `assistant-${turnId}`
     items.set(assistantItemId, {
       itemId: assistantItemId,
       role: "assistant",
@@ -522,16 +556,33 @@ function processAcpEvent(
 
   if (!sessionUpdate) return
 
-  const turnId = currentTurnIdRef.current
-  if (!turnId) return
-  const assistantItemId = `assistant-${turnId}`
+  const tracking = turnTrackingRef.current
+  if (!tracking) return
 
   switch (sessionUpdate) {
     case "agent_message_chunk": {
       const content = update?.content as { text?: string; type?: string } | undefined
       const text = content?.text
       if (!text) return
-      const state = items.get(assistantItemId)
+
+      if (tracking.lastChunkType !== "message") {
+        finalizeItem(items, tracking.activeThinkingId, "reasoning")
+        const newId = `assistant-${tracking.turnId}-${tracking.subIdx}`
+        tracking.subIdx++
+        tracking.activeMessageId = newId
+        tracking.lastChunkType = "message"
+        items.set(newId, {
+          itemId: newId,
+          role: "assistant",
+          kind: "message",
+          content: [],
+          deltas: [],
+          status: "in_progress",
+          createdAt: event.createdAt,
+        })
+      }
+
+      const state = items.get(tracking.activeMessageId)
       if (state) {
         state.deltas.push(text)
       }
@@ -542,45 +593,35 @@ function processAcpEvent(
       const content = update?.content as { text?: string; type?: string } | undefined
       const text = content?.text
       if (!text) return
-      const thinkingItemId = `thinking-${turnId}`
-      const existing = items.get(thinkingItemId)
-      if (existing) {
-        existing.deltas.push(text)
-      } else {
-        items.set(thinkingItemId, {
-          itemId: thinkingItemId,
+
+      if (tracking.lastChunkType !== "thinking") {
+        finalizeItem(items, tracking.activeMessageId, "text")
+        const newId = `thinking-${tracking.turnId}-${tracking.subIdx}`
+        tracking.subIdx++
+        tracking.activeThinkingId = newId
+        tracking.lastChunkType = "thinking"
+        items.set(newId, {
+          itemId: newId,
           role: "assistant",
           kind: "thinking",
           content: [],
-          deltas: [text],
+          deltas: [],
           status: "in_progress",
           createdAt: event.createdAt,
         })
+      }
+
+      const state = items.get(tracking.activeThinkingId!)
+      if (state) {
+        state.deltas.push(text)
       }
       break
     }
 
     case "usage_update": {
-      const state = items.get(assistantItemId)
-      if (state) {
-        if (state.deltas.length > 0) {
-          const fullText = state.deltas.join("")
-          state.content = [{ type: "text", text: fullText }]
-          state.deltas = []
-        }
-        state.status = "completed"
-      }
-      const thinkingItemId = `thinking-${turnId}`
-      const thinkingState = items.get(thinkingItemId)
-      if (thinkingState) {
-        if (thinkingState.deltas.length > 0) {
-          const fullText = thinkingState.deltas.join("")
-          thinkingState.content = [{ type: "reasoning", text: fullText, visibility: "public" }]
-          thinkingState.deltas = []
-        }
-        thinkingState.status = "completed"
-      }
-      currentTurnIdRef.current = null
+      finalizeItem(items, tracking.activeMessageId, "text")
+      finalizeItem(items, tracking.activeThinkingId, "reasoning")
+      turnTrackingRef.current = null
       break
     }
 

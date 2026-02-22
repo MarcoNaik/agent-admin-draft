@@ -3,6 +3,36 @@ import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 
+async function hashApiKey(key: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(key)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+async function authenticateApiKey(ctx: any, request: Request): Promise<{ organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | Response> {
+  const apiKey = request.headers.get("Authorization")?.replace("Bearer ", "")
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
+  const keyHash = await hashApiKey(apiKey)
+  const auth = await ctx.runQuery(internal.agent.validateApiKey, { keyHash })
+
+  if (!auth) {
+    return new Response(JSON.stringify({ error: "Invalid API key" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
+  return { organizationId: auth.organizationId, environment: auth.environment }
+}
+
 function base64Encode(bytes: Uint8Array): string {
   let binary = ""
   for (let i = 0; i < bytes.length; i++) {
@@ -612,6 +642,94 @@ http.route({
     }
 
     return new Response("OK", { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/v1/sync",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json()
+      const result = await ctx.runMutation(internal.sync.internalSyncOrganization, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+        agents: body.agents ?? [],
+        entityTypes: body.entityTypes ?? [],
+        roles: body.roles ?? [],
+        evalSuites: body.evalSuites,
+        triggers: body.triggers,
+        fixtures: body.fixtures,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/sync/state",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const result = await ctx.runQuery(internal.sync.internalGetSyncState, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/sync/pull",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const result = await ctx.runQuery(internal.sync.internalGetPullState, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
   }),
 })
 

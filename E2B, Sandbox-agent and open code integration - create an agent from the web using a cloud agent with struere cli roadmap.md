@@ -134,11 +134,14 @@ sandbox-agent server --no-token --host 0.0.0.0 --port 3000
 | `src/app/api/studio/sessions/[id]/permission/route.ts` | Permission reply forwarding | Existing |
 | `src/app/api/studio/sessions/[id]/question/route.ts` | Question reply forwarding | Existing |
 | `src/app/api/studio/sessions/[id]/keepalive/route.ts` | Activity heartbeat | Existing |
-| `src/lib/studio/e2b.ts` | E2B sandbox creation/destruction, `waitForServer()` health polling | Existing |
+| `src/lib/studio/e2b.ts` | E2B sandbox creation/destruction, `waitForServer()` health polling | **Modified** — auto-runs `struere dev --force` in background |
 | `src/lib/studio/client.ts` | Convex client, ACP JSON-RPC wrappers (`postMessageToSandbox`, etc.) | Existing |
 | `src/lib/studio/project.ts` | Generate scaffold files from pull state | Existing |
 | `src/hooks/use-studio-session.ts` | Session lifecycle (start, stop, keepalive) | Existing |
-| `src/hooks/use-studio-events.ts` | SSE connection, ACP event parsing, message streaming | Existing |
+| `src/hooks/use-studio-events.ts` | SSE connection, ACP event parsing, message streaming | **Modified** — TurnTracking for sequential thinking/message blocks |
+| `src/components/studio/studio-chat.tsx` | Chat input + message list container | **Modified** — removed isConnected from inputDisabled |
+| `src/components/studio/studio-message-list.tsx` | Message rendering, thinking blocks | **Modified** — always-expanded thinking blocks |
+| `src/components/studio/studio-tool-activity.tsx` | Tool call/result/file ref cards | **Modified** — always-expanded inline display (no collapsible) |
 | `debug-acp-sse.mjs` | Debug script for E2B + ACP integration testing | **Created** |
 
 ### Platform Files (platform/convex/)
@@ -147,6 +150,16 @@ sandbox-agent server --no-token --host 0.0.0.0 --port 3000
 |------|---------|--------|
 | `sandboxSessions.ts` | Convex mutations/queries for session management | Existing |
 | `schema.ts` | Database schema (includes `sandboxSessions`, `sandboxEvents` tables) | Existing |
+| `sync.ts` | CLI sync mutations/queries | **Modified** — added internal sync functions for API key auth |
+| `http.ts` | HTTP router for all external endpoints | **Modified** — added `/v1/sync`, `/v1/sync/state`, `/v1/sync/pull` routes |
+
+### CLI Files (packages/struere/)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/cli/utils/convex.ts` | Convex API client for sync operations | **Modified** — HTTP routing for headless API key mode |
+| `src/cli/commands/dev.ts` | `struere dev` command | **Modified** — headless mode detection, skip interactive prompts |
+| `src/cli/utils/loader.ts` | Resource loader (imports .ts files) | **Modified** — improved error reporting with full stack traces |
 
 ### Dependency Versions
 
@@ -196,6 +209,56 @@ sandbox-agent server --no-token --host 0.0.0.0 --port 3000
 - **`studio-chat.tsx`** — Changed prop from `messages` to `items: ItemState[]`.
 - **`studio/page.tsx`** — Wired `allItems` from hook through to `StudioChat`.
 
+### Bug 5: "Connecting..." stuck input after agent turn (FIXED)
+
+**Root cause:** After the agent finishes a turn, the ACP SSE stream closes (by design). EventSource fires `onerror` → `isConnected=false`. `inputDisabled` included `!isConnected`, so the input showed "Connecting..." and was disabled until SSE reconnected.
+
+**Fix:** Removed `isConnected` from `inputDisabled` calculation. Messages go through POST which doesn't need SSE. SSE auto-reconnects in the background. Kept the "SSE Connected" indicator in the header for visibility.
+
+**File:** `apps/dashboard/src/components/studio/studio-chat.tsx`
+
+### Bug 6: Thinking and messages merged into single bubbles (FIXED)
+
+**Root cause:** `processAcpEvent` used fixed IDs per turn — `thinking-${turnId}` and `assistant-${turnId}`. When the agent alternated between thinking and messaging (think → message → think → message), all thinking chunks were appended to one item and all message chunks to another, rendering as one thinking block and one message block.
+
+**Fix:** Introduced `TurnTracking` state that tracks `lastChunkType`, `activeMessageId`, `activeThinkingId`, and a `subIdx` counter. When the agent switches from thinking→message or message→thinking:
+1. The current active item is finalized (deltas merged into content, status set to "completed")
+2. A new item is created with unique ID (`assistant-${turnId}-${subIdx}` or `thinking-${turnId}-${subIdx}`)
+3. Counter increments
+
+Each alternation now appears as a separate sequential block in the UI.
+
+**File:** `apps/dashboard/src/hooks/use-studio-events.ts`
+
+### Bug 7: CLI auth broken in sandbox — headless mode (FIXED)
+
+**Root cause:** `STRUERE_API_KEY` is passed to the sandbox, but the CLI sent it as `Bearer <api-key>` to Convex's `/api/mutation` endpoint. Convex only validates JWTs there — raw API keys fail. So `struere dev` triggered the interactive `performLogin()` prompt, which hangs in the headless sandbox.
+
+**Fix:** Multi-layer fix:
+
+1. **New HTTP sync endpoints** (`platform/convex/http.ts`) — Added `POST /v1/sync`, `POST /v1/sync/state`, `POST /v1/sync/pull` that accept Bearer API key auth. These validate the API key via SHA-256 hash lookup (same pattern as `/v1/chat`) and call internal sync functions.
+
+2. **Internal sync functions** (`platform/convex/sync.ts`) — Added `internalSyncOrganization`, `internalGetSyncState`, `internalGetPullState` as `internalMutation`/`internalQuery` that accept `organizationId` as `Id<"organizations">` directly, bypassing Clerk auth.
+
+3. **CLI routing** (`packages/struere/src/cli/utils/convex.ts`) — When `STRUERE_API_KEY` is set and no JWT credentials exist (headless mode), `syncOrganization()`, `getSyncState()`, and `getPullState()` route through the new HTTP endpoints on the `.site` domain instead of `/api/mutation` on `.cloud`.
+
+4. **CLI headless mode** (`packages/struere/src/cli/commands/dev.ts`) — Detects headless mode, skips interactive `confirm()` prompts (auto-force), skips `performLogin()` re-auth (shows clear error instead), shows "Auth: API key (headless)" indicator.
+
+5. **Better error reporting** (`packages/struere/src/cli/utils/loader.ts`) — `importUserFile()` now captures full stack traces on import errors so the sandbox agent can debug compilation failures.
+
+**Files:** `platform/convex/http.ts`, `platform/convex/sync.ts`, `packages/struere/src/cli/utils/convex.ts`, `packages/struere/src/cli/commands/dev.ts`, `packages/struere/src/cli/utils/loader.ts`
+
+### Bug 8: `struere dev` not auto-running in sandbox (FIXED)
+
+**Root cause:** The agent had to manually run `struere dev --force` in the sandbox. It should already be running in the background when the sandbox starts.
+
+**Fix:** Added background command in `createSandbox()` after installing struere and before starting sandbox-agent server:
+```bash
+export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere dev --force
+```
+
+**File:** `apps/dashboard/src/lib/studio/e2b.ts`
+
 ---
 
 ## Test Scripts
@@ -238,8 +301,16 @@ sandbox-agent server --no-token --host 0.0.0.0 --port 3000
 1. ~~**Run production test after Vercel deploy**~~ — ✅ Done
 2. ~~**Fix bun PATH in sandbox**~~ — ✅ Fixed (symlinks to /usr/local/bin)
 3. ~~**Stream all agent activity to UI**~~ — ✅ Done (tool calls, file changes, thinking, errors)
-4. **Test HITL flows** — Permission requests and question requests round-trip correctly
-5. **Test session resume** — Reconnecting to an existing sandbox after page reload
-6. **Test session cleanup** — Idle timeout, manual stop, sandbox destruction
-7. **Handle agent types** — Claude Code vs OpenCode differences
-8. **Error recovery** — Sandbox crashes, network failures, ACP server reconnection
+4. ~~**Fix "Connecting..." stuck input**~~ — ✅ Fixed (removed isConnected from inputDisabled)
+5. ~~**Fix thinking/message sequential rendering**~~ — ✅ Fixed (TurnTracking with subIdx counter)
+6. ~~**Fix CLI auth in sandbox (headless mode)**~~ — ✅ Fixed (HTTP sync endpoints + API key routing)
+7. ~~**Auto-run `struere dev --force` in sandbox**~~ — ✅ Fixed (background command in e2b.ts)
+8. ~~**Make tool calls show raw inline**~~ — ✅ Fixed (always-expanded, no collapsible)
+9. ~~**Improve CLI error reporting**~~ — ✅ Fixed (full stack traces in loader)
+10. **Deploy Convex** — New HTTP sync endpoints need `npx convex deploy` to be available
+11. **Publish CLI** — Updated struere CLI needs `npm publish` for sandbox to install latest
+12. **Test HITL flows** — Permission requests and question requests round-trip correctly
+13. **Test session resume** — Reconnecting to an existing sandbox after page reload
+14. **Test session cleanup** — Idle timeout, manual stop, sandbox destruction
+15. **Handle agent types** — Claude Code vs OpenCode differences
+16. **Error recovery** — Sandbox crashes, network failures, ACP server reconnection

@@ -2,6 +2,10 @@ import { loadCredentials, getApiKey } from './credentials'
 
 const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
 
+function getSiteUrl(): string {
+  return CONVEX_URL.replace('.cloud', '.site')
+}
+
 export interface UserInfo {
   user: {
     id: string
@@ -235,9 +239,59 @@ export interface SyncOptions extends SyncPayload {
   environment: 'development' | 'production' | 'eval'
 }
 
+async function syncViaHttp(apiKey: string, payload: SyncOptions): Promise<SyncResult> {
+  const siteUrl = getSiteUrl()
+
+  let response: Response
+  try {
+    response = await fetch(`${siteUrl}/v1/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        agents: payload.agents,
+        entityTypes: payload.entityTypes,
+        roles: payload.roles,
+        evalSuites: payload.evalSuites,
+        triggers: payload.triggers,
+        fixtures: payload.fixtures,
+      }),
+      signal: AbortSignal.timeout(30000),
+    })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { success: false, error: 'Sync request timed out after 30s' }
+    }
+    return { success: false, error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+  }
+
+  const text = await response.text()
+
+  let json: Record<string, unknown>
+  try {
+    json = JSON.parse(text)
+  } catch {
+    return { success: false, error: text || `HTTP ${response.status}` }
+  }
+
+  if (!response.ok) {
+    const msg = (json.error as string) || text
+    return { success: false, error: msg }
+  }
+
+  return json as unknown as SyncResult
+}
+
 export async function syncOrganization(payload: SyncOptions): Promise<SyncResult> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
+
+  if (apiKey && !credentials?.token) {
+    return syncViaHttp(apiKey, payload)
+  }
+
   const token = apiKey || credentials?.token
 
   if (!token) {
@@ -301,6 +355,31 @@ export interface SyncState {
 export async function getSyncState(organizationId?: string, environment?: 'development' | 'production' | 'eval'): Promise<{ state?: SyncState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
+
+  if (apiKey && !credentials?.token) {
+    const siteUrl = getSiteUrl()
+    try {
+      const response = await fetch(`${siteUrl}/v1/sync/state`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: '{}',
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        return { error }
+      }
+
+      const result = await response.json() as SyncState
+      return { state: result }
+    } catch (err) {
+      return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
   const token = apiKey || credentials?.token
 
   if (!token) {
@@ -388,6 +467,31 @@ export async function getPullState(
 ): Promise<{ state?: PullState; error?: string }> {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
+
+  if (apiKey && !credentials?.token) {
+    const siteUrl = getSiteUrl()
+    try {
+      const response = await fetch(`${siteUrl}/v1/sync/pull`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: '{}',
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        return { error }
+      }
+
+      const result = await response.json() as PullState
+      return { state: result }
+    } catch (err) {
+      return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
   const token = apiKey || credentials?.token
 
   if (!token) {

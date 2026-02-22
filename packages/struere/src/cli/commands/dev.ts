@@ -21,12 +21,18 @@ export const devCommand = new Command('dev')
   .action(async (options) => {
     const spinner = ora()
     const cwd = process.cwd()
+    const apiKey = getApiKey()
+    const isHeadless = !!apiKey && !loadCredentials()?.token
 
     console.log()
     console.log(chalk.bold('Struere Dev'))
     console.log()
 
     if (!hasProject(cwd)) {
+      if (isHeadless) {
+        console.log(chalk.red('No struere.json found. Cannot run init in headless mode.'))
+        process.exit(1)
+      }
       console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
       await runInit(cwd)
@@ -43,10 +49,12 @@ export const devCommand = new Command('dev')
 
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
     console.log(chalk.gray('Environment:'), chalk.cyan('development'), '+', chalk.cyan('eval'))
+    if (isHeadless) {
+      console.log(chalk.gray('Auth:'), chalk.cyan('API key (headless)'))
+    }
     console.log()
 
     let credentials = loadCredentials()
-    const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
       console.log(chalk.yellow('Not logged in - authenticating...'))
@@ -89,7 +97,10 @@ export const devCommand = new Command('dev')
     const performSync = async (): Promise<boolean> => {
       const resources = await loadAllResources(cwd)
       if (resources.errors.length > 0) {
-        throw new Error(resources.errors.join('\n'))
+        for (const err of resources.errors) {
+          console.log(chalk.red('  ✖'), err)
+        }
+        throw new Error(`${resources.errors.length} resource loading error(s):\n${resources.errors.join('\n')}`)
       }
       const payload = extractSyncPayload(resources)
 
@@ -147,7 +158,9 @@ export const devCommand = new Command('dev')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
     }
 
-    if (initialSyncOk && !options.force && loadedResources) {
+    const shouldSkipConfirmation = options.force || isHeadless
+
+    if (initialSyncOk && !shouldSkipConfirmation && loadedResources) {
       spinner.start('Checking remote state')
       try {
         const { state: remoteState } = await getSyncState(project.organization.id, 'development')
@@ -216,7 +229,7 @@ export const devCommand = new Command('dev')
         await performSync()
         spinner.succeed('Synced to development')
       } catch (error) {
-        if (isAuthError(error)) {
+        if (isAuthError(error) && !isHeadless) {
           spinner.fail('Session expired - re-authenticating...')
           clearCredentials()
           credentials = await performLogin()
@@ -232,6 +245,11 @@ export const devCommand = new Command('dev')
             spinner.fail('Sync failed')
             console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
           }
+        } else if (isAuthError(error) && isHeadless) {
+          spinner.fail('API key authentication failed')
+          console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+          console.log(chalk.gray('Check that STRUERE_API_KEY is valid and not expired.'))
+          process.exit(1)
         } else if (isOrgAccessError(error)) {
           spinner.fail('Organization access denied')
           console.log()
@@ -280,7 +298,7 @@ export const devCommand = new Command('dev')
         await performSync()
         syncSpinner.succeed('Synced')
       } catch (error) {
-        if (isAuthError(error)) {
+        if (isAuthError(error) && !isHeadless) {
           syncSpinner.fail('Session expired - re-authenticating...')
           clearCredentials()
           const newCredentials = await performLogin()

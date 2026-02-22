@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Bot, User, Loader2, Brain, ChevronDown, ChevronRight, AlertCircle } from "lucide-react"
+import { useRef, useEffect } from "react"
+import { Bot, User, Loader2, Brain, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ToolCallCard } from "./studio-tool-activity"
 import type { ItemState, ContentPart } from "@/hooks/use-studio-events"
@@ -158,7 +158,6 @@ function FileChangeItem({ item }: { item: ItemState }) {
 }
 
 function ThinkingBlock({ item }: { item: ItemState }) {
-  const [expanded, setExpanded] = useState(false)
   const isStreaming = item.status === "in_progress"
 
   const textParts = item.content.filter((p) => p.type === "reasoning")
@@ -168,21 +167,14 @@ function ThinkingBlock({ item }: { item: ItemState }) {
 
   return (
     <div className="pl-10">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
-      >
-        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      <div className="flex items-center gap-2 text-xs text-content-tertiary mb-1">
         <Brain className="h-3 w-3" />
         <span>Thinking{isStreaming ? "..." : ""}</span>
         {isStreaming && <Loader2 className="h-3 w-3 animate-spin" />}
-      </button>
-      {expanded && (
-        <div className="mt-1 rounded-md border bg-muted/50 px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
-          {text}
-        </div>
-      )}
+      </div>
+      <div className="rounded-md border bg-muted/50 px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
+        {text}
+      </div>
     </div>
   )
 }
