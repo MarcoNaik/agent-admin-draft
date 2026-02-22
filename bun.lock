@@ -59,6 +59,7 @@
       "name": "@struere/docs",
       "version": "0.1.0",
       "dependencies": {
+        "@tailwindcss/typography": "^0.5.19",
         "github-slugger": "^2.0.0",
         "gray-matter": "^4.0.3",
         "lucide-react": "^0.312.0",
