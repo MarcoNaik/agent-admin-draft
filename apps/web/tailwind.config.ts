@@ -9,21 +9,42 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cream: {
-          DEFAULT: "#F5F1E8",
-          card: "#E8E4D4",
+        stone: {
+          base: "#F8F6F2",
+          deep: "#F1EDE7",
+          card: "#EEEBE5",
         },
-        forest: {
-          DEFAULT: "#1B4332",
-          accent: "#2D5A45",
+        ocean: {
+          DEFAULT: "#1B4F72",
+          light: "#2C7DA0",
+        },
+        amber: {
+          DEFAULT: "#D4A853",
+          light: "#E8C468",
+        },
+        charcoal: {
+          DEFAULT: "#2D2A26",
+          heading: "#1A1815",
         },
       },
       fontFamily: {
+        display: ["var(--font-fraunces)", "Georgia", "serif"],
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-source-code)", "monospace"],
+        mono: ["var(--font-jetbrains)", "monospace"],
       },
       animation: {
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "shimmer": "shimmer 3s linear infinite",
+        "fade-cycle": "fadeCycle 5s ease-in-out infinite",
+      },
+      keyframes: {
+        shimmer: {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+        fadeCycle: {
+          "0%, 100%": { opacity: "0" },
+          "15%, 85%": { opacity: "1" },
+        },
       },
     },
   },
