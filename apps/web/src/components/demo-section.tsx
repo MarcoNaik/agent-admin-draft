@@ -251,7 +251,7 @@ export function DemoSection() {
 
           <div className="text-center mt-8">
             <a
-              href="https://app.struere.dev"
+              href="https://app.struere.dev?studio="
               className="inline-block text-sm font-medium text-ocean hover:text-ocean-light transition-colors"
             >
               {t.demo.tryIt} &rarr;

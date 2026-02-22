@@ -69,7 +69,7 @@ export function EarlyAccess() {
             </div>
 
             <a
-              href="https://app.struere.dev"
+              href="https://app.struere.dev?studio="
               className="inline-block w-full max-w-xs text-center text-sm font-medium py-3 rounded-xl bg-ocean text-white hover:bg-ocean-light transition-all duration-200"
             >
               {t.earlyAccess.cta}

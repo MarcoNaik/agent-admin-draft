@@ -98,7 +98,7 @@ export function Navigation() {
             {locale === "es" ? "EN" : "ES"}
           </button>
           <a
-            href="https://app.struere.dev"
+            href="https://app.struere.dev?studio="
             className={`text-sm font-medium px-5 py-2 rounded-xl transition-all duration-500 border ${
               pastHero
                 ? "text-white bg-[#1B5B7A] border-[#1B5B7A] hover:bg-[#1B4F72] hover:border-[#1B4F72]"
@@ -170,7 +170,7 @@ export function Navigation() {
               {locale === "es" ? "English" : "Espa\u00f1ol"}
             </button>
             <a
-              href="https://app.struere.dev"
+              href="https://app.struere.dev?studio="
               className={`mt-2 text-center text-sm font-medium px-5 py-3 rounded-xl transition-all duration-500 border ${
                 pastHero
                   ? "text-white bg-[#1B5B7A] border-[#1B5B7A] hover:bg-[#1B4F72]"
