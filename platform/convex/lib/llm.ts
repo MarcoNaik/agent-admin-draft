@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { createXai } from "@ai-sdk/xai"
 import type { LanguageModel, ModelMessage } from "ai"
 
 interface ModelConfig {
@@ -30,6 +31,12 @@ export function createModel(config: ModelConfig, apiKeyOverride?: string): Langu
       const apiKey = apiKeyOverride ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
       if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY not configured")
       const provider = createGoogleGenerativeAI({ apiKey })
+      return provider(config.name)
+    }
+    case "xai": {
+      const apiKey = apiKeyOverride ?? process.env.XAI_API_KEY
+      if (!apiKey) throw new Error("XAI_API_KEY not configured")
+      const provider = createXai({ apiKey })
       return provider(config.name)
     }
     default:

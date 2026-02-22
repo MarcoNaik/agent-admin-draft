@@ -11,6 +11,7 @@
     "@ai-sdk/anthropic": "^3.0.38",
     "@ai-sdk/google": "^3.0.22",
     "@ai-sdk/openai": "^3.0.26",
+    "@ai-sdk/xai": "^3.0.57",
     "@anthropic-ai/sdk": "^0.78.0",
     "@kapso/whatsapp-cloud-api": "^0.1.1",
     "@polar-sh/sdk": "^0.43.1",

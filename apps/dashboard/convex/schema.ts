@@ -435,7 +435,7 @@ export default defineSchema({
 
   providerConfigs: defineTable({
     organizationId: v.id("organizations"),
-    provider: v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google")),
+    provider: v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai")),
     mode: v.union(v.literal("platform"), v.literal("custom")),
     apiKey: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),

@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
-type ProviderKey = "anthropic" | "openai" | "google"
+type ProviderKey = "anthropic" | "openai" | "google" | "xai"
 
 const PROVIDERS: {
   id: ProviderKey
@@ -54,6 +54,14 @@ const PROVIDERS: {
     color: "text-blue-400",
     bgColor: "bg-blue-400/10",
     keyPrefix: "AI",
+  },
+  {
+    id: "xai",
+    name: "xAI",
+    description: "Grok 4, Grok 3, Grok Code",
+    color: "text-white",
+    bgColor: "bg-white/10",
+    keyPrefix: "xai-",
   },
 ]
 

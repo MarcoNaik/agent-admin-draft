@@ -47,6 +47,13 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
   "gemini-2.5-flash": { inputPerMTok: 0.3 * MARKUP, outputPerMTok: 2.5 * MARKUP },
   "gemini-2.5-pro": { inputPerMTok: 1.25 * MARKUP, outputPerMTok: 10.0 * MARKUP },
   "gemini-3-pro-preview": { inputPerMTok: 2.0 * MARKUP, outputPerMTok: 12.0 * MARKUP },
+
+  "grok-3": { inputPerMTok: 3.0 * MARKUP, outputPerMTok: 15.0 * MARKUP },
+  "grok-3-mini": { inputPerMTok: 0.30 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-4-0709": { inputPerMTok: 3.0 * MARKUP, outputPerMTok: 15.0 * MARKUP },
+  "grok-4-fast": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-4-1-fast": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-code-fast-1": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 1.50 * MARKUP },
 }
 
 const DEFAULT_PRICING: ModelPricing = MODEL_PRICING["claude-sonnet-4"]

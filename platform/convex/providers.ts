@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import { QueryCtx, MutationCtx } from "./_generated/server"
 
-const providerValidator = v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"))
+const providerValidator = v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai"))
 
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
@@ -107,14 +107,14 @@ export const resolveApiKey = internalQuery({
     v.null()
   ),
   handler: async (ctx, args) => {
-    if (!["anthropic", "openai", "google"].includes(args.provider)) {
+    if (!["anthropic", "openai", "google", "xai"].includes(args.provider)) {
       return null
     }
 
     const config = await ctx.db
       .query("providerConfigs")
       .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("provider", args.provider as "anthropic" | "openai" | "google")
+        q.eq("organizationId", args.organizationId).eq("provider", args.provider as "anthropic" | "openai" | "google" | "xai")
       )
       .first()
 
@@ -264,6 +264,13 @@ export const testConnection = action({
         const resp: Response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`)
         if (!resp.ok) {
           return { success: false, message: `Google AI API error: ${resp.status}` }
+        }
+      } else if (args.provider === "xai") {
+        const resp: Response = await fetch("https://api.x.ai/v1/models", {
+          headers: { "Authorization": `Bearer ${apiKey}` },
+        })
+        if (!resp.ok) {
+          return { success: false, message: `xAI API error: ${resp.status}` }
         }
       }
 
