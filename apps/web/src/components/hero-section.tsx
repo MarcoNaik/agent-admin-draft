@@ -203,7 +203,7 @@ export function HeroSection() {
                 const base = 2200 + i * 250
                 return (
                   <div
-                    key={s}
+                    key={s.label}
                     className={`liquid-glass rounded-full ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
                     style={{
                       transitionProperty: "opacity, transform",
@@ -214,10 +214,10 @@ export function HeroSection() {
                   >
                     <button
                       type="button"
-                      onClick={() => setPrompt(s)}
+                      onClick={() => setPrompt(s.prompt)}
                       className="px-4 py-2 text-xs text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-all duration-200 font-sans"
                     >
-                      {s}
+                      {s.label}
                     </button>
                   </div>
                 )

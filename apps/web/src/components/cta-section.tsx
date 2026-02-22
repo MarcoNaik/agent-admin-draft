@@ -111,12 +111,12 @@ export function CTASection() {
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {t.hero.suggestions.map((s) => (
                 <button
-                  key={s}
+                  key={s.label}
                   type="button"
-                  onClick={() => setPrompt(s)}
+                  onClick={() => setPrompt(s.prompt)}
                   className="px-4 py-2 text-xs text-charcoal/50 hover:text-charcoal/80 bg-charcoal/3 hover:bg-charcoal/8 border border-charcoal/5 hover:border-charcoal/15 rounded-full transition-all duration-200"
                 >
-                  {s}
+                  {s.label}
                 </button>
               ))}
             </div>
