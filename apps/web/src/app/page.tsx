@@ -4,7 +4,7 @@ import { HowItWorks } from "@/components/how-it-works"
 import { UseCases } from "@/components/use-cases"
 import { DemoSection } from "@/components/demo-section"
 import { Integrations } from "@/components/integrations"
-import { EarlyAccess } from "@/components/early-access"
+import { Pricing } from "@/components/pricing"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
 
@@ -17,7 +17,7 @@ export default function Home() {
       <UseCases />
       <DemoSection />
       <Integrations />
-      <EarlyAccess />
+      <Pricing />
       <CTASection />
       <Footer />
     </div>
