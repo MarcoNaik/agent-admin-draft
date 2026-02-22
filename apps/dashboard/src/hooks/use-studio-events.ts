@@ -162,7 +162,7 @@ export function useStudioEvents(
             setTurnInProgress(true)
           }
 
-          if (payload.result?.stopReason) {
+          if (payload.result?.stopReason || sessionUpdate === "usage_update") {
             setTurnInProgress(false)
           }
 
@@ -235,6 +235,36 @@ export function useStudioEvents(
   const sendMessage = useCallback(async (text: string) => {
     if (!sessionId) return
 
+    const turnId = `turn-${Date.now()}`
+    const userItemId = `user-${Date.now()}`
+    const assistantItemId = `assistant-${turnId}`
+    const now = Date.now()
+
+    currentTurnIdRef.current = turnId
+    setTurnInProgress(true)
+    setItems((prev) => {
+      const next = new Map(prev)
+      next.set(userItemId, {
+        itemId: userItemId,
+        role: "user",
+        kind: "message",
+        content: [{ type: "text", text }],
+        deltas: [],
+        status: "completed",
+        createdAt: now,
+      })
+      next.set(assistantItemId, {
+        itemId: assistantItemId,
+        role: "assistant",
+        kind: "message",
+        content: [],
+        deltas: [],
+        status: "in_progress",
+        createdAt: now,
+      })
+      return next
+    })
+
     try {
       await fetch(`/api/studio/sessions/${sessionId}/message`, {
         method: "POST",
@@ -243,6 +273,7 @@ export function useStudioEvents(
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message")
+      setTurnInProgress(false)
     }
   }, [sessionId])
 
