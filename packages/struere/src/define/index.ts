@@ -1,3 +1,6 @@
 export { defineAgent } from './agent'
+export { defineRole } from './role'
+export { defineEntityType } from './entityType'
+export { defineTrigger } from './trigger'
 export { defineTools } from './tools'
 export { defineConfig } from './config'

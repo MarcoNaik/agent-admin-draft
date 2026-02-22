@@ -159,7 +159,9 @@ sandbox-agent server --no-token --host 0.0.0.0 --port 3000
 |------|---------|--------|
 | `src/cli/utils/convex.ts` | Convex API client for sync operations | **Modified** — HTTP routing for headless API key mode |
 | `src/cli/commands/dev.ts` | `struere dev` command | **Modified** — headless mode detection, skip interactive prompts |
-| `src/cli/utils/loader.ts` | Resource loader (imports .ts files) | **Modified** — improved error reporting with full stack traces |
+| `src/cli/utils/loader.ts` | Resource loader (imports .ts files) | **Modified** — replaced temp-file mechanism with Bun plugin, direct imports |
+| `src/cli/utils/plugin.ts` | Bun plugin + type declarations + node_modules shim | **Modified** — added `"type": "module"` to shim package.json |
+| `src/define/index.ts` | Re-exports all define functions | **Modified** — added missing defineRole, defineEntityType, defineTrigger exports |
 
 ### Dependency Versions
 
@@ -259,6 +261,49 @@ export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:
 
 **File:** `apps/dashboard/src/lib/studio/e2b.ts`
 
+### Bug 9: `struere dev` "6 errors building" in sandbox — fragile temp file loader (FIXED)
+
+**Root cause:** The CLI's `importUserFile()` used a fragile temp-file mechanism to handle `import { ... } from 'struere'` in user project files:
+
+1. Read `.ts` file
+2. Regex-strip `import { ... } from 'struere'` lines
+3. Prepend `VIRTUAL_MODULE_SOURCE` (130 lines of JS function definitions)
+4. Write to `.struere-tmp-{name}-{uid}.ts`
+5. Dynamic `import()` the temp file
+6. Delete temp file
+
+This worked locally because the monorepo has `struere` properly linked in `node_modules` — even if the regex/temp-file approach failed, Bun could still resolve the real package. In the sandbox, `struere` is installed **globally** via `npm install -g struere@latest`, so the temp file approach was the only path, and it had multiple failure modes:
+
+- **Node modules shim missing `"type": "module"`** — `generateTypeDeclarations()` creates a local `node_modules/struere/` shim with ESM `export { ... }` syntax, but the shim's `package.json` lacked `"type": "module"`, so Bun could treat `index.js` as CommonJS → syntax errors
+- **Import regex didn't handle `import type`** — `/import\s+\{[^}]*\}\s*from\s*['"]struere['"]/g` doesn't match `import type { TriggerConfig } from 'struere'`, leaving unresolved imports in the temp file
+- **File I/O race conditions** — Rapid write/import/delete of temp files in a Linux sandbox could hit timing issues
+- **`define/index.ts` missing 3 of 6 exports** — Only exported `defineAgent`, `defineTools`, `defineConfig`; missing `defineRole`, `defineEntityType`, `defineTrigger`
+
+**Fix:** Eliminated the entire temp-file mechanism. The `registerStruerePlugin()` Bun runtime plugin already existed in `plugin.ts` but was never called during dev:
+
+```typescript
+Bun.plugin({
+  name: 'struere-virtual',
+  setup(build) {
+    build.onResolve({ filter: /^struere$/ }, () => ({
+      path: 'struere', namespace: 'struere-virtual',
+    }))
+    build.onLoad({ filter: /.*/, namespace: 'struere-virtual' }, () => ({
+      contents: VIRTUAL_MODULE_SOURCE, loader: 'js',
+    }))
+  },
+})
+```
+
+Now `importUserFile()` registers the plugin once, then does `await import(filePath)` directly. The plugin intercepts `import { ... } from 'struere'` at the module resolution level — no temp files, no regex stripping, no file I/O races.
+
+Additional fixes:
+- Added `"type": "module"` to the node_modules shim `package.json` (safety net)
+- Exported all 6 functions from `define/index.ts`
+- Bumped CLI to 0.8.2
+
+**Files:** `packages/struere/src/cli/utils/loader.ts`, `packages/struere/src/cli/utils/plugin.ts`, `packages/struere/src/define/index.ts`
+
 ---
 
 ## Test Scripts
@@ -307,8 +352,9 @@ export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:
 7. ~~**Auto-run `struere dev --force` in sandbox**~~ — ✅ Fixed (background command in e2b.ts)
 8. ~~**Make tool calls show raw inline**~~ — ✅ Fixed (always-expanded, no collapsible)
 9. ~~**Improve CLI error reporting**~~ — ✅ Fixed (full stack traces in loader)
-10. **Deploy Convex** — New HTTP sync endpoints need `npx convex deploy` to be available
-11. **Publish CLI** — Updated struere CLI needs `npm publish` for sandbox to install latest
+10. ~~**Deploy Convex**~~ — ✅ Deployed (HTTP sync endpoints live)
+11. ~~**Fix CLI loader for sandbox**~~ — ✅ Fixed (Bun plugin replaces temp-file mechanism, v0.8.2)
+12. **Publish CLI** — Updated struere CLI needs `npm publish` for sandbox to install latest
 12. **Test HITL flows** — Permission requests and question requests round-trip correctly
 13. **Test session resume** — Reconnecting to an existing sandbox after page reload
 14. **Test session cleanup** — Idle timeout, manual stop, sandbox destruction

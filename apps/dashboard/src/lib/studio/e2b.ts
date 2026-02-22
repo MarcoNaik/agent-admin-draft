@@ -5,9 +5,11 @@ const SANDBOX_AGENT_VERSION = "0.2.x"
 
 export interface SandboxConfig {
   envVars: Record<string, string>
-  files: Array<{ path: string; content: string }>
+  orgInfo: { id: string; slug: string; name: string }
+  apiKey: string
+  convexUrl: string
+  claudeMd: string
   agentType: "opencode" | "claude"
-  corsOrigin?: string
 }
 
 export interface SandboxResult {
@@ -28,6 +30,77 @@ async function runCmd(sandbox: Sandbox, label: string, cmd: string, opts: { time
   }
 }
 
+function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; content: string }> {
+  return [
+    {
+      path: "/workspace/struere.json",
+      content: JSON.stringify(
+        { version: "2.0", organization: { id: config.orgInfo.id, slug: config.orgInfo.slug, name: config.orgInfo.name } },
+        null, 2
+      ),
+    },
+    {
+      path: "/workspace/package.json",
+      content: JSON.stringify(
+        {
+          name: config.orgInfo.slug,
+          version: "0.1.0",
+          type: "module",
+          scripts: { dev: "struere dev", deploy: "struere deploy", status: "struere status" },
+          devDependencies: { "bun-types": "^1.0.0", typescript: "^5.3.0" },
+        },
+        null, 2
+      ),
+    },
+    {
+      path: "/workspace/tsconfig.json",
+      content: JSON.stringify(
+        {
+          compilerOptions: {
+            target: "ES2022", module: "ESNext", moduleResolution: "bundler",
+            lib: ["ES2022"], strict: true, esModuleInterop: true,
+            skipLibCheck: true, forceConsistentCasingInFileNames: true,
+            outDir: "dist", rootDir: ".", types: ["bun-types"],
+            paths: { struere: ["./.struere/index.js"] },
+          },
+          include: ["**/*.ts"],
+          exclude: ["node_modules", "dist", ".struere"],
+        },
+        null, 2
+      ),
+    },
+    {
+      path: "/workspace/.env",
+      content: `STRUERE_API_KEY=${config.apiKey}\nSTRUERE_CONVEX_URL=${config.convexUrl}\n`,
+    },
+    {
+      path: "/workspace/CLAUDE.md",
+      content: config.claudeMd,
+    },
+    {
+      path: "/workspace/opencode.json",
+      content: JSON.stringify({
+        $schema: "https://opencode.ai/config.json",
+        provider: {
+          xai: {
+            npm: "@ai-sdk/openai-compatible",
+            name: "xAI",
+            options: {
+              baseURL: "https://api.x.ai/v1",
+              apiKey: "{env:XAI_API_KEY}",
+            },
+            models: {
+              "grok-4-1-fast": { name: "Grok 4.1 Fast" },
+            },
+          },
+        },
+        model: "xai/grok-4-1-fast",
+        instructions: ["CLAUDE.md"],
+      }, null, 2),
+    },
+  ]
+}
+
 export async function createSandbox(config: SandboxConfig): Promise<SandboxResult> {
   const sandbox = await Sandbox.create({
     timeoutMs: 300_000,
@@ -36,7 +109,8 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
   })
 
   try {
-    for (const file of config.files) {
+    const bootstrapFiles = generateBootstrapFiles(config)
+    for (const file of bootstrapFiles) {
       await sandbox.files.write(file.path, file.content)
     }
 
@@ -59,17 +133,17 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       timeoutMs: 60_000,
     })
 
+    await runCmd(sandbox, "struere-pull", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere pull --force', {
+      timeoutMs: 60_000,
+    })
+
     await sandbox.commands.run(
       'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere dev --force',
       { background: true, timeoutMs: 0 }
     )
 
-    const corsFlag = config.corsOrigin
-      ? ` --cors-allow-origin "${config.corsOrigin}"`
-      : ""
-
     await sandbox.commands.run(
-      `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT}${corsFlag}`,
+      `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT}`,
       { background: true, timeoutMs: 0 }
     )
 

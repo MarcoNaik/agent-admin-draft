@@ -326,5 +326,5 @@ export function generateTypeDeclarations(cwd: string): void {
   mkdirSync(shimDir, { recursive: true })
   writeFileSync(join(shimDir, 'index.js'), VIRTUAL_MODULE_SOURCE)
   writeFileSync(join(shimDir, 'index.d.ts'), TYPE_DECLARATIONS)
-  writeFileSync(join(shimDir, 'package.json'), JSON.stringify({ name: 'struere', version: '0.0.0', main: 'index.js', types: 'index.d.ts' }))
+  writeFileSync(join(shimDir, 'package.json'), JSON.stringify({ name: 'struere', version: '0.0.0', type: 'module', main: 'index.js', types: 'index.d.ts' }))
 }

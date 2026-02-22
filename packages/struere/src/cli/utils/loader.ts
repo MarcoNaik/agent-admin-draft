@@ -1,38 +1,25 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
-import { join, dirname, basename } from 'path'
+import { existsSync, readdirSync, readFileSync } from 'fs'
+import { join, basename } from 'path'
 import YAML from 'yaml'
 import type { AgentConfig, EntityTypeConfig, RoleConfig, ToolReference, EvalSuiteDefinition, TriggerConfig, FixtureDefinition } from '../../types'
-import { VIRTUAL_MODULE_SOURCE } from './plugin'
+import { registerStruerePlugin } from './plugin'
 
-const IMPORT_STRUERE_RE = /import\s+\{[^}]*\}\s*from\s*['"]struere['"]\s*;?\n?/g
-
+let pluginRegistered = false
 let importCounter = 0
 
 async function importUserFile(filePath: string): Promise<Record<string, unknown>> {
-  const source = readFileSync(filePath, 'utf-8')
-  const uid = `${Date.now()}-${importCounter++}`
-
-  if (!source.includes("'struere'") && !source.includes('"struere"')) {
-    try {
-      return await import(`${filePath}?v=${uid}`)
-    } catch (err) {
-      const detail = err instanceof Error ? (err.stack || err.message) : String(err)
-      throw new Error(`Import error in ${basename(filePath)}:\n${detail}`)
-    }
+  if (!pluginRegistered) {
+    registerStruerePlugin()
+    pluginRegistered = true
   }
 
-  const stripped = source.replace(IMPORT_STRUERE_RE, '')
-  const inlined = VIRTUAL_MODULE_SOURCE.trim() + '\n' + stripped
+  const uid = `${Date.now()}-${importCounter++}`
   const name = basename(filePath, '.ts')
-  const tmpPath = join(dirname(filePath), `.struere-tmp-${name}-${uid}.ts`)
-  writeFileSync(tmpPath, inlined)
   try {
-    return await import(`${tmpPath}?v=${uid}`)
+    return await import(`${filePath}?v=${uid}`)
   } catch (err) {
     const detail = err instanceof Error ? (err.stack || err.message) : String(err)
     throw new Error(`Import error in ${name}.ts:\n${detail}`)
-  } finally {
-    try { unlinkSync(tmpPath) } catch {}
   }
 }
 

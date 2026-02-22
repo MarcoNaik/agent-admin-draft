@@ -542,7 +542,7 @@ export const internalSyncOrganization = internalMutation({
       args.organizationId,
       args.agents,
       args.environment,
-      args.organizationId as unknown as Id<"users">
+      undefined
     )
 
     let evalSuitesResult

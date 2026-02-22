@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { api } from "@convex/_generated/api"
 import { createSandbox } from "@/lib/studio/e2b"
-import { generateProjectFiles } from "@/lib/studio/project"
 import { getConvexClient } from "@/lib/studio/client"
 
 const ACP_PROTOCOL_VERSION = 1
@@ -92,8 +91,6 @@ export async function POST(request: Request) {
       agentType,
     })
 
-    const pullState = await convex.query(api.sync.getPullState, { environment })
-
     const apiKeyResult = await convex.mutation(api.apiKeys.create, {
       name: `sandbox-${sessionId}`,
       permissions: ["*"],
@@ -111,27 +108,24 @@ export async function POST(request: Request) {
       throw new Error("Organization not found")
     }
 
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!
     const claudeMd = buildClaudeMd(org.name, environment)
-
-    const projectFiles = generateProjectFiles(
-      pullState,
-      { id: org._id, slug: org.slug, name: org.name },
-      apiKeyResult.key,
-      process.env.NEXT_PUBLIC_CONVEX_URL!,
-      claudeMd,
-    )
 
     const envVars: Record<string, string> = {
       STRUERE_API_KEY: apiKeyResult.key,
-      STRUERE_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL!,
+      STRUERE_CONVEX_URL: convexUrl,
     }
+    if (process.env.XAI_API_KEY) envVars.XAI_API_KEY = process.env.XAI_API_KEY
     if (process.env.ANTHROPIC_API_KEY) envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
     if (process.env.OPENAI_API_KEY) envVars.OPENAI_API_KEY = process.env.OPENAI_API_KEY
     if (process.env.E2B_API_KEY) envVars.E2B_API_KEY = process.env.E2B_API_KEY
 
     const sandbox = await createSandbox({
       envVars,
-      files: projectFiles,
+      orgInfo: { id: org._id, slug: org.slug, name: org.name },
+      apiKey: apiKeyResult.key,
+      convexUrl,
+      claudeMd,
       agentType,
     })
     sandboxId = sandbox.sandboxId
