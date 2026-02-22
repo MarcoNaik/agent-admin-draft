@@ -2,57 +2,62 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
-import { useReveal } from "@/hooks/use-reveal"
 import { useI18n } from "@/lib/i18n"
+import { useHeroEntrance } from "@/lib/hero-entrance"
 
-function CyclingPlaceholder({ items }: { items: readonly string[] }) {
+function CyclingPlaceholder({ items, delay = 0 }: { items: readonly string[]; delay?: number }) {
+  const [active, setActive] = useState(delay === 0)
   const [index, setIndex] = useState(0)
-  const [visible, setVisible] = useState(true)
+  const [displayed, setDisplayed] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setVisible(false)
-      setTimeout(() => {
-        setIndex((prev) => (prev + 1) % items.length)
-        setVisible(true)
-      }, 600)
-    }, 4500)
-    return () => clearInterval(interval)
-  }, [items.length])
+    if (delay === 0) return
+    const timeout = setTimeout(() => setActive(true), delay)
+    return () => clearTimeout(timeout)
+  }, [delay])
+
+  useEffect(() => {
+    if (!active) return
+
+    const current = items[index]
+
+    if (!isDeleting && displayed.length < current.length) {
+      const timeout = setTimeout(() => {
+        setDisplayed(current.slice(0, displayed.length + 1))
+      }, 35 + Math.random() * 25)
+      return () => clearTimeout(timeout)
+    }
+
+    if (!isDeleting && displayed.length === current.length) {
+      const timeout = setTimeout(() => setIsDeleting(true), 3000)
+      return () => clearTimeout(timeout)
+    }
+
+    if (isDeleting && displayed.length > 0) {
+      const timeout = setTimeout(() => {
+        setDisplayed(displayed.slice(0, -1))
+      }, 20)
+      return () => clearTimeout(timeout)
+    }
+
+    if (isDeleting && displayed.length === 0) {
+      setIsDeleting(false)
+      setIndex((prev) => (prev + 1) % items.length)
+    }
+  }, [active, displayed, isDeleting, index, items])
 
   return (
-    <span
-      className={`font-mono text-white/30 transition-opacity duration-600 ${
-        visible ? "opacity-100" : "opacity-0"
-      }`}
-    >
-      {items[index]}
+    <span className="font-input text-white/80">
+      {displayed}
+      <span className="inline-block w-[2px] h-[1.1em] bg-white/60 ml-[1px] align-text-bottom animate-[blink-caret_1s_step-end_infinite]" />
     </span>
-  )
-}
-
-function RevealBlock({
-  children,
-  delay = 0,
-}: {
-  children: React.ReactNode
-  delay?: number
-}) {
-  const { ref, isVisible } = useReveal({ delay })
-  return (
-    <div
-      ref={ref}
-      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
-      }`}
-    >
-      {children}
-    </div>
   )
 }
 
 export function HeroSection() {
   const { t } = useI18n()
+  const mounted = useHeroEntrance()
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [parallaxY, setParallaxY] = useState(0)
@@ -75,65 +80,73 @@ export function HeroSection() {
   }, [])
 
   return (
-    <section className="relative w-full min-h-screen flex flex-col pb-10 md:pb-16">
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={{ transform: `translateY(${parallaxY}px)` }}
-      >
-        <Image
-          src="/hero-bg.png"
-          alt=""
-          fill
-          priority
-          className="object-cover object-center md:object-center"
-          style={{ objectPosition: "60% center" }}
-          sizes="100vw"
+    <section className="relative w-full min-h-screen overflow-hidden">
+      <div className="absolute inset-0">
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{ transform: `translateY(${parallaxY}px)` }}
+        >
+          <Image
+            src="/hero-bg.png"
+            alt=""
+            fill
+            priority
+            className={`object-cover transition-transform duration-[10000ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] ${mounted ? "scale-[1.03]" : "scale-100"}`}
+            style={{ objectPosition: "center center" }}
+            sizes="100vw"
+          />
+        </div>
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(248,246,242,0.95) 0%, rgba(248,246,242,0.6) 8%, rgba(248,246,242,0.15) 18%, transparent 22%)",
+          }}
         />
       </div>
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to top, rgba(248,246,242,0.95) 0%, rgba(248,246,242,0.6) 8%, rgba(248,246,242,0.15) 18%, transparent 22%)",
-        }}
-      />
 
-      <div className="min-h-[52vh]" aria-hidden="true" />
-      <div className="relative w-full max-w-3xl mx-auto px-6 md:px-12 text-center mt-auto">
-        <RevealBlock>
-          <p className="text-[10px] tracking-[0.2em] uppercase text-white/70 mb-4 font-sans">
-            {t.hero.tagline}
-          </p>
-        </RevealBlock>
+      <div className="absolute top-[8%] md:top-[10%] left-0 right-0 text-center px-6 md:px-12">
+        <div className="max-w-3xl mx-auto">
+          <div
+            className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100" : "opacity-0"}`}
+            style={{
+              transitionProperty: "opacity",
+              transitionDuration: "900ms",
+            }}
+          >
+            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] whitespace-nowrap drop-shadow-[0_2px_24px_rgba(0,0,0,0.3)]">
+              {t.hero.headline}
+            </h1>
+          </div>
 
-        <RevealBlock delay={150}>
-          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] drop-shadow-[0_2px_24px_rgba(0,0,0,0.3)]">
-            {t.hero.headline}
-          </h1>
-        </RevealBlock>
+          <div
+            className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+            style={{
+              transitionProperty: "opacity, transform",
+              transitionDuration: "700ms",
+              transitionDelay: mounted ? "500ms" : "0ms",
+            }}
+          >
+            <p className="text-xs tracking-[0.25em] uppercase text-white mt-4 font-sans font-medium drop-shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
+              {t.hero.tagline}
+            </p>
+          </div>
+        </div>
+      </div>
 
-        <RevealBlock delay={300}>
-          <p className="mt-6 text-lg md:text-xl text-white/90 max-w-xl mx-auto leading-relaxed font-sans drop-shadow-[0_1px_12px_rgba(0,0,0,0.25)]">
-            {t.hero.subheadline}
-          </p>
-        </RevealBlock>
-
-        <RevealBlock delay={500}>
-          <form onSubmit={handleSubmit} className="mt-10">
+      <div className="absolute bottom-32 md:bottom-36 left-0 right-0 text-center px-6 md:px-12">
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSubmit}>
             <div
-              className={`relative bg-white/12 backdrop-blur-2xl rounded-2xl transition-all duration-300 overflow-hidden ${
-                isFocused ? "shadow-lg shadow-ocean/10" : ""
-              }`}
+              className={`liquid-glass rounded-2xl ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+              style={{
+                transitionProperty: "opacity, transform",
+                transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
+                transitionDuration: "400ms, 2000ms",
+                transitionDelay: mounted ? "900ms, 1000ms" : "0ms, 0ms",
+              }}
             >
-              <div
-                className={`absolute inset-0 rounded-2xl p-[1px] pointer-events-none ${
-                  isFocused ? "prismatic-border-animated" : ""
-                }`}
-              >
-                <div className="w-full h-full rounded-2xl bg-white/12 backdrop-blur-2xl" />
-              </div>
-
-              <div className="relative">
+              <div className="relative z-10">
                 <div className="relative">
                   <textarea
                     value={prompt}
@@ -147,51 +160,71 @@ export function HeroSection() {
                       }
                     }}
                     rows={3}
-                    className="w-full px-6 pt-5 pb-14 text-base bg-transparent text-white placeholder:text-transparent focus:outline-none resize-none leading-relaxed relative z-10 font-sans"
+                    className="w-full px-6 pt-5 pb-14 text-base text-left bg-transparent text-white placeholder:text-transparent focus:outline-none resize-none leading-relaxed font-input"
                     aria-label={t.hero.ariaLabel}
                   />
                   {!prompt && !isFocused && (
-                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none">
-                      <CyclingPlaceholder items={t.hero.placeholders} />
+                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none text-left">
+                      <CyclingPlaceholder items={t.hero.placeholders} delay={4500} />
                     </div>
                   )}
                   {!prompt && isFocused && (
-                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-mono text-white/30">
+                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-input text-white/80 text-left">
                       {t.hero.focusPlaceholder}
                     </div>
                   )}
                 </div>
-                <div className="absolute bottom-3 right-3 z-10">
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 text-sm font-medium bg-amber hover:bg-amber-light text-charcoal-heading rounded-xl transition-all duration-200"
+                <div className="absolute bottom-3 right-3">
+                  <div
+                    className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100 scale-100" : "opacity-0 scale-90"}`}
+                    style={{
+                      transitionProperty: "opacity, transform",
+                      transitionDuration: "1000ms",
+                      transitionDelay: mounted ? "7500ms" : "0ms",
+                    }}
                   >
-                    {t.hero.createButton} &rarr;
-                  </button>
+                    <button
+                      type="submit"
+                      className="hero-send-btn px-6 py-2.5 text-sm font-medium text-white/70 rounded-xl border border-transparent bg-transparent"
+                    >
+                      <span className="relative z-10 flex items-center gap-1.5">
+                        {t.hero.createButton}
+                        <span className="btn-arrow">&rarr;</span>
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {t.hero.suggestions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setPrompt(s)}
-                  className="px-4 py-2 text-xs text-white/60 hover:text-white/90 bg-white/8 hover:bg-white/15 backdrop-blur-sm border border-white/10 hover:border-white/25 rounded-full transition-all duration-200 font-sans"
-                >
-                  {s}
-                </button>
-              ))}
+              {t.hero.suggestions.map((s, i) => {
+                const base = 2200 + i * 250
+                return (
+                  <div
+                    key={s}
+                    className={`liquid-glass rounded-full ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+                    style={{
+                      transitionProperty: "opacity, transform",
+                      transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
+                      transitionDuration: "300ms, 500ms",
+                      transitionDelay: mounted ? `${base}ms, ${base + 100}ms` : "0ms, 0ms",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setPrompt(s)}
+                      className="px-4 py-2 text-xs text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-all duration-200 font-sans"
+                    >
+                      {s}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </form>
-        </RevealBlock>
 
-        <RevealBlock delay={700}>
-          <p className="mt-8 text-xs text-white/50 font-sans">
-            {t.hero.proofLine}
-          </p>
-        </RevealBlock>
+        </div>
       </div>
     </section>
   )
