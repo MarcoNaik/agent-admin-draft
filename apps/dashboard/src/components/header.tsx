@@ -12,6 +12,7 @@ import {
   Code,
   User,
   Terminal,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -132,14 +133,16 @@ function StudioToggle() {
       type="button"
       onClick={toggleStudio}
       className={cn(
-        "relative flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft",
-        isOpen && "text-content-primary font-medium"
+        "studio-btn relative flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-transparent",
+        isOpen ? "studio-active font-medium" : "text-content-secondary"
       )}
     >
-      <Terminal className="h-4 w-4" />
-      Studio
+      <span className="relative z-10 flex items-center gap-1.5">
+        <Terminal className="h-4 w-4" />
+        Studio
+      </span>
       {hasActiveSession && (
-        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-success" />
+        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-success z-10" />
       )}
     </button>
   )
@@ -188,6 +191,15 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2 px-3">
+          <a
+            href="https://docs.struere.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft"
+          >
+            <BookOpen className="h-4 w-4" />
+            Docs
+          </a>
           {isOrgAdmin && <StudioToggle />}
           {isOrgAdmin && <EnvironmentSelector />}
           <div className="flex items-center">
