@@ -144,6 +144,9 @@ import { defineAgent, defineEntityType, defineRole, defineTrigger, defineTools }
       $schema: "https://opencode.ai/config.json",
       provider: {
         openai: {
+          options: {
+            baseURL: "https://api.x.ai/v1",
+          },
           models: {
             "grok-4-1-fast": { name: "Grok 4.1 Fast" },
           },
@@ -168,7 +171,6 @@ async function main() {
       STRUERE_API_KEY,
       STRUERE_CONVEX_URL: CONVEX_URL,
       OPENAI_API_KEY: XAI_API_KEY,
-      OPENAI_BASE_URL: "https://api.x.ai/v1",
     },
     allowInternetAccess: true,
   });
