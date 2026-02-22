@@ -46,7 +46,7 @@ export function ReportForm({ sessionId, onSuccess }: ReportFormProps) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Describe what was covered in the session, student progress, and any notes for parents..."
-        className="min-h-[160px] bg-background-tertiary"
+        className="min-h-[160px] font-input bg-background-tertiary"
         required
       />
       {error && (

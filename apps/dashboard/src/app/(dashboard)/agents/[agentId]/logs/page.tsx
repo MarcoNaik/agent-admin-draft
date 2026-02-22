@@ -46,7 +46,7 @@ function MessageBubble({ role, content }: { role: string; content: string }) {
   const borderColor = isUser ? "border-primary/20" : "border-border"
 
   return (
-    <div className={`rounded-md border ${borderColor} ${bgColor} p-3`}>
+    <div className={`rounded-lg border ${borderColor} ${bgColor} p-3`}>
       <div className="flex items-start gap-2">
         <Icon className="h-4 w-4 mt-0.5 text-content-tertiary shrink-0" />
         <div className="flex-1 min-w-0">
@@ -64,12 +64,12 @@ function ToolCallBubble({ toolCall }: { toolCall: ToolCallData }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3">
+    <div className="rounded-lg border border-amber/20 bg-amber/10 p-3">
       <div className="flex items-start gap-2">
-        <Wrench className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
+        <Wrench className="h-4 w-4 mt-0.5 text-amber shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-amber-600">{toolCall.name}</span>
+            <span className="text-xs font-medium text-amber">{toolCall.name}</span>
             <button
               onClick={() => setExpanded(!expanded)}
               className="text-xs text-content-tertiary hover:text-content-secondary"
@@ -147,7 +147,7 @@ function ExecutionDetails({ execution }: { execution: Doc<"executions"> & { inpu
               <MessageBubble role="user" content={execution.inputMessage} />
             )}
             {execution.toolCalls && execution.toolCalls.length > 0 && (
-              <div className="pl-4 border-l-2 border-amber-500/30 space-y-2">
+              <div className="pl-4 border-l-2 border-amber/30 space-y-2">
                 {execution.toolCalls.slice(0, 5).map((tc: any, i: number) => (
                   <ToolCallBubble key={i} toolCall={tc} />
                 ))}
@@ -179,7 +179,7 @@ function LogRow({ execution }: { execution: Doc<"executions"> }) {
   return (
     <>
       <tr
-        className="border-b hover:bg-background-secondary cursor-pointer transition-colors"
+        className="border-b hover:bg-background-secondary cursor-pointer transition-colors ease-out-soft"
         onClick={() => setExpanded(!expanded)}
       >
         <td className="px-4 py-3 w-8">
@@ -234,11 +234,11 @@ export default function AgentLogsPage({ params }: AgentLogsPageProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold text-content-primary">Logs</h2>
+        <h2 className="text-xl font-semibold font-display text-content-primary">Logs</h2>
         <p className="text-sm text-content-secondary mt-0.5">Execution history and performance metrics</p>
       </div>
 
-      <div className="rounded-md border bg-card overflow-hidden">
+      <div className="rounded-lg border bg-card overflow-hidden">
         {executions.length === 0 ? (
           <div className="p-12 text-center text-sm text-content-secondary">
             No executions yet. Logs will appear here when your agent receives requests.

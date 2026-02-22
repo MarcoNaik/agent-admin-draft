@@ -78,7 +78,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
   if (entities === undefined || entityType === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
       </div>
     )
   }
@@ -87,7 +87,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-muted-foreground">Entity type "{entityTypeSlug}" not found.</p>
+          <p className="text-content-tertiary">Entity type "{entityTypeSlug}" not found.</p>
         </CardContent>
       </Card>
     )
@@ -97,12 +97,12 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-content-tertiary" />
           <Input
             placeholder={`Search ${entityType.name}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 font-input"
           />
         </div>
         <Button onClick={handleCreate} disabled={isCreating}>
@@ -118,8 +118,8 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
       {displayedEntities.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
+            <FileText className="mx-auto h-12 w-12 text-content-tertiary mb-4" />
+            <p className="text-content-tertiary">
               {searchQuery ? `No ${entityType.name} found matching "${searchQuery}"` : `No ${entityType.name} yet.`}
             </p>
           </CardContent>
@@ -127,7 +127,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full">
-            <thead className="bg-muted/50">
+            <thead className="bg-background-tertiary/50">
               <tr>
                 <th className="text-left px-4 py-3 text-sm font-medium">Title</th>
                 <th className="text-left px-4 py-3 text-sm font-medium">Status</th>
@@ -137,7 +137,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
             </thead>
             <tbody className="divide-y">
               {displayedEntities.map((entity: Doc<"entities">) => (
-                <tr key={entity._id} className="hover:bg-muted/30 transition-colors">
+                <tr key={entity._id} className="hover:bg-background-tertiary/30 transition-colors ease-out-soft">
                   <td className="px-4 py-3">
                     <div>
                       <Link
@@ -147,7 +147,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
                         {getDisplayTitle(entity)}
                       </Link>
                       {getDisplaySubtitle(entity) && (
-                        <p className="text-sm text-muted-foreground">{getDisplaySubtitle(entity)}</p>
+                        <p className="text-sm text-content-tertiary">{getDisplaySubtitle(entity)}</p>
                       )}
                     </div>
                   </td>
@@ -155,14 +155,14 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${
                         entity.status === "active"
-                          ? "bg-green-500/10 text-green-500"
-                          : "bg-gray-500/10 text-gray-500"
+                          ? "bg-success/10 text-success"
+                          : "bg-muted-foreground/10 text-muted-foreground"
                       }`}
                     >
                       {entity.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                  <td className="px-4 py-3 text-sm text-content-tertiary">
                     {new Date(entity.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">

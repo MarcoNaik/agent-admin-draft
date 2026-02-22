@@ -59,7 +59,7 @@ export default function EntitiesLayout({
     <div className="flex h-[calc(100dvh-49px)]">
       <aside className="w-64 border-r bg-background-secondary flex flex-col shrink-0">
         <div className="p-3 border-b">
-          <h2 className="text-sm font-semibold text-content-primary mb-2">Entities</h2>
+          <h2 className="text-sm font-semibold font-display text-content-primary mb-2">Entities</h2>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -67,7 +67,7 @@ export default function EntitiesLayout({
               placeholder="Search entities..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-sm bg-background"
+              className="pl-8 h-8 text-sm font-input bg-background"
             />
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function EntitiesLayout({
                     <Link
                       href={`/entities/${entityType.slug}`}
                       className={cn(
-                        "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                        "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ease-out-soft",
                         isActive
                           ? "bg-primary/10 text-primary font-medium"
                           : "text-content-secondary hover:text-content-primary hover:bg-background-tertiary"

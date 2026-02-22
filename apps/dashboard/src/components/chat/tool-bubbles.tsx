@@ -18,13 +18,13 @@ export function ToolCallBubble({ name, arguments: args }: { name: string; argume
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-2.5 max-w-2xl mx-auto">
+    <div className="rounded-md border border-ocean/10 bg-ocean/5 p-2.5 max-w-2xl mx-auto transition-all ease-out-soft">
       <div className="flex items-center gap-2">
-        <Wrench className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-        <span className="text-xs font-medium text-amber-600">{name}</span>
+        <Wrench className="h-3.5 w-3.5 text-ocean shrink-0" />
+        <span className="text-xs font-medium text-ocean">{name}</span>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-xs text-content-tertiary hover:text-content-secondary ml-auto"
+          className="text-xs text-content-tertiary hover:text-content-secondary ml-auto transition-colors ease-out-soft"
         >
           {expanded ? "Hide details" : "Show details"}
         </button>
@@ -68,14 +68,14 @@ export function ToolResultBubble({
   }
 
   return (
-    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/10 p-2.5 max-w-2xl mx-auto">
+    <div className="rounded-md border border-ocean/10 bg-ocean/5 p-2.5 max-w-2xl mx-auto transition-all ease-out-soft">
       <div className="flex items-center gap-2">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-        <span className="text-xs font-medium text-emerald-600">{toolName}</span>
+        <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+        <span className="text-xs font-medium text-ocean">{toolName}</span>
         <span className="text-xs text-content-tertiary">Result</span>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-xs text-content-tertiary hover:text-content-secondary ml-auto"
+          className="text-xs text-content-tertiary hover:text-content-secondary ml-auto transition-colors ease-out-soft"
         >
           {expanded ? "Hide details" : "Show details"}
         </button>

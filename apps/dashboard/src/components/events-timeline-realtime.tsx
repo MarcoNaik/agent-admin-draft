@@ -17,7 +17,7 @@ export function EventsTimelineRealtime() {
   if (events === undefined || eventTypes === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
       </div>
     )
   }
@@ -47,8 +47,8 @@ export function EventsTimelineRealtime() {
       {events.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No events yet.</p>
+            <Activity className="mx-auto h-12 w-12 text-content-tertiary mb-4" />
+            <p className="text-content-tertiary">No events yet.</p>
           </CardContent>
         </Card>
       ) : (
@@ -59,7 +59,7 @@ export function EventsTimelineRealtime() {
             {events.map((event: Doc<"events">) => (
               <div key={event._id} className="relative flex gap-4">
                 <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background border">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <Activity className="h-4 w-4 text-content-tertiary" />
                 </div>
 
                 <Card className="flex-1">
@@ -68,23 +68,23 @@ export function EventsTimelineRealtime() {
                       <div>
                         <span className="font-mono text-sm font-medium">{event.eventType}</span>
                         {event.entityTypeSlug && (
-                          <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded">
+                          <span className="ml-2 text-xs bg-background-tertiary px-2 py-0.5 rounded">
                             {event.entityTypeSlug}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-content-tertiary">
                         {formatRelativeTime(event.timestamp)}
                       </span>
                     </div>
 
-                    <div className="mt-2 text-sm text-muted-foreground">
+                    <div className="mt-2 text-sm text-content-tertiary">
                       <span className="capitalize">{event.actorType}</span>
                       {event.actorId && <span className="ml-1 font-mono text-xs">({event.actorId})</span>}
                     </div>
 
                     {event.payload && Object.keys(event.payload).length > 0 && (
-                      <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-24">
+                      <pre className="mt-2 p-2 bg-background-tertiary rounded text-xs overflow-auto max-h-24">
                         {JSON.stringify(event.payload, null, 2)}
                       </pre>
                     )}

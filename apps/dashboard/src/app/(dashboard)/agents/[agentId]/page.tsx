@@ -24,7 +24,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="p-1 rounded hover:bg-background-tertiary transition-colors"
+      className="p-1 rounded hover:bg-background-tertiary transition-colors ease-out-soft"
     >
       {copied ? (
         <Check className="h-3.5 w-3.5 text-success" />
@@ -99,7 +99,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">{agent.name}</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">{agent.name}</h2>
           <p className="text-sm text-content-secondary mt-0.5">{agent.description || "No description"}</p>
         </div>
         <Badge variant={isDeployed ? "success" : "secondary"}>
@@ -107,7 +107,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
         </Badge>
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3">
           <div className="text-sm font-medium text-content-primary">Chat</div>
         </div>
@@ -121,7 +121,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
               <CopyButton text={chatUrl} />
               <a
                 href={chatUrl}
-                className="p-2 rounded hover:bg-background-tertiary transition-colors"
+                className="p-2 rounded hover:bg-background-tertiary transition-colors ease-out-soft"
               >
                 <ExternalLink className="h-4 w-4 text-content-tertiary" />
               </a>
@@ -146,7 +146,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3 flex items-center justify-between">
           <div className="text-sm font-medium text-content-primary">Activity</div>
           <Button variant="ghost" size="sm" asChild>
@@ -217,7 +217,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
       </div>
 
       {!isDeployed && (
-        <div className="rounded-md border border-dashed p-6 text-center">
+        <div className="rounded-lg border border-dashed p-6 text-center">
           <p className="text-sm text-content-secondary mb-3">
             {environment === "production"
               ? "Deploy your agent to production to make it available at the endpoint above."

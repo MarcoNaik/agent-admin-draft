@@ -42,7 +42,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
         </Link>
         <Card>
           <CardHeader>
-            <CardTitle>Create New {type}</CardTitle>
+            <CardTitle className="font-display">Create New {type}</CardTitle>
             <CardDescription>Add a new {type} to the system</CardDescription>
           </CardHeader>
           <CardContent>
@@ -159,7 +159,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{entityType.name} Details</CardTitle>
+          <CardTitle className="font-display">{entityType.name} Details</CardTitle>
           <CardDescription>View and manage this {entityType.name.toLowerCase()}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -170,7 +170,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 font-display">
               <Link2 className="h-5 w-5" />
               Relations ({totalRelations})
             </CardTitle>
@@ -190,7 +190,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
                       <Link
                         key={rel._id}
                         href={`/entities/${type}/${rel.toEntityId}`}
-                        className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                        className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors ease-out-soft"
                       >
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{rel.relationType}</Badge>
@@ -208,7 +208,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 font-display">
               <Clock className="h-5 w-5" />
               Timeline ({events.length})
             </CardTitle>

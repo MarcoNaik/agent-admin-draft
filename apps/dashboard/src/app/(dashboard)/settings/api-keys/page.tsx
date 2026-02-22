@@ -66,7 +66,7 @@ export default function ApiKeysPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">API Keys</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">API Keys</h1>
           <p className="text-sm text-content-secondary">Manage API keys for external access</p>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -80,7 +80,7 @@ export default function ApiKeysPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">API Keys</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">API Keys</h1>
           <p className="text-sm text-content-secondary">Manage API keys for external access</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -122,6 +122,7 @@ export default function ApiKeysPage() {
                     placeholder="e.g., Production API"
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
+                    className="font-input"
                   />
                 </div>
                 <DialogFooter>

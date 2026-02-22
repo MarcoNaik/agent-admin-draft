@@ -101,7 +101,7 @@ export default function EntityEditPage({ params }: EntityEditPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Edit {entityType.name}</CardTitle>
+          <CardTitle className="font-display">Edit {entityType.name}</CardTitle>
           <CardDescription>Update the {entityType.name.toLowerCase()} details</CardDescription>
         </CardHeader>
         <CardContent>

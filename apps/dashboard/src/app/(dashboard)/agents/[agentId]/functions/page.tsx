@@ -187,7 +187,7 @@ function ToolName({ name }: { name: string }) {
   const suffix = name.slice(dotIndex + 1)
   return (
     <code className="text-sm font-mono">
-      <span className="text-content-primary/30 group-hover/row:text-content-primary transition-colors">{prefix}</span>
+      <span className="text-content-primary/30 group-hover/row:text-content-primary transition-colors ease-out-soft">{prefix}</span>
       <span className="text-content-primary">{suffix}</span>
     </code>
   )
@@ -216,7 +216,7 @@ function ToolRow({
       <button
         onClick={() => hasParams && setExpanded(!expanded)}
         className={cn(
-          "group/row w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+          "group/row w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ease-out-soft",
           hasParams && "hover:bg-background-secondary cursor-pointer"
         )}
       >
@@ -285,7 +285,7 @@ function CategorySection({
     <div className="rounded-lg border bg-card overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-background-secondary/50 hover:bg-background-secondary transition-colors cursor-pointer"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-background-secondary/50 hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer"
       >
         <Icon className="h-4 w-4 text-content-secondary" />
         <div className="flex-1 text-left">
@@ -345,7 +345,7 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
         </p>
         <Link
           href="/entities"
-          className="text-xs text-content-secondary hover:text-content-primary transition-colors cursor-pointer"
+          className="text-xs text-content-secondary hover:text-content-primary transition-colors ease-out-soft cursor-pointer"
         >
           Manage Types
         </Link>
@@ -356,7 +356,7 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
             key={type._id}
             href={`/entities/${type.slug}`}
             className={cn(
-              "flex items-center gap-3 px-4 py-3 hover:bg-background-secondary transition-colors cursor-pointer",
+              "flex items-center gap-3 px-4 py-3 hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer",
               i !== entityTypes.length - 1 && "border-b"
             )}
           >
@@ -469,7 +469,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">Tools</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">Tools</h2>
           <p className="text-sm text-content-secondary mt-0.5">
             Functions available to your agent
           </p>
@@ -491,7 +491,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">Tools</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">Tools</h2>
           <p className="text-sm text-content-secondary mt-0.5">
             {totalEnabled} of {totalBuiltin + customTools.length} tools enabled
           </p>
@@ -500,7 +500,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
           href="https://docs.struere.dev/tools"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-content-secondary hover:text-content-primary transition-colors cursor-pointer"
+          className="text-xs text-content-secondary hover:text-content-primary transition-colors ease-out-soft cursor-pointer"
         >
           Docs
         </a>

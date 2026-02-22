@@ -15,13 +15,13 @@ function DeploymentStatusIcon({ status }: { status: string }) {
   switch (status) {
     case "deployed":
     case "success":
-      return <CheckCircle className="h-4 w-4 text-green-500" />
+      return <CheckCircle className="h-4 w-4 text-success" />
     case "failed":
     case "error":
-      return <XCircle className="h-4 w-4 text-red-500" />
+      return <XCircle className="h-4 w-4 text-destructive" />
     case "deploying":
     case "pending":
-      return <Loader2Icon className="h-4 w-4 animate-spin text-yellow-500" />
+      return <Loader2Icon className="h-4 w-4 animate-spin text-warning" />
     default:
       return <Rocket className="h-4 w-4 text-muted-foreground" />
   }
@@ -92,7 +92,7 @@ export default function AgentHistoryPage({ params }: AgentHistoryPageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">History</h2>
+        <h2 className="text-2xl font-bold font-display">History</h2>
         <p className="text-muted-foreground">View deployment history and execution logs</p>
       </div>
 

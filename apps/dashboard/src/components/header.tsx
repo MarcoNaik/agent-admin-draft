@@ -11,7 +11,6 @@ import {
   Globe,
   Code,
   User,
-  Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -83,11 +82,11 @@ function EnvironmentSelector() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 h-8 px-3 text-sm border border-border/50 rounded-md hover:bg-background-tertiary transition-colors"
+          className="flex items-center gap-2 h-8 px-3 text-sm border border-border/50 rounded-md hover:bg-background-tertiary transition-colors ease-out-soft"
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              environment === "production" ? "bg-green-500" : "bg-yellow-500"
+              environment === "production" ? "bg-success" : "bg-warning"
             }`}
           />
           <span className="text-content-primary">
@@ -101,20 +100,20 @@ function EnvironmentSelector() {
           className="flex items-center gap-3 py-2.5 cursor-pointer"
           onSelect={() => setEnvironment("production")}
         >
-          <Globe className="h-4 w-4 text-green-500" />
+          <Globe className="h-4 w-4 text-success" />
           <span className="flex-1 text-content-primary">Production</span>
           {environment === "production" && (
-            <span className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="h-2 w-2 rounded-full bg-success" />
           )}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex items-center gap-3 py-2.5 cursor-pointer"
           onSelect={() => setEnvironment("development")}
         >
-          <Code className="h-4 w-4 text-yellow-500" />
+          <Code className="h-4 w-4 text-warning" />
           <span className="flex-1 text-content-primary">Development</span>
           {environment === "development" && (
-            <span className="h-2 w-2 rounded-full bg-yellow-500" />
+            <span className="h-2 w-2 rounded-full bg-warning" />
           )}
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -131,10 +130,10 @@ export function Header() {
 
   return (
     <div className="sticky top-0 z-40">
-      <header className="flex justify-between min-h-[48px] overflow-x-auto scrollbar-none bg-background-secondary border-b">
+      <header className="flex justify-between min-h-[48px] overflow-x-auto scrollbar-none backdrop-blur-md bg-background-secondary/80 border-b">
         <div className="flex items-center px-3">
-          <Link href="/" className="flex items-center mr-3">
-            <Zap className="h-5 w-5 text-primary" />
+          <Link href="/" className="flex items-center mr-3 font-display text-lg font-semibold tracking-tight text-foreground">
+            Struere
           </Link>
 
           <div className="flex items-center">
@@ -153,7 +152,7 @@ export function Header() {
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors",
+                      "flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft",
                       isActive && "text-content-primary font-medium"
                     )}
                   >
@@ -171,7 +170,7 @@ export function Header() {
           <div className="flex items-center">
             <ThemeToggle />
           </div>
-          <div className="rounded-md p-1 transition-colors hover:bg-background-tertiary">
+          <div className="rounded-md p-1 transition-colors ease-out-soft hover:bg-background-tertiary">
             <UserButton />
           </div>
         </div>

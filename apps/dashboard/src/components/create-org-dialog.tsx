@@ -65,7 +65,7 @@ export function CreateOrgDialog({ open, onOpenChange, onSuccess }: CreateOrgDial
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isCreating}
-            className="flex-1 bg-background-tertiary border-border/50"
+            className="flex-1 font-input bg-background-tertiary border-border/50"
             autoFocus
           />
           <Button

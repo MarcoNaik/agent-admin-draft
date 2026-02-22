@@ -54,7 +54,7 @@ function StatusBadge({ status }: { status: string }) {
       )
     case "pending_setup":
       return (
-        <Badge className="flex items-center gap-1 bg-amber-500/20 text-amber-500 border-amber-500/30">
+        <Badge className="flex items-center gap-1 bg-amber/20 text-amber border-amber/30">
           <Clock className="h-3 w-3" />
           Awaiting Setup
         </Badge>
@@ -95,7 +95,7 @@ function IntegrationToggle({
           <div className="flex items-center gap-2">
             {isEnabled ? (
               <>
-                <Power className="h-4 w-4 text-green-500" />
+                <Power className="h-4 w-4 text-success" />
                 <Badge variant="secondary">Enabled</Badge>
               </>
             ) : (
@@ -137,13 +137,13 @@ function IntegrationToggle({
 function TemplateStatusBadge({ status }: { status: string }) {
   switch (status?.toUpperCase()) {
     case "APPROVED":
-      return <Badge className="bg-green-500/20 text-green-500 border-green-500/30">Approved</Badge>
+      return <Badge className="bg-success/20 text-success border-success/30">Approved</Badge>
     case "PENDING":
-      return <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30">Pending</Badge>
+      return <Badge className="bg-amber/20 text-amber border-amber/30">Pending</Badge>
     case "REJECTED":
-      return <Badge className="bg-red-500/20 text-red-500 border-red-500/30">Rejected</Badge>
+      return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Rejected</Badge>
     case "PAUSED":
-      return <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30">Paused</Badge>
+      return <Badge className="bg-warning/20 text-warning border-warning/30">Paused</Badge>
     default:
       return <Badge variant="outline">{status}</Badge>
   }
@@ -217,7 +217,7 @@ function CreateTemplateDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. order_update"
-              className="text-sm"
+              className="font-input text-sm"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -227,7 +227,7 @@ function CreateTemplateDialog({
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 placeholder="en_US"
-                className="text-sm"
+                className="font-input text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -254,9 +254,9 @@ function CreateTemplateDialog({
             />
           </div>
           {error && (
-            <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20">
-              <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
-              <p className="text-xs text-red-500">{error}</p>
+            <div className="flex items-center gap-2 p-2 rounded bg-destructive/10 border border-destructive/20">
+              <AlertCircle className="h-3 w-3 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
           <div className="flex justify-end gap-2">
@@ -334,9 +334,9 @@ function TemplatesSection({
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20">
-          <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
-          <p className="text-xs text-red-500">{error}</p>
+        <div className="flex items-center gap-2 p-2 rounded bg-destructive/10 border border-destructive/20">
+          <AlertCircle className="h-3 w-3 text-destructive shrink-0" />
+          <p className="text-xs text-destructive">{error}</p>
         </div>
       )}
 
@@ -368,7 +368,7 @@ function TemplatesSection({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 text-content-tertiary hover:text-red-500"
+                  className="h-7 w-7 p-0 text-content-tertiary hover:text-destructive"
                   onClick={() => handleDelete(t.name)}
                   disabled={deleting === t.name}
                 >
@@ -427,10 +427,10 @@ function PhoneNumberCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-              connection.status === "connected" ? "bg-green-500/10" : connection.status === "pending_setup" ? "bg-amber-500/10" : "bg-muted"
+              connection.status === "connected" ? "bg-success/10" : connection.status === "pending_setup" ? "bg-amber/10" : "bg-muted"
             }`}>
               <Smartphone className={`h-5 w-5 ${
-                connection.status === "connected" ? "text-green-500" : connection.status === "pending_setup" ? "text-amber-500" : "text-content-tertiary"
+                connection.status === "connected" ? "text-success" : connection.status === "pending_setup" ? "text-amber" : "text-content-tertiary"
               }`} />
             </div>
             <div>
@@ -440,7 +440,7 @@ function PhoneNumberCard({
                     <Input
                       value={labelValue}
                       onChange={(e) => setLabelValue(e.target.value)}
-                      className="h-7 w-40 text-sm"
+                      className="font-input h-7 w-40 text-sm"
                       placeholder="Label"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleLabelSave()
@@ -448,7 +448,7 @@ function PhoneNumberCard({
                       }}
                       autoFocus
                     />
-                    <button type="button" onClick={handleLabelSave} className="text-green-500 hover:text-green-400">
+                    <button type="button" onClick={handleLabelSave} className="text-success hover:text-success/80">
                       <Check className="h-4 w-4" />
                     </button>
                     <button type="button" onClick={() => setEditingLabel(false)} className="text-content-tertiary hover:text-content-secondary">
@@ -483,8 +483,8 @@ function PhoneNumberCard({
 
         {connection.status === "pending_setup" && (
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10">
-              <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber/10">
+              <Clock className="h-4 w-4 text-amber shrink-0" />
               <p className="text-xs text-content-secondary">
                 Complete the Facebook login and phone number verification on Kapso
               </p>
@@ -706,12 +706,12 @@ export default function WhatsAppSettingsPage() {
       </Button>
 
       <div className="flex items-start gap-4 mb-6">
-        <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-          <MessageSquare className="h-6 w-6 text-green-500" />
+        <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center">
+          <MessageSquare className="h-6 w-6 text-success" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-content-primary">WhatsApp</h1>
+            <h1 className="text-xl font-display font-semibold text-content-primary">WhatsApp</h1>
             {isEnabled && activeConnections.length > 0 && (
               <Badge variant="secondary">{activeConnections.filter((c: any) => c.status === "connected").length} connected</Badge>
             )}
@@ -723,21 +723,21 @@ export default function WhatsAppSettingsPage() {
       </div>
 
       {setupSuccess && (
-        <div className="flex items-center justify-between gap-2 p-3 mb-6 rounded-lg bg-green-500/10 border border-green-500/20">
+        <div className="flex items-center justify-between gap-2 p-3 mb-6 rounded-lg bg-success/10 border border-success/20">
           <div className="flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-green-500 shrink-0" />
-            <p className="text-sm text-green-500">WhatsApp setup completed. Your number is being connected.</p>
+            <Wifi className="h-4 w-4 text-success shrink-0" />
+            <p className="text-sm text-success">WhatsApp setup completed. Your number is being connected.</p>
           </div>
-          <button type="button" onClick={() => setSetupSuccess(false)} className="text-green-500 hover:text-green-400">
+          <button type="button" onClick={() => setSetupSuccess(false)} className="text-success hover:text-success/80">
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
       {error && (
-        <div className="flex items-center gap-2 p-3 mb-6 rounded-lg bg-red-500/10 border border-red-500/20">
-          <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-          <p className="text-sm text-red-500">{error}</p>
+        <div className="flex items-center gap-2 p-3 mb-6 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -779,7 +779,7 @@ export default function WhatsAppSettingsPage() {
                     value={labelInput}
                     onChange={(e) => setLabelInput(e.target.value)}
                     placeholder="Label (e.g. Sales, Support)"
-                    className="flex-1 text-sm h-9"
+                    className="font-input flex-1 text-sm h-9"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleAddPhone()
                       if (e.key === "Escape") { setShowLabelInput(false); setLabelInput("") }

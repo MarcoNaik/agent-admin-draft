@@ -47,16 +47,16 @@ function AssertionBadge({ result }: { result: { type: string; passed: boolean; s
   return (
     <div className={`flex items-start gap-2 rounded-md border p-2.5 text-xs ${
       result.passed
-        ? "border-green-500/20 bg-green-500/5"
-        : "border-red-500/20 bg-red-500/5"
+        ? "border-success/20 bg-success/5"
+        : "border-destructive/20 bg-destructive/5"
     }`}>
       {result.passed
-        ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />
-        : <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+        ? <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
+        : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />
       }
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-content-secondary">{result.type}</span>
+          <span className="font-input text-content-secondary">{result.type}</span>
           {result.score !== undefined && (
             <Badge variant={result.score >= 3 ? "success" : "destructive"} className="text-xs">
               {result.score}/5
@@ -75,14 +75,14 @@ function AssertionBadge({ result }: { result: { type: string; passed: boolean; s
 }
 
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "—"
+  if (value === null || value === undefined) return "\u2014"
   if (typeof value === "string") return value
   if (typeof value === "number" || typeof value === "boolean") return String(value)
   return JSON.stringify(value)
 }
 
 function FieldValue({ value }: { value: unknown }) {
-  if (value === null || value === undefined) return <span className="text-content-tertiary">—</span>
+  if (value === null || value === undefined) return <span className="text-content-tertiary">\u2014</span>
 
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return <span className="text-content-primary break-all">{String(value)}</span>
@@ -101,7 +101,7 @@ function FieldValue({ value }: { value: unknown }) {
             {typeof item === "object" && item !== null ? (
               Object.entries(item).map(([k, v]) => (
                 <div key={k} className="flex gap-1.5">
-                  <span className="font-mono text-content-tertiary shrink-0">{k}:</span>
+                  <span className="font-input text-content-tertiary shrink-0">{k}:</span>
                   <span className="text-content-primary break-all">{formatValue(v)}</span>
                 </div>
               ))
@@ -119,7 +119,7 @@ function FieldValue({ value }: { value: unknown }) {
       <div className="space-y-0.5 mt-0.5">
         {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
           <div key={k} className="flex gap-1.5">
-            <span className="font-mono text-content-tertiary shrink-0">{k}:</span>
+            <span className="font-input text-content-tertiary shrink-0">{k}:</span>
             <span className="text-content-primary break-all">{formatValue(v)}</span>
           </div>
         ))}
@@ -135,12 +135,12 @@ function ObjectCard({ data, index }: { data: Record<string, unknown>; index?: nu
   return (
     <div className="rounded border border-border/50 bg-black/10 p-2.5 space-y-1">
       {index !== undefined && (
-        <div className="text-[10px] font-mono text-content-tertiary mb-1.5">#{index + 1}</div>
+        <div className="text-[10px] font-input text-content-tertiary mb-1.5">#{index + 1}</div>
       )}
       {entries.map(([key, value]) => (
         <div key={key} className="text-xs">
           <div className="flex gap-2">
-            <span className="font-mono text-content-tertiary shrink-0">{key}:</span>
+            <span className="font-input text-content-tertiary shrink-0">{key}:</span>
             {(typeof value !== "object" || value === null || (Array.isArray(value) && value.every((v) => typeof v !== "object" || v === null))) && (
               <FieldValue value={value} />
             )}
@@ -209,7 +209,7 @@ function ToolDataView({ data: rawData, label }: { data: unknown; label: string }
     return (
       <div>
         <div className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">{label}</div>
-        <pre className="text-xs font-mono bg-black/10 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
+        <pre className="text-xs font-input bg-black/10 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all text-content-secondary">
           {JSON.stringify(data, null, 2)}
         </pre>
       </div>
@@ -232,9 +232,9 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
   const [expanded, setExpanded] = useState(result.status !== "passed")
 
   const statusIcon = {
-    passed: <CheckCircle2 className="h-4 w-4 text-green-500" />,
-    failed: <XCircle className="h-4 w-4 text-red-500" />,
-    error: <AlertCircle className="h-4 w-4 text-amber-500" />,
+    passed: <CheckCircle2 className="h-4 w-4 text-success" />,
+    failed: <XCircle className="h-4 w-4 text-destructive" />,
+    error: <AlertCircle className="h-4 w-4 text-warning" />,
     running: <Loader2 className="h-4 w-4 text-primary animate-spin" />,
     pending: <Clock className="h-4 w-4 text-content-tertiary" />,
   }
@@ -243,7 +243,7 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
     <div className="rounded-md border bg-card overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full px-4 py-3 hover:bg-background-secondary transition-colors"
+        className="flex items-center justify-between w-full px-4 py-3 hover:bg-background-secondary transition-colors ease-out-soft"
       >
         <div className="flex items-center gap-3">
           {expanded ? <ChevronDown className="h-4 w-4 text-content-tertiary" /> : <ChevronRight className="h-4 w-4 text-content-tertiary" />}
@@ -254,13 +254,13 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
           {result.overallScore !== undefined && (
             <Badge
               variant={result.overallScore >= 3 ? "success" : "destructive"}
-              className="text-xs font-mono"
+              className="text-xs font-input"
             >
               {result.overallScore.toFixed(1)}/5
             </Badge>
           )}
           {result.totalDurationMs && (
-            <span className="text-xs text-content-tertiary font-mono">{formatDuration(result.totalDurationMs)}</span>
+            <span className="text-xs text-content-tertiary font-input">{formatDuration(result.totalDurationMs)}</span>
           )}
           <Badge
             variant={result.overallPassed ? "success" : (result.status === "pending" || result.status === "running") ? "outline" : result.status === "error" ? "outline" : "destructive"}
@@ -272,7 +272,7 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
             <button
               onClick={(e) => { e.stopPropagation(); onRerun() }}
               disabled={isRerunning || rerunDisabled}
-              className="rounded p-1 text-content-tertiary hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+              className="rounded p-1 text-content-tertiary hover:text-primary hover:bg-primary/10 transition-colors ease-out-soft disabled:opacity-50"
             >
               {isRerunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             </button>
@@ -283,7 +283,7 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
       {expanded && (
         <div className="border-t px-4 py-4 space-y-4">
           {result.errorMessage && (
-            <div className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive font-mono">
+            <div className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive font-input">
               {result.errorMessage}
             </div>
           )}
@@ -300,12 +300,12 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
               </div>
 
               {turn.toolCalls && turn.toolCalls.length > 0 && (
-                <div className="pl-4 border-l-2 border-amber-500/30 space-y-1.5">
+                <div className="pl-4 border-l-2 border-warning/30 space-y-1.5">
                   {turn.toolCalls.map((tc: any, i: number) => (
-                    <div key={i} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2.5 space-y-2">
+                    <div key={i} className="rounded-md border border-warning/20 bg-warning/5 p-2.5 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Wrench className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                        <span className="text-xs font-mono text-amber-600">{tc.name}</span>
+                        <Wrench className="h-3.5 w-3.5 text-warning shrink-0" />
+                        <span className="text-xs font-input text-warning">{tc.name}</span>
                       </div>
                       <ToolDataView data={tc.arguments} label="Arguments" />
                       <ToolDataView data={tc.result} label="Result" />
@@ -323,7 +323,7 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
 
               {turn.agentTokens && (
                 <div className="text-xs text-content-tertiary">
-                  {formatDuration(turn.durationMs)} · {(turn.agentTokens.input + turn.agentTokens.output).toLocaleString()} tokens
+                  {formatDuration(turn.durationMs)} \u00b7 {(turn.agentTokens.input + turn.agentTokens.output).toLocaleString()} tokens
                 </div>
               )}
 
@@ -373,13 +373,13 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
   lines.push(`| Metric | Value |`)
   lines.push(`|--------|-------|`)
   lines.push(`| **Status** | ${run.status} |`)
-  lines.push(`| **Pass Rate** | ${run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"} |`)
-  lines.push(`| **Score** | ${run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"} |`)
-  lines.push(`| **Duration** | ${run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"} |`)
+  lines.push(`| **Pass Rate** | ${run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "\u2014"} |`)
+  lines.push(`| **Score** | ${run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "\u2014"} |`)
+  lines.push(`| **Duration** | ${run.totalDurationMs ? formatDuration(run.totalDurationMs) : "\u2014"} |`)
   if (run.totalTokens) {
     lines.push(`| **Tokens** | ${(run.totalTokens.agent + run.totalTokens.judge).toLocaleString()} (Agent: ${run.totalTokens.agent.toLocaleString()}, Judge: ${run.totalTokens.judge.toLocaleString()}) |`)
   } else {
-    lines.push(`| **Tokens** | — |`)
+    lines.push(`| **Tokens** | \u2014 |`)
   }
   if (run.totalCost && (run.totalCost.agent + run.totalCost.judge) > 0) {
     lines.push(`| **Cost** | ${formatMicrodollars(run.totalCost.agent + run.totalCost.judge)} (Agent: ${formatMicrodollars(run.totalCost.agent)}, Judge: ${formatMicrodollars(run.totalCost.judge)}) |`)
@@ -398,7 +398,7 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
   for (const result of results) {
     const evalCase = caseMap.get(result.caseId)
     const caseName = result.caseName || evalCase?.name || "Unknown Case"
-    const statusEmoji = result.status === "passed" ? "✅" : result.status === "failed" ? "❌" : result.status === "error" ? "⚠️" : "⏱️"
+    const statusEmoji = result.status === "passed" ? "\u2705" : result.status === "failed" ? "\u274c" : result.status === "error" ? "\u26a0\ufe0f" : "\u23f1\ufe0f"
 
     lines.push(`### ${statusEmoji} ${caseName}`)
     lines.push("")
@@ -451,7 +451,7 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
         lines.push("")
 
         if (turn.agentTokens) {
-          lines.push(`*${formatDuration(turn.durationMs)} · ${(turn.agentTokens.input + turn.agentTokens.output).toLocaleString()} tokens*`)
+          lines.push(`*${formatDuration(turn.durationMs)} \u00b7 ${(turn.agentTokens.input + turn.agentTokens.output).toLocaleString()} tokens*`)
           lines.push("")
         }
 
@@ -461,7 +461,7 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
           lines.push(`| Type | Passed | Score | Criteria | Reason |`)
           lines.push(`|------|--------|-------|----------|--------|`)
           for (const ar of turn.assertionResults) {
-            lines.push(`| ${ar.type} | ${ar.passed ? "✅" : "❌"} | ${ar.score !== undefined ? `${ar.score}/5` : "—"} | ${ar.criteria || "—"} | ${ar.reason || "—"} |`)
+            lines.push(`| ${ar.type} | ${ar.passed ? "\u2705" : "\u274c"} | ${ar.score !== undefined ? `${ar.score}/5` : "\u2014"} | ${ar.criteria || "\u2014"} | ${ar.reason || "\u2014"} |`)
           }
           lines.push("")
         }
@@ -474,7 +474,7 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
       lines.push(`| Type | Passed | Score | Criteria | Reason |`)
       lines.push(`|------|--------|-------|----------|--------|`)
       for (const ar of result.finalAssertionResults) {
-        lines.push(`| ${ar.type} | ${ar.passed ? "✅" : "❌"} | ${ar.score !== undefined ? `${ar.score}/5` : "—"} | ${ar.criteria || "—"} | ${ar.reason || "—"} |`)
+        lines.push(`| ${ar.type} | ${ar.passed ? "\u2705" : "\u274c"} | ${ar.score !== undefined ? `${ar.score}/5` : "\u2014"} | ${ar.criteria || "\u2014"} | ${ar.reason || "\u2014"} |`)
       }
       lines.push("")
     }
@@ -590,12 +590,12 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
         <div className="flex items-center gap-3">
           <Link
             href={`/agents/${agentId}/evals/${effectiveSuiteId}`}
-            className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors"
+            className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <ArrowLeft className="h-4 w-4 text-content-secondary" />
           </Link>
           <div>
-            <h2 className="text-xl font-semibold text-content-primary">Run Results</h2>
+            <h2 className="text-xl font-semibold font-display text-content-primary">Run Results</h2>
             <p className="text-sm text-content-secondary mt-0.5">
               {run.status === "running" && (
                 <span className="flex items-center gap-1.5">
@@ -603,7 +603,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
                   Running... {run.completedCases}/{run.totalCases} cases complete
                 </span>
               )}
-              {run.status === "completed" && `Completed · ${run.passedCases}/${run.totalCases} passed`}
+              {run.status === "completed" && `Completed \u00b7 ${run.passedCases}/${run.totalCases} passed`}
               {run.status === "failed" && "Run failed"}
               {run.status === "cancelled" && "Run cancelled"}
               {run.status === "pending" && "Pending..."}
@@ -618,25 +618,25 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
                   <button
                     onClick={handleRunFailed}
                     disabled={startingFailed}
-                    className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors ease-out-soft"
                   >
                     {startingFailed ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                     Run Failed ({errorResults.length})
                   </button>
                   <button
                     onClick={handleCopyErrors}
-                    className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors ease-out-soft"
                   >
-                    {copiedErrors ? <Check className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4" />}
+                    {copiedErrors ? <Check className="h-4 w-4 text-success" /> : <XCircle className="h-4 w-4" />}
                     {copiedErrors ? "Copied!" : "Copy Errors"}
                   </button>
                 </>
               )}
               <button
                 onClick={handleCopyMarkdown}
-                className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
+                className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
               >
-                {copied ? <Check className="h-4 w-4 text-green-500" /> : <ClipboardCopy className="h-4 w-4" />}
+                {copied ? <Check className="h-4 w-4 text-success" /> : <ClipboardCopy className="h-4 w-4" />}
                 {copied ? "Copied!" : "Copy to Markdown"}
               </button>
             </>
@@ -644,7 +644,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
           {isRunning && (
             <button
               onClick={() => cancelRun({ id: run._id })}
-              className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+              className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors ease-out-soft"
             >
               <Ban className="h-4 w-4" />
               Cancel
@@ -661,7 +661,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
           </div>
           <div className="h-1.5 rounded-full bg-background-secondary overflow-hidden">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-500 animate-pulse"
+              className="h-full rounded-full bg-primary transition-all duration-500 ease-out-soft animate-pulse"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -671,48 +671,48 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Status</div>
-          <div className="text-lg font-semibold text-content-primary capitalize mt-0.5">{run.status}</div>
+          <div className="text-lg font-semibold font-display text-content-primary capitalize mt-0.5">{run.status}</div>
         </div>
         <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Pass Rate</div>
-          <div className="text-lg font-semibold text-content-primary mt-0.5">
-            {run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"}
+          <div className="text-lg font-semibold font-display text-content-primary mt-0.5">
+            {run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "\u2014"}
           </div>
         </div>
         <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Score</div>
-          <div className="text-lg font-semibold text-content-primary mt-0.5">
-            {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"}
+          <div className="text-lg font-semibold font-display text-content-primary mt-0.5">
+            {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "\u2014"}
           </div>
         </div>
         <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Duration</div>
-          <div className="text-lg font-semibold text-content-primary mt-0.5">
-            {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"}
+          <div className="text-lg font-semibold font-display text-content-primary mt-0.5">
+            {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "\u2014"}
           </div>
         </div>
         <div className="rounded-md border bg-card p-3 min-h-[80px]">
           <div className="text-xs text-content-tertiary">Tokens</div>
-          <div className="text-lg font-semibold text-content-primary mt-0.5">
+          <div className="text-lg font-semibold font-display text-content-primary mt-0.5">
             {run.totalTokens
               ? (run.totalTokens.agent + run.totalTokens.judge).toLocaleString()
-              : "—"
+              : "\u2014"
             }
           </div>
           {run.totalTokens && (
             <div className="text-xs text-content-tertiary">
-              Agent: {run.totalTokens.agent.toLocaleString()} · Judge: {run.totalTokens.judge.toLocaleString()}
+              Agent: {run.totalTokens.agent.toLocaleString()} \u00b7 Judge: {run.totalTokens.judge.toLocaleString()}
             </div>
           )}
         </div>
         {run.totalCost && (run.totalCost.agent + run.totalCost.judge) > 0 && (
           <div className="rounded-md border bg-card p-3 min-h-[80px]">
             <div className="text-xs text-content-tertiary">Cost</div>
-            <div className="text-lg font-semibold text-content-primary mt-0.5">
+            <div className="text-lg font-semibold font-display text-content-primary mt-0.5">
               {formatMicrodollars(run.totalCost.agent + run.totalCost.judge)}
             </div>
             <div className="text-xs text-content-tertiary">
-              Agent: {formatMicrodollars(run.totalCost.agent)} · Judge: {formatMicrodollars(run.totalCost.judge)}
+              Agent: {formatMicrodollars(run.totalCost.agent)} \u00b7 Judge: {formatMicrodollars(run.totalCost.judge)}
             </div>
           </div>
         )}
@@ -727,7 +727,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ease-out-soft ${
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "bg-background-secondary text-content-secondary hover:bg-background-tertiary"

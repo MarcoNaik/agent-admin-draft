@@ -61,8 +61,8 @@ export default function StudioPage() {
       />
 
       {error && (
-        <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 

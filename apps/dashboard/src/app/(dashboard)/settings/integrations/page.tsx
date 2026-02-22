@@ -18,7 +18,7 @@ interface IntegrationCardProps {
 function IntegrationCard({ name, description, href, icon, status }: IntegrationCardProps) {
   return (
     <Link href={href}>
-      <Card className="bg-background-secondary cursor-pointer hover:bg-background-tertiary transition-colors h-full">
+      <Card className="bg-background-secondary cursor-pointer hover:bg-background-tertiary transition-colors ease-out-soft h-full">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -77,7 +77,7 @@ export default function IntegrationsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Integrations</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Integrations</h1>
           <p className="text-sm text-content-secondary">Connect external services to your platform</p>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -90,7 +90,7 @@ export default function IntegrationsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-content-primary">Integrations</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">Integrations</h1>
         <p className="text-sm text-content-secondary mt-1">Connect external services to your platform</p>
       </div>
 

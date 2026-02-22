@@ -43,16 +43,16 @@ const PROVIDERS: {
     id: "openai",
     name: "OpenAI",
     description: "GPT-4o, GPT-4o Mini, GPT-4 Turbo",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-400/10",
+    color: "text-success",
+    bgColor: "bg-success/10",
     keyPrefix: "sk-",
   },
   {
     id: "google",
     name: "Google AI",
     description: "Gemini 1.5 Pro, Gemini 1.5 Flash",
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
+    color: "text-ocean",
+    bgColor: "bg-ocean/10",
     keyPrefix: "AI",
   },
   {
@@ -90,7 +90,7 @@ function ProviderStatusBadge({
       )
     }
     return (
-      <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30">
+      <Badge className="bg-amber/20 text-amber border-amber/30">
         Unverified
       </Badge>
     )
@@ -209,7 +209,7 @@ function ProviderCard({
                 status={config?.status}
               />
               <ChevronDown
-                className={`h-4 w-4 text-content-tertiary transition-transform duration-200 ${
+                className={`h-4 w-4 text-content-tertiary transition-transform duration-200 ease-out-soft ${
                   isExpanded ? "rotate-180" : ""
                 }`}
               />
@@ -219,7 +219,7 @@ function ProviderCard({
       </button>
 
       <div
-        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+        className={`grid transition-[grid-template-rows] duration-200 ease-out-soft ${
           isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
         }`}
       >
@@ -232,7 +232,7 @@ function ProviderCard({
                 </p>
                 <div className="space-y-2">
                   <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ease-out-soft ${
                       activeMode === "platform"
                         ? "border-primary bg-primary/5"
                         : "border-border/50 hover:border-border"
@@ -265,7 +265,7 @@ function ProviderCard({
                   </label>
 
                   <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ease-out-soft ${
                       activeMode === "custom"
                         ? "border-primary bg-primary/5"
                         : "border-border/50 hover:border-border"
@@ -307,7 +307,7 @@ function ProviderCard({
                       }
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      className="bg-background-tertiary pr-10 font-mono text-sm"
+                      className="font-input bg-background-tertiary pr-10 font-mono text-sm"
                     />
                     <button
                       type="button"
@@ -380,17 +380,17 @@ function ProviderCard({
                 <div
                   className={`flex items-center gap-2 rounded-lg border p-3 ${
                     testResult.success
-                      ? "border-green-500/30 bg-green-500/5"
+                      ? "border-success/30 bg-success/5"
                       : "border-destructive/30 bg-destructive/5"
                   }`}
                 >
                   {testResult.success ? (
-                    <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+                    <CheckCircle className="h-4 w-4 shrink-0 text-success" />
                   ) : (
                     <XCircle className="h-4 w-4 shrink-0 text-destructive" />
                   )}
                   <span
-                    className={`text-sm ${testResult.success ? "text-green-500" : "text-destructive"}`}
+                    className={`text-sm ${testResult.success ? "text-success" : "text-destructive"}`}
                   >
                     {testResult.message}
                   </span>
@@ -419,7 +419,7 @@ export default function ProvidersPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">
+          <h1 className="text-xl font-display font-semibold text-content-primary">
             Providers
           </h1>
           <p className="text-sm text-content-secondary">
@@ -440,7 +440,7 @@ export default function ProvidersPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-content-primary">
+        <h1 className="text-xl font-display font-semibold text-content-primary">
           Providers
         </h1>
         <p className="text-sm text-content-secondary mt-1">

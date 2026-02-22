@@ -38,14 +38,14 @@ function formatTimestamp(timestamp: string | null | undefined): string {
 }
 
 function getEventTypeColor(eventType: string): string {
-  if (eventType.includes("created")) return "bg-green-500"
-  if (eventType.includes("updated")) return "bg-blue-500"
-  if (eventType.includes("deleted")) return "bg-red-500"
-  if (eventType.includes("completed")) return "bg-green-500"
-  if (eventType.includes("failed")) return "bg-red-500"
-  if (eventType.includes("cancelled")) return "bg-orange-500"
-  if (eventType.includes("reminder")) return "bg-purple-500"
-  return "bg-gray-500"
+  if (eventType.includes("created")) return "bg-success"
+  if (eventType.includes("updated")) return "bg-ocean"
+  if (eventType.includes("deleted")) return "bg-destructive"
+  if (eventType.includes("completed")) return "bg-success"
+  if (eventType.includes("failed")) return "bg-destructive"
+  if (eventType.includes("cancelled")) return "bg-warning"
+  if (eventType.includes("reminder")) return "bg-primary"
+  return "bg-muted-foreground"
 }
 
 function ActorIcon({ actorType }: { actorType: ActorType }) {

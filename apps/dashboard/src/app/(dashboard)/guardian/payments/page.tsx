@@ -37,7 +37,7 @@ export default function GuardianPaymentsPage() {
   if (payments === undefined) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-semibold text-content-primary mb-6">Payments</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary mb-6">Payments</h1>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
         </div>
@@ -48,14 +48,14 @@ export default function GuardianPaymentsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-content-primary">Payments</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">Payments</h1>
         <p className="text-content-secondary">View your payment history</p>
       </div>
 
       {pendingPayments.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-medium text-content-primary mb-4 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-amber-500" />
+          <h2 className="text-lg font-display font-medium text-content-primary mb-4 flex items-center gap-2">
+            <Clock className="h-5 w-5 text-amber" />
             Pending Payments
           </h2>
           <div className="space-y-3">
@@ -65,7 +65,7 @@ export default function GuardianPaymentsPage() {
               const dueDate = payment.data?.dueDate as number | undefined
 
               return (
-                <Card key={payment._id} className="border-amber-500/20 bg-amber-500/5">
+                <Card key={payment._id} className="border-amber/20 bg-amber/5">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -82,7 +82,7 @@ export default function GuardianPaymentsPage() {
                         <p className="font-semibold text-lg text-content-primary">
                           {amount ? formatCurrency(amount) : "-"}
                         </p>
-                        <Badge variant="outline" className="text-amber-600">
+                        <Badge variant="outline" className="text-amber">
                           Pending
                         </Badge>
                       </div>
@@ -96,8 +96,8 @@ export default function GuardianPaymentsPage() {
       )}
 
       <div>
-        <h2 className="text-lg font-medium text-content-primary mb-4 flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-green-500" />
+        <h2 className="text-lg font-display font-medium text-content-primary mb-4 flex items-center gap-2">
+          <CheckCircle className="h-5 w-5 text-success" />
           Payment History
         </h2>
         {completedPayments.length === 0 ? (
@@ -135,7 +135,7 @@ export default function GuardianPaymentsPage() {
                         <p className="font-semibold text-lg text-content-primary">
                           {amount ? formatCurrency(amount) : "-"}
                         </p>
-                        <Badge variant="secondary" className="text-green-600">
+                        <Badge variant="secondary" className="text-success">
                           Completed
                         </Badge>
                       </div>

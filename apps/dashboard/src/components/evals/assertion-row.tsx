@@ -45,7 +45,7 @@ export function AssertionRow({
             <select
               value={assertion.type}
               onChange={(e) => onUpdate("type", e.target.value)}
-              className="rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+              className="rounded border bg-background px-2 py-1.5 text-xs font-input focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="contains">contains</option>
               <option value="matches">matches</option>
@@ -66,7 +66,7 @@ export function AssertionRow({
           value={assertion.criteria || ""}
           onChange={(e) => onUpdate("criteria", e.target.value)}
           placeholder="Agent should acknowledge and ask for details"
-          className="flex-1 rounded border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-input focus:outline-none focus:ring-2 focus:ring-primary"
         />
       )}
 
@@ -76,7 +76,7 @@ export function AssertionRow({
           value={assertion.value || ""}
           onChange={(e) => onUpdate("value", e.target.value)}
           placeholder={assertion.type.includes("tool") ? "entity.query" : "expected text"}
-          className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-input focus:outline-none focus:ring-2 focus:ring-primary"
         />
       )}
 
@@ -88,13 +88,13 @@ export function AssertionRow({
         min={0}
         max={1}
         step={0.1}
-        className="w-16 rounded border bg-background px-2 py-1.5 text-xs font-mono text-center focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-16 rounded border bg-background px-2 py-1.5 text-xs font-input text-center focus:outline-none focus:ring-2 focus:ring-primary"
       />
 
       <button
         type="button"
         onClick={onRemove}
-        className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+        className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors ease-out-soft shrink-0"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

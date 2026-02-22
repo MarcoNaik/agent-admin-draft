@@ -160,12 +160,12 @@ export default function EditCasePage({ params }: EditCasePageProps) {
       <div className="flex items-center gap-3">
         <Link
           href={`/agents/${agentId}/evals/${suiteId}`}
-          className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors"
+          className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
         >
           <ArrowLeft className="h-4 w-4 text-content-secondary" />
         </Link>
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">Edit Test Case</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">Edit Test Case</h2>
           <p className="text-sm text-content-secondary mt-0.5">{evalCase.name}</p>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="space-y-1.5">
@@ -188,7 +188,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="happy-path, booking"
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           />
         </div>
 
@@ -209,7 +209,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
             <button
               type="button"
               onClick={addTurn}
-              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors ease-out-soft"
             >
               <Plus className="h-3 w-3" /> Add Turn
             </button>
@@ -223,7 +223,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
                   <button
                     type="button"
                     onClick={() => removeTurn(turnIdx)}
-                    className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    className="rounded p-1 text-content-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors ease-out-soft"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -235,7 +235,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
                 onChange={(e) => updateTurnMessage(turnIdx, e.target.value)}
                 placeholder="User message..."
                 rows={3}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               />
 
               <div className="space-y-2">
@@ -244,7 +244,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
                   <button
                     type="button"
                     onClick={() => addAssertion(turnIdx)}
-                    className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                    className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors ease-out-soft"
                   >
                     <Plus className="h-3 w-3" /> Add
                   </button>
@@ -269,7 +269,7 @@ export default function EditCasePage({ params }: EditCasePageProps) {
             <button
               type="button"
               onClick={addFinalAssertion}
-              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors ease-out-soft"
             >
               <Plus className="h-3 w-3" /> Add
             </button>
@@ -295,14 +295,14 @@ export default function EditCasePage({ params }: EditCasePageProps) {
           <button
             type="submit"
             disabled={!name.trim() || turns.some((t) => !t.userMessage.trim()) || saving}
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors ease-out-soft"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Changes
           </button>
           <Link
             href={`/agents/${agentId}/evals/${suiteId}`}
-            className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
+            className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             Cancel
           </Link>

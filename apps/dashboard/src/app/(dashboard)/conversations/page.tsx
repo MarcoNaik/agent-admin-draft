@@ -85,9 +85,9 @@ function MessageStatus({ status }: { status?: string }) {
     case "delivered":
       return <CheckCheck className="h-3 w-3 text-content-tertiary" />
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />
+      return <CheckCheck className="h-3 w-3 text-ocean" />
     case "failed":
-      return <X className="h-3 w-3 text-red-400" />
+      return <X className="h-3 w-3 text-destructive" />
     default:
       return null
   }
@@ -262,7 +262,7 @@ function TemplatePicker({
         )}
 
         {error && (
-          <div className="flex items-center gap-2 text-sm text-red-400 bg-red-400/10 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
@@ -278,7 +278,7 @@ function TemplatePicker({
                 key={`${template.name}-${template.language}`}
                 type="button"
                 onClick={() => dispatch({ type: "SELECT", template })}
-                className="w-full text-left p-3 rounded-lg border border-border/50 hover:bg-background-tertiary transition-colors"
+                className="w-full text-left p-3 rounded-lg border border-border/50 hover:bg-background-tertiary transition-colors ease-out-soft"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-content-primary">{template.name}</span>
@@ -312,7 +312,7 @@ function TemplatePicker({
               <Badge variant="secondary" className="text-[10px]">{selectedTemplate.language}</Badge>
             </div>
 
-            <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
+            <div className="bg-success/5 border border-success/20 rounded-lg p-3">
               <p className="text-sm text-content-primary whitespace-pre-wrap">{previewText}</p>
             </div>
 
@@ -371,7 +371,7 @@ function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
           <img
             src={entry.mediaUrl}
             alt={entry.mediaCaption ?? "Image"}
-            className="max-w-[300px] rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            className="max-w-[300px] rounded-lg cursor-pointer hover:opacity-90 transition-opacity ease-out-soft"
             onClick={() => setImageOpen(true)}
           />
           {imageOpen && (
@@ -419,7 +419,7 @@ function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
           href={entry.mediaUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 py-2 px-3 bg-black/10 rounded-lg mb-1 hover:bg-black/20 transition-colors"
+          className="flex items-center gap-2 py-2 px-3 bg-black/10 rounded-lg mb-1 hover:bg-black/20 transition-colors ease-out-soft"
         >
           <FileText className="h-4 w-4 shrink-0" />
           <span className="text-sm truncate">{entry.mediaFileName ?? "Document"}</span>
@@ -439,7 +439,7 @@ function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
         return (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {buttons.map((btn: any, i: number) => (
-              <span key={i} className="text-xs px-2.5 py-1 rounded-full border border-green-500/30 text-green-400">
+              <span key={i} className="text-xs px-2.5 py-1 rounded-full border border-success/30 text-success">
                 {btn.reply?.title ?? btn.title ?? "Button"}
               </span>
             ))}
@@ -476,13 +476,13 @@ function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
     <div className={cn("flex gap-3 max-w-3xl", isOutbound ? "ml-auto flex-row-reverse" : "")}>
       <div className={cn(
         "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-        isOutbound ? "bg-green-600 text-white" : "bg-muted"
+        isOutbound ? "bg-success text-white" : "bg-muted"
       )}>
         {isOutbound ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
       </div>
       <div className={cn(
         "rounded-lg px-4 py-2 max-w-[80%]",
-        isOutbound ? "bg-green-600/20 text-content-primary" : "bg-muted text-content-primary"
+        isOutbound ? "bg-success/10 border border-success/20 text-content-primary" : "bg-muted text-content-primary"
       )}>
         {renderMedia()}
         {entry.text && entry.type !== "audio" && (
@@ -615,7 +615,7 @@ function MediaAttachmentInput({
           <button
             type="button"
             onClick={() => handleFileSelect("image/*", "image")}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-background-tertiary transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <ImageIcon className="h-4 w-4" />
             Image
@@ -623,7 +623,7 @@ function MediaAttachmentInput({
           <button
             type="button"
             onClick={() => handleFileSelect("audio/*", "audio")}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-background-tertiary transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <Mic className="h-4 w-4" />
             Audio
@@ -713,7 +713,7 @@ function ButtonComposer({
               maxLength={20}
             />
             {buttons.length > 1 && (
-              <button type="button" onClick={() => removeButton(i)} className="text-content-tertiary hover:text-red-400">
+              <button type="button" onClick={() => removeButton(i)} className="text-content-tertiary hover:text-destructive">
                 <Minus className="h-4 w-4" />
               </button>
             )}
@@ -843,12 +843,12 @@ function ThreadView({
           className={cn(
             "h-10 w-10 rounded-full flex items-center justify-center",
             isWhatsAppThread
-              ? "bg-green-500/10"
+              ? "bg-success/10"
               : "bg-muted"
           )}
         >
           {isWhatsAppThread ? (
-            <Phone className="h-5 w-5 text-green-500" />
+            <Phone className="h-5 w-5 text-success" />
           ) : (
             <User className="h-5 w-5 text-content-secondary" />
           )}
@@ -987,7 +987,7 @@ function ThreadView({
       </div>
 
       {sendError && (
-        <div className="px-4 py-2 flex items-center gap-2 text-sm text-amber-400 bg-amber-400/10 border-t border-amber-400/20">
+        <div className="px-4 py-2 flex items-center gap-2 text-sm text-warning bg-warning/10 border-t border-warning/20">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {sendError}
         </div>
@@ -996,7 +996,7 @@ function ThreadView({
       <div className="border-t p-3 shrink-0 bg-background-secondary space-y-2">
         {isWhatsAppThread && (
           <div className="flex items-center justify-between">
-            <p className="text-xs text-green-500 flex items-center gap-1">
+            <p className="text-xs text-success flex items-center gap-1">
               <Phone className="h-3 w-3" />
               {isWithinWindow
                 ? "Reply will be sent via WhatsApp"
@@ -1127,7 +1127,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100dvh-49px)]">
-      <aside className="w-80 border-r bg-background-secondary flex flex-col shrink-0">
+      <aside className="w-80 border-r bg-background-secondary backdrop-blur-sm flex flex-col shrink-0">
         <div className="p-3 border-b space-y-2">
           <Select value={agentFilter} onValueChange={setAgentFilter}>
             <SelectTrigger className="w-full h-9 text-sm">
@@ -1184,7 +1184,7 @@ export default function ChatPage() {
                     type="button"
                     onClick={() => setSelectedThreadId(thread._id)}
                     className={cn(
-                      "w-full text-left px-3 py-3 border-b border-border/50 transition-colors",
+                      "w-full text-left px-3 py-3 border-b border-border/50 transition-colors ease-out-soft",
                       selectedThreadId === thread._id
                         ? "bg-primary/10"
                         : "hover:bg-background-tertiary"
@@ -1195,12 +1195,12 @@ export default function ChatPage() {
                         className={cn(
                           "h-9 w-9 rounded-full flex items-center justify-center shrink-0 mt-0.5",
                           thread.participantType === "whatsapp"
-                            ? "bg-green-500/10"
+                            ? "bg-success/10"
                             : "bg-muted"
                         )}
                       >
                         {thread.participantType === "whatsapp" ? (
-                          <Phone className="h-4 w-4 text-green-500" />
+                          <Phone className="h-4 w-4 text-success" />
                         ) : (
                           <User className="h-4 w-4 text-content-secondary" />
                         )}
@@ -1252,7 +1252,7 @@ export default function ChatPage() {
         {!selectedThreadId ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <MessageSquare className="h-16 w-16 text-content-tertiary mb-4" />
-            <h2 className="text-lg font-medium text-content-primary mb-2">
+            <h2 className="text-lg font-medium font-display text-content-primary mb-2">
               Select a conversation
             </h2>
             <p className="text-sm text-content-secondary max-w-md">

@@ -22,7 +22,7 @@ export default function TeacherStudentsPage() {
   if (students === undefined) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-semibold text-content-primary mb-6">My Students</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary mb-6">My Students</h1>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
         </div>
@@ -33,7 +33,7 @@ export default function TeacherStudentsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-content-primary">My Students</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">My Students</h1>
         <p className="text-content-secondary">Students assigned to you</p>
       </div>
 
@@ -59,7 +59,7 @@ export default function TeacherStudentsPage() {
             return (
               <Card
                 key={student._id}
-                className="cursor-pointer hover:bg-background-tertiary transition-colors"
+                className="cursor-pointer hover:bg-background-tertiary transition-colors ease-out-soft"
                 onClick={() => router.push(`/entities/student/${student._id}`)}
               >
                 <CardContent className="p-4">

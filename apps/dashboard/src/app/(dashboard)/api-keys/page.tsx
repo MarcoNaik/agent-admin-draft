@@ -17,7 +17,7 @@ export default function ApiKeysPage() {
       <div className="mx-auto max-w-5xl space-y-8 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-content-primary">API Keys</h1>
+            <h1 className="text-xl font-display font-semibold text-content-primary">API Keys</h1>
             <p className="text-content-secondary">Manage access to your agents</p>
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function ApiKeysPage() {
               {apiKeys.map((key: Doc<"apiKeys">) => (
                 <div
                   key={key._id}
-                  className="flex items-center justify-between rounded-lg border bg-background-tertiary p-4 hover:border-border-selected"
+                  className="flex items-center justify-between rounded-lg border bg-background-tertiary p-4 hover:border-border-selected transition-colors ease-out-soft"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">

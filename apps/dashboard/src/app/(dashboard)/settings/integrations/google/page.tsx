@@ -49,11 +49,11 @@ export default function GoogleCalendarSettingsPage() {
       </Button>
 
       <div className="flex items-start gap-4 mb-6">
-        <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-          <Calendar className="h-6 w-6 text-blue-500" />
+        <div className="h-12 w-12 rounded-lg bg-ocean/10 flex items-center justify-center">
+          <Calendar className="h-6 w-6 text-ocean" />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-semibold text-content-primary">Google Calendar</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Google Calendar</h1>
           <p className="text-content-secondary mt-1">
             Connect Google Calendar to sync events and check availability
           </p>

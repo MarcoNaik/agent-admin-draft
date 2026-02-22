@@ -22,7 +22,7 @@ export default function DangerZonePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-destructive">Danger Zone</h1>
+        <h1 className="text-xl font-display font-semibold text-destructive">Danger Zone</h1>
         <p className="text-sm text-content-secondary">Irreversible and destructive actions</p>
       </div>
 
@@ -57,7 +57,7 @@ export default function DangerZonePage() {
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={orgName}
-              className="max-w-sm"
+              className="font-input max-w-sm"
             />
           </div>
 

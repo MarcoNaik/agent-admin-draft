@@ -44,7 +44,7 @@ export default function DashboardError({
 
         {permissionError ? (
           <>
-            <h2 className="mb-2 text-lg font-semibold text-content-primary">
+            <h2 className="mb-2 text-lg font-display font-semibold text-content-primary">
               Access Denied
             </h2>
             <p className="mb-6 text-sm text-content-secondary">
@@ -64,7 +64,7 @@ export default function DashboardError({
           </>
         ) : (
           <>
-            <h2 className="mb-2 text-lg font-semibold text-content-primary">
+            <h2 className="mb-2 text-lg font-display font-semibold text-content-primary">
               Something went wrong
             </h2>
             <p className="mb-6 text-sm text-content-secondary">

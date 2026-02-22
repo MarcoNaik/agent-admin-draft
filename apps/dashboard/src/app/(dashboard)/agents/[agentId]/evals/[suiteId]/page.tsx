@@ -164,12 +164,12 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
         <div className="flex items-center gap-3">
           <Link
             href={`/agents/${agentId}/evals`}
-            className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors"
+            className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <ArrowLeft className="h-4 w-4 text-content-secondary" />
           </Link>
           <div>
-            <h2 className="text-xl font-semibold text-content-primary">{suite.name}</h2>
+            <h2 className="text-xl font-semibold font-display text-content-primary">{suite.name}</h2>
             {suite.description && (
               <p className="text-sm text-content-secondary mt-0.5">{suite.description}</p>
             )}
@@ -186,20 +186,20 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
               <span className="text-sm text-content-secondary">{selectedCases.size} selected</span>
               <button
                 onClick={toggleAll}
-                className="text-xs text-primary hover:text-primary/80 transition-colors"
+                className="text-xs text-primary hover:text-primary/80 transition-colors ease-out-soft"
               >
                 {allSelected ? "Deselect All" : "Select All"}
               </button>
               <button
                 onClick={() => setSelectedCases(new Set())}
-                className="rounded-md border p-1.5 text-content-tertiary hover:bg-background-tertiary transition-colors"
+                className="rounded-md border p-1.5 text-content-tertiary hover:bg-background-tertiary transition-colors ease-out-soft"
               >
                 <X className="h-4 w-4" />
               </button>
               <button
                 onClick={handleRunSelected}
                 disabled={starting}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors ease-out-soft"
               >
                 {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 Run Selected ({selectedCases.size})
@@ -209,7 +209,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
             <button
               onClick={handleRun}
               disabled={starting || cases.length === 0}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors ease-out-soft"
             >
               {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               Run Suite
@@ -217,7 +217,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="rounded-md border px-2 py-2 text-content-secondary hover:bg-background-tertiary transition-colors">
+              <button className="rounded-md border px-2 py-2 text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft">
                 <MoreVertical className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
@@ -248,7 +248,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
           </TabsList>
           <Link
             href={`/agents/${agentId}/evals/${suiteId}/cases/new`}
-            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors"
+            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <Plus className="h-3 w-3" />
             Add Case
@@ -279,7 +279,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                       href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
                       className="flex items-center gap-3 min-w-0 flex-1"
                     >
-                      <span className="text-xs text-content-tertiary font-mono w-5">{idx + 1}</span>
+                      <span className="text-xs text-content-tertiary font-input w-5">{idx + 1}</span>
                       <div className="min-w-0">
                         <span className="text-sm text-content-primary">{c.name}</span>
                         <span className="text-xs text-content-tertiary ml-2">{c.turns.length} turn{c.turns.length !== 1 ? "s" : ""}</span>
@@ -296,7 +296,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                   <div className="flex items-center gap-1 shrink-0">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="rounded p-1.5 text-content-tertiary hover:bg-background-tertiary transition-colors">
+                        <button className="rounded p-1.5 text-content-tertiary hover:bg-background-tertiary transition-colors ease-out-soft">
                           <MoreVertical className="h-3.5 w-3.5" />
                         </button>
                       </DropdownMenuTrigger>
@@ -350,13 +350,13 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                   </thead>
                   <tbody>
                     {runs.slice(runPage * runsPerPage, (runPage + 1) * runsPerPage).map((run: any) => {
-                      const passRate = run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "—"
+                      const passRate = run.totalCases > 0 ? `${run.passedCases}/${run.totalCases}` : "\u2014"
 
                       return (
                         <tr
                           key={run._id}
                           onClick={() => router.push(`/agents/${agentId}/evals/${suiteId}/runs/${run._id}`)}
-                          className="border-b hover:bg-background-secondary transition-colors cursor-pointer"
+                          className="border-b hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer"
                         >
                           <td className="px-4 py-3">
                             <RunStatusBadge status={run.status} />
@@ -364,14 +364,14 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                           <td className="px-4 py-3 text-sm text-content-secondary">
                             {run.startedAt ? formatTime(run.startedAt) : formatTime(run.createdAt)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
+                          <td className="px-4 py-3 text-sm text-content-secondary text-right font-input">
                             {passRate}
                           </td>
-                          <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
-                            {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "—"}
+                          <td className="px-4 py-3 text-sm text-content-secondary text-right font-input">
+                            {run.overallScore !== undefined ? `${(run.overallScore / 5 * 100).toFixed(0)}%` : "\u2014"}
                           </td>
-                          <td className="px-4 py-3 text-sm text-content-secondary text-right font-mono">
-                            {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "—"}
+                          <td className="px-4 py-3 text-sm text-content-secondary text-right font-input">
+                            {run.totalDurationMs ? formatDuration(run.totalDurationMs) : "\u2014"}
                           </td>
                           <td className="px-4 py-3">
                             <ChevronRight className="h-4 w-4 text-content-tertiary" />
@@ -385,20 +385,20 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
               {runs.length > runsPerPage && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-content-tertiary">
-                    {runPage * runsPerPage + 1}–{Math.min((runPage + 1) * runsPerPage, runs.length)} of {runs.length}
+                    {runPage * runsPerPage + 1}\u2013{Math.min((runPage + 1) * runsPerPage, runs.length)} of {runs.length}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setRunPage((p) => p - 1)}
                       disabled={runPage === 0}
-                      className="rounded-md border p-1.5 text-content-secondary hover:bg-background-tertiary disabled:opacity-30 transition-colors"
+                      className="rounded-md border p-1.5 text-content-secondary hover:bg-background-tertiary disabled:opacity-30 transition-colors ease-out-soft"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setRunPage((p) => p + 1)}
                       disabled={(runPage + 1) * runsPerPage >= runs.length}
-                      className="rounded-md border p-1.5 text-content-secondary hover:bg-background-tertiary disabled:opacity-30 transition-colors"
+                      className="rounded-md border p-1.5 text-content-secondary hover:bg-background-tertiary disabled:opacity-30 transition-colors ease-out-soft"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>

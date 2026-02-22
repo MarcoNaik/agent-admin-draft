@@ -42,7 +42,7 @@ export default function UsagePage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-lg font-semibold text-content-primary">Usage</h1>
+          <h1 className="text-lg font-display font-semibold text-content-primary">Usage</h1>
           <p className="text-sm text-content-secondary">Token consumption, execution stats, and eval usage</p>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -59,7 +59,7 @@ export default function UsagePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-content-primary">Usage</h1>
+        <h1 className="text-lg font-display font-semibold text-content-primary">Usage</h1>
         <p className="text-sm text-content-secondary">Token consumption, execution stats, and eval usage</p>
       </div>
 
@@ -272,10 +272,10 @@ export default function UsagePage() {
                   <span
                     className={`h-2 w-2 rounded-full shrink-0 ${
                       exec.status === "success"
-                        ? "bg-emerald-500"
+                        ? "bg-success"
                         : exec.status === "error"
                           ? "bg-destructive"
-                          : "bg-amber-500"
+                          : "bg-warning"
                     }`}
                   />
                   <span className="text-sm text-content-primary truncate flex-1">

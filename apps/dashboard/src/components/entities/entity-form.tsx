@@ -91,7 +91,7 @@ function UserPickerField({
   const users = useUsers()
 
   if (users === undefined) {
-    return <Input type="text" value="" disabled placeholder="Loading users..." />
+    return <Input type="text" value="" disabled placeholder="Loading users..." className="font-input" />
   }
 
   return (
@@ -173,6 +173,7 @@ function FieldInput({
           value={value as number ?? ""}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
           placeholder={field.description || `Enter ${formatFieldName(field.name)}`}
+          className="font-input"
         />
       )
 
@@ -182,6 +183,7 @@ function FieldInput({
           type="date"
           value={value ? String(value).split("T")[0] : ""}
           onChange={(e) => onChange(e.target.value || null)}
+          className="font-input"
         />
       )
 
@@ -191,6 +193,7 @@ function FieldInput({
           type="datetime-local"
           value={value ? String(value).slice(0, 16) : ""}
           onChange={(e) => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
+          className="font-input"
         />
       )
 
@@ -201,6 +204,7 @@ function FieldInput({
           value={value as string ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
           placeholder={field.description || "email@example.com"}
+          className="font-input"
         />
       )
 
@@ -211,6 +215,7 @@ function FieldInput({
           value={value as string ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
           placeholder={field.description || "+1 (555) 123-4567"}
+          className="font-input"
         />
       )
 
@@ -226,7 +231,7 @@ function FieldInput({
             }
           }}
           placeholder="{}"
-          className="font-mono text-sm"
+          className="font-mono font-input text-sm"
           rows={4}
         />
       )
@@ -239,6 +244,7 @@ function FieldInput({
           value={value as string ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
           placeholder={field.description || `Enter ${formatFieldName(field.name)}`}
+          className="font-input"
         />
       )
   }

@@ -5,7 +5,7 @@ export default function AgentFilesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Files</h2>
+        <h2 className="text-2xl font-bold font-display">Files</h2>
         <p className="text-muted-foreground">View your agent&apos;s file storage</p>
       </div>
 

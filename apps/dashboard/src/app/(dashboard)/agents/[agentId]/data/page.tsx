@@ -5,7 +5,7 @@ export default function AgentDataPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Data</h2>
+        <h2 className="text-2xl font-bold font-display">Data</h2>
         <p className="text-muted-foreground">View and manage your agent&apos;s data</p>
       </div>
 

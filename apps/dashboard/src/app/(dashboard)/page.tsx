@@ -37,7 +37,7 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="flex items-center justify-between rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3 hover:bg-background-secondary/80 hover:border-border/50 transition-colors"
+      className="flex items-center justify-between rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft backdrop-blur-sm"
     >
       <div className="flex items-center gap-3">
         <Icon className="h-4 w-4 text-content-tertiary" />
@@ -57,7 +57,7 @@ function AgentRow({ agent }: { agent: Doc<"agents"> }) {
   return (
     <Link
       href={`/agents/${agent._id}`}
-      className="flex items-center gap-3 rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3 hover:bg-background-secondary/80 hover:border-border/50 transition-colors"
+      className="flex items-center gap-3 rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
     >
       <Bot className="h-4 w-4 text-content-tertiary shrink-0" />
       <div className="flex-1 min-w-0">
@@ -67,7 +67,7 @@ function AgentRow({ agent }: { agent: Doc<"agents"> }) {
         )}
       </div>
       {agent.status === "active" && (
-        <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+        <span className="h-2 w-2 rounded-full bg-success shrink-0" />
       )}
       <ChevronRight className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
     </Link>
@@ -93,7 +93,7 @@ function HomeContent() {
   return (
     <div className="mx-auto w-full max-w-2xl p-6 space-y-8">
       <section className="space-y-2">
-        <h2 className="text-xs font-medium text-content-tertiary uppercase tracking-wider">Agents</h2>
+        <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Agents</h2>
         <div className="space-y-1.5">
           {agents.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/30 py-8 text-center">
@@ -109,7 +109,7 @@ function HomeContent() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xs font-medium text-content-tertiary uppercase tracking-wider">Overview</h2>
+        <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Overview</h2>
         <div className="space-y-1.5">
           <StatCard label="Conversations" value={threads?.length} icon={MessageSquare} href="/conversations" />
           <StatCard label="Entity Types" value={entityTypes?.length} icon={Database} href="/entities" />

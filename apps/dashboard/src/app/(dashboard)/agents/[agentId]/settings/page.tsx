@@ -27,7 +27,7 @@ function CopyButton({ text }: { text: string }) {
   }
 
   return (
-    <button onClick={copy} className="p-1 rounded hover:bg-background-tertiary transition-colors">
+    <button onClick={copy} className="p-1 rounded hover:bg-background-tertiary transition-colors ease-out-soft">
       {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-content-tertiary" />}
     </button>
   )
@@ -124,7 +124,7 @@ function ApiKeysTab({ environment, apiKeys }: { environment: "production" | "dev
       </CardHeader>
       <CardContent className="space-y-4">
         {showCreateForm && (
-          <div className="flex items-end gap-3 rounded-md border p-4 bg-background-secondary">
+          <div className="flex items-end gap-3 rounded-lg border p-4 bg-background-secondary">
             <div className="flex-1 space-y-2">
               <Label htmlFor="key-name">Key Name</Label>
               <Input
@@ -142,7 +142,7 @@ function ApiKeysTab({ environment, apiKeys }: { environment: "production" | "dev
         )}
 
         {createdKey && (
-          <div className="rounded-md border border-success/50 bg-success/10 p-4">
+          <div className="rounded-lg border border-success/50 bg-success/10 p-4">
             <p className="text-sm font-medium text-success mb-2">Key created. Copy it now — it won&apos;t be shown again.</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 rounded bg-background-tertiary px-3 py-2 text-sm font-mono text-content-primary break-all">
@@ -275,7 +275,7 @@ export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold">Settings</h2>
+        <h2 className="text-2xl font-bold font-display">Settings</h2>
         <p className="text-muted-foreground">Manage your agent configuration</p>
       </div>
 

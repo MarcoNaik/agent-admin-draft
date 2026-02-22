@@ -144,7 +144,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2 text-xs transition-all ease-out-soft"
               onClick={handleNewChat}
             >
               New
@@ -153,7 +153,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 transition-all ease-out-soft"
             onClick={onClose}
           >
             <PanelRightClose className="h-4 w-4" />
@@ -187,7 +187,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
                 className={cn(
                   "h-6 w-6 rounded-full flex items-center justify-center shrink-0",
                   message.role === "user"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-ocean text-white"
                     : "bg-background-tertiary"
                 )}
               >
@@ -201,7 +201,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
                 className={cn(
                   "rounded-lg px-2.5 py-1.5 max-w-[85%]",
                   message.role === "user"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-ocean text-white"
                     : "bg-background-tertiary text-content-primary"
                 )}
               >
@@ -242,13 +242,13 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              className="min-h-[36px] max-h-[100px] pr-8 resize-none text-xs py-2"
+              className="min-h-[36px] max-h-[100px] pr-8 resize-none text-xs py-2 font-input"
               disabled={isLoading}
             />
             <Button
               type="submit"
               size="icon"
-              className="absolute right-1 bottom-1 h-6 w-6"
+              className="absolute right-1 bottom-1 h-6 w-6 bg-ocean text-white hover:bg-ocean-light transition-all ease-out-soft"
               disabled={!input.trim() || isLoading}
             >
               {isLoading ? (

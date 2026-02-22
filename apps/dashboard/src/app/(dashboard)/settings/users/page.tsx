@@ -202,7 +202,7 @@ export default function UsersPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-content-primary">Users</h1>
+            <h1 className="text-xl font-display font-semibold text-content-primary">Users</h1>
             <p className="text-sm text-content-secondary">Manage team members and their roles</p>
           </div>
           <Button onClick={() => setInviteOpen(true)}>
@@ -224,7 +224,7 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Users</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Users</h1>
           <p className="text-sm text-content-secondary">Manage team members and their roles</p>
         </div>
         <Button onClick={() => setInviteOpen(true)}>

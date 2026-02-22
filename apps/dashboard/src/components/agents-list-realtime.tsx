@@ -35,7 +35,7 @@ export function AgentsListRealtime() {
   if (agents === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
       </div>
     )
   }
@@ -48,7 +48,7 @@ export function AgentsListRealtime() {
           value={newAgentName}
           onChange={(e) => setNewAgentName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          className="max-w-xs"
+          className="max-w-xs font-input"
         />
         <Button onClick={handleCreate} disabled={isCreating || !newAgentName.trim()}>
           {isCreating ? (
@@ -63,8 +63,8 @@ export function AgentsListRealtime() {
       {agents.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <Bot className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No agents yet. Create your first agent above.</p>
+            <Bot className="mx-auto h-12 w-12 text-content-tertiary mb-4" />
+            <p className="text-content-tertiary">No agents yet. Create your first agent above.</p>
           </CardContent>
         </Card>
       ) : (
@@ -77,10 +77,10 @@ export function AgentsListRealtime() {
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       agent.status === "active"
-                        ? "bg-green-500/10 text-green-500"
+                        ? "bg-success/10 text-success"
                         : agent.status === "paused"
-                        ? "bg-yellow-500/10 text-yellow-500"
-                        : "bg-red-500/10 text-red-500"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-destructive/10 text-destructive"
                     }`}
                   >
                     {agent.status}
@@ -88,7 +88,7 @@ export function AgentsListRealtime() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                <p className="text-sm text-content-tertiary mb-4 line-clamp-2">
                   {agent.description || "No description"}
                 </p>
                 <div className="flex items-center justify-between">
@@ -107,7 +107,7 @@ export function AgentsListRealtime() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="mt-2 text-xs text-muted-foreground">
+                <div className="mt-2 text-xs text-content-tertiary">
                   Slug: {agent.slug}
                 </div>
               </CardContent>

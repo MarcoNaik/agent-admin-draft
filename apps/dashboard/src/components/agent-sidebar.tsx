@@ -52,10 +52,10 @@ export function AgentSidebar({ agentId, chatOpen, onChatToggle }: AgentSidebarPr
               key={item.label}
               href={fullPath}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors ease-out-soft",
                 isActive
-                  ? "bg-primary text-primary-foreground font-medium"
-                  : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
+                  ? "bg-ocean/10 text-ocean border-l-2 border-ocean font-medium"
+                  : "text-content-secondary hover:bg-ocean-light hover:text-content-primary"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -69,10 +69,10 @@ export function AgentSidebar({ agentId, chatOpen, onChatToggle }: AgentSidebarPr
           <button
             onClick={onChatToggle}
             className={cn(
-              "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer",
+              "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors ease-out-soft cursor-pointer",
               chatOpen
-                ? "bg-primary text-primary-foreground font-medium"
-                : "text-content-secondary hover:bg-background-tertiary hover:text-content-primary"
+                ? "bg-ocean/10 text-ocean border-l-2 border-ocean font-medium"
+                : "text-content-secondary hover:bg-ocean-light hover:text-content-primary"
             )}
           >
             <MessageSquare className="h-4 w-4" />

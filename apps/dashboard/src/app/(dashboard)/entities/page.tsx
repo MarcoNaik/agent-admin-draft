@@ -15,7 +15,7 @@ export default function EntitiesPage() {
       <div className="rounded-full bg-primary/10 p-4 mb-4">
         <Database className="h-8 w-8 text-primary" />
       </div>
-      <h2 className="text-xl font-semibold text-content-primary mb-2">
+      <h2 className="text-xl font-semibold font-display text-content-primary mb-2">
         Entity Browser
       </h2>
       <p className="text-content-secondary max-w-md mb-6">

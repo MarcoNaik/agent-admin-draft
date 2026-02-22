@@ -472,7 +472,7 @@ function TriggerExpandedDetail({ trigger }: { trigger: Trigger }) {
             {trigger.schedule && (
               <>
                 <ArrowRight className="h-3 w-3 text-content-tertiary/40" />
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border border-blue-500/20 bg-blue-500/12 text-blue-400">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border border-ocean/20 bg-ocean/12 text-ocean">
                   scheduled
                 </Badge>
               </>
@@ -553,7 +553,7 @@ function TriggerRow({
               </Badge>
             )}
             {trigger.schedule && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border-blue-500/20 text-blue-400">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border-ocean/20 text-ocean">
                 scheduled
               </Badge>
             )}
@@ -643,15 +643,15 @@ function StatsBar({ triggers }: { triggers: Trigger[] }) {
 function getRunStatusIcon(status: RunStatus) {
   switch (status) {
     case "pending":
-      return <Clock className="h-4 w-4 text-yellow-500" />
+      return <Clock className="h-4 w-4 text-warning" />
     case "running":
-      return <Play className="h-4 w-4 text-blue-500" />
+      return <Play className="h-4 w-4 text-ocean" />
     case "completed":
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />
+      return <CheckCircle2 className="h-4 w-4 text-success" />
     case "failed":
-      return <XCircle className="h-4 w-4 text-red-500" />
+      return <XCircle className="h-4 w-4 text-destructive" />
     case "dead":
-      return <Skull className="h-4 w-4 text-gray-500" />
+      return <Skull className="h-4 w-4 text-muted-foreground" />
   }
 }
 
@@ -706,7 +706,7 @@ function ScheduledRunsTab() {
       <div className="grid gap-3 grid-cols-5">
         {(["pending", "running", "completed", "failed", "dead"] as const).map((status) => {
           const icons = { pending: Clock, running: Play, completed: CheckCircle2, failed: XCircle, dead: Skull }
-          const colors = { pending: "text-yellow-500 bg-yellow-500/10", running: "text-blue-500 bg-blue-500/10", completed: "text-green-500 bg-green-500/10", failed: "text-red-500 bg-red-500/10", dead: "text-gray-500 bg-gray-500/10" }
+          const colors = { pending: "text-warning bg-warning/10", running: "text-ocean bg-ocean/10", completed: "text-success bg-success/10", failed: "text-destructive bg-destructive/10", dead: "text-muted-foreground bg-muted/10" }
           const Icon = icons[status]
           const color = colors[status]
           return (
@@ -826,7 +826,7 @@ function TriggersPageContent() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Triggers</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Triggers</h1>
           <p className="text-sm text-content-secondary mt-1">
             Automated actions on entity changes
           </p>
@@ -857,7 +857,7 @@ function TriggersPageContent() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Triggers</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Triggers</h1>
           <p className="text-sm text-content-secondary mt-1">
             Automated actions on entity changes
           </p>
@@ -953,7 +953,7 @@ function TriggersListContent({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter triggers..."
-              className="h-8 bg-background-secondary/50 border-border/30 pl-9 text-xs placeholder:text-content-tertiary"
+              className="h-8 font-input bg-background-secondary/50 border-border/30 pl-9 text-xs placeholder:text-content-tertiary"
             />
           </div>
           <StatsBar triggers={triggers} />

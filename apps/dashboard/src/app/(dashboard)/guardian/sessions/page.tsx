@@ -101,7 +101,7 @@ export default function GuardianSessionsPage() {
   if (sessions === undefined) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-semibold text-content-primary mb-6">Upcoming Sessions</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary mb-6">Upcoming Sessions</h1>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
         </div>
@@ -112,7 +112,7 @@ export default function GuardianSessionsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-content-primary">Upcoming Sessions</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">Upcoming Sessions</h1>
         <p className="text-content-secondary">View your children's scheduled tutoring sessions</p>
       </div>
 

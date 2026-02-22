@@ -55,7 +55,7 @@ export function AgentSwitcher() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center h-8 px-2 gap-1.5 select-none text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors"
+          className="flex items-center h-8 px-2 gap-1.5 select-none text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors ease-out-soft"
         >
           <Bot className="h-4 w-4 text-content-tertiary" />
           <span className="font-medium text-sm">{agent ? agent.name : "Agents"}</span>
@@ -76,7 +76,7 @@ export function AgentSwitcher() {
                 placeholder="Search agents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-8 bg-background-tertiary border-border/50 text-sm"
+                className="pl-8 h-8 bg-background-tertiary border-border/50 text-sm font-input"
               />
             </div>
           </div>
@@ -98,7 +98,7 @@ export function AgentSwitcher() {
                     key={a._id}
                     type="button"
                     onClick={() => handleAgentSelect(a._id)}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors cursor-pointer text-left ${isCurrent ? "bg-background-tertiary" : "hover:bg-background-tertiary"}`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ease-out-soft cursor-pointer text-left ${isCurrent ? "bg-background-tertiary" : "hover:bg-background-tertiary"}`}
                   >
                     <Bot className="h-4 w-4 text-content-tertiary shrink-0" />
                     <span className="text-sm text-content-primary truncate flex-1">
@@ -108,7 +108,7 @@ export function AgentSwitcher() {
                       <Check className="h-4 w-4 text-primary shrink-0" />
                     )}
                     {!isCurrent && a.status === "active" && (
-                      <span className="ml-auto h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                      <span className="ml-auto h-2 w-2 rounded-full bg-success shrink-0" />
                     )}
                   </button>
                 )
@@ -120,7 +120,7 @@ export function AgentSwitcher() {
             <button
               type="button"
               onClick={handleCreateAgent}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors cursor-pointer text-primary"
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors ease-out-soft cursor-pointer text-primary"
             >
               <Plus className="h-4 w-4" />
               <span className="text-sm">Create Agent</span>

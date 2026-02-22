@@ -86,7 +86,7 @@ export default function NewAgentPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-xl font-semibold">Create Agent</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">Create Agent</h1>
       </div>
 
       <Card className="max-w-xl">
@@ -103,6 +103,7 @@ export default function NewAgentPage() {
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 disabled={isSubmitting}
+                className="font-input"
               />
             </div>
 
@@ -114,6 +115,7 @@ export default function NewAgentPage() {
                 value={slug}
                 onChange={(e) => handleSlugChange(e.target.value)}
                 disabled={isSubmitting}
+                className="font-input"
               />
               <p className="text-xs text-content-secondary">
                 Used in URLs and CLI configuration
@@ -129,6 +131,7 @@ export default function NewAgentPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isSubmitting}
                 rows={3}
+                className="font-input"
               />
             </div>
 

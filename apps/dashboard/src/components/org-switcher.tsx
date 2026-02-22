@@ -41,7 +41,6 @@ function OrgAvatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" }) 
       <span className="pointer-events-none absolute inset-0 z-10 h-full w-full rounded-full bg-black/30 dark:bg-black/15" />
       <span
         className="relative z-20 font-medium text-white leading-none"
-        style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}
       >
         {initials}
       </span>
@@ -82,7 +81,7 @@ export function OrgSwitcher() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex items-center h-8 px-2 gap-1.5 select-none text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors"
+            className="flex items-center h-8 px-2 gap-1.5 select-none text-content-primary hover:bg-background-tertiary rounded-md cursor-pointer transition-colors ease-out-soft"
           >
             <OrgAvatar name={orgName} />
             <span className="font-medium text-sm">{isLoaded ? orgName : "..."}</span>
@@ -106,7 +105,7 @@ export function OrgSwitcher() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-colors cursor-pointer bg-background-tertiary"
+                className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-colors ease-out-soft cursor-pointer bg-background-tertiary"
               >
                 <OrgAvatar name={orgName} />
                 <span className="text-sm text-content-primary truncate flex-1 text-left">
@@ -121,7 +120,7 @@ export function OrgSwitcher() {
                     key={membership.id}
                     type="button"
                     onClick={() => handleOrgSelect(membership.organization.id)}
-                    className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-colors cursor-pointer hover:bg-background-tertiary"
+                    className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-colors ease-out-soft cursor-pointer hover:bg-background-tertiary"
                   >
                     <OrgAvatar name={membership.organization.name} />
                     <span className="text-sm text-content-primary truncate flex-1 text-left">
@@ -135,7 +134,7 @@ export function OrgSwitcher() {
               <button
                 type="button"
                 onClick={() => setCreateOrgOpen(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors cursor-pointer text-primary"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-background-tertiary transition-colors ease-out-soft cursor-pointer text-primary"
               >
                 <Plus className="h-4 w-4" />
                 <span className="text-sm">Create Organization</span>

@@ -23,12 +23,12 @@ interface StudioSessionControlsProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  provisioning: "bg-yellow-500",
-  ready: "bg-green-500",
-  active: "bg-green-500",
-  idle: "bg-orange-500",
-  stopped: "bg-neutral-500",
-  error: "bg-red-500",
+  provisioning: "bg-warning",
+  ready: "bg-success",
+  active: "bg-success",
+  idle: "bg-warning",
+  stopped: "bg-muted-foreground",
+  error: "bg-destructive",
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -73,7 +73,7 @@ export function StudioSessionControls({
 
       {status && (
         <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${STATUS_COLORS[status] ?? "bg-neutral-500"}`} />
+          <span className={`h-2 w-2 rounded-full ${STATUS_COLORS[status] ?? "bg-muted-foreground"}`} />
           <span className="text-xs text-content-secondary">
             {STATUS_LABELS[status] ?? status}
           </span>

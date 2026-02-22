@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge"
 export const statusConfig = {
   pending: { icon: Clock, color: "text-content-tertiary", badge: "outline" as const },
   running: { icon: Loader2, color: "text-primary", badge: "default" as const },
-  completed: { icon: CheckCircle2, color: "text-green-500", badge: "success" as const },
-  failed: { icon: XCircle, color: "text-red-500", badge: "destructive" as const },
+  completed: { icon: CheckCircle2, color: "text-success", badge: "success" as const },
+  failed: { icon: XCircle, color: "text-destructive", badge: "destructive" as const },
   cancelled: { icon: Ban, color: "text-content-tertiary", badge: "secondary" as const },
 }
 

@@ -76,7 +76,7 @@ export function AgentsList({ agents }: AgentsListProps) {
   return (
     <div className="w-full p-6">
       <div className="mb-4 flex w-full flex-col flex-wrap gap-4 sm:flex-row sm:items-center">
-        <h3 className="text-xl font-semibold">Agents</h3>
+        <h3 className="text-xl font-display font-semibold text-content-primary">Agents</h3>
         <div className="flex flex-wrap gap-2 sm:ml-auto sm:flex-nowrap">
           <div className="hidden gap-0.5 rounded-md border border-border/50 p-0.5 lg:flex">
             <button
@@ -109,7 +109,7 @@ export function AgentsList({ agents }: AgentsListProps) {
                 placeholder="Search agents"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 text-sm border-border/50"
+                className="pl-9 h-9 font-input text-sm border-border/50"
               />
             </div>
           </div>
@@ -163,7 +163,7 @@ export function AgentsList({ agents }: AgentsListProps) {
             <Link
               key={agent.id}
               href={`/agents/${agent.id}`}
-              className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors"
+              className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors ease-out-soft"
             >
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-content-primary">{agent.name}</div>
@@ -213,7 +213,7 @@ export function AgentsList({ agents }: AgentsListProps) {
             <Link
               key={agent.id}
               href={`/agents/${agent.id}`}
-              className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors"
+              className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors ease-out-soft"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">

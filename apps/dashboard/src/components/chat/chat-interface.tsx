@@ -199,7 +199,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                   className={cn(
                     "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-ocean text-white"
                       : "bg-muted"
                   )}
                 >
@@ -213,7 +213,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                   className={cn(
                     "rounded-lg px-4 py-2 max-w-[80%]",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-ocean text-white"
                       : "bg-muted text-content-primary"
                   )}
                 >
@@ -246,20 +246,20 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
       <div className="border-t p-4 shrink-0">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="relative">
+          <div className="relative liquid-glass rounded-lg">
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              className="min-h-[60px] max-h-[200px] pr-12 resize-none"
+              className="min-h-[60px] max-h-[200px] pr-12 resize-none font-input"
               disabled={isLoading}
             />
             <Button
               type="submit"
               size="icon"
-              className="absolute right-2 bottom-2"
+              className="absolute right-2 bottom-2 bg-ocean text-white hover:bg-ocean-light transition-all ease-out-soft"
               disabled={!input.trim() || isLoading}
             >
               {isLoading ? (

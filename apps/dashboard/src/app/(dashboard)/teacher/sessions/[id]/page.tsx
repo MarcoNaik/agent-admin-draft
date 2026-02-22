@@ -108,7 +108,7 @@ export default function TeacherSessionDetailPage({ params }: TeacherSessionDetai
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Session Details</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Session Details</h1>
           <p className="text-content-secondary">
             {subject || "Tutoring Session"}
           </p>
@@ -169,7 +169,7 @@ export default function TeacherSessionDetailPage({ params }: TeacherSessionDetai
               href={meetingLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition-colors"
+              className="mt-6 flex items-center justify-center gap-2 w-full bg-ocean hover:bg-ocean/80 text-white py-3 rounded-lg transition-colors ease-out-soft"
             >
               <Video className="h-5 w-5" />
               Join Meeting
@@ -190,11 +190,11 @@ export default function TeacherSessionDetailPage({ params }: TeacherSessionDetai
       )}
 
       {reportSubmittedAt && reportContent && (
-        <Card className="mb-6 bg-background-secondary border-green-600/20">
+        <Card className="mb-6 bg-background-secondary border-success/20">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base text-content-primary flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
+                <CheckCircle className="h-4 w-4 text-success" />
                 Session Report
               </CardTitle>
               <span className="text-xs text-content-tertiary">
@@ -209,7 +209,7 @@ export default function TeacherSessionDetailPage({ params }: TeacherSessionDetai
       )}
 
       {needsReport && !showReportForm && (
-        <Card className="mb-6 bg-amber-900/10 border-amber-600/20">
+        <Card className="mb-6 bg-amber/10 border-amber/20">
           <CardContent className="p-6 text-center">
             <p className="text-content-secondary mb-4">
               This session is complete but missing a report. Please submit your session report.

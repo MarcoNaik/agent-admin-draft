@@ -14,7 +14,7 @@ export default function SettingsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">General</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">General</h1>
           <p className="text-sm text-content-secondary">Organization and profile settings</p>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -27,7 +27,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-content-primary">General</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">General</h1>
         <p className="text-sm text-content-secondary">Organization and profile settings</p>
       </div>
 
@@ -44,7 +44,7 @@ export default function SettingsPage() {
                 id="org-name"
                 defaultValue={organization?.name || ""}
                 disabled
-                className="bg-background-tertiary"
+                className="font-input bg-background-tertiary"
               />
             </div>
             <div className="space-y-2">
@@ -53,7 +53,7 @@ export default function SettingsPage() {
                 id="org-slug"
                 defaultValue={organization?.slug || ""}
                 disabled
-                className="bg-background-tertiary"
+                className="font-input bg-background-tertiary"
               />
             </div>
           </div>
@@ -69,11 +69,11 @@ export default function SettingsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-content-primary">Name</Label>
-              <Input id="name" defaultValue={user?.name || ""} disabled className="bg-background-tertiary" />
+              <Input id="name" defaultValue={user?.name || ""} disabled className="font-input bg-background-tertiary" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email" className="text-content-primary">Email</Label>
-              <Input id="email" defaultValue={user?.email || ""} disabled className="bg-background-tertiary" />
+              <Input id="email" defaultValue={user?.email || ""} disabled className="font-input bg-background-tertiary" />
             </div>
           </div>
         </CardContent>

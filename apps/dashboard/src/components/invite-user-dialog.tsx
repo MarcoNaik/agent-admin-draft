@@ -104,7 +104,7 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
               onChange={(e) => { setEmail(e.target.value); setError(null) }}
               onKeyDown={handleKeyDown}
               disabled={isInviting}
-              className="bg-background-tertiary border-border/50"
+              className="font-input bg-background-tertiary border-border/50"
               autoFocus
             />
           </div>
@@ -142,7 +142,7 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
             </div>
           )}
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           )}
         </div>
         <DialogFooter>

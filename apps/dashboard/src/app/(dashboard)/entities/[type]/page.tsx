@@ -138,7 +138,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{typeSlug}</h1>
+          <h1 className="text-xl font-semibold font-display">{typeSlug}</h1>
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -151,7 +151,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{typeSlug}</h1>
+          <h1 className="text-xl font-semibold font-display">{typeSlug}</h1>
         </div>
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Layers className="mb-4 h-10 w-10 text-muted-foreground/50" />
@@ -218,7 +218,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold">{entityType.name}</h1>
+          <h1 className="text-xl font-semibold font-display">{entityType.name}</h1>
           {entityType.boundToRole && (
             <Badge variant="outline" className="gap-1">
               <Shield className="h-3 w-3" />
@@ -269,7 +269,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
             disabled={sortedEntities.length === 0}
           >
             {csvCopied ? (
-              <Check className="mr-1.5 h-3.5 w-3.5 text-green-500" />
+              <Check className="mr-1.5 h-3.5 w-3.5 text-success" />
             ) : (
               <ClipboardCopy className="mr-1.5 h-3.5 w-3.5" />
             )}
@@ -306,7 +306,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
               placeholder="Search..."
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-7 pl-8 w-[180px] text-sm"
+              className="h-7 pl-8 w-[180px] text-sm font-input"
             />
           </div>
         </div>

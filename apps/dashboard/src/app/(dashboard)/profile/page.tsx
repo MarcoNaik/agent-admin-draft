@@ -21,7 +21,7 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold text-content-primary mb-6">Profile</h1>
+      <h1 className="text-2xl font-display font-semibold text-content-primary mb-6">Profile</h1>
 
       <div className="rounded-lg border bg-background-secondary p-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -37,7 +37,7 @@ export default function ProfilePage() {
             </div>
           )}
           <div>
-            <h2 className="text-lg font-medium text-content-primary">
+            <h2 className="text-lg font-display font-medium text-content-primary">
               {user?.fullName || "Unknown"}
             </h2>
             <p className="text-sm text-content-secondary">

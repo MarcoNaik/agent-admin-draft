@@ -22,7 +22,7 @@ export default function TeacherProfilePage() {
   if (user === undefined) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-semibold text-content-primary mb-6">My Profile</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary mb-6">My Profile</h1>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
         </div>
@@ -48,7 +48,7 @@ export default function TeacherProfilePage() {
   return (
     <div className="p-6 max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-content-primary">My Profile</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">My Profile</h1>
         <p className="text-content-secondary">View your account information</p>
       </div>
 
@@ -84,7 +84,7 @@ export default function TeacherProfilePage() {
                 id="name"
                 defaultValue={user.name || ""}
                 disabled
-                className="bg-background-tertiary"
+                className="font-input bg-background-tertiary"
               />
             </div>
             <div className="space-y-2">
@@ -95,7 +95,7 @@ export default function TeacherProfilePage() {
                   id="email"
                   defaultValue={user.email || ""}
                   disabled
-                  className="bg-background-tertiary pl-9"
+                  className="font-input bg-background-tertiary pl-9"
                 />
               </div>
             </div>

@@ -53,7 +53,7 @@ function SessionCard({ session, onClick }: SessionCardProps) {
 
   return (
     <Card
-      className="cursor-pointer hover:bg-background-tertiary transition-colors"
+      className="cursor-pointer hover:bg-background-tertiary transition-colors ease-out-soft"
       onClick={onClick}
     >
       <CardContent className="p-4">
@@ -88,13 +88,13 @@ function SessionCard({ session, onClick }: SessionCardProps) {
               {session.status}
             </Badge>
             {hasReport && (
-              <span className="flex items-center gap-1 text-xs text-green-600">
+              <span className="flex items-center gap-1 text-xs text-success">
                 <CheckCircle className="h-3.5 w-3.5" />
                 Report submitted
               </span>
             )}
             {!hasReport && session.status === "completed" && (
-              <span className="flex items-center gap-1 text-xs text-amber-600">
+              <span className="flex items-center gap-1 text-xs text-amber">
                 <FileText className="h-3.5 w-3.5" />
                 Report pending
               </span>
@@ -137,7 +137,7 @@ export default function TeacherSessionsPage() {
   if (roleLoading || sessions === undefined) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-semibold text-content-primary mb-6">My Sessions</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary mb-6">My Sessions</h1>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
         </div>
@@ -148,7 +148,7 @@ export default function TeacherSessionsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-content-primary">My Sessions</h1>
+        <h1 className="text-xl font-display font-semibold text-content-primary">My Sessions</h1>
         <p className="text-content-secondary">View and manage your tutoring sessions</p>
       </div>
 

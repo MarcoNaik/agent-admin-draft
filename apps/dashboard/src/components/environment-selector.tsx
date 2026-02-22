@@ -39,12 +39,12 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2 border-border/50 focus-visible:ring-0">
+        <Button variant="outline" className="gap-2 border-border/50 focus-visible:ring-0 transition-colors ease-out-soft">
           <span
             className={`h-2 w-2 rounded-full ${
               selectedEnv === "production"
-                ? environments.production ? "bg-green-500" : "bg-gray-400"
-                : environments.development ? "bg-yellow-500" : "bg-gray-400"
+                ? environments.production ? "bg-success" : "bg-muted-foreground"
+                : environments.development ? "bg-warning" : "bg-muted-foreground"
             }`}
           />
           {selectedEnv === "production" ? "Production" : "Development"}
@@ -60,7 +60,7 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
           className="flex items-center gap-3 py-3 cursor-pointer"
           onSelect={() => setSelectedEnv("production")}
         >
-          <Globe className={`h-4 w-4 ${environments.production ? "text-green-500" : "text-gray-400"}`} />
+          <Globe className={`h-4 w-4 ${environments.production ? "text-success" : "text-muted-foreground"}`} />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-medium text-content-primary">Production</span>
@@ -76,14 +76,14 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
             )}
           </div>
           {selectedEnv === "production" && (
-            <span className={`ml-auto h-2 w-2 rounded-full ${environments.production ? "bg-green-500" : "bg-gray-400"}`} />
+            <span className={`ml-auto h-2 w-2 rounded-full ${environments.production ? "bg-success" : "bg-muted-foreground"}`} />
           )}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex items-center gap-3 py-3 cursor-pointer"
           onSelect={() => setSelectedEnv("development")}
         >
-          <Code className={`h-4 w-4 ${environments.development ? "text-yellow-500" : "text-gray-400"}`} />
+          <Code className={`h-4 w-4 ${environments.development ? "text-warning" : "text-muted-foreground"}`} />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-medium text-content-primary">Development</span>
@@ -99,7 +99,7 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
             )}
           </div>
           {selectedEnv === "development" && (
-            <span className={`ml-auto h-2 w-2 rounded-full ${environments.development ? "bg-yellow-500" : "bg-gray-400"}`} />
+            <span className={`ml-auto h-2 w-2 rounded-full ${environments.development ? "bg-warning" : "bg-muted-foreground"}`} />
           )}
         </DropdownMenuItem>
         <DropdownMenuSeparator />

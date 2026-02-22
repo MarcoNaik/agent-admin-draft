@@ -137,7 +137,7 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
 
 function SortIcon({ field, sortField, sortDirection }: { field: string; sortField?: string | null; sortDirection?: "asc" | "desc" }) {
   if (sortField !== field) {
-    return <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+    return <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity ease-out-soft" />
   }
   return sortDirection === "asc"
     ? <ArrowUp className="h-3 w-3" />
@@ -210,7 +210,7 @@ export function EntityTable({ entityType, entities, onRowClick, sortField, sortD
             <tr
               key={entity.id}
               onClick={() => handleRowClick(entity)}
-              className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+              className="border-b cursor-pointer hover:bg-muted/50 transition-colors ease-out-soft"
             >
               {columns.map((col) => {
                 const field = schemaFields.find((f) => f.name === col)

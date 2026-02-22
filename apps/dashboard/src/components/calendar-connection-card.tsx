@@ -182,8 +182,8 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-blue-500" />
+              <div className="h-8 w-8 rounded-lg bg-ocean/10 flex items-center justify-center">
+                <Calendar className="h-4 w-4 text-ocean" />
               </div>
               <div>
                 <CardTitle className="text-base text-content-primary">Google Calendar</CardTitle>
@@ -199,8 +199,8 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
         </CardHeader>
         <CardContent className="space-y-4">
           {status === "connected" && (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-blue-500/10">
-              <Calendar className="h-5 w-5 text-blue-500" />
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-ocean/10">
+              <Calendar className="h-5 w-5 text-ocean" />
               <div>
                 <p className="text-sm font-medium text-content-primary">
                   Calendar: {connection?.calendarId === "primary" ? "Primary Calendar" : connection?.calendarId}
@@ -233,7 +233,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
           )}
 
           {verifyResult && (
-            <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${verifyResult.success ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+            <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${verifyResult.success ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
               {verifyResult.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               {verifyResult.message}
             </div>

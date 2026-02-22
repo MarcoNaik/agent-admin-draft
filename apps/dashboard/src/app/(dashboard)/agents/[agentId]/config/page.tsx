@@ -22,9 +22,9 @@ interface Tool {
 }
 
 const TOOL_CATEGORIES: Record<string, { icon: typeof Database; color: string; bgColor: string }> = {
-  entity: { icon: Database, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  event: { icon: Bell, color: "text-amber-500", bgColor: "bg-amber-500/10" },
-  custom: { icon: Code, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+  entity: { icon: Database, color: "text-ocean", bgColor: "bg-ocean/10" },
+  event: { icon: Bell, color: "text-amber", bgColor: "bg-amber/10" },
+  custom: { icon: Code, color: "text-success", bgColor: "bg-success/10" },
 }
 
 function getToolCategory(name: string): keyof typeof TOOL_CATEGORIES {
@@ -42,7 +42,7 @@ function ToolItem({ tool }: { tool: Tool }) {
     <div className="border-b last:border-0">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-background-secondary transition-colors cursor-pointer"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer"
       >
         {expanded ? (
           <ChevronDown className="h-4 w-4 text-content-tertiary shrink-0" />
@@ -128,12 +128,12 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">Configuration</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">Configuration</h2>
           <p className="text-sm text-content-secondary mt-0.5">
             Viewing {envLabel} configuration
           </p>
         </div>
-        <div className="rounded-md border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-sm text-content-secondary mb-3">
             No {envLabel} configuration available.
           </p>
@@ -149,7 +149,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">Configuration</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">Configuration</h2>
           <p className="text-sm text-content-secondary mt-0.5">
             Viewing {environment} configuration
           </p>
@@ -160,7 +160,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-md border bg-card">
+        <div className="rounded-lg border bg-card">
           <div className="border-b px-4 py-3">
             <div className="text-sm font-medium text-content-primary">Model</div>
           </div>
@@ -184,7 +184,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
           </div>
         </div>
 
-        <div className="rounded-md border bg-card">
+        <div className="rounded-lg border bg-card">
           <div className="border-b px-4 py-3">
             <div className="text-sm font-medium text-content-primary">Deployment</div>
           </div>
@@ -209,7 +209,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3 flex items-center justify-between">
           <div className="text-sm font-medium text-content-primary">System Prompt</div>
           {config.systemPrompt && (
@@ -303,7 +303,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3 flex items-center justify-between">
           <div>
             <div className="text-sm font-medium text-content-primary">
@@ -320,19 +320,19 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
                     <>
                       {entityCount > 0 && (
                         <span className="flex items-center gap-1 text-xs text-content-tertiary">
-                          <Database className="h-3 w-3 text-blue-500" />
+                          <Database className="h-3 w-3 text-ocean" />
                           {entityCount} entity
                         </span>
                       )}
                       {eventCount > 0 && (
                         <span className="flex items-center gap-1 text-xs text-content-tertiary">
-                          <Bell className="h-3 w-3 text-amber-500" />
+                          <Bell className="h-3 w-3 text-amber" />
                           {eventCount} event
                         </span>
                       )}
                       {customCount > 0 && (
                         <span className="flex items-center gap-1 text-xs text-content-tertiary">
-                          <Code className="h-3 w-3 text-emerald-500" />
+                          <Code className="h-3 w-3 text-success" />
                           {customCount} custom
                         </span>
                       )}
@@ -344,7 +344,7 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
           </div>
           <Link
             href={`/agents/${agentId}/functions`}
-            className="inline-flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition-colors ease-out-soft"
           >
             View All
             <ExternalLink className="h-3 w-3" />

@@ -8,32 +8,24 @@ export default function GlobalError({
   reset: () => void
 }) {
   return (
-    <html lang="en">
-      <body style={{ backgroundColor: "#0a1628", color: "#e2e8f0", fontFamily: "system-ui, sans-serif" }}>
-        <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ maxWidth: "28rem", textAlign: "center" }}>
-            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>
+    <html lang="en" className="dark">
+      <body className="bg-background text-foreground font-sans">
+        <div className="flex h-screen items-center justify-center p-4">
+          <div className="max-w-md text-center">
+            <h2 className="text-lg font-display font-semibold text-content-primary mb-2">
               Something went wrong
             </h2>
-            <p style={{ fontSize: "0.875rem", color: "#94a3b8", marginBottom: "1.5rem" }}>
+            <p className="text-sm text-content-secondary mb-6">
               An unexpected error occurred. Please try again.
             </p>
             <button
               onClick={reset}
-              style={{
-                padding: "0.5rem 1rem",
-                borderRadius: "0.375rem",
-                border: "1px solid #334155",
-                backgroundColor: "transparent",
-                color: "#e2e8f0",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-              }}
+              className="px-4 py-2 rounded-md border border-border bg-transparent text-content-primary cursor-pointer text-sm transition-colors ease-out-soft hover:bg-background-secondary"
             >
               Try Again
             </button>
             {error.digest && (
-              <p style={{ marginTop: "1rem", fontSize: "0.75rem", color: "#64748b", fontFamily: "monospace" }}>
+              <p className="mt-4 text-xs text-content-tertiary font-mono">
                 {error.digest}
               </p>
             )}

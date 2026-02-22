@@ -8,68 +8,80 @@
     --background-primary: 39 30% 95%;
     --background-secondary: 39 25% 92%;
     --background-tertiary: 39 20% 88%;
-    --foreground: 150 30% 15%;
+    --foreground: 30 5% 16%;
     --card: 39 25% 92%;
-    --card-foreground: 150 30% 15%;
+    --card-foreground: 30 5% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 150 30% 15%;
-    --primary: 150 30% 15%;
-    --primary-foreground: 39 30% 95%;
+    --popover-foreground: 30 5% 16%;
+    --primary: 205 62% 28%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 39 20% 88%;
-    --secondary-foreground: 150 30% 15%;
+    --secondary-foreground: 30 5% 16%;
     --muted: 39 20% 88%;
-    --muted-foreground: 150 20% 35%;
-    --accent: 150 23% 23%;
-    --accent-foreground: 39 30% 95%;
+    --muted-foreground: 30 5% 40%;
+    --accent: 205 45% 35%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 39 15% 82%;
-    --border-selected: 150 30% 15%;
+    --border-selected: 205 62% 28%;
     --input: 39 15% 82%;
-    --ring: 150 30% 15%;
+    --ring: 205 62% 28%;
     --radius: 0.5rem;
-    --content-primary: 150 30% 15%;
-    --content-secondary: 150 20% 35%;
-    --content-tertiary: 150 15% 50%;
-    --util-accent: 150 23% 23%;
+    --content-primary: 30 6% 9%;
+    --content-secondary: 30 5% 35%;
+    --content-tertiary: 30 4% 50%;
+    --util-accent: 205 45% 35%;
     --success: 145 55% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 38 92% 20%;
+    --ocean: 205 62% 28%;
+    --ocean-light: 200 51% 40%;
+    --amber: 40 56% 58%;
+    --amber-light: 42 72% 66%;
+    --charcoal: 30 5% 16%;
+    --charcoal-heading: 30 6% 9%;
   }
 
   .dark {
-    --background: 150 15% 8%;
-    --background-primary: 150 15% 8%;
-    --background-secondary: 150 12% 11%;
-    --background-tertiary: 150 10% 15%;
+    --background: 210 20% 8%;
+    --background-primary: 210 20% 8%;
+    --background-secondary: 210 15% 11%;
+    --background-tertiary: 210 12% 15%;
     --foreground: 39 30% 95%;
-    --card: 150 12% 11%;
+    --card: 210 15% 11%;
     --card-foreground: 39 30% 95%;
-    --popover: 150 12% 11%;
+    --popover: 210 15% 11%;
     --popover-foreground: 39 30% 95%;
-    --primary: 39 30% 95%;
-    --primary-foreground: 150 30% 15%;
-    --secondary: 150 10% 15%;
+    --primary: 205 62% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 12% 15%;
     --secondary-foreground: 39 30% 95%;
-    --muted: 150 10% 15%;
+    --muted: 210 12% 15%;
     --muted-foreground: 39 20% 70%;
-    --accent: 150 23% 30%;
+    --accent: 205 50% 38%;
     --accent-foreground: 39 30% 95%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
-    --border: 150 8% 20%;
-    --border-selected: 39 30% 95%;
-    --input: 150 8% 20%;
-    --ring: 39 30% 95%;
+    --border: 210 10% 20%;
+    --border-selected: 205 62% 45%;
+    --input: 210 10% 20%;
+    --ring: 205 62% 45%;
     --content-primary: 39 30% 95%;
     --content-secondary: 39 20% 70%;
-    --content-tertiary: 150 10% 50%;
-    --util-accent: 150 23% 30%;
+    --content-tertiary: 210 10% 50%;
+    --util-accent: 205 50% 38%;
     --success: 145 55% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    --ocean: 205 62% 45%;
+    --ocean-light: 200 51% 55%;
+    --amber: 40 56% 65%;
+    --amber-light: 42 72% 72%;
+    --charcoal: 39 30% 95%;
+    --charcoal-heading: 39 30% 95%;
   }
 }
 
@@ -103,5 +115,66 @@
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .liquid-glass {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    backdrop-filter: url(#liquid-noise) blur(12px);
+    -webkit-backdrop-filter: url(#liquid-noise) blur(12px);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.15),
+      0 4px 24px rgba(0, 0, 0, 0.08);
+    border-radius: 1rem;
+  }
+
+  .prismatic-border {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--ocean)) 0%,
+      hsl(200 60% 45%) 12%,
+      hsl(190 65% 50%) 25%,
+      hsl(170 55% 48%) 37%,
+      hsl(var(--amber-light)) 50%,
+      hsl(var(--amber)) 62%,
+      hsl(25 70% 55%) 75%,
+      hsl(200 60% 45%) 87%,
+      hsl(var(--ocean)) 100%
+    );
+    height: 1px;
+  }
+
+  .prismatic-border-animated {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--ocean)) 0%,
+      hsl(200 60% 45%) 12%,
+      hsl(190 65% 50%) 25%,
+      hsl(170 55% 48%) 37%,
+      hsl(var(--amber-light)) 50%,
+      hsl(var(--amber)) 62%,
+      hsl(25 70% 55%) 75%,
+      hsl(200 60% 45%) 87%,
+      hsl(var(--ocean)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+    height: 1px;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }

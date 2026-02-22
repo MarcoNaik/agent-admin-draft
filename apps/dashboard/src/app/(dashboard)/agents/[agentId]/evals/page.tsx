@@ -42,7 +42,7 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
     <div>
       <Link
         href={`/agents/${agentId}/evals/${suite._id}`}
-        className="flex items-center justify-between rounded-md border bg-card p-4 hover:bg-background-secondary transition-colors"
+        className="flex items-center justify-between rounded-md border bg-card p-4 hover:bg-background-secondary transition-colors ease-out-soft"
       >
         <div className="flex items-center gap-3 min-w-0">
           <FlaskConical className="h-4 w-4 text-content-tertiary shrink-0" />
@@ -71,7 +71,7 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
                   ? lastRun.passedCases === lastRun.totalCases ? "success" : "destructive"
                   : "outline"
               }
-              className="text-xs font-mono"
+              className="text-xs font-input"
             >
               {scoreDisplay}
             </Badge>
@@ -84,7 +84,7 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
           <button
             onClick={handleRun}
             disabled={starting}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors ease-out-soft"
           >
             {starting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
             Run
@@ -145,7 +145,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
     <div className="rounded-md border bg-card overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full p-3 text-left hover:bg-background-secondary transition-colors"
+        className="flex items-center justify-between w-full p-3 text-left hover:bg-background-secondary transition-colors ease-out-soft"
       >
         <div className="flex items-center gap-3 min-w-0">
           <Database className="h-4 w-4 text-content-tertiary shrink-0" />
@@ -167,7 +167,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
               {fixture.relationCount} relation{fixture.relationCount !== 1 ? "s" : ""}
             </Badge>
           )}
-          <ChevronDown className={`h-4 w-4 text-content-tertiary transition-transform ${expanded ? "" : "-rotate-90"}`} />
+          <ChevronDown className={`h-4 w-4 text-content-tertiary transition-transform ease-out-soft ${expanded ? "" : "-rotate-90"}`} />
         </div>
       </button>
       {expanded && typeCounts && (
@@ -197,7 +197,7 @@ function FixturesSection() {
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full text-left mb-2"
       >
-        <ChevronDown className={`h-4 w-4 text-content-tertiary transition-transform ${expanded ? "" : "-rotate-90"}`} />
+        <ChevronDown className={`h-4 w-4 text-content-tertiary transition-transform ease-out-soft ${expanded ? "" : "-rotate-90"}`} />
         <Database className="h-4 w-4 text-content-tertiary" />
         <span className="text-sm font-medium text-content-secondary">Test Data</span>
         <Badge variant="secondary" className="text-xs">{fixtures.length}</Badge>
@@ -229,12 +229,12 @@ export default function EvalsPage({ params }: EvalsPageProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">Evals</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">Evals</h2>
           <p className="text-sm text-content-secondary mt-0.5">Evaluate agent behavior with test suites</p>
         </div>
         <Link
           href={`/agents/${agentId}/evals/new`}
-          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors ease-out-soft"
         >
           <Plus className="h-4 w-4" />
           New Suite

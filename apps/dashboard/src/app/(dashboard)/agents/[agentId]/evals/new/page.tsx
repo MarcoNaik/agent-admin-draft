@@ -119,12 +119,12 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
       <div className="flex items-center gap-3">
         <Link
           href={`/agents/${agentId}/evals`}
-          className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors"
+          className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
         >
           <ArrowLeft className="h-4 w-4 text-content-secondary" />
         </Link>
         <div>
-          <h2 className="text-xl font-semibold text-content-primary">New Eval Suite</h2>
+          <h2 className="text-xl font-semibold font-display text-content-primary">New Eval Suite</h2>
           <p className="text-sm text-content-secondary mt-0.5">Create a collection of test cases</p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Booking Flow Tests"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -148,7 +148,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             value={slug}
             onChange={(e) => { setSlug(e.target.value); setSlugManual(true) }}
             placeholder="booking-flow-tests"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -159,7 +159,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Tests for the booking workflow..."
             rows={3}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           />
         </div>
 
@@ -170,7 +170,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="booking, scheduling, happy-path"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <p className="text-xs text-content-tertiary">Comma-separated</p>
         </div>
@@ -179,7 +179,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
           <label className="text-sm font-medium text-content-primary">Judge Model</label>
           {!customModel ? (
             <Select value={judgeModel} onValueChange={handleModelSelect}>
-              <SelectTrigger className="w-full font-mono text-sm">
+              <SelectTrigger className="w-full font-input text-sm">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +187,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
                   <SelectGroup key={provider}>
                     <SelectLabel>{group.label}</SelectLabel>
                     {group.models.map((model) => (
-                      <SelectItem key={model.value} value={model.value} className="font-mono">
+                      <SelectItem key={model.value} value={model.value} className="font-input">
                         {model.label}
                       </SelectItem>
                     ))}
@@ -202,7 +202,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
               <select
                 value={judgeProvider}
                 onChange={(e) => setJudgeProvider(e.target.value)}
-                className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="anthropic">Anthropic</option>
                 <option value="openai">OpenAI</option>
@@ -213,12 +213,12 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
                   value={judgeModel}
                   onChange={(e) => setJudgeModel(e.target.value)}
                   placeholder="model-name"
-                  className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <button
                   type="button"
                   onClick={() => { setCustomModel(false); setJudgeModel("claude-haiku-4-5-20251001"); setJudgeProvider("anthropic") }}
-                  className="rounded-md border px-2.5 py-2 text-xs text-content-secondary hover:bg-background-tertiary transition-colors"
+                  className="rounded-md border px-2.5 py-2 text-xs text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
                 >
                   Presets
                 </button>
@@ -235,7 +235,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             onChange={(e) => setJudgeContext(e.target.value)}
             placeholder={"{{format_teacher_schedule({})}}\n{{entity.query({\"type\": \"student\"})}}"}
             rows={5}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
           <p className="text-xs text-content-tertiary">
             Reference data for the judge. Supports template variables: {"{{entity.query(...)}}"}, {"{{format_teacher_schedule({})}}"}, {"{{entityTypes}}"}, etc.
@@ -249,7 +249,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             onChange={(e) => setJudgePrompt(e.target.value)}
             placeholder={"Be extremely strict. Any factual error is an automatic score of 1."}
             rows={4}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
           <p className="text-xs text-content-tertiary">
             Custom instructions prepended to the judge system prompt. Use this to control strictness and focus areas.
@@ -266,14 +266,14 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
           <button
             type="submit"
             disabled={!name.trim() || !slug.trim() || saving}
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors ease-out-soft"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Create Suite
           </button>
           <Link
             href={`/agents/${agentId}/evals`}
-            className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors"
+            className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             Cancel
           </Link>

@@ -143,13 +143,13 @@ function formatFieldValue(value: unknown, field?: EntityTypeField): React.ReactN
         )
       case "email":
         return (
-          <a href={`mailto:${value}`} className="text-blue-500 hover:underline">
+          <a href={`mailto:${value}`} className="text-ocean hover:underline">
             {String(value)}
           </a>
         )
       case "phone":
         return (
-          <a href={`tel:${value}`} className="text-blue-500 hover:underline">
+          <a href={`tel:${value}`} className="text-ocean hover:underline">
             {String(value)}
           </a>
         )

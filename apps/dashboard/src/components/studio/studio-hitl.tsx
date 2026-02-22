@@ -11,11 +11,11 @@ interface PermissionRequestCardProps {
 
 export function PermissionRequestCard({ permission, onReply }: PermissionRequestCardProps) {
   return (
-    <div className="mx-4 my-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+    <div className="mx-4 my-2 rounded-lg border border-warning/30 bg-warning/5 p-3 backdrop-blur-sm">
       <div className="flex items-start gap-2 mb-3">
-        <Shield className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+        <Shield className="h-4 w-4 text-warning shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-content-primary">Permission Request</p>
+          <p className="text-sm font-display font-medium text-content-primary">Permission Request</p>
           <p className="text-xs text-content-secondary mt-0.5 font-mono">{permission.action}</p>
         </div>
       </div>
@@ -23,21 +23,21 @@ export function PermissionRequestCard({ permission, onReply }: PermissionRequest
         <button
           type="button"
           onClick={() => onReply(permission.permission_id, "once")}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded-md bg-warning/20 text-warning hover:bg-warning/30 transition-colors ease-out-soft"
         >
           Allow Once
         </button>
         <button
           type="button"
           onClick={() => onReply(permission.permission_id, "always")}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded-md bg-success/20 text-success hover:bg-success/30 transition-colors ease-out-soft"
         >
           Always Allow
         </button>
         <button
           type="button"
           onClick={() => onReply(permission.permission_id, "reject")}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors ease-out-soft"
         >
           Reject
         </button>
@@ -56,11 +56,11 @@ export function QuestionRequestCard({ question, onAnswer, onReject }: QuestionRe
   const [selected, setSelected] = useState<string[]>([])
 
   return (
-    <div className="mx-4 my-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+    <div className="mx-4 my-2 rounded-lg border border-ocean/30 bg-ocean/5 p-3 backdrop-blur-sm">
       <div className="flex items-start gap-2 mb-3">
-        <HelpCircle className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+        <HelpCircle className="h-4 w-4 text-ocean shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-content-primary">Question</p>
+          <p className="text-sm font-display font-medium text-content-primary">Question</p>
           <p className="text-xs text-content-secondary mt-0.5">{question.prompt}</p>
         </div>
       </div>
@@ -90,14 +90,14 @@ export function QuestionRequestCard({ question, onAnswer, onReject }: QuestionRe
           type="button"
           onClick={() => onAnswer(question.question_id, [selected])}
           disabled={selected.length === 0}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1.5 text-xs font-medium rounded-md bg-ocean/20 text-ocean hover:bg-ocean/30 transition-colors ease-out-soft disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Submit
         </button>
         <button
           type="button"
           onClick={() => onReject(question.question_id)}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors ease-out-soft"
         >
           Reject
         </button>

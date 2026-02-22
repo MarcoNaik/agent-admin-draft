@@ -53,7 +53,7 @@ function PurchaseCreditsForm() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="10.00"
-            className="w-32 pl-7 pr-3 py-1.5 bg-background-tertiary border rounded-md text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-32 pl-7 pr-3 py-1.5 font-input bg-background-tertiary border rounded-md text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
@@ -74,12 +74,12 @@ function SuccessBanner() {
   if (dismissed) return null
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50/70 border border-emerald-200">
-      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-      <p className="text-sm text-emerald-800 flex-1">
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/30">
+      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+      <p className="text-sm text-success flex-1">
         Payment successful! Your credits have been added to your balance.
       </p>
-      <button onClick={() => setDismissed(true)} className="text-emerald-600 hover:text-emerald-800">
+      <button onClick={() => setDismissed(true)} className="text-success hover:text-success/80">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -88,9 +88,9 @@ function SuccessBanner() {
 
 function TransactionBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
-    addition: "bg-emerald-500/10 text-emerald-400",
-    deduction: "bg-red-500/10 text-red-400",
-    adjustment: "bg-blue-500/10 text-blue-400",
+    addition: "bg-success/10 text-success",
+    deduction: "bg-destructive/10 text-destructive",
+    adjustment: "bg-ocean/10 text-ocean",
     purchase: "bg-violet-500/10 text-violet-400",
   }
 
@@ -111,7 +111,7 @@ export default function BillingPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-lg font-semibold text-content-primary">Billing</h1>
+          <h1 className="text-lg font-display font-semibold text-content-primary">Billing</h1>
           <p className="text-sm text-content-secondary">Credit balance and transaction history</p>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -124,7 +124,7 @@ export default function BillingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-content-primary">Billing</h1>
+        <h1 className="text-lg font-display font-semibold text-content-primary">Billing</h1>
         <p className="text-sm text-content-secondary">Credit balance and transaction history</p>
       </div>
 
@@ -143,9 +143,9 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/70 border border-blue-200">
-        <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-        <p className="text-sm text-blue-800">
+      <div className="flex items-start gap-3 p-3 rounded-lg bg-ocean/10 border border-ocean/30">
+        <Info className="h-4 w-4 text-ocean mt-0.5 shrink-0" />
+        <p className="text-sm text-ocean">
           When your credit balance reaches $0, API requests using platform keys will stop working.
           Agents configured with custom provider API keys are not affected.
         </p>
@@ -197,7 +197,7 @@ export default function BillingPage() {
                       <td className="py-2 px-4">
                         <TransactionBadge type={tx.type} />
                       </td>
-                      <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-red-400" : "text-emerald-400"}`}>
+                      <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-destructive" : "text-success"}`}>
                         {tx.type === "deduction" ? "-" : "+"}{formatMicrodollars(tx.amount)}
                       </td>
                       <td className="text-right py-2 px-4 text-content-primary">

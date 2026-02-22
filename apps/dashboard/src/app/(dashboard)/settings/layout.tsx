@@ -87,7 +87,7 @@ export default function SettingsLayout({
           <div className="p-3 border-b">
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-content-primary">Settings</h2>
+              <h2 className="text-sm font-display font-semibold text-content-primary">Settings</h2>
             </div>
           </div>
 
@@ -101,7 +101,7 @@ export default function SettingsLayout({
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                        "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ease-out-soft",
                         active
                           ? "bg-primary/10 text-primary font-medium"
                           : "text-content-secondary hover:text-content-primary hover:bg-background-tertiary"
@@ -119,7 +119,7 @@ export default function SettingsLayout({
               <Link
                 href="/settings/danger"
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ease-out-soft",
                   pathname === "/settings/danger"
                     ? "bg-destructive/10 text-destructive font-medium"
                     : "text-destructive/70 hover:text-destructive hover:bg-destructive/10"

@@ -20,6 +20,7 @@ const config: Config = {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "monospace"],
         display: ["var(--font-display)", "serif"],
+        input: ["var(--font-input)", "monospace"],
       },
       colors: {
         border: {
@@ -79,15 +80,17 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
-        cream: {
-          DEFAULT: "#F5F1E8",
-          light: "#FAF8F3",
-          card: "#E8E4D4",
+        ocean: {
+          DEFAULT: "hsl(var(--ocean))",
+          light: "hsl(var(--ocean-light))",
         },
-        forest: {
-          DEFAULT: "#1B4332",
-          light: "#2D5A45",
-          dark: "#143326",
+        amber: {
+          DEFAULT: "hsl(var(--amber))",
+          light: "hsl(var(--amber-light))",
+        },
+        charcoal: {
+          DEFAULT: "hsl(var(--charcoal))",
+          heading: "hsl(var(--charcoal-heading))",
         },
       },
       borderRadius: {
@@ -107,10 +110,15 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        shimmer: "shimmer 3s linear infinite",
       },
     },
   },

@@ -1007,7 +1007,7 @@ function RolesPageContent() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Roles</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Roles</h1>
           <p className="text-sm text-content-secondary mt-1">
             Permission roles and access policies
           </p>
@@ -1037,7 +1037,7 @@ function RolesPageContent() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-content-primary">Roles</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Roles</h1>
           <p className="text-sm text-content-secondary mt-1">
             Permission roles and access policies
           </p>
@@ -1072,7 +1072,7 @@ function RolesPageContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter roles..."
-              className="h-8 bg-background-secondary/50 border-border/30 pl-9 text-xs placeholder:text-content-tertiary"
+              className="h-8 font-input bg-background-secondary/50 border-border/30 pl-9 text-xs placeholder:text-content-tertiary"
             />
           </div>
           <StatsBar roles={roles} />
@@ -1102,7 +1102,7 @@ function RolesPageContent() {
           {systemRoles.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-3">
-                <h2 className="text-[11px] font-medium uppercase tracking-widest text-content-tertiary">
+                <h2 className="text-[11px] font-display font-medium uppercase tracking-widest text-content-tertiary">
                   System Roles
                 </h2>
                 <Separator className="flex-1" />
@@ -1123,7 +1123,7 @@ function RolesPageContent() {
           {customRoles.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-3">
-                <h2 className="text-[11px] font-medium uppercase tracking-widest text-content-tertiary">
+                <h2 className="text-[11px] font-display font-medium uppercase tracking-widest text-content-tertiary">
                   Custom Roles
                 </h2>
                 <Separator className="flex-1" />
