@@ -16,8 +16,8 @@ import { formatRelativeTime } from "@/lib/format"
 function FormattedCredits({ microdollars, prefix }: { microdollars: number; prefix?: string }) {
   const dollars = microdollars / 1_000_000
   const formatted = dollars.toFixed(6)
-  const bright = formatted.slice(0, -2)
-  const dim = formatted.slice(-2)
+  const bright = formatted.slice(0, -4)
+  const dim = formatted.slice(-4)
 
   return (
     <>
