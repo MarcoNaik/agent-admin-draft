@@ -74,7 +74,7 @@ export function StudioChat({
       {children}
 
       <form onSubmit={handleSubmit} className="shrink-0 border-t bg-background p-4">
-        <div className="flex items-end gap-2 max-w-3xl mx-auto liquid-glass">
+        <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
             value={input}

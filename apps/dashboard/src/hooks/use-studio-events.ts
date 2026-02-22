@@ -377,10 +377,10 @@ export function useStudioEvents(
 
     turnTrackingRef.current = {
       turnId,
-      lastChunkType: "message",
-      activeMessageId: assistantItemId,
+      lastChunkType: null,
+      activeMessageId: "",
       activeThinkingId: null,
-      subIdx: 1,
+      subIdx: 0,
     }
     setTurnInProgress(true)
     setItems((prev) => {
@@ -392,15 +392,6 @@ export function useStudioEvents(
         content: [{ type: "text", text }],
         deltas: [],
         status: "completed",
-        createdAt: now,
-      })
-      next.set(assistantItemId, {
-        itemId: assistantItemId,
-        role: "assistant",
-        kind: "message",
-        content: [],
-        deltas: [],
-        status: "in_progress",
         createdAt: now,
       })
       return next
@@ -489,7 +480,7 @@ export function useStudioEvents(
   }
 }
 
-function finalizeItem(items: Map<string, ItemState>, itemId: string | null, contentType: "text" | "reasoning") {
+function finalizeItem(items: Map<string, ItemState>, itemId: string | null | undefined, contentType: "text" | "reasoning") {
   if (!itemId) return
   const state = items.get(itemId)
   if (!state) return
@@ -523,14 +514,13 @@ function processAcpEvent(
     if (!text) return
 
     const turnId = `turn-${event.sequence}`
-    const assistantItemId = `assistant-${turnId}-0`
 
     turnTrackingRef.current = {
       turnId,
-      lastChunkType: "message",
-      activeMessageId: assistantItemId,
+      lastChunkType: null,
+      activeMessageId: "",
       activeThinkingId: null,
-      subIdx: 1,
+      subIdx: 0,
     }
 
     const userItemId = `user-${event.sequence}`
@@ -541,16 +531,6 @@ function processAcpEvent(
       content: [{ type: "text", text }],
       deltas: [],
       status: "completed",
-      createdAt: event.createdAt,
-    })
-
-    items.set(assistantItemId, {
-      itemId: assistantItemId,
-      role: "assistant",
-      kind: "message",
-      content: [],
-      deltas: [],
-      status: "in_progress",
       createdAt: event.createdAt,
     })
     return
