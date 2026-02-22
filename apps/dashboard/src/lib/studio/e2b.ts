@@ -87,7 +87,7 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
               baseURL: "https://api.x.ai/v1",
             },
             models: {
-              "grok-4-1-fast": { name: "Grok 4.1 Fast" },
+              "grok-4-1-fast": { name: "Grok 4.1 Fast", limit: { context: 131072, output: 32768 } },
             },
           },
         },
