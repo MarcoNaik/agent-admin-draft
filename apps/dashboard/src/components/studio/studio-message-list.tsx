@@ -134,9 +134,9 @@ function ToolCallRow({ item }: { item: ItemState }) {
   const isDone = item.status === "completed"
 
   const Icon = TOOL_KIND_ICONS[part.kind ?? "other"] ?? Zap
-  const title = part.title || part.name || "Tool call"
+  const title = safeString(part.title || part.name || "Tool call")
   const locations = part.locations ?? []
-  const primaryPath = locations[0]?.path
+  const primaryPath = locations[0]?.path ? safeString(locations[0].path) : undefined
 
   const hasDetail = part.rawInput || part.rawOutput || (part.toolContent && (part.toolContent as unknown[]).length > 0)
 
@@ -190,7 +190,7 @@ function ToolCallRow({ item }: { item: ItemState }) {
             <>
               <div className="border-t" />
               <pre className="px-3 py-2 text-content-secondary overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
-                {part.rawOutput}
+                {safeString(part.rawOutput)}
               </pre>
             </>
           )}
@@ -203,10 +203,11 @@ function ToolCallRow({ item }: { item: ItemState }) {
 
 function renderToolContent(content: unknown[]): React.ReactNode {
   return content.map((entry, i) => {
+    if (!entry || typeof entry !== "object") return null
     const item = entry as Record<string, unknown>
     if (item.type === "diff") {
-      const diff = (item.newText ?? item.diff ?? "") as string
-      const path = item.path as string | undefined
+      const diff = safeString(item.newText ?? item.diff ?? "")
+      const path = safeString(item.path)
       return (
         <div key={i} className="border-t">
           {path && (
@@ -233,14 +234,14 @@ function renderToolContent(content: unknown[]): React.ReactNode {
     if (item.type === "text") {
       return (
         <pre key={i} className="px-3 py-2 border-t text-content-secondary whitespace-pre-wrap max-h-48 overflow-y-auto">
-          {item.text as string}
+          {safeString(item.text)}
         </pre>
       )
     }
     if (item.type === "terminal") {
       return (
         <div key={i} className="px-3 py-2 border-t text-content-tertiary text-[10px]">
-          Terminal: {item.terminalId as string}
+          Terminal: {safeString(item.terminalId)}
         </div>
       )
     }
@@ -389,7 +390,18 @@ function ImagePart({ part }: { part: ContentPart }) {
   )
 }
 
-function tryFormatJson(str: string): string {
+function safeString(val: unknown): string {
+  if (typeof val === "string") return val
+  if (val == null) return ""
+  try {
+    return JSON.stringify(val, null, 2)
+  } catch {
+    return String(val)
+  }
+}
+
+function tryFormatJson(val: unknown): string {
+  const str = safeString(val)
   try {
     return JSON.stringify(JSON.parse(str), null, 2)
   } catch {
