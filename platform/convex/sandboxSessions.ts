@@ -1,6 +1,8 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { requireAuth } from "./lib/auth"
+import { calculateCost } from "./lib/creditPricing"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -12,6 +14,14 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+
+    const balance = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .first()
+    if ((balance?.balance ?? 0) <= 0) {
+      throw new Error("Insufficient credits")
+    }
 
     const existing = await ctx.db
       .query("sandboxSessions")
@@ -31,6 +41,7 @@ export const create = mutation({
     }
 
     const now = Date.now()
+    const model = args.agentType === "claude" ? "claude-sonnet-4" : "grok-4-1-fast"
     const id = await ctx.db.insert("sandboxSessions", {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -41,6 +52,10 @@ export const create = mutation({
       lastActivityAt: now,
       idleTimeoutMs: args.idleTimeoutMs ?? 900000,
       createdAt: now,
+      model,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCreditsConsumed: 0,
     })
 
     return id
@@ -144,6 +159,10 @@ export const getActiveSafe = query({
       createdAt: session.createdAt,
       errorMessage: session.errorMessage,
       stoppedAt: session.stoppedAt,
+      totalInputTokens: session.totalInputTokens,
+      totalOutputTokens: session.totalOutputTokens,
+      totalCreditsConsumed: session.totalCreditsConsumed,
+      model: session.model,
     }
   },
 })
@@ -204,6 +223,22 @@ export const appendEvents = mutation({
         payload: event.payload,
         createdAt: event.createdAt,
       })
+
+      const payload = event.payload as Record<string, unknown> | undefined
+      if (payload) {
+        const inner = payload.payload as Record<string, unknown> | undefined
+        const result = (payload.result ?? inner?.result) as Record<string, unknown> | undefined
+        if (result?.stopReason && result?.usage) {
+          const usage = result.usage as Record<string, number>
+          if (usage.inputTokens && usage.outputTokens) {
+            await ctx.scheduler.runAfter(0, internal.sandboxSessions.processUsageEvent, {
+              sessionId: args.sessionId,
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
+            })
+          }
+        }
+      }
     }
 
     await ctx.db.patch(args.sessionId, { lastActivityAt: Date.now() })
@@ -318,6 +353,36 @@ export const checkIdleSessions = internalMutation({
           stoppedAt: now,
         })
       }
+    }
+  },
+})
+
+export const processUsageEvent = internalMutation({
+  args: {
+    sessionId: v.id("sandboxSessions"),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) return
+
+    const model = session.model ?? "grok-4-1-fast"
+    const cost = calculateCost(model, args.inputTokens, args.outputTokens)
+
+    await ctx.db.patch(args.sessionId, {
+      totalInputTokens: (session.totalInputTokens ?? 0) + args.inputTokens,
+      totalOutputTokens: (session.totalOutputTokens ?? 0) + args.outputTokens,
+      totalCreditsConsumed: (session.totalCreditsConsumed ?? 0) + cost,
+    })
+
+    if (cost > 0) {
+      await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+        organizationId: session.organizationId,
+        amount: cost,
+        description: `Studio session (${model})`,
+        metadata: { source: "studio", sessionId: args.sessionId, model },
+      })
     }
   },
 })
