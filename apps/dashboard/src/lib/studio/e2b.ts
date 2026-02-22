@@ -51,7 +51,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       timeoutMs: 120_000,
     })
 
-    await runCmd(sandbox, "install-bun", "curl -fsSL https://bun.sh/install | bash", {
+    await runCmd(sandbox, "install-bun", "curl -fsSL https://bun.sh/install | bash && ln -sf $HOME/.bun/bin/bun /usr/local/bin/bun && ln -sf $HOME/.bun/bin/bunx /usr/local/bin/bunx", {
       timeoutMs: 30_000,
     })
 

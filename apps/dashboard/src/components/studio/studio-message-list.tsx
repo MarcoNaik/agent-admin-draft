@@ -1,24 +1,24 @@
 "use client"
 
-import { useRef, useEffect } from "react"
-import { Bot, User, Loader2 } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Bot, User, Loader2, Brain, ChevronDown, ChevronRight, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ToolCallCard } from "./studio-tool-activity"
-import type { StudioMessage, ContentPart } from "@/hooks/use-studio-events"
+import type { ItemState, ContentPart } from "@/hooks/use-studio-events"
 
 interface StudioMessageListProps {
-  messages: StudioMessage[]
+  items: ItemState[]
   turnInProgress: boolean
 }
 
-export function StudioMessageList({ messages, turnInProgress }: StudioMessageListProps) {
+export function StudioMessageList({ items, turnInProgress }: StudioMessageListProps) {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, turnInProgress])
+  }, [items, turnInProgress])
 
-  if (messages.length === 0 && !turnInProgress) {
+  if (items.length === 0 && !turnInProgress) {
     return (
       <div className="flex-1 flex items-center justify-center text-content-tertiary">
         <div className="text-center space-y-2">
@@ -30,9 +30,9 @@ export function StudioMessageList({ messages, turnInProgress }: StudioMessageLis
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-      {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} />
+    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {items.map((item) => (
+        <ItemRenderer key={item.itemId} item={item} />
       ))}
       {turnInProgress && (
         <div className="flex items-start gap-3">
@@ -49,18 +49,41 @@ export function StudioMessageList({ messages, turnInProgress }: StudioMessageLis
   )
 }
 
-function MessageBubble({ message }: { message: StudioMessage }) {
-  const isUser = message.role === "user"
+function ItemRenderer({ item }: { item: ItemState }) {
+  switch (item.kind) {
+    case "message":
+      return <MessageBubble item={item} />
+    case "tool_call":
+      return <ToolCallItem item={item} />
+    case "file_change":
+      return <FileChangeItem item={item} />
+    case "thinking":
+      return <ThinkingBlock item={item} />
+    default:
+      return null
+  }
+}
 
-  const textParts = message.parts.filter((p) =>
+function MessageBubble({ item }: { item: ItemState }) {
+  const isUser = item.role === "user"
+  const isSystem = item.role === "system"
+  const isStreaming = item.status === "in_progress"
+
+  const textParts = item.content.filter((p) =>
     p.type === "text" || (p.type === "reasoning" && p.visibility !== "private")
   )
-  const toolParts = message.parts.filter(
-    (p) => p.type === "tool_call" || p.type === "tool_result" || p.type === "file_ref" || p.type === "status"
-  )
-  const imageParts = message.parts.filter((p) => p.type === "image")
+  const imageParts = item.content.filter((p) => p.type === "image")
 
-  const displayText = message.content || textParts.map((p) => p.text ?? "").join("")
+  const displayText = textParts.map((p) => p.text ?? "").join("") + item.deltas.join("")
+
+  if (isSystem) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-2">
+        <AlertCircle className="h-3.5 w-3.5 text-content-tertiary" />
+        <span className="text-xs text-content-tertiary">{displayText}</span>
+      </div>
+    )
+  }
 
   return (
     <div className={cn("flex items-start gap-3", isUser && "flex-row-reverse")}>
@@ -88,7 +111,7 @@ function MessageBubble({ message }: { message: StudioMessage }) {
             )}
           >
             {displayText}
-            {message.isStreaming && (
+            {isStreaming && (
               <span className="inline-block w-1.5 h-4 bg-current opacity-50 animate-pulse ml-0.5 align-text-bottom" />
             )}
           </div>
@@ -97,19 +120,69 @@ function MessageBubble({ message }: { message: StudioMessage }) {
         {imageParts.length > 0 && (
           <div className="space-y-1">
             {imageParts.map((part, i) => (
-              <ImagePart key={`${message.id}-img-${i}`} part={part} />
-            ))}
-          </div>
-        )}
-
-        {toolParts.length > 0 && (
-          <div className="space-y-1">
-            {toolParts.map((part, i) => (
-              <ToolCallCard key={`${message.id}-tool-${i}`} part={part} />
+              <ImagePart key={`${item.itemId}-img-${i}`} part={part} />
             ))}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function ToolCallItem({ item }: { item: ItemState }) {
+  const part = item.content[0]
+  if (!part) return null
+
+  return (
+    <div className="pl-10">
+      <ToolCallCard part={part} />
+      {item.status === "in_progress" && (
+        <div className="flex items-center gap-1.5 mt-1 text-xs text-content-tertiary">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Running...</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FileChangeItem({ item }: { item: ItemState }) {
+  const part = item.content[0]
+  if (!part) return null
+
+  return (
+    <div className="pl-10">
+      <ToolCallCard part={part} />
+    </div>
+  )
+}
+
+function ThinkingBlock({ item }: { item: ItemState }) {
+  const [expanded, setExpanded] = useState(false)
+  const isStreaming = item.status === "in_progress"
+
+  const textParts = item.content.filter((p) => p.type === "reasoning")
+  const text = textParts.map((p) => p.text ?? "").join("") + item.deltas.join("")
+
+  if (!text) return null
+
+  return (
+    <div className="pl-10">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
+      >
+        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <Brain className="h-3 w-3" />
+        <span>Thinking{isStreaming ? "..." : ""}</span>
+        {isStreaming && <Loader2 className="h-3 w-3 animate-spin" />}
+      </button>
+      {expanded && (
+        <div className="mt-1 rounded-md border bg-muted/50 px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
+          {text}
+        </div>
+      )}
     </div>
   )
 }

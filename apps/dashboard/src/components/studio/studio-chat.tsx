@@ -4,10 +4,10 @@ import { useState, useRef, FormEvent, KeyboardEvent, ReactNode } from "react"
 import { Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StudioMessageList } from "./studio-message-list"
-import type { StudioMessage } from "@/hooks/use-studio-events"
+import type { ItemState } from "@/hooks/use-studio-events"
 
 interface StudioChatProps {
-  messages: StudioMessage[]
+  items: ItemState[]
   turnInProgress: boolean
   sessionEnded?: boolean
   isConnected: boolean
@@ -17,7 +17,7 @@ interface StudioChatProps {
 }
 
 export function StudioChat({
-  messages,
+  items,
   turnInProgress,
   sessionEnded,
   isConnected,
@@ -69,7 +69,7 @@ export function StudioChat({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <StudioMessageList messages={messages} turnInProgress={turnInProgress} />
+      <StudioMessageList items={items} turnInProgress={turnInProgress} />
 
       {children}
 

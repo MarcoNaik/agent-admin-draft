@@ -25,7 +25,7 @@ export default function StudioPage() {
   const sessionId = isReady ? session?._id : undefined
 
   const {
-    messages,
+    allItems,
     turnInProgress,
     sessionEnded,
     isConnected,
@@ -67,7 +67,7 @@ export default function StudioPage() {
       )}
 
       <StudioChat
-        messages={messages}
+        items={allItems}
         turnInProgress={turnInProgress}
         sessionEnded={sessionEnded}
         isConnected={isConnected}

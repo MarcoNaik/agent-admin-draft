@@ -13,7 +13,7 @@ export interface StudioEvent {
   createdAt: number
 }
 
-interface ItemState {
+export interface ItemState {
   itemId: string
   role: string
   kind: string
@@ -107,10 +107,14 @@ export function useStudioEvents(
     setEvents(restored)
 
     const restoredItems = new Map<string, ItemState>()
+    const restoredPermissions = new Map<string, PendingPermission>()
+    const restoredQuestions = new Map<string, PendingQuestion>()
     for (const event of restored) {
-      processAcpEvent(event, restoredItems, currentTurnIdRef)
+      processAcpEvent(event, restoredItems, currentTurnIdRef, restoredPermissions, restoredQuestions)
     }
     setItems(restoredItems)
+    setPendingPermissions(restoredPermissions)
+    setPendingQuestions(restoredQuestions)
 
     const maxSeq = Math.max(...restored.map((e) => e.sequence))
     lastSequenceRef.current = maxSeq
@@ -147,7 +151,8 @@ export function useStudioEvents(
 
           const payload = raw.payload ?? raw
           const method = payload.method as string | undefined
-          const update = payload.params?.update as Record<string, unknown> | undefined
+          const params = payload.params as Record<string, unknown> | undefined
+          const update = params?.update as Record<string, unknown> | undefined
           const sessionUpdate = update?.sessionUpdate as string | undefined
 
           const studioEvent: StudioEvent = {
@@ -171,12 +176,104 @@ export function useStudioEvents(
             setTurnInProgress(false)
           }
 
+          if (sessionUpdate === "error") {
+            const errMsg = (update?.message as string) ?? (update?.error as string) ?? "Agent error"
+            setError(errMsg)
+            setTurnInProgress(false)
+          }
+
           setEvents((prev) => [...prev, studioEvent])
           setItems((prev) => {
             const next = new Map(prev)
             processAcpEvent(studioEvent, next, currentTurnIdRef)
             return next
           })
+
+          if (method === "permission/request") {
+            const permId = (params?.permission_id ?? params?.id ?? `perm-${Date.now()}`) as string
+            const action = (params?.action ?? params?.description ?? "") as string
+            setPendingPermissions((prev) => {
+              const next = new Map(prev)
+              next.set(permId, { permission_id: permId, action, status: "pending", metadata: params?.metadata })
+              return next
+            })
+          }
+
+          if (method === "permission/response") {
+            const permId = (params?.permission_id ?? params?.id) as string | undefined
+            if (permId) {
+              setPendingPermissions((prev) => {
+                const next = new Map(prev)
+                next.delete(permId)
+                return next
+              })
+            }
+          }
+
+          if (method === "question/request") {
+            const qId = (params?.question_id ?? params?.id ?? `q-${Date.now()}`) as string
+            const prompt = (params?.prompt ?? params?.question ?? "") as string
+            const options = (params?.options ?? []) as string[]
+            setPendingQuestions((prev) => {
+              const next = new Map(prev)
+              next.set(qId, { question_id: qId, prompt, options, status: "pending" })
+              return next
+            })
+          }
+
+          if (method === "question/response") {
+            const qId = (params?.question_id ?? params?.id) as string | undefined
+            if (qId) {
+              setPendingQuestions((prev) => {
+                const next = new Map(prev)
+                next.delete(qId)
+                return next
+              })
+            }
+          }
+
+          if (sessionUpdate === "permission_requested") {
+            const permId = (update?.permission_id ?? `perm-${Date.now()}`) as string
+            const action = (update?.action ?? update?.description ?? "") as string
+            setPendingPermissions((prev) => {
+              const next = new Map(prev)
+              next.set(permId, { permission_id: permId, action, status: "pending", metadata: update?.metadata })
+              return next
+            })
+          }
+
+          if (sessionUpdate === "permission_resolved") {
+            const permId = update?.permission_id as string | undefined
+            if (permId) {
+              setPendingPermissions((prev) => {
+                const next = new Map(prev)
+                next.delete(permId)
+                return next
+              })
+            }
+          }
+
+          if (sessionUpdate === "question_asked") {
+            const qId = (update?.question_id ?? `q-${Date.now()}`) as string
+            const prompt = (update?.prompt ?? update?.question ?? "") as string
+            const options = (update?.options ?? []) as string[]
+            setPendingQuestions((prev) => {
+              const next = new Map(prev)
+              next.set(qId, { question_id: qId, prompt, options, status: "pending" })
+              return next
+            })
+          }
+
+          if (sessionUpdate === "question_answered") {
+            const qId = update?.question_id as string | undefined
+            if (qId) {
+              setPendingQuestions((prev) => {
+                const next = new Map(prev)
+                next.delete(qId)
+                return next
+              })
+            }
+          }
 
           appendEvents({
             sessionId,
@@ -230,6 +327,10 @@ export function useStudioEvents(
           timestamp: item.createdAt,
         }
       }),
+  [items])
+
+  const allItems: ItemState[] = useMemo(() =>
+    Array.from(items.values()).sort((a, b) => a.createdAt - b.createdAt),
   [items])
 
   const sendMessage = useCallback(async (text: string) => {
@@ -334,6 +435,7 @@ export function useStudioEvents(
   return {
     events,
     messages,
+    allItems,
     turnInProgress,
     sessionEnded,
     isConnected,
@@ -351,6 +453,8 @@ function processAcpEvent(
   event: StudioEvent,
   items: Map<string, ItemState>,
   currentTurnIdRef: { current: string | null },
+  pendingPermissions?: Map<string, PendingPermission>,
+  pendingQuestions?: Map<string, PendingQuestion>,
 ) {
   const raw = event.data as Record<string, unknown> | undefined
   if (!raw) return
@@ -393,6 +497,29 @@ function processAcpEvent(
     return
   }
 
+  if (method === "permission/request" && pendingPermissions) {
+    const permId = (params?.permission_id ?? params?.id ?? `perm-${event.sequence}`) as string
+    const action = (params?.action ?? params?.description ?? "") as string
+    pendingPermissions.set(permId, { permission_id: permId, action, status: "pending", metadata: params?.metadata })
+  }
+
+  if (method === "permission/response" && pendingPermissions) {
+    const permId = (params?.permission_id ?? params?.id) as string | undefined
+    if (permId) pendingPermissions.delete(permId)
+  }
+
+  if (method === "question/request" && pendingQuestions) {
+    const qId = (params?.question_id ?? params?.id ?? `q-${event.sequence}`) as string
+    const prompt = (params?.prompt ?? params?.question ?? "") as string
+    const options = (params?.options ?? []) as string[]
+    pendingQuestions.set(qId, { question_id: qId, prompt, options, status: "pending" })
+  }
+
+  if (method === "question/response" && pendingQuestions) {
+    const qId = (params?.question_id ?? params?.id) as string | undefined
+    if (qId) pendingQuestions.delete(qId)
+  }
+
   if (!sessionUpdate) return
 
   const turnId = currentTurnIdRef.current
@@ -412,6 +539,24 @@ function processAcpEvent(
     }
 
     case "agent_thought_chunk": {
+      const content = update?.content as { text?: string; type?: string } | undefined
+      const text = content?.text
+      if (!text) return
+      const thinkingItemId = `thinking-${turnId}`
+      const existing = items.get(thinkingItemId)
+      if (existing) {
+        existing.deltas.push(text)
+      } else {
+        items.set(thinkingItemId, {
+          itemId: thinkingItemId,
+          role: "assistant",
+          kind: "thinking",
+          content: [],
+          deltas: [text],
+          status: "in_progress",
+          createdAt: event.createdAt,
+        })
+      }
       break
     }
 
@@ -424,6 +569,16 @@ function processAcpEvent(
           state.deltas = []
         }
         state.status = "completed"
+      }
+      const thinkingItemId = `thinking-${turnId}`
+      const thinkingState = items.get(thinkingItemId)
+      if (thinkingState) {
+        if (thinkingState.deltas.length > 0) {
+          const fullText = thinkingState.deltas.join("")
+          thinkingState.content = [{ type: "reasoning", text: fullText, visibility: "public" }]
+          thinkingState.deltas = []
+        }
+        thinkingState.status = "completed"
       }
       currentTurnIdRef.current = null
       break
@@ -464,6 +619,70 @@ function processAcpEvent(
           action: update?.action as string | undefined,
           diff: update?.diff as string | undefined,
         }],
+        deltas: [],
+        status: "completed",
+        createdAt: event.createdAt,
+      })
+      break
+    }
+
+    case "permission_requested": {
+      if (pendingPermissions) {
+        const permId = (update?.permission_id ?? `perm-${event.sequence}`) as string
+        const action = (update?.action ?? update?.description ?? "") as string
+        pendingPermissions.set(permId, { permission_id: permId, action, status: "pending", metadata: update?.metadata })
+      }
+      break
+    }
+
+    case "permission_resolved": {
+      if (pendingPermissions) {
+        const permId = update?.permission_id as string | undefined
+        if (permId) pendingPermissions.delete(permId)
+      }
+      break
+    }
+
+    case "question_asked": {
+      if (pendingQuestions) {
+        const qId = (update?.question_id ?? `q-${event.sequence}`) as string
+        const prompt = (update?.prompt ?? update?.question ?? "") as string
+        const options = (update?.options ?? []) as string[]
+        pendingQuestions.set(qId, { question_id: qId, prompt, options, status: "pending" })
+      }
+      break
+    }
+
+    case "question_answered": {
+      if (pendingQuestions) {
+        const qId = update?.question_id as string | undefined
+        if (qId) pendingQuestions.delete(qId)
+      }
+      break
+    }
+
+    case "session_ended": {
+      const endItemId = `end-${event.sequence}`
+      items.set(endItemId, {
+        itemId: endItemId,
+        role: "system",
+        kind: "message",
+        content: [{ type: "text", text: "Session ended." }],
+        deltas: [],
+        status: "completed",
+        createdAt: event.createdAt,
+      })
+      break
+    }
+
+    case "error": {
+      const errMsg = (update?.message as string) ?? (update?.error as string) ?? "An error occurred"
+      const errItemId = `error-${event.sequence}`
+      items.set(errItemId, {
+        itemId: errItemId,
+        role: "system",
+        kind: "message",
+        content: [{ type: "text", text: errMsg }],
         deltas: [],
         status: "completed",
         createdAt: event.createdAt,
