@@ -6,55 +6,24 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background-color: #F5F1E8;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-[data-mode="customer"] {
-  --bg-primary: #F5F1E8;
-  --bg-secondary: #E8E4D4;
-  --text-primary: #1B4332;
-  --text-accent: #2D5A45;
-  --border: rgba(45, 90, 69, 0.3);
-  --border-subtle: rgba(45, 90, 69, 0.2);
-  --grid-line: rgba(27, 67, 50, 0.04);
-  --grid-line-strong: rgba(27, 67, 50, 0.06);
-  --grid-line-subtle: rgba(27, 67, 50, 0.02);
-  --input-bg: #FFFFFF;
-  --btn-bg: #1B4332;
-  --btn-text: #F5F1E8;
-  --btn-hover: #2D5A45;
-}
-
-[data-mode="builder"] {
-  --bg-primary: #0F2419;
-  --bg-secondary: #132C1F;
-  --text-primary: #E8E4D4;
-  --text-accent: #9CB8A8;
-  --border: rgba(156, 184, 168, 0.25);
-  --border-subtle: rgba(156, 184, 168, 0.15);
-  --grid-line: rgba(156, 184, 168, 0.04);
-  --grid-line-strong: rgba(156, 184, 168, 0.06);
-  --grid-line-subtle: rgba(156, 184, 168, 0.02);
-  --input-bg: #1B3528;
-  --btn-bg: #E8E4D4;
-  --btn-text: #0F2419;
-  --btn-hover: #F5F1E8;
-}
-
-[data-mode] input::placeholder {
-  color: var(--text-accent);
-  opacity: 0.5;
-}
-
-@layer utilities {
-  .font-dm, .font-dm * { font-family: var(--font-dm-mono), monospace; }
-  .font-ibm, .font-ibm * { font-family: var(--font-ibm-plex), monospace; }
-  .font-roboto, .font-roboto * { font-family: var(--font-roboto-mono), monospace; }
-  .font-source, .font-source * { font-family: var(--font-source-code), monospace; }
-  .font-overpass, .font-overpass * { font-family: var(--font-overpass), monospace; }
-  .font-redhat, .font-redhat * { font-family: var(--font-red-hat), monospace; }
-  .font-fira, .font-fira * { font-family: var(--font-fira-code), monospace; }
+  font-family: var(--font-dm-sans), sans-serif;
 }
