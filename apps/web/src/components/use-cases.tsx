@@ -42,7 +42,7 @@ function UseCaseCard({
           &ldquo;{useCase.prompt}&rdquo;
         </p>
         <a
-          href="https://app.struere.dev"
+          href={`https://app.struere.dev?studio=${encodeURIComponent(useCase.prompt)}`}
           className="inline-block mt-5 text-xs font-medium text-ocean hover:text-ocean-light transition-colors"
         >
           {ctaLabel} &rarr;
