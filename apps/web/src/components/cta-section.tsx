@@ -38,7 +38,8 @@ export function CTASection() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    window.location.href = "https://app.struere.dev"
+    const params = prompt.trim() ? `?studio=${encodeURIComponent(prompt.trim())}` : "?studio="
+    window.location.href = `https://app.struere.dev${params}`
   }
 
   return (

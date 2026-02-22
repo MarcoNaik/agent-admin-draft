@@ -76,8 +76,9 @@ export function HeroSection() {
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
-    window.location.href = "https://app.struere.dev"
-  }, [])
+    const params = prompt.trim() ? `?studio=${encodeURIComponent(prompt.trim())}` : "?studio="
+    window.location.href = `https://app.struere.dev${params}`
+  }, [prompt])
 
   return (
     <section className="relative w-full min-h-screen overflow-hidden">
