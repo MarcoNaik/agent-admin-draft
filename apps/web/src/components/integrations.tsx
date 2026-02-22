@@ -4,7 +4,7 @@ import { useReveal } from "@/hooks/use-reveal"
 import { useI18n } from "@/lib/i18n"
 
 const aiProviders = [
-  { name: "GPT-4o", label: "OpenAI" },
+  { name: "GPT", label: "OpenAI" },
   { name: "Claude", label: "Anthropic" },
   { name: "Gemini", label: "Google" },
   { name: "Grok", label: "xAI" },
