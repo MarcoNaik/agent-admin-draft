@@ -1,34 +1,43 @@
 import type { Metadata } from "next"
-import { DM_Sans, Source_Code_Pro } from "next/font/google"
+import { DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google"
+import { Providers } from "@/components/providers"
 import "./globals.css"
 
 const dmSans = DM_Sans({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-dm-sans",
 })
 
-const sourceCode = Source_Code_Pro({
-  weight: ["300", "400", "500"],
-  subsets: ["latin"],
-  variable: "--font-source-code",
+const fraunces = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-fraunces",
+})
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-jetbrains",
+  weight: ["400"],
 })
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://struere.dev"),
-  title: "Struere — You describe it. We build it.",
-  description: "Tell us what your agent should do. It ships with WhatsApp, Calendar, Payments, and more. Free to start.",
+  title: "Struere — Piensa. Escribe. Construye.",
+  description:
+    "Describe lo que necesita tu negocio y Struere construye agentes inteligentes que trabajan por ti — sin codigo, sin complicaciones.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "Struere — You describe it. We build it.",
-    description: "Tell us what your agent should do. It ships with WhatsApp, Calendar, Payments, and more. Free to start.",
+    title: "Struere — Piensa. Escribe. Construye.",
+    description:
+      "Describe lo que necesita tu negocio y Struere construye agentes inteligentes que trabajan por ti — sin codigo, sin complicaciones.",
     url: "https://struere.dev",
     siteName: "Struere",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Struere — You describe it. We build it.",
-    description: "Tell us what your agent should do. It ships with WhatsApp, Calendar, Payments, and more. Free to start.",
+    title: "Struere — Piensa. Escribe. Construye.",
+    description:
+      "Describe lo que necesita tu negocio y Struere construye agentes inteligentes que trabajan por ti — sin codigo, sin complicaciones.",
   },
 }
 
@@ -38,9 +47,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${dmSans.variable} ${sourceCode.variable}`}>
-        {children}
+    <html lang="es">
+      <body
+        className={`${dmSans.variable} ${fraunces.variable} ${jetbrains.variable}`}
+      >
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
