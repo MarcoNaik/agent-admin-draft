@@ -6,13 +6,6 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useEnvironment } from "@/contexts/environment-context"
 
-type AgentType = "opencode" | "claude"
-
-interface StudioSession {
-  sessionId: Id<"sandboxSessions">
-  status: string
-}
-
 export function useStudioSession() {
   const { environment } = useEnvironment()
   const [isStarting, setIsStarting] = useState(false)
@@ -22,7 +15,7 @@ export function useStudioSession() {
   const activeSession = useQuery(api.sandboxSessions.getActiveSafe, { environment })
   const cleanup = useMutation(api.sandboxSessions.cleanup)
 
-  const startSession = useCallback(async (agentType: AgentType = "opencode"): Promise<StudioSession | null> => {
+  const startSession = useCallback(async () => {
     setIsStarting(true)
     setError(null)
 
@@ -30,7 +23,7 @@ export function useStudioSession() {
       const response = await fetch("/api/studio/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentType, environment }),
+        body: JSON.stringify({ agentType: "opencode", environment }),
       })
 
       if (!response.ok) {
@@ -40,7 +33,7 @@ export function useStudioSession() {
 
       const data = await response.json()
       return {
-        sessionId: data.sessionId,
+        sessionId: data.sessionId as Id<"sandboxSessions">,
         status: "ready",
       }
     } catch (err) {

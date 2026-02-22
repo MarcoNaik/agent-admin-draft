@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useStudio } from "@/contexts/studio-context"
 import { useStudioSession } from "@/hooks/use-studio-session"
@@ -43,8 +43,7 @@ export function StudioPanel() {
   } = useStudioEvents(sessionId)
 
   const keepaliveRef = useRef<ReturnType<typeof setInterval>>()
-  const autoStarted = useRef(false)
-  const pendingAutoSend = useRef<string | null>(null)
+  const pendingMessage = useRef<string | null>(null)
 
   useEffect(() => {
     if (isActive) {
@@ -58,18 +57,29 @@ export function StudioPanel() {
   }, [isActive, setHasActiveSession])
 
   useEffect(() => {
-    if (!initialPrompt || autoStarted.current || isActive || isStarting) return
-    autoStarted.current = true
-    pendingAutoSend.current = consumeInitialPrompt()
+    if (!initialPrompt || isActive || isStarting) return
+    pendingMessage.current = consumeInitialPrompt()
     startSession()
   }, [initialPrompt, isActive, isStarting, startSession, consumeInitialPrompt])
 
   useEffect(() => {
-    if (!pendingAutoSend.current || !isConnected) return
-    const message = pendingAutoSend.current
-    pendingAutoSend.current = null
+    if (!pendingMessage.current || !isConnected) return
+    const message = pendingMessage.current
+    pendingMessage.current = null
     sendMessage(message)
   }, [isConnected, sendMessage])
+
+  const handleSendMessage = useCallback((text: string) => {
+    if (isConnected && isActive) {
+      sendMessage(text)
+      return
+    }
+
+    if (!isActive && !isStarting) {
+      pendingMessage.current = text
+      startSession()
+    }
+  }, [isConnected, isActive, isStarting, sendMessage, startSession])
 
   const error = sessionError || eventError
 
@@ -86,7 +96,6 @@ export function StudioPanel() {
           isStarting={isStarting}
           isStopping={isStopping}
           isConnected={isConnected}
-          onStart={startSession}
           onStop={stopSession}
         />
 
@@ -102,7 +111,8 @@ export function StudioPanel() {
           sessionEnded={sessionEnded}
           isConnected={isConnected}
           isSessionActive={isActive}
-          onSendMessage={sendMessage}
+          isStarting={isStarting}
+          onSendMessage={handleSendMessage}
         >
           {Array.from(pendingPermissions.values()).map((p) => (
             <PermissionRequestCard
