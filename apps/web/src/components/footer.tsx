@@ -48,8 +48,6 @@ export function Footer() {
             Struere
           </a>
 
-          <p className="text-xs text-charcoal/40">{t.footer.madeWith}</p>
-
           <div className="flex items-center gap-5">
             <a
               href="mailto:hello@struere.dev"
