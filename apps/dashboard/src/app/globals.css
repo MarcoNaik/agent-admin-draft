@@ -178,3 +178,42 @@
     background-position: -200% 0;
   }
 }
+
+.hljs {
+  background: transparent !important;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in {
+  color: hsl(var(--ocean-light));
+}
+.hljs-string,
+.hljs-attr {
+  color: hsl(var(--amber-light));
+}
+.hljs-comment,
+.hljs-quote {
+  color: hsl(var(--content-tertiary));
+  font-style: italic;
+}
+.hljs-number,
+.hljs-literal {
+  color: hsl(var(--amber));
+}
+.hljs-title,
+.hljs-section,
+.hljs-type {
+  color: hsl(var(--ocean));
+}
+.hljs-params {
+  color: hsl(var(--content-secondary));
+}
+.hljs-meta {
+  color: hsl(var(--content-tertiary));
+}
+.hljs-addition {
+  color: hsl(var(--success));
+}
+.hljs-deletion {
+  color: hsl(var(--destructive));
+}
