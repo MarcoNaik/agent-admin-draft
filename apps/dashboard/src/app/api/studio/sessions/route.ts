@@ -5,6 +5,73 @@ import { createSandbox } from "@/lib/studio/e2b"
 import { generateProjectFiles } from "@/lib/studio/project"
 import { getConvexClient } from "@/lib/studio/client"
 
+const ACP_PROTOCOL_VERSION = 1
+
+async function acpPost(
+  baseUrl: string,
+  serverId: string,
+  body: Record<string, unknown>,
+  query?: Record<string, string>
+) {
+  const url = new URL(`${baseUrl}/v1/acp/${encodeURIComponent(serverId)}`)
+  if (query) {
+    for (const [k, v] of Object.entries(query)) {
+      url.searchParams.set(k, v)
+    }
+  }
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  })
+  const text = await res.text()
+  let json: Record<string, unknown> | null = null
+  try { json = JSON.parse(text) } catch {}
+  if (!res.ok) {
+    throw new Error(`ACP ${body.method} failed: ${res.status} ${text.slice(0, 300)}`)
+  }
+  if (json && typeof json === "object" && "error" in json) {
+    const err = json.error as Record<string, unknown>
+    throw new Error(`ACP ${body.method} RPC error: ${err.message ?? JSON.stringify(err)}`)
+  }
+  return json
+}
+
+let rpcIdCounter = 0
+
+async function createAcpSession(
+  sandboxUrl: string,
+  agentType: string,
+  cwd: string
+): Promise<{ serverId: string; agentSessionId: string }> {
+  const serverId = `web-${crypto.randomUUID()}`
+
+  await acpPost(sandboxUrl, serverId, {
+    jsonrpc: "2.0",
+    id: ++rpcIdCounter,
+    method: "initialize",
+    params: {
+      protocolVersion: ACP_PROTOCOL_VERSION,
+      clientInfo: { name: "struere-studio", version: "1.0" },
+    },
+  }, { agent: agentType })
+
+  const result = await acpPost(sandboxUrl, serverId, {
+    jsonrpc: "2.0",
+    id: ++rpcIdCounter,
+    method: "session/new",
+    params: { cwd, mcpServers: [] },
+  }) as Record<string, unknown>
+
+  const sessionResult = result?.result as Record<string, unknown> | undefined
+  const agentSessionId = sessionResult?.sessionId as string | undefined
+  if (!agentSessionId) {
+    throw new Error(`session/new did not return sessionId: ${JSON.stringify(result)}`)
+  }
+
+  return { serverId, agentSessionId }
+}
+
 export async function POST(request: Request) {
   const { getToken } = await auth()
   const token = await getToken({ template: "convex" })
@@ -69,31 +136,19 @@ export async function POST(request: Request) {
     })
     sandboxId = sandbox.sandboxId
 
-    const { SandboxAgent } = await import("sandbox-agent")
-    const sdk = await SandboxAgent.connect({ baseUrl: sandbox.sandboxUrl })
-
-    const session = await sdk.createSession({
-      agent: agentType,
-      sessionInit: {
-        cwd: "/workspace",
-        mcpServers: [],
-      },
-    })
-
-    const acpServersRes = await fetch(`${sandbox.sandboxUrl}/v1/acp`)
-    const acpServers = await acpServersRes.json() as { servers: Array<{ serverId: string; agent: string }> }
-    const acpServer = acpServers.servers.find((s) => s.agent === agentType)
-    if (!acpServer) {
-      throw new Error("ACP server not found after session creation")
-    }
+    const { serverId, agentSessionId } = await createAcpSession(
+      sandbox.sandboxUrl,
+      agentType,
+      "/workspace",
+    )
 
     await convex.mutation(api.sandboxSessions.updateStatus, {
       id: sessionId,
       status: "ready",
       sandboxId: sandbox.sandboxId,
       sandboxUrl: sandbox.sandboxUrl,
-      agentSessionId: session.agentSessionId,
-      acpServerId: acpServer.serverId,
+      agentSessionId,
+      acpServerId: serverId,
     })
 
     return NextResponse.json({ sessionId })
@@ -106,7 +161,6 @@ export async function POST(request: Request) {
         const { destroySandbox } = await import("@/lib/studio/e2b")
         await destroySandbox(sandboxId)
       } catch {
-        // best effort
       }
     }
 
@@ -118,7 +172,6 @@ export async function POST(request: Request) {
           errorMessage: message,
         })
       } catch {
-        // best effort
       }
     }
 
