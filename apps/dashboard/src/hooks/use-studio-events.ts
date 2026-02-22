@@ -91,6 +91,7 @@ export function useStudioEvents(
   const reconnectAttemptsRef = useRef(0)
   const restoredRef = useRef(false)
   const turnTrackingRef = useRef<TurnTracking | null>(null)
+  const lastEventTimestampRef = useRef(0)
   const appendEvents = useMutation(api.sandboxSessions.appendEvents)
 
   const storedEvents = useQuery(
@@ -153,6 +154,7 @@ export function useStudioEvents(
       es.onmessage = (msg) => {
         try {
           const raw = JSON.parse(msg.data)
+          lastEventTimestampRef.current = Date.now()
 
           const eventIndex = raw.eventIndex ?? 0
           if (eventIndex > 0 && eventIndex <= lastSequenceRef.current) return
@@ -318,6 +320,22 @@ export function useStudioEvents(
       setIsConnected(false)
     }
   }, [sessionId])
+
+  useEffect(() => {
+    const STALE_TURN_MS = 120_000
+    const CHECK_INTERVAL_MS = 30_000
+    const interval = setInterval(() => {
+      if (
+        turnInProgress &&
+        lastEventTimestampRef.current > 0 &&
+        Date.now() - lastEventTimestampRef.current > STALE_TURN_MS
+      ) {
+        setTurnInProgress(false)
+        turnTrackingRef.current = null
+      }
+    }, CHECK_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [turnInProgress])
 
   const messages: StudioMessage[] = useMemo(() =>
     Array.from(items.values())
