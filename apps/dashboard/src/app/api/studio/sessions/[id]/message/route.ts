@@ -19,6 +19,11 @@ export async function POST(
   const sessionId = id as Id<"sandboxSessions">
 
   try {
+    const { balance } = await convex.query(api.billing.getBalance, {})
+    if (balance <= 0) {
+      return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
+    }
+
     const session = await getSessionForRequest(convex, sessionId)
     const body = await request.json()
     const { message } = body as { message: string }

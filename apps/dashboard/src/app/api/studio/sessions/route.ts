@@ -86,6 +86,11 @@ export async function POST(request: Request) {
   let sandboxId: string | null = null
 
   try {
+    const { balance } = await convex.query(api.billing.getBalance, {})
+    if (balance <= 0) {
+      return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
+    }
+
     sessionId = await convex.mutation(api.sandboxSessions.create, {
       environment,
       agentType,
