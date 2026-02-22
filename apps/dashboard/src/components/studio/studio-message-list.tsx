@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useEffect } from "react"
-import { Bot, User, Loader2, Brain, AlertCircle } from "lucide-react"
+import { useRef, useEffect, useState } from "react"
+import { Bot, User, Loader2, Brain, AlertCircle, ChevronRight, FileCode } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ToolCallCard } from "./studio-tool-activity"
+import { StudioMarkdown } from "./studio-markdown"
 import type { ItemState, ContentPart } from "@/hooks/use-studio-events"
 
 interface StudioMessageListProps {
@@ -85,40 +86,36 @@ function MessageBubble({ item }: { item: ItemState }) {
     )
   }
 
-  return (
-    <div className={cn("flex items-start gap-3", isUser && "flex-row-reverse")}>
-      <div
-        className={cn(
-          "shrink-0 h-7 w-7 rounded-full flex items-center justify-center",
-          isUser ? "bg-primary" : "bg-muted"
-        )}
-      >
-        {isUser ? (
+  if (isUser) {
+    return (
+      <div className="flex items-start gap-3 flex-row-reverse">
+        <div className="shrink-0 h-7 w-7 rounded-full bg-primary flex items-center justify-center">
           <User className="h-4 w-4 text-primary-foreground" />
-        ) : (
-          <Bot className="h-4 w-4 text-content-tertiary" />
-        )}
+        </div>
+        <div className="max-w-[80%] items-end">
+          {displayText && (
+            <div className="rounded-lg px-3 py-2 text-sm whitespace-pre-wrap bg-primary text-primary-foreground">
+              {displayText}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-start gap-3">
+      <div className="shrink-0 h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+        <Bot className="h-4 w-4 text-content-tertiary" />
       </div>
 
-      <div className={cn("max-w-[80%] space-y-1", isUser && "items-end")}>
+      <div className="min-w-0 flex-1">
         {displayText && (
-          <div
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
-              isUser
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-content-primary"
-            )}
-          >
-            {displayText}
-            {isStreaming && (
-              <span className="inline-block w-1.5 h-4 bg-current opacity-50 animate-pulse ml-0.5 align-text-bottom" />
-            )}
-          </div>
+          <StudioMarkdown content={displayText} isStreaming={isStreaming} />
         )}
 
         {imageParts.length > 0 && (
-          <div className="space-y-1">
+          <div className="space-y-1 mt-1">
             {imageParts.map((part, i) => (
               <ImagePart key={`${item.itemId}-img-${i}`} part={part} />
             ))}
@@ -150,15 +147,54 @@ function FileChangeItem({ item }: { item: ItemState }) {
   const part = item.content[0]
   if (!part) return null
 
+  const diff = part.diff
+
   return (
     <div className="pl-10">
-      <ToolCallCard part={part} />
+      <div className="rounded-md border bg-background overflow-hidden text-xs my-1">
+        <div className="flex items-center gap-2 px-3 py-2 text-left">
+          <FileCode className="h-3 w-3 shrink-0 text-ocean" />
+          <span className="text-content-primary font-mono">{part.path}</span>
+          {part.action && (
+            <span className={cn(
+              "ml-auto px-1.5 py-0.5 rounded text-[10px] font-medium",
+              part.action === "write" && "bg-success/20 text-success",
+              part.action === "patch" && "bg-warning/20 text-warning",
+              part.action === "read" && "bg-ocean/20 text-ocean",
+            )}>
+              {part.action}
+            </span>
+          )}
+        </div>
+        {diff && (
+          <div className="border-t bg-background px-3 py-2 overflow-x-auto max-h-64 overflow-y-auto font-mono text-xs">
+            {diff.split("\n").map((line, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "whitespace-pre",
+                  line.startsWith("+") && !line.startsWith("+++") && "text-success bg-success/10",
+                  line.startsWith("-") && !line.startsWith("---") && "text-destructive bg-destructive/10",
+                  line.startsWith("@@") && "text-ocean",
+                )}
+              >
+                {line}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 function ThinkingBlock({ item }: { item: ItemState }) {
   const isStreaming = item.status === "in_progress"
+  const [expanded, setExpanded] = useState(isStreaming)
+
+  useEffect(() => {
+    if (isStreaming) setExpanded(true)
+  }, [isStreaming])
 
   const textParts = item.content.filter((p) => p.type === "reasoning")
   const text = textParts.map((p) => p.text ?? "").join("") + item.deltas.join("")
@@ -167,14 +203,20 @@ function ThinkingBlock({ item }: { item: ItemState }) {
 
   return (
     <div className="pl-10">
-      <div className="flex items-center gap-2 text-xs text-content-tertiary mb-1">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-2 text-xs text-content-tertiary mb-1 hover:text-content-secondary transition-colors"
+      >
+        <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />
         <Brain className="h-3 w-3" />
         <span>Thinking{isStreaming ? "..." : ""}</span>
         {isStreaming && <Loader2 className="h-3 w-3 animate-spin" />}
-      </div>
-      <div className="rounded-md border bg-muted/50 px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
-        {text}
-      </div>
+      </button>
+      {expanded && (
+        <div className="rounded-md border bg-muted/50 px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
+          {text}
+        </div>
+      )}
     </div>
   )
 }
