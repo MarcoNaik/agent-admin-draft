@@ -11,6 +11,7 @@ import {
   Globe,
   Code,
   User,
+  Terminal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -20,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useEnvironment } from "@/contexts/environment-context"
+import { useStudio } from "@/contexts/studio-context"
 import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { OrgSwitcher } from "@/components/org-switcher"
@@ -32,7 +34,6 @@ type NavItem = {
 }
 
 const adminNavigation: NavItem[] = [
-  { name: "Studio", href: "/studio" },
   { name: "Conversations", href: "/conversations" },
   { name: "Entities", href: "/entities" },
   { name: "Roles", href: "/roles" },
@@ -123,6 +124,27 @@ function EnvironmentSelector() {
 
 const EXACT_MATCH_TABS = new Set(["/settings"])
 
+function StudioToggle() {
+  const { isOpen, toggleStudio, hasActiveSession } = useStudio()
+
+  return (
+    <button
+      type="button"
+      onClick={toggleStudio}
+      className={cn(
+        "relative flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft",
+        isOpen && "text-content-primary font-medium"
+      )}
+    >
+      <Terminal className="h-4 w-4" />
+      Studio
+      {hasActiveSession && (
+        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-success" />
+      )}
+    </button>
+  )
+}
+
 export function Header() {
   const pathname = usePathname()
   const { role: userRole, isOrgAdmin } = useCurrentRole()
@@ -166,6 +188,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2 px-3">
+          {isOrgAdmin && <StudioToggle />}
           {isOrgAdmin && <EnvironmentSelector />}
           <div className="flex items-center">
             <ThemeToggle />
