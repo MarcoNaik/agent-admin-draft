@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Doc } from "@convex/_generated/dataModel"
-import { Loader2, CreditCard, DollarSign, Info, CheckCircle2, X } from "lucide-react"
+import Link from "next/link"
+import { Loader2, CreditCard, DollarSign, CheckCircle2, X, Bot, Monitor, FlaskConical } from "lucide-react"
 import {
   useCreditBalance,
   useCreditTransactions,
@@ -12,11 +13,17 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatRelativeTime } from "@/lib/format"
 
-function formatMicrodollars(microdollars: number): string {
+function FormattedCredits({ microdollars, prefix }: { microdollars: number; prefix?: string }) {
   const dollars = microdollars / 1_000_000
-  if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
-  if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
-  return `$${dollars.toFixed(6)}`
+  const formatted = dollars.toFixed(6)
+  const bright = formatted.slice(0, -2)
+  const dim = formatted.slice(-2)
+
+  return (
+    <>
+      {prefix}${bright}<span className="opacity-40">{dim}</span>
+    </>
+  )
 }
 
 function PurchaseCreditsForm() {
@@ -136,20 +143,94 @@ export default function BillingPage() {
           <DollarSign className="h-4 w-4 text-content-tertiary" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-content-primary">{formatMicrodollars(balance.balance)}</div>
+          <div className="text-3xl font-bold text-content-primary"><FormattedCredits microdollars={balance.balance} /></div>
           <p className="text-xs text-content-tertiary mt-1">
             Last updated {formatRelativeTime(balance.updatedAt)}
           </p>
         </CardContent>
       </Card>
 
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-ocean/10 border border-ocean/30">
-        <Info className="h-4 w-4 text-ocean mt-0.5 shrink-0" />
-        <p className="text-sm text-ocean">
-          When your credit balance reaches $0, API requests using platform keys will stop working.
-          Agents configured with custom provider API keys are not affected.
-        </p>
-      </div>
+      <Card className="bg-background-secondary">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold text-content-primary">How Billing Works</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-content-secondary">
+            Per-token billing at provider rates + 10% markup. Skip the markup by adding your own keys in{" "}
+            <Link href="/settings/providers" className="underline text-content-primary hover:text-primary">Providers</Link> or
+            using <code className="text-xs bg-background-tertiary px-1 py-0.5 rounded">struere</code> CLI locally with your own API keys.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
+              <Bot className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-content-primary">Deployed Agents</p>
+                <p className="text-xs text-content-secondary mt-0.5">API and webhook-triggered chats.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
+              <Monitor className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-content-primary">Studio</p>
+                <p className="text-xs text-content-secondary mt-0.5">Each prompt billed per token (grok-4-1-fast).</p>
+              </div>
+            </div>
+            <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
+              <FlaskConical className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-content-primary">Evals</p>
+                <p className="text-xs text-content-secondary mt-0.5">Agent + judge model tokens.</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-content-secondary mb-2">Pricing per 1M tokens (incl. 10% markup)</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-content-tertiary">
+                    <th className="text-left py-1.5 pr-4 font-medium">Model</th>
+                    <th className="text-right py-1.5 px-4 font-medium">Input</th>
+                    <th className="text-right py-1.5 pl-4 font-medium">Output</th>
+                  </tr>
+                </thead>
+                <tbody className="text-content-secondary">
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 pr-4 text-content-primary">grok-4-1-fast</td>
+                    <td className="text-right py-1.5 px-4">$0.22</td>
+                    <td className="text-right py-1.5 pl-4">$0.55</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 pr-4 text-content-primary">claude-sonnet-4</td>
+                    <td className="text-right py-1.5 px-4">$3.30</td>
+                    <td className="text-right py-1.5 pl-4">$16.50</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 pr-4 text-content-primary">claude-haiku-4.5</td>
+                    <td className="text-right py-1.5 px-4">$1.10</td>
+                    <td className="text-right py-1.5 pl-4">$5.50</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 pr-4 text-content-primary">gpt-4o</td>
+                    <td className="text-right py-1.5 px-4">$2.75</td>
+                    <td className="text-right py-1.5 pl-4">$11.00</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-4 text-content-primary">gemini-2.5-flash</td>
+                    <td className="text-right py-1.5 px-4">$0.33</td>
+                    <td className="text-right py-1.5 pl-4">$2.75</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-content-tertiary mt-2">
+              40+ models supported. See <Link href="/settings/usage" className="underline hover:text-content-secondary">Usage</Link> for per-model breakdowns.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="bg-background-secondary">
         <CardHeader>
@@ -198,10 +279,10 @@ export default function BillingPage() {
                         <TransactionBadge type={tx.type} />
                       </td>
                       <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-destructive" : "text-success"}`}>
-                        {tx.type === "deduction" ? "-" : "+"}{formatMicrodollars(tx.amount)}
+                        <FormattedCredits microdollars={tx.amount} prefix={tx.type === "deduction" ? "-" : "+"} />
                       </td>
                       <td className="text-right py-2 px-4 text-content-primary">
-                        {formatMicrodollars(tx.balanceAfter)}
+                        <FormattedCredits microdollars={tx.balanceAfter} />
                       </td>
                       <td className="py-2 pl-4 text-content-secondary truncate max-w-[200px]">
                         {tx.description}
