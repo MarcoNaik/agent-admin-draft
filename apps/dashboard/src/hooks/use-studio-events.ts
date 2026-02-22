@@ -19,7 +19,7 @@ export interface ItemState {
   kind: string
   content: ContentPart[]
   deltas: string[]
-  status: "in_progress" | "completed"
+  status: "in_progress" | "completed" | "failed"
   createdAt: number
 }
 
@@ -38,6 +38,14 @@ export interface ContentPart {
   mime?: string
   json?: unknown
   visibility?: string
+  toolCallId?: string
+  title?: string
+  kind?: string
+  toolStatus?: string
+  rawInput?: string
+  rawOutput?: string
+  locations?: Array<{ path: string }>
+  toolContent?: unknown[]
 }
 
 export interface StudioMessage {
@@ -118,7 +126,6 @@ export function useStudioEvents(
     const restoredItems = new Map<string, ItemState>()
     const restoredPermissions = new Map<string, PendingPermission>()
     const restoredQuestions = new Map<string, PendingQuestion>()
-    const restoredTracking: TurnTracking | null = null
     for (const event of restored) {
       processAcpEvent(event, restoredItems, turnTrackingRef, restoredPermissions, restoredQuestions)
     }
@@ -574,13 +581,98 @@ function processAcpEvent(
 
   if (!sessionUpdate) return
 
+  if (sessionUpdate === "tool_call") {
+    const toolCallId = update?.toolCallId as string | undefined
+    if (!toolCallId) return
+    const itemId = `tool-${toolCallId}`
+    const title = (update?.title ?? "") as string
+    const kind = (update?.kind ?? "other") as string
+    const status = (update?.status ?? "in_progress") as string
+    const rawInput = update?.rawInput as string | undefined
+    const locations = (update?.locations ?? []) as Array<{ path: string }>
+    const toolContent = (update?.content ?? []) as unknown[]
+    items.set(itemId, {
+      itemId,
+      role: "assistant",
+      kind: "tool_call",
+      content: [{
+        type: "tool_call",
+        toolCallId,
+        title,
+        kind,
+        toolStatus: status,
+        rawInput,
+        locations,
+        toolContent,
+      }],
+      deltas: [],
+      status: status === "completed" ? "completed" : status === "failed" ? "failed" : "in_progress",
+      createdAt: event.createdAt,
+    })
+    return
+  }
+
+  if (sessionUpdate === "tool_call_update") {
+    const toolCallId = update?.toolCallId as string | undefined
+    if (!toolCallId) return
+    const itemId = `tool-${toolCallId}`
+    const existing = items.get(itemId)
+    const title = (update?.title ?? existing?.content[0]?.title ?? "") as string
+    const kind = (existing?.content[0]?.kind ?? "other") as string
+    const status = (update?.status ?? "in_progress") as string
+    const rawOutput = update?.rawOutput as string | undefined
+    const locations = (update?.locations ?? existing?.content[0]?.locations ?? []) as Array<{ path: string }>
+    const toolContent = (update?.content ?? existing?.content[0]?.toolContent ?? []) as unknown[]
+    items.set(itemId, {
+      itemId,
+      role: "assistant",
+      kind: "tool_call",
+      content: [{
+        type: "tool_result",
+        toolCallId,
+        title,
+        kind,
+        toolStatus: status,
+        rawInput: existing?.content[0]?.rawInput,
+        rawOutput,
+        locations,
+        toolContent,
+      }],
+      deltas: [],
+      status: status === "completed" ? "completed" : status === "failed" ? "failed" : "in_progress",
+      createdAt: existing?.createdAt ?? event.createdAt,
+    })
+    return
+  }
+
+  if (sessionUpdate === "plan") {
+    const entries = (update?.entries ?? []) as Array<{ content: string; priority?: string; status?: string }>
+    if (entries.length === 0) return
+    const planItemId = `plan-${event.sequence}`
+    items.set(planItemId, {
+      itemId: planItemId,
+      role: "assistant",
+      kind: "plan",
+      content: entries.map((e) => ({
+        type: "plan_entry",
+        text: e.content,
+        detail: e.priority,
+        toolStatus: e.status,
+      })),
+      deltas: [],
+      status: "completed",
+      createdAt: event.createdAt,
+    })
+    return
+  }
+
   const tracking = turnTrackingRef.current
   if (!tracking) return
 
   switch (sessionUpdate) {
     case "agent_message_chunk": {
-      const content = update?.content as { text?: string; type?: string } | undefined
-      const text = content?.text
+      const content = update?.content as { text?: string; type?: string } | string | undefined
+      const text = typeof content === "string" ? content : content?.text
       if (!text) return
 
       if (tracking.lastChunkType !== "message") {
@@ -608,8 +700,8 @@ function processAcpEvent(
     }
 
     case "agent_thought_chunk": {
-      const content = update?.content as { text?: string; type?: string } | undefined
-      const text = content?.text
+      const content = update?.content as { text?: string; type?: string } | string | undefined
+      const text = typeof content === "string" ? content : content?.text
       if (!text) return
 
       if (tracking.lastChunkType !== "thinking") {
@@ -645,22 +737,27 @@ function processAcpEvent(
 
     case "tool_call_started":
     case "tool_call_completed": {
-      const toolItemId = `tool-${event.sequence}`
-      const name = (update?.name ?? update?.tool) as string | undefined
+      const toolCallId = (update?.toolCallId ?? `legacy-${event.sequence}`) as string
+      const itemId = `tool-${toolCallId}`
+      const name = (update?.name ?? update?.tool ?? update?.title ?? "") as string
       const args = update?.arguments as string | undefined
       const output = update?.output as string | undefined
-      items.set(toolItemId, {
-        itemId: toolItemId,
+      const status = sessionUpdate === "tool_call_started" ? "in_progress" : "completed"
+      items.set(itemId, {
+        itemId,
         role: "assistant",
         kind: "tool_call",
         content: [{
           type: sessionUpdate === "tool_call_started" ? "tool_call" : "tool_result",
+          toolCallId,
+          title: name,
           name,
+          toolStatus: status,
           arguments: args,
           output,
         }],
         deltas: [],
-        status: sessionUpdate === "tool_call_started" ? "in_progress" : "completed",
+        status: status === "completed" ? "completed" : "in_progress",
         createdAt: event.createdAt,
       })
       break
