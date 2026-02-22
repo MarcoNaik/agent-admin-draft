@@ -1,77 +1,61 @@
 "use client"
 
 import { useReveal } from "@/hooks/use-reveal"
+import { useI18n } from "@/lib/i18n"
 
-const steps = [
-  {
-    number: "01",
-    title: "Describe",
-    description: "Write what you need in plain words. \"Book appointments from WhatsApp and send confirmations.\" That's enough.",
-  },
-  {
-    number: "02",
-    title: "Connect",
-    description: "Pick the integrations — WhatsApp, Calendar, payments. One click each.",
-  },
-  {
-    number: "03",
-    title: "Deploy",
-    description: "Your agent goes live. Real conversations, real bookings. Watch it all from the dashboard.",
-  },
-]
-
-function StepCard({
+function Step({
   step,
   index,
 }: {
-  step: (typeof steps)[0]
+  step: { number: string; title: string; description: string }
   index: number
 }) {
-  const { ref, isVisible } = useReveal({ threshold: 0.15, delay: index * 120 })
+  const { ref, isVisible } = useReveal({ threshold: 0.2, delay: index * 150 })
 
   return (
     <div
       ref={ref}
-      className={`flex-1 p-6 rounded-xl bg-cream-card/50 border border-forest/8 transition-all duration-700 ease-out ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      className={`relative py-16 md:py-20 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
       }`}
     >
-      <span className="text-[10px] font-medium tracking-wider text-forest-accent/40">
+      <span className="absolute top-8 md:top-12 left-0 font-display text-[120px] md:text-[140px] font-bold text-charcoal/[0.04] leading-none select-none pointer-events-none">
         {step.number}
       </span>
-      <h3 className="text-sm font-medium tracking-wide text-forest mt-3 mb-2">
-        {step.title}
-      </h3>
-      <p className="text-[11px] leading-[1.9] text-forest-accent/70">
-        {step.description}
-      </p>
+      <div className="relative max-w-xl">
+        <h3 className="font-display text-2xl md:text-3xl font-medium text-charcoal-heading mb-4">
+          {step.title}
+        </h3>
+        <p className="text-base md:text-lg text-charcoal/70 leading-relaxed max-w-lg">
+          {step.description}
+        </p>
+        <div className="mt-8 h-[1px] w-16 md:w-20 prismatic-border rounded-full" />
+      </div>
     </div>
   )
 }
 
 export function HowItWorks() {
+  const { t } = useI18n()
   const { ref, isVisible } = useReveal({ threshold: 0.2 })
 
   return (
-    <section className="relative bg-cream-card py-28 md:py-36">
+    <section id="como-funciona" className="bg-stone-base py-20 md:py-28">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
         <div
           ref={ref}
-          className={`text-center mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          className={`text-center mb-8 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
-          <p className="text-[9px] tracking-[0.3em] uppercase text-forest-accent/50 mb-3">
-            How it works
-          </p>
-          <h2 className="text-2xl md:text-3xl tracking-tight text-forest font-light">
-            Three steps. That&apos;s it.
+          <h2 className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading">
+            {t.howItWorks.title}
           </h2>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4">
-          {steps.map((step, index) => (
-            <StepCard key={step.number} step={step} index={index} />
+        <div className="divide-y divide-charcoal/5">
+          {t.howItWorks.steps.map((step, index) => (
+            <Step key={step.number} step={step} index={index} />
           ))}
         </div>
       </div>
