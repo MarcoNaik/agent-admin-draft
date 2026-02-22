@@ -1,6 +1,6 @@
 declare module 'struere' {
   export interface ModelConfig {
-    provider: 'anthropic' | 'openai' | 'google' | 'custom'
+    provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
     name: string
     temperature?: number
     maxTokens?: number

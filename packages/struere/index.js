@@ -5,8 +5,8 @@ function defineAgent(config) {
   if (!config.systemPrompt) throw new Error('System prompt is required')
   return {
     model: {
-      provider: 'anthropic',
-      name: 'claude-sonnet-4-20250514',
+      provider: 'xai',
+      name: 'grok-4-1-fast',
       temperature: 0.7,
       maxTokens: 4096,
     },

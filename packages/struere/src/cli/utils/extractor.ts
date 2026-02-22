@@ -1,9 +1,10 @@
 import type { LoadedResources } from './loader'
 import type { AgentConfig, ToolReference, TriggerConfig } from '../../types'
 
-function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' {
+function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' | 'xai' {
   if (modelName.startsWith('gpt-') || modelName.startsWith('o1') || modelName.startsWith('o3') || modelName.startsWith('o4')) return 'openai'
   if (modelName.startsWith('gemini')) return 'google'
+  if (modelName.startsWith('grok')) return 'xai'
   return 'anthropic'
 }
 
@@ -313,8 +314,8 @@ function extractAgentPayload(
     description: agent.description,
     systemPrompt,
     model: {
-      provider: agent.model?.provider || 'anthropic',
-      name: agent.model?.name || 'claude-sonnet-4-20250514',
+      provider: agent.model?.provider || 'xai',
+      name: agent.model?.name || 'grok-4-1-fast',
       temperature: agent.model?.temperature,
       maxTokens: agent.model?.maxTokens,
     },

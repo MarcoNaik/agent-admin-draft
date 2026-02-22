@@ -10,8 +10,8 @@ function defineAgent(config) {
   if (!config.systemPrompt) throw new Error('System prompt is required')
   return {
     model: {
-      provider: 'anthropic',
-      name: 'claude-sonnet-4-20250514',
+      provider: 'xai',
+      name: 'grok-4-1-fast',
       temperature: 0.7,
       maxTokens: 4096,
     },
@@ -152,7 +152,7 @@ export function registerStruerePlugin(): void {
 
 const TYPE_DECLARATIONS = `declare module 'struere' {
   export interface ModelConfig {
-    provider: 'anthropic' | 'openai' | 'google' | 'custom'
+    provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
     name: string
     temperature?: number
     maxTokens?: number

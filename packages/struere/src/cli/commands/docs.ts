@@ -127,7 +127,7 @@ function buildDocument(projectContext: string | null): string {
   lines.push(`## Key Patterns`)
   lines.push('')
   lines.push('- **Imports**: `import { defineAgent, defineEntityType, defineRole, defineTrigger, defineTools } from \'struere\'`')
-  lines.push('- **Default model**: `claude-sonnet-4` (provider: `anthropic`). Also supports `openai` and `google`')
+  lines.push('- **Default model**: `grok-4-1-fast` (provider: `xai`). Also supports `anthropic`, `openai` and `google`')
   lines.push('- **Scope rule values**: `actor.userId`, `actor.entityId`, `actor.organizationId`, `actor.relatedIds:TYPE`, `literal:VALUE`')
   lines.push('- **Policy actions**: `create`, `read`, `update`, `delete`, `list` (deny overrides allow)')
   lines.push('- **Entity link/unlink params**: `fromId`, `toId`, `relationType`')

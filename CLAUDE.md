@@ -77,13 +77,13 @@ apps/                        packages/                   platform/
 | **Agent Config** | Stored in Convex DB as JSON (not JS bundles) |
 | **Custom Tools** | Handler code stored in Convex, executed on Hono Node.js server (Fly.io) |
 | **Built-in Tools** | Convex mutations (`entity.create`, `event.emit`, `agent.chat`, `calendar.*`, `whatsapp.*`) |
-| **LLM Calls** | Convex actions calling LLM APIs directly (Anthropic, OpenAI, Google) |
+| **LLM Calls** | Convex actions calling LLM APIs directly (xAI, Anthropic, OpenAI, Google) |
 | **Triggers** | Immediate or scheduled with retry, tracked via triggerRuns table |
 | **Real-time** | Native Convex subscriptions (no polling) |
 | **CLI Workflow** | `struere dev` syncs config to Convex via HTTP |
 | **Auth** | Clerk with Convex integration |
 | **Package Manager** | Bun (not npm) |
-| **Default Model** | `claude-sonnet-4` (full ID: `claude-sonnet-4-20250514`) |
+| **Default Model** | `grok-4-1-fast` (provider: `xai`) |
 
 ### HTTP Endpoints (Convex)
 
@@ -185,7 +185,7 @@ Request → Build ActorContext (org, actor, environment, roles)
 ### Integration Config (`platform/convex/integrations.ts`)
 
 Supports 4 providers: `whatsapp` (Kapso), `flow`, `google` (calendar), `zoom`
-LLM provider configs stored in `providerConfigs` table: anthropic, openai, google
+LLM provider configs stored in `providerConfigs` table: anthropic, openai, google, xai
 
 ## Platform Services
 
@@ -265,7 +265,7 @@ import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole, d
 
 ### Key Types
 - **AgentConfig**: name, slug, version, systemPrompt, model, tools
-- **ModelConfig**: provider (`anthropic` | `openai` | `google` | `custom`), name, temperature?, maxTokens?, apiKey?
+- **ModelConfig**: provider (`anthropic` | `openai` | `google` | `xai` | `custom`), name, temperature?, maxTokens?, apiKey?
 - **EntityTypeConfig**: name, slug, schema, searchFields, displayConfig
 - **RoleConfig**: name, description, policies, scopeRules, fieldMasks
 - **PolicyConfig**: resource, actions, effect (no `priority` field)
@@ -274,7 +274,7 @@ import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole, d
 - **TriggerConfig**: name, slug, on (entityType, action, condition?), actions
 
 ### Default Model
-`anthropic/claude-sonnet-4` (full ID: `claude-sonnet-4-20250514`) with temperature 0.7, maxTokens 4096
+`xai/grok-4-1-fast` with temperature 0.7, maxTokens 4096
 
 ### Built-in Tools
 

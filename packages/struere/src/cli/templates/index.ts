@@ -31,7 +31,7 @@ slug: "basic-agent-tests"
 agent: "${agentSlug}"
 description: "Verify agent responds correctly and uses tools appropriately"
 tags: ["smoke-test"]
-judgeModel: "claude-haiku-4-5-20251001"
+judgeModel: "grok-4-1-fast"
 judgePrompt: "Evaluate whether the agent responds correctly and uses appropriate tools. Be lenient on phrasing but strict on factual accuracy."
 
 cases:
@@ -89,7 +89,7 @@ slug: "${slug}"
 agent: "${agentSlug}"
 description: "TODO: Describe what this eval suite tests"
 tags: []
-judgeModel: "claude-haiku-4-5-20251001"
+judgeModel: "grok-4-1-fast"
 judgePrompt: "TODO: Custom instructions for the judge (e.g. strictness level, focus areas)"
 
 cases:
@@ -106,8 +106,11 @@ cases:
 }
 
 export function getEnvExample(): string {
-  return `# Anthropic API Key (default provider)
-ANTHROPIC_API_KEY=your_api_key_here
+  return `# xAI API Key (default provider)
+XAI_API_KEY=your_api_key_here
+
+# Optional: Anthropic API Key (if using Claude models)
+# ANTHROPIC_API_KEY=your_anthropic_api_key
 
 # Optional: OpenAI API Key (if using OpenAI models)
 # OPENAI_API_KEY=your_openai_api_key
@@ -196,8 +199,8 @@ export default defineAgent({
   version: "0.1.0",
   description: "${displayName} Agent",
   model: {
-    provider: "anthropic",
-    name: "claude-haiku-4-5",
+    provider: "xai",
+    name: "grok-4-1-fast",
     temperature: 0.7,
     maxTokens: 4096,
   },

@@ -610,8 +610,8 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
 
   const result = await generateText({
     model: createModel({
-      provider: args.model?.provider || "anthropic",
-      name: args.model?.name || "claude-haiku-4-5-20251001",
+      provider: args.model?.provider || "xai",
+      name: args.model?.name || "grok-4-1-fast",
     }),
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -623,7 +623,7 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const inputTokens = result.usage.inputTokens ?? 0
   const outputTokens = result.usage.outputTokens ?? 0
   const textContent = result.text
-  const modelName = args.model?.name || "claude-haiku-4-5-20251001"
+  const modelName = args.model?.name || "grok-4-1-fast"
   const cost = calculateCost(modelName, inputTokens, outputTokens)
 
   try {
