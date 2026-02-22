@@ -613,6 +613,10 @@ export default defineSchema({
     apiKeyId: v.optional(v.id("apiKeys")),
     createdAt: v.number(),
     stoppedAt: v.optional(v.number()),
+    totalInputTokens: v.optional(v.number()),
+    totalOutputTokens: v.optional(v.number()),
+    totalCreditsConsumed: v.optional(v.number()),
+    model: v.optional(v.string()),
   })
     .index("by_org_env_user", ["organizationId", "environment", "userId"])
     .index("by_org_env_status", ["organizationId", "environment", "status"])
