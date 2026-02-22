@@ -48,7 +48,7 @@ function CyclingPlaceholder({ items, delay = 0 }: { items: readonly string[]; de
   }, [active, displayed, isDeleting, index, items])
 
   return (
-    <span className="font-input text-white/80">
+    <span className="font-input font-medium text-white/95">
       {displayed}
       <span className="inline-block w-[2px] h-[1.1em] bg-white/60 ml-[1px] align-text-bottom animate-[blink-caret_1s_step-end_infinite]" />
     </span>
@@ -160,7 +160,7 @@ export function HeroSection() {
                       }
                     }}
                     rows={3}
-                    className="w-full px-6 pt-5 pb-14 text-base text-left bg-transparent text-white placeholder:text-transparent focus:outline-none resize-none leading-relaxed font-input"
+                    className="w-full px-6 pt-5 pb-14 text-base text-left bg-transparent text-white placeholder:text-transparent focus:outline-none resize-none leading-relaxed font-input font-medium"
                     aria-label={t.hero.ariaLabel}
                   />
                   {!prompt && !isFocused && (
@@ -169,7 +169,7 @@ export function HeroSection() {
                     </div>
                   )}
                   {!prompt && isFocused && (
-                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-input text-white/80 text-left">
+                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-input font-medium text-white/95 text-left">
                       {t.hero.focusPlaceholder}
                     </div>
                   )}

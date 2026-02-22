@@ -22,7 +22,7 @@ const jetbrains = JetBrains_Mono({
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin", "latin-ext"],
   variable: "--font-ibm-plex",
-  weight: ["400"],
+  weight: ["400", "500", "700"],
 })
 
 export const metadata: Metadata = {
