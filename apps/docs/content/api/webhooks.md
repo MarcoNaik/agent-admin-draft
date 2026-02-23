@@ -47,6 +47,27 @@ Configure the Clerk webhook in your Clerk Dashboard:
 3. Select the event types listed above
 4. Save the endpoint
 
+### Payload Example
+
+```json
+{
+  "type": "user.created",
+  "data": {
+    "id": "user_2abc123",
+    "email_addresses": [
+      {
+        "id": "idn_2def456",
+        "email_address": "alice@example.com"
+      }
+    ],
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  }
+}
+```
+
 ### Response
 
 Returns `200` with `{"received": true}` on success, or `500` if processing fails.
@@ -89,6 +110,48 @@ Receives inbound WhatsApp messages and message status updates.
 |------------|--------|
 | `whatsapp.message.received` | Processes and stores the inbound message, routes to assigned agent |
 | `whatsapp.message.status_update` | Updates the delivery status of an outbound message |
+
+#### Inbound Message Payload (V2)
+
+```json
+{
+  "event": "whatsapp.message.received",
+  "payload_version": "v2",
+  "phone_number_id": "pn_abc123",
+  "message": {
+    "id": "wamid.HBgNNTUxMjM0NTY3ODkwFQIAERgSMDVBMkJFQkU2QUE0RTYxMjdBAA==",
+    "timestamp": 1700000000,
+    "type": "text",
+    "text": "Hello, I need help with my booking",
+    "kapso": {
+      "content": "Hello, I need help with my booking",
+      "transcript": null,
+      "media_url": null
+    }
+  },
+  "conversation": {
+    "phone_number": "+15551234567",
+    "kapso": {
+      "contact_name": "Alice Smith"
+    }
+  }
+}
+```
+
+#### Status Update Payload
+
+```json
+{
+  "event": "whatsapp.message.status_update",
+  "payload_version": "v2",
+  "phone_number_id": "pn_abc123",
+  "message": {
+    "id": "wamid.HBgNNTUxMjM0NTY3ODkwFQIAERgSMDVBMkJFQkU2QUE0RTYxMjdBAA==",
+    "status": "delivered",
+    "timestamp": 1700000005
+  }
+}
+```
 
 #### Inbound Message Flow
 
@@ -152,6 +215,31 @@ Receives payment events from the Polar billing platform.
 | Event Type | Action |
 |------------|--------|
 | `order.paid` | Adds credits to the organization's account based on the order subtotal amount |
+
+### Payload Example
+
+```json
+{
+  "type": "order.paid",
+  "data": {
+    "id": "ord_abc123",
+    "amount": 5000,
+    "currency": "usd",
+    "subtotal_amount": 5000,
+    "customer": {
+      "id": "cust_xyz789",
+      "email": "admin@acme.com"
+    },
+    "product": {
+      "id": "prod_def456",
+      "name": "500 Credits"
+    },
+    "created_at": "2025-03-15T14:30:00Z"
+  }
+}
+```
+
+The `subtotal_amount` (in cents) determines how many credits are added to the organization's balance.
 
 ### Required Environment Variables
 
