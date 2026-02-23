@@ -3,6 +3,7 @@ import { program } from 'commander'
 import { initCommand } from './commands/init'
 import { devCommand } from './commands/dev'
 import { deployCommand } from './commands/deploy'
+import { syncCommand } from './commands/sync'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { whoamiCommand } from './commands/whoami'
@@ -19,6 +20,7 @@ const CURRENT_VERSION = pkg.version
 
 async function checkForUpdates() {
   if (process.env.STRUERE_SKIP_UPDATE_CHECK) return
+  if (process.env.STRUERE_API_KEY || !process.stdout.isTTY) return
   try {
     const response = await fetch('https://registry.npmjs.org/struere/latest', {
       signal: AbortSignal.timeout(2000)
@@ -36,9 +38,9 @@ async function checkForUpdates() {
           return 0
         }
         if (semverCompare(data.version, CURRENT_VERSION) > 0) {
-          console.log(`\x1b[33m⚠ Update available: ${CURRENT_VERSION} → ${data.version}\x1b[0m`)
-          console.log(`\x1b[90m  Run: npm install -g struere@${data.version}\x1b[0m`)
-          console.log()
+          process.stderr.write(`\x1b[33m⚠ Update available: ${CURRENT_VERSION} → ${data.version}\x1b[0m\n`)
+          process.stderr.write(`\x1b[90m  Run: npm install -g struere@${data.version}\x1b[0m\n`)
+          process.stderr.write('\n')
         }
       }
     }
@@ -58,6 +60,7 @@ program.addCommand(loginCommand)
 program.addCommand(logoutCommand)
 program.addCommand(whoamiCommand)
 
+program.addCommand(syncCommand)
 program.addCommand(devCommand)
 program.addCommand(deployCommand)
 
