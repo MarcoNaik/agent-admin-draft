@@ -142,11 +142,16 @@ export default function BillingPage() {
           <CardTitle className="text-sm font-medium text-content-secondary">Credit Balance</CardTitle>
           <DollarSign className="h-4 w-4 text-content-tertiary" />
         </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-content-primary"><FormattedCredits microdollars={balance.balance} /></div>
-          <p className="text-xs text-content-tertiary mt-1">
-            Last updated {formatRelativeTime(balance.updatedAt)}
-          </p>
+        <CardContent className="space-y-4">
+          <div>
+            <div className="text-3xl font-bold text-content-primary"><FormattedCredits microdollars={balance.balance} /></div>
+            <p className="text-xs text-content-tertiary mt-1">
+              Last updated {formatRelativeTime(balance.updatedAt)}
+            </p>
+          </div>
+          <div className="pt-3 border-t">
+            <PurchaseCreditsForm />
+          </div>
         </CardContent>
       </Card>
 
@@ -229,15 +234,6 @@ export default function BillingPage() {
               40+ models supported. See <Link href="/settings/usage" className="underline hover:text-content-secondary">Usage</Link> for per-model breakdowns.
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-background-secondary">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-content-primary">Buy Credits</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PurchaseCreditsForm />
         </CardContent>
       </Card>
 

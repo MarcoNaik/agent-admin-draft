@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useCallback } from "react"
+import Link from "next/link"
+import { CreditCard, Terminal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStudio } from "@/contexts/studio-context"
 import { useStudioSession } from "@/hooks/use-studio-session"
@@ -82,6 +84,7 @@ export function StudioPanel() {
   }, [isConnected, isActive, isStarting, sendMessage, startSession])
 
   const error = sessionError || eventError
+  const isCreditsError = error?.toLowerCase().includes("insufficient credits")
 
   return (
     <div
@@ -99,11 +102,38 @@ export function StudioPanel() {
           onStop={stopSession}
         />
 
-        {error && (
+        {isCreditsError ? (
+          <div className="px-4 py-4 bg-amber-500/10 border-b border-amber-500/20 space-y-3">
+            <p className="text-sm font-medium text-amber-200">
+              You need credits to use Studio
+            </p>
+            <p className="text-xs text-content-secondary leading-relaxed">
+              Studio runs on pay-as-you-go credits billed per token. Add credits to start building, or use the <code className="text-xs bg-background-tertiary px-1 py-0.5 rounded">struere</code> CLI locally with your own API keys for free.
+            </p>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/settings/billing"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                <CreditCard className="h-3 w-3" />
+                Buy Credits
+              </Link>
+              <a
+                href="https://docs.struere.dev/cli/quickstart"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-background-tertiary text-content-secondary rounded-md text-xs font-medium hover:text-content-primary transition-colors"
+              >
+                <Terminal className="h-3 w-3" />
+                Use CLI Instead
+              </a>
+            </div>
+          </div>
+        ) : error ? (
           <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
             <p className="text-sm text-destructive">{error}</p>
           </div>
-        )}
+        ) : null}
 
         <StudioChat
           items={allItems}
