@@ -7,18 +7,32 @@ import { getSyncState } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { performLogin } from './login'
 import { runInit } from './init'
+import { isInteractive } from '../utils/runtime'
 
 export const statusCommand = new Command('status')
   .description('Compare local vs remote state')
-  .action(async () => {
+  .option('--json', 'Output raw JSON')
+  .action(async (opts: { json?: boolean }) => {
     const spinner = ora()
     const cwd = process.cwd()
+    const jsonMode = !!opts.json
+    const nonInteractive = !isInteractive()
 
-    console.log()
-    console.log(chalk.bold('Struere Status'))
-    console.log()
+    if (!jsonMode) {
+      console.log()
+      console.log(chalk.bold('Struere Status'))
+      console.log()
+    }
 
     if (!hasProject(cwd)) {
+      if (nonInteractive) {
+        if (jsonMode) {
+          console.log(JSON.stringify({ error: 'No struere.json found. Run struere init first.' }))
+        } else {
+          console.log(chalk.red('No struere.json found. Run struere init first.'))
+        }
+        process.exit(1)
+      }
       console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
       const success = await runInit(cwd)
@@ -30,17 +44,31 @@ export const statusCommand = new Command('status')
 
     const project = loadProject(cwd)
     if (!project) {
-      console.log(chalk.red('Failed to load struere.json'))
+      if (jsonMode) {
+        console.log(JSON.stringify({ error: 'Failed to load struere.json' }))
+      } else {
+        console.log(chalk.red('Failed to load struere.json'))
+      }
       process.exit(1)
     }
 
-    console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
-    console.log()
+    if (!jsonMode) {
+      console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
+      console.log()
+    }
 
     let credentials = loadCredentials()
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
+      if (nonInteractive) {
+        if (jsonMode) {
+          console.log(JSON.stringify({ error: 'Not authenticated. Set STRUERE_API_KEY or run struere login.' }))
+        } else {
+          console.log(chalk.red('Not authenticated. Set STRUERE_API_KEY or run struere login.'))
+        }
+        process.exit(1)
+      }
       console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
       credentials = await performLogin()
@@ -51,27 +79,36 @@ export const statusCommand = new Command('status')
       console.log()
     }
 
-    spinner.start('Loading local resources')
+    if (!jsonMode) spinner.start('Loading local resources')
 
     let localResources
     try {
       localResources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${localResources.agents.length} agents, ${localResources.entityTypes.length} entity types, ${localResources.roles.length} roles, ${localResources.customTools.length} custom tools, ${localResources.evalSuites.length} eval suites`)
+      if (!jsonMode) {
+        spinner.succeed(`Loaded ${localResources.agents.length} agents, ${localResources.entityTypes.length} entity types, ${localResources.roles.length} roles, ${localResources.customTools.length} custom tools, ${localResources.evalSuites.length} eval suites`)
 
-      for (const err of localResources.errors) {
-        console.log(chalk.red('  ✖'), err)
+        for (const err of localResources.errors) {
+          console.log(chalk.red('  ✖'), err)
+        }
       }
 
       if (localResources.errors.length > 0) {
+        if (jsonMode) {
+          console.log(JSON.stringify({ error: `${localResources.errors.length} resource loading error(s)`, errors: localResources.errors }))
+        }
         process.exit(1)
       }
     } catch (error) {
-      spinner.fail('Failed to load local resources')
-      console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+      if (jsonMode) {
+        console.log(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+      } else {
+        spinner.fail('Failed to load local resources')
+        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
+      }
       process.exit(1)
     }
 
-    spinner.start('Fetching remote state')
+    if (!jsonMode) spinner.start('Fetching remote state')
 
     const [devResult, prodResult] = await Promise.all([
       getSyncState(undefined, 'development'),
@@ -79,13 +116,16 @@ export const statusCommand = new Command('status')
     ])
 
     if (devResult.error || !devResult.state) {
-      spinner.fail('Failed to fetch remote state')
-      console.log(chalk.red('Error:'), devResult.error || 'Unknown error')
+      if (jsonMode) {
+        console.log(JSON.stringify({ error: devResult.error || 'Failed to fetch remote state' }))
+      } else {
+        spinner.fail('Failed to fetch remote state')
+        console.log(chalk.red('Error:'), devResult.error || 'Unknown error')
+      }
       process.exit(1)
     }
 
-    spinner.succeed('Remote state fetched')
-    console.log()
+    if (!jsonMode) spinner.succeed('Remote state fetched')
 
     const devState = devResult.state
     const prodState = prodResult.state
@@ -99,6 +139,25 @@ export const statusCommand = new Command('status')
     const localRoleNames = new Set(localResources.roles.map((r) => r.name))
     const devRoleNames = new Set(devState.roles.map((r) => r.name))
 
+    if (opts.json) {
+      const classify = (localItems: Array<{ slug?: string; name?: string }>, remoteItems: Array<{ slug?: string; name?: string }>, useSlug: boolean) => {
+        const localKeys = new Set(localItems.map((i) => useSlug ? i.slug : i.name))
+        const remoteKeys = new Set(remoteItems.map((i) => useSlug ? i.slug : i.name))
+        return {
+          synced: localItems.filter((i) => remoteKeys.has(useSlug ? i.slug : i.name)).map((i) => useSlug ? i.slug : i.name),
+          new: localItems.filter((i) => !remoteKeys.has(useSlug ? i.slug : i.name)).map((i) => useSlug ? i.slug : i.name),
+          deleted: remoteItems.filter((i) => !localKeys.has(useSlug ? i.slug : i.name)).map((i) => useSlug ? i.slug : i.name),
+        }
+      }
+      console.log(JSON.stringify({
+        agents: classify(localResources.agents, devState.agents, true),
+        entityTypes: classify(localResources.entityTypes, devState.entityTypes, true),
+        roles: classify(localResources.roles, devState.roles, false),
+      }))
+      return
+    }
+
+    console.log()
     console.log(chalk.bold('Agents'))
     console.log(chalk.gray('─'.repeat(60)))
 
@@ -176,7 +235,7 @@ export const statusCommand = new Command('status')
     console.log(chalk.gray('Legend:'))
     console.log(chalk.gray('  '), chalk.green('●'), 'Synced', chalk.yellow('○'), 'Not in production', chalk.blue('+'), 'New', chalk.red('-'), 'Will be deleted')
     console.log()
-    console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to sync to development'))
+    console.log(chalk.gray('Run'), chalk.cyan('struere sync'), chalk.gray('to sync to development'))
     console.log(chalk.gray('Run'), chalk.cyan('struere deploy'), chalk.gray('to deploy to production'))
     console.log()
   })
