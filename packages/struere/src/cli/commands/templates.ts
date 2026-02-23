@@ -7,6 +7,7 @@ import { loadCredentials, getApiKey } from '../utils/credentials'
 import { hasProject } from '../utils/project'
 import { performLogin } from './login'
 import { runInit } from './init'
+import { isInteractive } from '../utils/runtime'
 import {
   listWhatsAppConnections,
   listTemplates,
@@ -20,8 +21,13 @@ type Environment = 'development' | 'production'
 
 async function ensureAuth(): Promise<boolean> {
   const cwd = process.cwd()
+  const nonInteractive = !isInteractive()
 
   if (!hasProject(cwd)) {
+    if (nonInteractive) {
+      console.error(chalk.red('No struere.json found. Run struere init first.'))
+      process.exit(1)
+    }
     console.log(chalk.yellow('No struere.json found - initializing project...'))
     console.log()
     const success = await runInit(cwd)
@@ -35,6 +41,10 @@ async function ensureAuth(): Promise<boolean> {
   const apiKey = getApiKey()
 
   if (!credentials && !apiKey) {
+    if (nonInteractive) {
+      console.error(chalk.red('Not authenticated. Set STRUERE_API_KEY or run struere login.'))
+      process.exit(1)
+    }
     console.log(chalk.yellow('Not logged in - authenticating...'))
     console.log()
     credentials = await performLogin()
@@ -241,7 +251,7 @@ templatesCommand
     const env = opts.env as Environment
     const connectionId = await resolveConnectionId(env, opts.connection)
 
-    if (!opts.yes) {
+    if (!opts.yes && isInteractive()) {
       const confirmed = await confirm({
         message: `Delete template "${name}"? This cannot be undone.`,
         default: false,
