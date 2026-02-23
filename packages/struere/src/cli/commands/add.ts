@@ -79,7 +79,7 @@ export const addCommand = new Command('add')
             console.log(chalk.gray('  →'), file)
           }
           console.log()
-          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere dev'), chalk.gray('to sync'))
+          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere sync'), chalk.gray('to sync'))
         } else {
           console.log(chalk.yellow('Eval suite already exists:'), `evals/${slug}.eval.yaml`)
         }
@@ -105,7 +105,7 @@ export const addCommand = new Command('add')
             console.log(chalk.gray('  →'), file)
           }
           console.log()
-          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere dev'), chalk.gray('to sync'))
+          console.log(chalk.gray('Edit the YAML file, then run'), chalk.cyan('struere sync'), chalk.gray('to sync'))
         } else {
           console.log(chalk.yellow('Fixture already exists:'), `fixtures/${slug}.fixture.yaml`)
         }
@@ -126,7 +126,7 @@ export const addCommand = new Command('add')
     }
 
     console.log()
-    console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to sync changes'))
+    console.log(chalk.gray('Run'), chalk.cyan('struere sync'), chalk.gray('to sync changes'))
     console.log()
   })
 
