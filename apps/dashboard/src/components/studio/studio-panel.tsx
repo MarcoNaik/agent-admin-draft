@@ -103,8 +103,8 @@ export function StudioPanel() {
         />
 
         {isCreditsError ? (
-          <div className="px-4 py-4 bg-amber-500/10 border-b border-amber-500/20 space-y-3">
-            <p className="text-sm font-medium text-amber-200">
+          <div className="px-4 py-4 bg-background-tertiary border-b space-y-3">
+            <p className="text-sm font-medium text-content-primary">
               You need credits to use Studio
             </p>
             <p className="text-xs text-content-secondary leading-relaxed">
