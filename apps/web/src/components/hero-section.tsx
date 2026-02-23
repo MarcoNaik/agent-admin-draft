@@ -115,7 +115,13 @@ export function HeroSection() {
               transitionDuration: "900ms",
             }}
           >
-            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] whitespace-nowrap drop-shadow-[0_2px_24px_rgba(0,0,0,0.3)]">
+            <h1
+              className="font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] whitespace-nowrap drop-shadow-[0_2px_24px_rgba(0,0,0,0.15)] bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(180deg, #8898a8, #6888a8, #80a8d0, #a0c0e0 23%, #e8e8e0 25%, #f0e8d8 26%, #d8d0c0 27%, #b8c0c8 29%, #90a8b8, #6890a8, #5078a0, #4870a0, #4878a8, #5880a8, #5880a8, #7898b0, #98a8b0)",
+              }}
+            >
               {t.hero.headline}
             </h1>
           </div>
