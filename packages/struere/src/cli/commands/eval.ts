@@ -154,7 +154,8 @@ const runCommand = new Command('run')
   .argument('<suite-slug>', 'Eval suite slug to run')
   .option('--case <name...>', 'Run specific case(s) by name')
   .option('--tag <tag...>', 'Run cases matching tag(s)')
-  .action(async (suiteSlug: string, options: { case?: string[]; tag?: string[] }) => {
+  .option('--timeout <seconds>', 'Max seconds to wait for results (default: 300)')
+  .action(async (suiteSlug: string, options: { case?: string[]; tag?: string[]; timeout?: string }) => {
     const spinner = ora()
     const cwd = process.cwd()
 
@@ -308,6 +309,11 @@ const runCommand = new Command('run')
       process.exit(1)
     }
 
+    console.log(chalk.gray('Run ID:'), chalk.cyan(runId))
+
+    const timeoutMs = (options.timeout ? parseInt(options.timeout, 10) : 300) * 1000
+    const startTime = Date.now()
+
     spinner.start('Running...')
     let run: EvalRun | null = null
     while (true) {
@@ -320,6 +326,12 @@ const runCommand = new Command('run')
 
       if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
         break
+      }
+
+      if (Date.now() - startTime > timeoutMs) {
+        spinner.fail(`Timed out after ${options.timeout || 300}s — run is still in progress`)
+        console.log(chalk.gray('Run ID:'), chalk.cyan(runId))
+        process.exit(2)
       }
 
       spinner.text = `Running: ${run.completedCases}/${run.totalCases} cases (${run.passedCases} passed, ${run.failedCases} failed)`
