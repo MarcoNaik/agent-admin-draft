@@ -6,7 +6,7 @@ import { useHeroEntrance } from "@/lib/hero-entrance"
 
 export function Navigation() {
   const { locale, setLocale, t } = useI18n()
-  const mounted = useHeroEntrance()
+  const { mounted } = useHeroEntrance()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pastHero, setPastHero] = useState(false)
   const [hasScrolled, setHasScrolled] = useState(false)
@@ -56,7 +56,14 @@ export function Navigation() {
         >
           <a
             href="#"
-            className={`font-display text-xl font-semibold tracking-tight ${textColor} transition-colors duration-500`}
+            className={`font-display text-xl font-semibold tracking-tight transition-colors duration-500 ${pastHero ? textColor : ""}`}
+            style={pastHero ? {} : {
+              backgroundImage: "linear-gradient(90deg, #4870a0, #5888b0, #80a8d0)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+              WebkitTextFillColor: "transparent",
+            }}
           >
             Struere
           </a>
@@ -67,43 +74,51 @@ export function Navigation() {
           style={{
             transitionProperty: "opacity",
             transitionDuration: "1200ms",
+            ...(pastHero ? {} : {
+              backgroundImage: "linear-gradient(90deg, #386090, #406898, #4870a0, #5078a0, #5880a8, #5078a0, #4870a0, #406898, #386090)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+            }),
           }}
         >
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className={`text-sm ${textColor} hover:opacity-80 transition-all duration-500`}
+              className={`text-sm transition-colors duration-500 ${textColor}`}
+              style={pastHero ? {} : {
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+              }}
             >
               {link.label}
             </a>
           ))}
-        </div>
-
-        <div
-          className={`hidden md:flex items-center gap-4 ease-[cubic-bezier(0.16,1,0.3,1)] ${hasScrolled ? "opacity-100" : "opacity-0"}`}
-          style={{
-            transitionProperty: "opacity",
-            transitionDuration: "1200ms",
-          }}
-        >
           <button
             onClick={toggleLocale}
-            className={`text-xs font-medium px-2 py-1 rounded transition-all duration-500 cursor-pointer ${
+            className={`text-xs font-medium px-2 py-1 rounded transition-colors duration-500 cursor-pointer ${
               pastHero
-                ? "text-[#1B5B7A]/60 hover:text-[#1B5B7A]"
-                : "text-white/60 hover:text-white"
+                ? "text-[#1B5B7A]/60"
+                : ""
             }`}
+            style={pastHero ? {} : {
+              color: "transparent",
+              WebkitTextFillColor: "transparent",
+            }}
           >
             {locale === "es" ? "EN" : "ES"}
           </button>
           <a
             href="https://app.struere.dev?studio="
-            className={`text-sm font-medium px-5 py-2 rounded-xl transition-all duration-500 border ${
+            className={`text-sm font-medium px-5 py-2 rounded-xl transition-colors duration-500 border ${
               pastHero
-                ? "text-white bg-[#1B5B7A] border-[#1B5B7A] hover:bg-[#1B4F72] hover:border-[#1B4F72]"
-                : "text-white border-white/30 hover:bg-white/10 hover:border-white/50"
+                ? "text-white bg-[#1B5B7A] border-[#1B5B7A]"
+                : "border-white/30"
             }`}
+            style={pastHero ? {} : {
+              color: "transparent",
+              WebkitTextFillColor: "transparent",
+            }}
           >
             {t.nav.cta}
           </a>
@@ -154,27 +169,27 @@ export function Navigation() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className={`text-base ${textColor} hover:opacity-80 transition-all duration-500`}
+                className={`text-base ${textColor} transition-colors duration-500`}
               >
                 {link.label}
               </a>
             ))}
             <button
               onClick={toggleLocale}
-              className={`text-left text-base transition-all duration-500 cursor-pointer ${
+              className={`text-left text-base transition-colors duration-500 cursor-pointer ${
                 pastHero
-                  ? "text-[#1B5B7A]/60 hover:text-[#1B5B7A]"
-                  : "text-white/60 hover:text-white"
+                  ? "text-[#1B5B7A]/60"
+                  : "text-white/60"
               }`}
             >
               {locale === "es" ? "English" : "Espa\u00f1ol"}
             </button>
             <a
               href="https://app.struere.dev?studio="
-              className={`mt-2 text-center text-sm font-medium px-5 py-3 rounded-xl transition-all duration-500 border ${
+              className={`mt-2 text-center text-sm font-medium px-5 py-3 rounded-xl transition-colors duration-500 border ${
                 pastHero
-                  ? "text-white bg-[#1B5B7A] border-[#1B5B7A] hover:bg-[#1B4F72]"
-                  : "text-white border-white/30 hover:bg-white/10"
+                  ? "text-white bg-[#1B5B7A] border-[#1B5B7A]"
+                  : "text-white border-white/30"
               }`}
             >
               {t.nav.cta}
