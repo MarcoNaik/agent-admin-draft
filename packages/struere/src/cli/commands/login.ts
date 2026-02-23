@@ -154,7 +154,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
 
 function printNextSteps() {
   console.log(chalk.gray('You can now use:'))
-  console.log(chalk.gray('  •'), chalk.cyan('struere dev'), chalk.gray('- Start cloud-connected dev server'))
+  console.log(chalk.gray('  •'), chalk.cyan('struere sync'), chalk.gray('- Sync resources to development'))
   console.log(chalk.gray('  •'), chalk.cyan('struere deploy'), chalk.gray('- Deploy your agent'))
   console.log(chalk.gray('  •'), chalk.cyan('struere status'), chalk.gray('- Compare local vs remote state'))
   console.log()
