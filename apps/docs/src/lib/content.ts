@@ -94,7 +94,8 @@ export function getRawMarkdown(slug: string): string | null {
   if (!fs.existsSync(filePath)) return null
   const raw = fs.readFileSync(filePath, "utf-8")
   const { content, data } = matter(raw)
-  return `# ${data.title}\n\n${data.description ? `> ${data.description}\n\n` : ""}${content}`
+  const stripped = stripLeadingHeading(content)
+  return `# ${data.title}\n\n${data.description ? `> ${data.description}\n\n` : ""}${stripped}`
 }
 
 const SECTION_ORDER = [
@@ -105,6 +106,7 @@ const SECTION_ORDER = [
   "CLI",
   "API Reference",
   "Integrations",
+  "Knowledge Base",
   "Reference",
 ]
 
