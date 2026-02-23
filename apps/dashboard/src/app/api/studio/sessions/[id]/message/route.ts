@@ -38,6 +38,8 @@ export async function POST(
 
     const response = await postMessageToSandbox(session.sandboxUrl, session.acpServerId, session.agentSessionId, message)
 
+    console.log("[studio/sessions/message] POST response:", JSON.stringify(response, null, 2))
+
     const usage = (response as Record<string, unknown>)?.result as Record<string, unknown> | undefined
     const usageData = usage?.usage as Record<string, number> | undefined
     if (usageData?.inputTokens && usageData?.outputTokens) {
