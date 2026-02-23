@@ -184,7 +184,7 @@ function buildClaudeMd(orgName: string, environment: string): string {
 ## Environment
 - Environment: ${environment}
 - This is a Struere AI agent project
-- Use \`struere dev --force\` to sync changes to the platform
+- Use \`struere sync\` to sync changes to the platform (one-shot, exits after sync)
 - The project uses TypeScript with ESM modules
 
 ## File Structure
@@ -205,6 +205,6 @@ import { defineAgent, defineEntityType, defineRole, defineTrigger, defineTools }
 - Schema format: JSON Schema (type: "object", properties, required)
 - Policy effect: "allow" or "deny" (deny overrides allow)
 - Scope rule operators: "eq", "neq", "in", "contains"
-- After making changes, run: \`struere dev --force\`
+- After making changes, run: \`struere sync\`
 `
 }

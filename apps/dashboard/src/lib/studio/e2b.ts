@@ -46,7 +46,7 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
           name: config.orgInfo.slug,
           version: "0.1.0",
           type: "module",
-          scripts: { dev: "struere dev", deploy: "struere deploy", status: "struere status" },
+          scripts: { sync: "struere sync", deploy: "struere deploy", status: "struere status" },
           devDependencies: { "bun-types": "^1.0.0", typescript: "^5.3.0" },
         },
         null, 2
@@ -133,11 +133,6 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     await runCmd(sandbox, "struere-pull", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere pull --force', {
       timeoutMs: 60_000,
     })
-
-    await sandbox.commands.run(
-      'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere dev --force',
-      { background: true, timeoutMs: 0 }
-    )
 
     await sandbox.commands.run(
       `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT}`,
