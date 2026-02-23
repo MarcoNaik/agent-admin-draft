@@ -57,7 +57,7 @@ function CyclingPlaceholder({ items, delay = 0 }: { items: readonly string[]; de
 
 export function HeroSection() {
   const { t } = useI18n()
-  const mounted = useHeroEntrance()
+  const { mounted, setImageLoaded } = useHeroEntrance()
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [parallaxY, setParallaxY] = useState(0)
@@ -81,8 +81,14 @@ export function HeroSection() {
   }, [prompt])
 
   return (
-    <section className="relative w-full min-h-screen overflow-hidden">
-      <div className="absolute inset-0">
+    <section className="relative w-full min-h-screen overflow-hidden z-10">
+      <div
+        className="absolute inset-0"
+        style={{
+          maskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+        }}
+      >
         <div
           className="absolute inset-0 overflow-hidden"
           style={{ transform: `translateY(${parallaxY}px)` }}
@@ -92,18 +98,14 @@ export function HeroSection() {
             alt=""
             fill
             priority
+            onLoad={setImageLoaded}
             className={`object-cover transition-transform duration-[10000ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] ${mounted ? "scale-[1.03]" : "scale-100"}`}
-            style={{ objectPosition: "center center" }}
+            style={{
+              objectPosition: "center center",
+            }}
             sizes="100vw"
           />
         </div>
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(248,246,242,0.95) 0%, rgba(248,246,242,0.6) 8%, rgba(248,246,242,0.15) 18%, transparent 22%)",
-          }}
-        />
       </div>
 
       <div className="absolute top-[8%] md:top-[10%] left-0 right-0 text-center px-6 md:px-12">
@@ -116,10 +118,15 @@ export function HeroSection() {
             }}
           >
             <h1
-              className="font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] whitespace-nowrap drop-shadow-[0_2px_24px_rgba(0,0,0,0.15)] bg-clip-text text-transparent"
+              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] whitespace-nowrap ${mounted ? "hero-animate" : ""}`}
               style={{
                 backgroundImage:
-                  "linear-gradient(180deg, #8898a8, #6888a8, #80a8d0, #a0c0e0 23%, #e8e8e0 25%, #f0e8d8 26%, #d8d0c0 27%, #b8c0c8 29%, #90a8b8, #6890a8, #5078a0, #4870a0, #4878a8, #5880a8, #5880a8, #7898b0, #98a8b0)",
+                  "linear-gradient(-90deg, #98a8b0, #7898b0, #5880a8, #5880a8, #4878a8, #4870a0, #5078a0, #6890a8, #90a8b8, #b8c0c8 56%, #d8d0c0 58%, #f0e8d8 59%, #e8e8e0 60%, #a0c0e0 62%, #80a8d0, #6888a8, #8898a8)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+                filter: "drop-shadow(0 2px 24px rgba(0,0,0,0.15))",
               }}
             >
               {t.hero.headline}
@@ -134,7 +141,18 @@ export function HeroSection() {
               transitionDelay: mounted ? "500ms" : "0ms",
             }}
           >
-            <p className="text-xs tracking-[0.25em] uppercase text-white mt-4 font-sans font-medium drop-shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
+            <p
+              className={`hero-tagline-gradient text-xs tracking-[0.25em] uppercase mt-4 font-sans font-medium ${mounted ? "hero-animate" : ""}`}
+              style={{
+                backgroundImage:
+                  "linear-gradient(-90deg, #4870a0, #5888b0, #6898c0, #80a8d0, #6898c0, #5888b0, #4870a0)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+                filter: "drop-shadow(0 1px 8px rgba(0,0,0,0.15))",
+              }}
+            >
               {t.hero.tagline}
             </p>
           </div>
@@ -145,12 +163,12 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit}>
             <div
-              className={`liquid-glass rounded-2xl ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+              className={`liquid-glass liquid-glass-dark rounded-2xl ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
               style={{
                 transitionProperty: "opacity, transform",
                 transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
                 transitionDuration: "400ms, 2000ms",
-                transitionDelay: mounted ? "900ms, 1000ms" : "0ms, 0ms",
+                transitionDelay: mounted ? "3100ms, 3200ms" : "0ms, 0ms",
               }}
             >
               <div className="relative z-10">
@@ -183,11 +201,11 @@ export function HeroSection() {
                 </div>
                 <div className="absolute bottom-3 right-3">
                   <div
-                    className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100 scale-100" : "opacity-0 scale-90"}`}
+                    className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100" : "opacity-0"}`}
                     style={{
-                      transitionProperty: "opacity, transform",
+                      transitionProperty: "opacity",
                       transitionDuration: "1000ms",
-                      transitionDelay: mounted ? "7500ms" : "0ms",
+                      transitionDelay: mounted ? "7600ms" : "0ms",
                     }}
                   >
                     <button
@@ -206,11 +224,11 @@ export function HeroSection() {
 
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {t.hero.suggestions.map((s, i) => {
-                const base = 2200 + i * 250
+                const base = 4300 + i * 250
                 return (
                   <div
                     key={s.label}
-                    className={`liquid-glass rounded-full ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+                    className={`liquid-glass liquid-glass-dark rounded-full ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
                     style={{
                       transitionProperty: "opacity, transform",
                       transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
