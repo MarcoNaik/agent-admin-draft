@@ -3,19 +3,25 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { select } from '@inquirer/prompts'
 import { basename } from 'path'
-import { loadCredentials } from '../utils/credentials'
+import { loadCredentials, getApiKey } from '../utils/credentials'
 import { performLogin } from './login'
 import { hasProject } from '../utils/project'
 import { scaffoldProject } from '../utils/scaffold'
 import { listMyOrganizations, OrgInfo } from '../utils/convex'
 import { generateTypeDeclarations } from '../utils/plugin'
 import { generateDocs } from './docs'
+import { isInteractive } from '../utils/runtime'
 
 export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boolean> {
   const spinner = ora()
+  const nonInteractive = !isInteractive()
 
   let credentials = loadCredentials()
   if (!credentials) {
+    if (nonInteractive) {
+      console.log(chalk.red('Not authenticated. Set STRUERE_API_KEY or run struere login.'))
+      return false
+    }
     console.log(chalk.yellow('Not logged in - authenticating...'))
     console.log()
     credentials = await performLogin()
@@ -100,6 +106,7 @@ export const initCommand = new Command('init')
   .action(async (projectNameArg: string | undefined, options: { yes?: boolean; org?: string }) => {
     const cwd = process.cwd()
     const spinner = ora()
+    const nonInteractive = !isInteractive()
 
     console.log()
     console.log(chalk.bold('Struere CLI'))
@@ -108,13 +115,18 @@ export const initCommand = new Command('init')
     if (hasProject(cwd)) {
       console.log(chalk.yellow('This project is already initialized.'))
       console.log()
-      console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to start development'))
+      console.log(chalk.gray('Run'), chalk.cyan('struere sync'), chalk.gray('to sync changes'))
       console.log()
       return
     }
 
     let credentials = loadCredentials()
-    if (!credentials) {
+    const apiKey = getApiKey()
+    if (!credentials && !apiKey) {
+      if (nonInteractive) {
+        console.log(chalk.red('Not authenticated. Set STRUERE_API_KEY or run struere login.'))
+        process.exit(1)
+      }
       console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
       credentials = await performLogin()
@@ -125,9 +137,11 @@ export const initCommand = new Command('init')
       console.log()
     }
 
-    console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
+    if (credentials) {
+      console.log(chalk.green('✓'), 'Logged in as', chalk.cyan(credentials.user.name || credentials.user.email))
+    }
 
-    const { organizations, error } = await listMyOrganizations(credentials.token)
+    const { organizations, error } = await listMyOrganizations(credentials?.token || '')
     if (error) {
       console.log(chalk.red('Failed to fetch organizations:'), error)
       process.exit(1)
@@ -149,6 +163,10 @@ export const initCommand = new Command('init')
       selectedOrg = found
     } else if (organizations.length === 1) {
       selectedOrg = organizations[0]
+    } else if (nonInteractive) {
+      console.log(chalk.red('Multiple organizations found. Use --org <slug> to specify one.'))
+      console.log(chalk.gray('Available:'), organizations.map((o) => o.slug).join(', '))
+      process.exit(1)
     } else {
       selectedOrg = await select({
         message: 'Select organization:',
@@ -207,7 +225,7 @@ export const initCommand = new Command('init')
     console.log()
     console.log(chalk.gray('Next steps:'))
     console.log(chalk.gray('  1.'), chalk.cyan('struere add agent my-agent'), chalk.gray('- Create an agent'))
-    console.log(chalk.gray('  2.'), chalk.cyan('struere dev'), chalk.gray('- Start development'))
+    console.log(chalk.gray('  2.'), chalk.cyan('struere sync'), chalk.gray('- Sync to development'))
     console.log()
   })
 
