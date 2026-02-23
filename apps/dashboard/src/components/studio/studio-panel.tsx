@@ -119,7 +119,7 @@ export function StudioPanel() {
                 Buy Credits
               </Link>
               <a
-                href="https://docs.struere.dev/cli/quickstart"
+                href="https://docs.struere.dev/cli/overview"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-background-tertiary text-content-secondary rounded-md text-xs font-medium hover:text-content-primary transition-colors"
