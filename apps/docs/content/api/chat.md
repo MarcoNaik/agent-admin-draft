@@ -72,7 +72,9 @@ Send a message to an agent by its Convex document ID.
 | `usage.outputTokens` | `number` | Number of output tokens generated |
 | `usage.totalTokens` | `number` | Total tokens used |
 
-### Example
+### Examples
+
+#### curl
 
 ```bash
 curl -X POST https://your-deployment.convex.site/v1/chat \
@@ -82,6 +84,27 @@ curl -X POST https://your-deployment.convex.site/v1/chat \
     "agentId": "jd72k3m4n5p6q7r8",
     "message": "What sessions are scheduled for tomorrow?"
   }'
+```
+
+#### Python
+
+```python
+import requests
+
+response = requests.post(
+    "https://your-deployment.convex.site/v1/chat",
+    headers={
+        "Authorization": "Bearer sk_dev_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "agentId": "jd72k3m4n5p6q7r8",
+        "message": "What sessions are scheduled for tomorrow?",
+    },
+)
+data = response.json()
+print(data["message"])
+print(f"Thread: {data['threadId']}")
 ```
 
 ## POST /v1/agents/:slug/chat
@@ -119,7 +142,9 @@ Note that `agentId` is **not** needed since the agent is identified by the `:slu
 
 The response format is identical to the `/v1/chat` endpoint.
 
-### Example
+### Examples
+
+#### curl
 
 ```bash
 curl -X POST https://your-deployment.convex.site/v1/agents/scheduler/chat \
@@ -128,6 +153,25 @@ curl -X POST https://your-deployment.convex.site/v1/agents/scheduler/chat \
   -d '{
     "message": "Book a math session with Mr. Smith for Tuesday at 3 PM"
   }'
+```
+
+#### Python
+
+```python
+import requests
+
+response = requests.post(
+    "https://your-deployment.convex.site/v1/agents/scheduler/chat",
+    headers={
+        "Authorization": "Bearer sk_prod_xyz789",
+        "Content-Type": "application/json",
+    },
+    json={
+        "message": "Book a math session with Mr. Smith for Tuesday at 3 PM",
+    },
+)
+data = response.json()
+print(data["message"])
 ```
 
 ## Thread Management
@@ -148,6 +192,27 @@ curl -X POST https://your-deployment.convex.site/v1/agents/support/chat \
     "message": "Actually, make that Thursday instead",
     "threadId": "jd72k3m4n5p6q7r8"
   }'
+```
+
+**Python:**
+
+```python
+import requests
+
+API_URL = "https://your-deployment.convex.site/v1/agents/support/chat"
+HEADERS = {
+    "Authorization": "Bearer sk_dev_abc123",
+    "Content-Type": "application/json",
+}
+
+first = requests.post(API_URL, headers=HEADERS, json={"message": "Schedule a session for Tuesday"}).json()
+thread_id = first["threadId"]
+
+followup = requests.post(API_URL, headers=HEADERS, json={
+    "message": "Actually, make that Thursday instead",
+    "threadId": thread_id,
+}).json()
+print(followup["message"])
 ```
 
 ### External Thread IDs
@@ -189,30 +254,83 @@ When a chat request arrives:
 6. Each tool call is permission-checked against the actor context
 7. The final response, thread ID, and usage stats are returned
 
-## Error Responses
+## Response Mode
 
-**401 Unauthorized:**
+The Chat API returns a **single JSON response** after the agent finishes processing. There is no streaming or Server-Sent Events (SSE). The agent executes its full tool-call loop (up to 10 iterations) server-side, then returns the final message.
+
+For real-time updates during agent execution, use Convex React subscriptions in your frontend to watch the thread's messages table. The dashboard uses this pattern to show tool calls and intermediate results as they happen.
+
+## Error Handling
+
+### Error Response Format
+
+All errors return a JSON object with an `error` field:
 
 ```json
-{ "error": "Unauthorized" }
+{ "error": "Error description" }
 ```
 
-**400 Bad Request:**
+### Status Codes
 
-```json
-{ "error": "agentId and message are required" }
+| Status | Error | Cause |
+|--------|-------|-------|
+| `401` | `"Unauthorized"` | Missing or invalid API key |
+| `400` | `"agentId and message are required"` | Missing required fields on `/v1/chat` |
+| `400` | `"message is required"` | Missing message on `/v1/agents/:slug/chat` |
+| `500` | `"Agent not found"` | Agent ID or slug does not exist |
+| `500` | `"No active config found for agent \"slug\" in environment"` | Agent exists but has no config in the API key's environment |
+
+### Handling Errors in Code
+
+**TypeScript:**
+
+```typescript
+const response = await fetch("https://your-deployment.convex.site/v1/agents/scheduler/chat", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer sk_prod_xyz789",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ message: "Book a session" }),
+})
+
+if (!response.ok) {
+  const error = await response.json()
+  switch (response.status) {
+    case 401:
+      throw new Error("Invalid API key")
+    case 400:
+      throw new Error(`Bad request: ${error.error}`)
+    default:
+      throw new Error(`Server error: ${error.error}`)
+  }
+}
+
+const data = await response.json()
+console.log(data.message)
 ```
 
-```json
-{ "error": "message is required" }
-```
+**Python:**
 
-**500 Internal Server Error:**
+```python
+import requests
 
-```json
-{ "error": "Agent not found" }
-```
+response = requests.post(
+    "https://your-deployment.convex.site/v1/agents/scheduler/chat",
+    headers={
+        "Authorization": "Bearer sk_prod_xyz789",
+        "Content-Type": "application/json",
+    },
+    json={"message": "Book a session"},
+)
 
-```json
-{ "error": "No active config found for agent \"scheduler\" in production" }
+if response.status_code == 401:
+    raise Exception("Invalid API key")
+elif response.status_code == 400:
+    raise Exception(f"Bad request: {response.json()['error']}")
+elif response.status_code >= 500:
+    raise Exception(f"Server error: {response.json()['error']}")
+
+data = response.json()
+print(data["message"])
 ```
