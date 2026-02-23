@@ -1,0 +1,207 @@
+openapi: 3.1.0
+info:
+  title: Struere Chat API
+  description: Send messages to permission-aware AI agents via HTTP.
+  version: 1.0.0
+  contact:
+    name: Struere
+    url: https://docs.struere.dev
+servers:
+  - url: https://your-deployment.convex.site
+    description: Your Convex deployment URL (replace with your actual deployment)
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Returns 200 if the server is running.
+      security: []
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /v1/chat:
+    post:
+      operationId: chatByAgentId
+      summary: Chat by agent ID
+      description: Send a message to an agent identified by its Convex document ID. The API key determines the environment (development or production).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatByIdRequest"
+      responses:
+        "200":
+          description: Agent response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: agentId and message are required
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Unauthorized
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Agent not found
+  /v1/agents/{slug}/chat:
+    post:
+      operationId: chatByAgentSlug
+      summary: Chat by agent slug
+      description: Send a message to an agent identified by its human-readable slug. Preferred for integrations.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          description: The agent's slug identifier
+          schema:
+            type: string
+            example: scheduler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatBySlugRequest"
+      responses:
+        "200":
+          description: Agent response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: message is required
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Unauthorized
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "No active config found for agent \"scheduler\" in production"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: "API key from the Struere dashboard. Prefix determines environment: sk_dev_ (development), sk_prod_ (production)."
+  schemas:
+    ChatByIdRequest:
+      type: object
+      required:
+        - agentId
+        - message
+      properties:
+        agentId:
+          type: string
+          description: Convex document ID of the agent
+          example: jd72k3m4n5p6q7r8
+        message:
+          type: string
+          description: The user's message
+          example: What sessions are scheduled for tomorrow?
+        threadId:
+          type: string
+          description: Existing thread ID to continue a conversation
+        externalThreadId:
+          type: string
+          description: External identifier for thread reuse (e.g., whatsapp:+1234567890)
+    ChatBySlugRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: The user's message
+          example: Book a math session with Mr. Smith for Tuesday at 3 PM
+        threadId:
+          type: string
+          description: Existing thread ID to continue a conversation
+        externalThreadId:
+          type: string
+          description: External identifier for thread reuse
+    ChatResponse:
+      type: object
+      required:
+        - threadId
+        - message
+        - usage
+      properties:
+        threadId:
+          type: string
+          description: Thread ID for this conversation
+          example: jd72k3m4n5p6q7r8
+        message:
+          type: string
+          description: The agent's response text
+          example: "I'd be happy to help you schedule a session."
+        usage:
+          type: object
+          required:
+            - inputTokens
+            - outputTokens
+            - totalTokens
+          properties:
+            inputTokens:
+              type: integer
+              description: Input tokens consumed
+              example: 1250
+            outputTokens:
+              type: integer
+              description: Output tokens generated
+              example: 45
+            totalTokens:
+              type: integer
+              description: Total tokens used
+              example: 1295
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
