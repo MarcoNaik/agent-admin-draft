@@ -4,32 +4,37 @@ import ora from 'ora'
 import chokidar from 'chokidar'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { confirm } from '@inquirer/prompts'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProject } from '../utils/project'
 import { performLogin } from './login'
-import { syncOrganization, getSyncState } from '../utils/convex'
 import { loadAllResources, getResourceDirectories } from '../utils/loader'
-import { extractSyncPayload } from '../utils/extractor'
 import { generateDocs } from './docs'
 import { runInit } from './init'
 import { generateTypeDeclarations } from '../utils/plugin'
+import { performDevSync, checkForDeletions } from './sync'
+import { isInteractive, isAuthError, isOrgAccessError } from '../utils/runtime'
+import { confirm } from '@inquirer/prompts'
 
 export const devCommand = new Command('dev')
-  .description('Sync all resources to development environment')
+  .description('Watch files and sync to development on change (long-running)')
   .option('--force', 'Skip destructive sync confirmation')
   .action(async (options) => {
     const spinner = ora()
     const cwd = process.cwd()
     const apiKey = getApiKey()
-    const isHeadless = !!apiKey && !loadCredentials()?.token
+    const nonInteractive = !isInteractive()
+
+    if (nonInteractive) {
+      console.error('Error: struere dev is a long-running watch process. Use struere sync instead.')
+      process.exit(1)
+    }
 
     console.log()
     console.log(chalk.bold('Struere Dev'))
     console.log()
 
     if (!hasProject(cwd)) {
-      if (isHeadless) {
+      if (nonInteractive) {
         console.log(chalk.red('No struere.json found. Cannot run init in headless mode.'))
         process.exit(1)
       }
@@ -49,8 +54,8 @@ export const devCommand = new Command('dev')
 
     console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
     console.log(chalk.gray('Environment:'), chalk.cyan('development'), '+', chalk.cyan('eval'))
-    if (isHeadless) {
-      console.log(chalk.gray('Auth:'), chalk.cyan('API key (headless)'))
+    if (nonInteractive) {
+      console.log(chalk.gray('Auth:'), chalk.cyan('non-interactive'))
     }
     console.log()
 
@@ -79,64 +84,6 @@ export const devCommand = new Command('dev')
       }
     }
 
-    const isAuthError = (error: unknown): boolean => {
-      const message = error instanceof Error ? error.message : String(error)
-      return message.includes('Unauthenticated') ||
-             message.includes('OIDC') ||
-             message.includes('token') ||
-             message.includes('expired')
-    }
-
-    const isOrgAccessError = (error: unknown): boolean => {
-      const message = error instanceof Error ? error.message : String(error)
-      return message.includes('Access denied') ||
-             message.includes('not a member') ||
-             message.includes('Organization not found')
-    }
-
-    const performSync = async (): Promise<boolean> => {
-      const resources = await loadAllResources(cwd)
-      if (resources.errors.length > 0) {
-        for (const err of resources.errors) {
-          console.log(chalk.red('  ✖'), err)
-        }
-        throw new Error(`${resources.errors.length} resource loading error(s):\n${resources.errors.join('\n')}`)
-      }
-      const payload = extractSyncPayload(resources)
-
-      const devResult = await syncOrganization({
-        agents: payload.agents,
-        entityTypes: payload.entityTypes,
-        roles: payload.roles,
-        triggers: payload.triggers,
-        organizationId: project.organization.id,
-        environment: 'development',
-      })
-      if (!devResult.success) {
-        throw new Error(devResult.error || 'Dev sync failed')
-      }
-
-      const hasEvalContent = (payload.evalSuites && payload.evalSuites.length > 0) ||
-        (payload.fixtures && payload.fixtures.length > 0)
-
-      if (hasEvalContent) {
-        const evalResult = await syncOrganization({
-          agents: payload.agents,
-          entityTypes: payload.entityTypes,
-          roles: payload.roles,
-          evalSuites: payload.evalSuites,
-          fixtures: payload.fixtures,
-          organizationId: project.organization.id,
-          environment: 'eval',
-        })
-        if (!evalResult.success) {
-          throw new Error(evalResult.error || 'Eval sync failed')
-        }
-      }
-
-      return true
-    }
-
     let initialSyncOk = false
     let loadedResources: Awaited<ReturnType<typeof loadAllResources>> | null = null
 
@@ -158,64 +105,34 @@ export const devCommand = new Command('dev')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
     }
 
-    const shouldSkipConfirmation = options.force || isHeadless
+    const shouldSkipConfirmation = options.force || nonInteractive
 
     if (initialSyncOk && !shouldSkipConfirmation && loadedResources) {
       spinner.start('Checking remote state')
       try {
-        const { state: remoteState } = await getSyncState(project.organization.id, 'development')
+        const deletions = await checkForDeletions(loadedResources, project.organization.id, 'development')
         spinner.stop()
 
-        if (remoteState) {
-          const payload = extractSyncPayload(loadedResources)
-          const localSlugs = {
-            agents: new Set(payload.agents.map((a) => a.slug)),
-            entityTypes: new Set(payload.entityTypes.map((et) => et.slug)),
-            roles: new Set(payload.roles.map((r) => r.name)),
-            evalSuites: new Set((payload.evalSuites || []).map((es) => es.slug)),
-            triggers: new Set((payload.triggers || []).map((t) => t.slug)),
-          }
-
-          const deletions: Array<{ type: string; remote: number; local: number; deleted: string[] }> = []
-
-          const deletedAgents = remoteState.agents.filter((a) => !localSlugs.agents.has(a.slug)).map((a) => a.name)
-          if (deletedAgents.length > 0) deletions.push({ type: 'Agents', remote: remoteState.agents.length, local: payload.agents.length, deleted: deletedAgents })
-
-          const deletedEntityTypes = remoteState.entityTypes.filter((et) => !localSlugs.entityTypes.has(et.slug)).map((et) => et.name)
-          if (deletedEntityTypes.length > 0) deletions.push({ type: 'Entity types', remote: remoteState.entityTypes.length, local: payload.entityTypes.length, deleted: deletedEntityTypes })
-
-          const deletedRoles = remoteState.roles.filter((r) => !localSlugs.roles.has(r.name)).map((r) => r.name)
-          if (deletedRoles.length > 0) deletions.push({ type: 'Roles', remote: remoteState.roles.length, local: payload.roles.length, deleted: deletedRoles })
-
-          const remoteEvalSuites = remoteState.evalSuites || []
-          const deletedEvalSuites = remoteEvalSuites.filter((es) => !localSlugs.evalSuites.has(es.slug)).map((es) => es.name)
-          if (deletedEvalSuites.length > 0) deletions.push({ type: 'Eval suites', remote: remoteEvalSuites.length, local: (payload.evalSuites || []).length, deleted: deletedEvalSuites })
-
-          const remoteTriggers = remoteState.triggers || []
-          const deletedTriggers = remoteTriggers.filter((t) => !localSlugs.triggers.has(t.slug)).map((t) => t.name)
-          if (deletedTriggers.length > 0) deletions.push({ type: 'Triggers', remote: remoteTriggers.length, local: (payload.triggers || []).length, deleted: deletedTriggers })
-
-          if (deletions.length > 0) {
-            console.log(chalk.yellow.bold('  Warning: this sync will DELETE remote resources:'))
-            console.log()
-            for (const d of deletions) {
-              console.log(chalk.yellow(`    ${d.type}:`.padEnd(20)), `${d.remote} remote → ${d.local} local`, chalk.red(`(${d.deleted.length} will be deleted)`))
-              for (const name of d.deleted) {
-                console.log(chalk.red(`      - ${name}`))
-              }
+        if (deletions.length > 0) {
+          console.log(chalk.yellow.bold('  Warning: this sync will DELETE remote resources:'))
+          console.log()
+          for (const d of deletions) {
+            console.log(chalk.yellow(`    ${d.type}:`.padEnd(20)), `${d.remote} remote → ${d.local} local`, chalk.red(`(${d.deleted.length} will be deleted)`))
+            for (const name of d.deleted) {
+              console.log(chalk.red(`      - ${name}`))
             }
-            console.log()
-            console.log(chalk.gray('  Run'), chalk.cyan('struere pull'), chalk.gray('first to download remote resources.'))
-            console.log()
-
-            const shouldContinue = await confirm({ message: 'Continue anyway?', default: false })
-            if (!shouldContinue) {
-              console.log()
-              console.log(chalk.gray('Aborted.'))
-              process.exit(0)
-            }
-            console.log()
           }
+          console.log()
+          console.log(chalk.gray('  Run'), chalk.cyan('struere pull'), chalk.gray('first to download remote resources.'))
+          console.log()
+
+          const shouldContinue = await confirm({ message: 'Continue anyway?', default: false })
+          if (!shouldContinue) {
+            console.log()
+            console.log(chalk.gray('Aborted.'))
+            process.exit(0)
+          }
+          console.log()
         }
       } catch {
         spinner.stop()
@@ -226,10 +143,10 @@ export const devCommand = new Command('dev')
       spinner.start('Syncing to Convex')
 
       try {
-        await performSync()
+        await performDevSync(cwd, project.organization.id)
         spinner.succeed('Synced to development')
       } catch (error) {
-        if (isAuthError(error) && !isHeadless) {
+        if (isAuthError(error) && !nonInteractive) {
           spinner.fail('Session expired - re-authenticating...')
           clearCredentials()
           credentials = await performLogin()
@@ -239,13 +156,13 @@ export const devCommand = new Command('dev')
           }
           spinner.start('Syncing to Convex')
           try {
-            await performSync()
+            await performDevSync(cwd, project.organization.id)
             spinner.succeed('Synced to development')
           } catch (retryError) {
             spinner.fail('Sync failed')
             console.log(chalk.red('Error:'), retryError instanceof Error ? retryError.message : String(retryError))
           }
-        } else if (isAuthError(error) && isHeadless) {
+        } else if (isAuthError(error) && nonInteractive) {
           spinner.fail('API key authentication failed')
           console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
           console.log(chalk.gray('Check that STRUERE_API_KEY is valid and not expired.'))
@@ -289,16 +206,16 @@ export const devCommand = new Command('dev')
       usePolling: false,
     })
 
-    watcher.on('change', async (path) => {
+    const handleFileChange = async (path: string, action: string) => {
       const relativePath = path.replace(cwd, '.')
-      console.log(chalk.gray(`Changed: ${relativePath}`))
+      console.log(chalk.gray(`${action}: ${relativePath}`))
 
       const syncSpinner = ora('Syncing...').start()
       try {
-        await performSync()
+        await performDevSync(cwd, project.organization.id)
         syncSpinner.succeed('Synced')
       } catch (error) {
-        if (isAuthError(error) && !isHeadless) {
+        if (isAuthError(error) && !nonInteractive) {
           syncSpinner.fail('Session expired - re-authenticating...')
           clearCredentials()
           const newCredentials = await performLogin()
@@ -308,7 +225,7 @@ export const devCommand = new Command('dev')
           }
           const retrySyncSpinner = ora('Syncing...').start()
           try {
-            await performSync()
+            await performDevSync(cwd, project.organization.id)
             retrySyncSpinner.succeed('Synced')
           } catch (retryError) {
             retrySyncSpinner.fail('Sync failed')
@@ -319,35 +236,11 @@ export const devCommand = new Command('dev')
           console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
         }
       }
-    })
+    }
 
-    watcher.on('add', async (path) => {
-      const relativePath = path.replace(cwd, '.')
-      console.log(chalk.gray(`Added: ${relativePath}`))
-
-      const syncSpinner = ora('Syncing...').start()
-      try {
-        await performSync()
-        syncSpinner.succeed('Synced')
-      } catch (error) {
-        syncSpinner.fail('Sync failed')
-        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      }
-    })
-
-    watcher.on('unlink', async (path) => {
-      const relativePath = path.replace(cwd, '.')
-      console.log(chalk.gray(`Removed: ${relativePath}`))
-
-      const syncSpinner = ora('Syncing...').start()
-      try {
-        await performSync()
-        syncSpinner.succeed('Synced')
-      } catch (error) {
-        syncSpinner.fail('Sync failed')
-        console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      }
-    })
+    watcher.on('change', (path) => handleFileChange(path, 'Changed'))
+    watcher.on('add', (path) => handleFileChange(path, 'Added'))
+    watcher.on('unlink', (path) => handleFileChange(path, 'Removed'))
 
     process.on('SIGINT', () => {
       console.log()
