@@ -82,6 +82,41 @@ body::after {
   }
 }
 
+.hero-tagline-gradient {
+  opacity: 0;
+}
+
+.hero-tagline-gradient.hero-animate {
+  animation: hero-tagline-fadein 0.5s ease-in 2.3s forwards !important;
+}
+
+.hero-gradient-text {
+  background-size: 300% 100% !important;
+  background-position: 100% 0%;
+}
+
+.hero-gradient-text.hero-animate {
+  animation: hero-gradient-flow 2s ease-in 0.5s both !important;
+}
+
+@keyframes hero-tagline-fadein {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes hero-gradient-flow {
+  0% {
+    background-position: 100% 0%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
 @keyframes typing {
   from { width: 0 }
   to { width: 100% }
@@ -149,6 +184,16 @@ body::after {
 
 .hero-send-btn:hover .btn-arrow {
   transform: translateX(4px);
+}
+
+.liquid-glass-dark {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(20, 30, 50, 0.45) 0%,
+    rgba(20, 30, 50, 0.3) 50%,
+    rgba(20, 30, 50, 0.2) 100%
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .liquid-glass {
