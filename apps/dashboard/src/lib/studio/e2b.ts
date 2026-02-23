@@ -93,6 +93,10 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
         },
         model: "openai/grok-4-1-fast",
         instructions: ["CLAUDE.md"],
+        permission: {
+          webfetch: "allow",
+          websearch: "allow",
+        },
       }, null, 2),
     },
   ]
