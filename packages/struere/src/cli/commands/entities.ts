@@ -6,6 +6,7 @@ import { loadCredentials, getApiKey } from '../utils/credentials'
 import { hasProject, loadProject } from '../utils/project'
 import { performLogin } from './login'
 import { runInit } from './init'
+import { isInteractive } from '../utils/runtime'
 import {
   queryEntityTypes,
   queryEntityTypeBySlug,
@@ -22,8 +23,13 @@ type Environment = 'development' | 'production'
 
 async function ensureAuth(): Promise<boolean> {
   const cwd = process.cwd()
+  const nonInteractive = !isInteractive()
 
   if (!hasProject(cwd)) {
+    if (nonInteractive) {
+      console.error(chalk.red('No struere.json found. Run struere init first.'))
+      process.exit(1)
+    }
     console.log(chalk.yellow('No struere.json found - initializing project...'))
     console.log()
     const success = await runInit(cwd)
@@ -37,6 +43,10 @@ async function ensureAuth(): Promise<boolean> {
   const apiKey = getApiKey()
 
   if (!credentials && !apiKey) {
+    if (nonInteractive) {
+      console.error(chalk.red('Not authenticated. Set STRUERE_API_KEY or run struere login.'))
+      process.exit(1)
+    }
     console.log(chalk.yellow('Not logged in - authenticating...'))
     console.log()
     credentials = await performLogin()
@@ -232,6 +242,9 @@ entitiesCommand
         console.log(chalk.red('Invalid JSON in --data'))
         process.exit(1)
       }
+    } else if (!isInteractive()) {
+      console.log(chalk.red('--data <json> is required in non-interactive mode'))
+      process.exit(1)
     } else {
       spinner.start(`Fetching ${type} schema`)
       const { data: typeData, error } = await queryEntityTypeBySlug(type, env)
@@ -355,39 +368,47 @@ entitiesCommand
   .description('Delete an entity')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--yes', 'Skip confirmation')
+  .option('--json', 'Output raw JSON')
   .action(async (id, opts) => {
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const jsonMode = !!opts.json
 
-    spinner.start('Fetching entity')
+    if (!jsonMode) spinner.start('Fetching entity')
     const { data, error: fetchError } = await queryEntity(id, env)
 
     if (fetchError || !data) {
-      spinner.fail('Failed to fetch entity')
-      console.log(chalk.red('Error:'), fetchError || 'Entity not found')
+      if (jsonMode) {
+        console.log(JSON.stringify({ success: false, error: fetchError || 'Entity not found' }))
+      } else {
+        spinner.fail('Failed to fetch entity')
+        console.log(chalk.red('Error:'), fetchError || 'Entity not found')
+      }
       process.exit(1)
     }
 
-    spinner.succeed('Entity loaded')
+    if (!jsonMode) spinner.succeed('Entity loaded')
 
     const result = data as { entity: Record<string, unknown>; entityType: Record<string, unknown> }
     const entity = result.entity
     const entityType = result.entityType
     const entityData = entity.data as Record<string, unknown> | undefined
 
-    console.log()
-    console.log(chalk.bold(`  ${entityType.name}`), chalk.gray(`(${entity._id})`))
+    if (!jsonMode) {
+      console.log()
+      console.log(chalk.bold(`  ${entityType.name}`), chalk.gray(`(${entity._id})`))
 
-    if (entityData) {
-      const preview = Object.entries(entityData).slice(0, 3)
-      for (const [key, value] of preview) {
-        console.log(`  ${chalk.gray(key + ':')} ${String(value ?? '')}`)
+      if (entityData) {
+        const preview = Object.entries(entityData).slice(0, 3)
+        for (const [key, value] of preview) {
+          console.log(`  ${chalk.gray(key + ':')} ${String(value ?? '')}`)
+        }
       }
+      console.log()
     }
-    console.log()
 
-    if (!opts.yes) {
+    if (!opts.yes && !jsonMode && isInteractive()) {
       const confirmed = await confirm({
         message: 'Are you sure you want to delete this entity?',
         default: false,
@@ -399,17 +420,25 @@ entitiesCommand
       }
     }
 
-    spinner.start('Deleting entity')
+    if (!jsonMode) spinner.start('Deleting entity')
     const { error } = await removeEntity(id, env)
 
     if (error) {
-      spinner.fail('Failed to delete entity')
-      console.log(chalk.red('Error:'), error)
+      if (jsonMode) {
+        console.log(JSON.stringify({ success: false, error }))
+      } else {
+        spinner.fail('Failed to delete entity')
+        console.log(chalk.red('Error:'), error)
+      }
       process.exit(1)
     }
 
-    spinner.succeed('Entity deleted')
-    console.log()
+    if (jsonMode) {
+      console.log(JSON.stringify({ success: true, id }))
+    } else {
+      spinner.succeed('Entity deleted')
+      console.log()
+    }
   })
 
 entitiesCommand
