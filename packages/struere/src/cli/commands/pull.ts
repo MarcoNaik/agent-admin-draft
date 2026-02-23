@@ -17,21 +17,35 @@ import {
 } from '../utils/generator'
 import { performLogin } from './login'
 import { runInit } from './init'
+import { isInteractive } from '../utils/runtime'
 
 export const pullCommand = new Command('pull')
   .description('Pull remote resources to local files')
   .option('--force', 'Overwrite existing local files')
   .option('--env <environment>', 'Environment to pull from', 'development')
   .option('--dry-run', 'Show what would be written without writing')
-  .action(async (options: { force?: boolean; env: string; dryRun?: boolean }) => {
+  .option('--json', 'Output raw JSON')
+  .action(async (options: { force?: boolean; env: string; dryRun?: boolean; json?: boolean }) => {
     const spinner = ora()
     const cwd = process.cwd()
+    const jsonMode = !!options.json
+    const nonInteractive = !isInteractive()
 
-    console.log()
-    console.log(chalk.bold('Struere Pull'))
-    console.log()
+    if (!jsonMode) {
+      console.log()
+      console.log(chalk.bold('Struere Pull'))
+      console.log()
+    }
 
     if (!hasProject(cwd)) {
+      if (nonInteractive) {
+        if (jsonMode) {
+          console.log(JSON.stringify({ error: 'No struere.json found. Run struere init first.' }))
+        } else {
+          console.log(chalk.red('No struere.json found. Run struere init first.'))
+        }
+        process.exit(1)
+      }
       console.log(chalk.yellow('No struere.json found - initializing project...'))
       console.log()
       const success = await runInit(cwd)
@@ -43,18 +57,32 @@ export const pullCommand = new Command('pull')
 
     const project = loadProject(cwd)
     if (!project) {
-      console.log(chalk.red('Failed to load struere.json'))
+      if (jsonMode) {
+        console.log(JSON.stringify({ error: 'Failed to load struere.json' }))
+      } else {
+        console.log(chalk.red('Failed to load struere.json'))
+      }
       process.exit(1)
     }
 
-    console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
-    console.log(chalk.gray('Environment:'), chalk.cyan(options.env))
-    console.log()
+    if (!jsonMode) {
+      console.log(chalk.gray('Organization:'), chalk.cyan(project.organization.name))
+      console.log(chalk.gray('Environment:'), chalk.cyan(options.env))
+      console.log()
+    }
 
     let credentials = loadCredentials()
     const apiKey = getApiKey()
 
     if (!credentials && !apiKey) {
+      if (nonInteractive) {
+        if (jsonMode) {
+          console.log(JSON.stringify({ error: 'Not authenticated. Set STRUERE_API_KEY or run struere login.' }))
+        } else {
+          console.log(chalk.red('Not authenticated. Set STRUERE_API_KEY or run struere login.'))
+        }
+        process.exit(1)
+      }
       console.log(chalk.yellow('Not logged in - authenticating...'))
       console.log()
       credentials = await performLogin()
@@ -65,19 +93,25 @@ export const pullCommand = new Command('pull')
       console.log()
     }
 
-    spinner.start('Fetching remote state')
+    if (!jsonMode) spinner.start('Fetching remote state')
 
     const environment = options.env as 'development' | 'production'
     const { state, error } = await getPullState(project.organization.id, environment)
 
     if (error || !state) {
-      spinner.fail('Failed to fetch remote state')
-      console.log(chalk.red('Error:'), error || 'Unknown error')
+      if (jsonMode) {
+        console.log(JSON.stringify({ error: error || 'Failed to fetch remote state' }))
+      } else {
+        spinner.fail('Failed to fetch remote state')
+        console.log(chalk.red('Error:'), error || 'Unknown error')
+      }
       process.exit(1)
     }
 
-    spinner.succeed('Remote state fetched')
-    console.log()
+    if (!jsonMode) {
+      spinner.succeed('Remote state fetched')
+      console.log()
+    }
 
     const created: string[] = []
     const skipped: string[] = []
@@ -165,6 +199,15 @@ export const pullCommand = new Command('pull')
       if (content) writeOrSkip('triggers/index.ts', content)
     }
 
+    if (options.json) {
+      console.log(JSON.stringify({
+        created,
+        skipped,
+        dryRun: !!options.dryRun,
+      }))
+      return
+    }
+
     if (options.dryRun) {
       console.log(chalk.cyan('Dry run - no files written'))
       console.log()
@@ -192,7 +235,7 @@ export const pullCommand = new Command('pull')
     }
 
     if (!options.dryRun && created.length > 0) {
-      console.log(chalk.gray('Run'), chalk.cyan('struere dev'), chalk.gray('to sync changes'))
+      console.log(chalk.gray('Run'), chalk.cyan('struere sync'), chalk.gray('to sync changes'))
       console.log()
     }
   })
