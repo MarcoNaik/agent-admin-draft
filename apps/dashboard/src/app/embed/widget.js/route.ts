@@ -74,17 +74,20 @@ export async function GET(request: NextRequest) {
   el.onclick=function(){
     if(open)return;
     open=true;
-    el.style.width=openW;
-    el.style.height=openH;
-    el.style.borderRadius=openR;
-    el.style.cursor="default";
+    el.style.transition="none";
     el.style.overflow="hidden";
     el.style.background="radial-gradient(ellipse at center,rgba(20,30,50,0.45) 0%,rgba(20,30,50,0.3) 50%,rgba(20,30,50,0.2) 100%)";
     el.style.border="1px solid rgba(255,255,255,0.15)";
     el.style.backdropFilter="blur(20px)";
     el.style.webkitBackdropFilter="blur(20px)";
-    el.style.transform="scale(1) translate3d(0,0,0)";
     el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.15),0 8px 32px rgba(0,0,0,0.3),0 32px 64px rgba(0,0,0,0.15)";
+    el.offsetHeight;
+    el.style.transition="width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},transform 500ms ${ease}";
+    el.style.width=openW;
+    el.style.height=openH;
+    el.style.borderRadius=openR;
+    el.style.cursor="default";
+    el.style.transform="scale(1) translate3d(0,0,0)";
     icon.style.opacity="0";
     icon.style.pointerEvents="none";
     setTimeout(function(){
@@ -104,6 +107,7 @@ export async function GET(request: NextRequest) {
     setTimeout(function(){
       icon.style.opacity="1";
       icon.style.pointerEvents="auto";
+      el.style.transition="none";
       el.style.width="56px";
       el.style.height="56px";
       el.style.borderRadius="0";
@@ -114,6 +118,8 @@ export async function GET(request: NextRequest) {
       el.style.backdropFilter="none";
       el.style.webkitBackdropFilter="none";
       el.style.boxShadow="none";
+      el.offsetHeight;
+      el.style.transition="transform 500ms ${ease}";
     },150);
   }
 
