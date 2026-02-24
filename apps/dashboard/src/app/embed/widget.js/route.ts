@@ -18,34 +18,39 @@ export async function GET(request: NextRequest) {
 
   const origin = request.nextUrl.origin
   const ease = "cubic-bezier(0.16,1,0.3,1)"
-  const darkGlass = "background:radial-gradient(ellipse at center,rgba(20,30,50,0.45) 0%,rgba(20,30,50,0.3) 50%,rgba(20,30,50,0.2) 100%);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);"
-  const darkGlassShadow = "box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15);"
 
   const js = `(function(){
   if(document.getElementById("struere-widget"))return;
 
   var el=document.createElement("div");
   el.id="struere-widget";
-  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;${darkGlass}${darkGlassShadow}overflow:hidden;cursor:pointer;max-width:calc(100vw - 40px);max-height:80vh;transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease};";
+  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(20,30,50,0.65) 0%,rgba(20,30,50,0.5) 50%,rgba(20,30,50,0.4) 100%);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15);overflow:hidden;cursor:pointer;max-width:calc(100vw - 40px);max-height:80vh;transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease};";
 
   var icon=document.createElement("div");
   icon.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;transition:opacity 250ms ${ease};";
   icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
 
-  var close=document.createElement("div");
-  close.style.cssText="position:absolute;top:12px;right:12px;z-index:3;width:32px;height:32px;border-radius:50%;${darkGlass}display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity 300ms ${ease},transform 300ms ${ease},background 200ms ${ease};";
-  close.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-  close.onmouseenter=function(){close.style.borderColor="rgba(255,255,255,0.3)";close.style.transform="scale(1.1)";};
-  close.onmouseleave=function(){close.style.borderColor="rgba(255,255,255,0.15)";close.style.transform="scale(1)";};
+  var bar=document.createElement("div");
+  bar.style.cssText="position:absolute;top:0;left:0;right:0;z-index:3;height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(20,30,50,0.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity 300ms ${ease};";
+  var label=document.createElement("span");
+  label.style.cssText="font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.5);";
+  label.textContent="Powered by Struere";
+  var xBtn=document.createElement("div");
+  xBtn.style.cssText="width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;transition:background 200ms;";
+  xBtn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  xBtn.onmouseenter=function(){xBtn.style.background="rgba(255,255,255,0.1)";};
+  xBtn.onmouseleave=function(){xBtn.style.background="transparent";};
+  bar.appendChild(label);
+  bar.appendChild(xBtn);
 
   var iframe=document.createElement("iframe");
   iframe.src="${origin}/embed/${org}/${agent}?theme=${theme}";
   iframe.allow="clipboard-read;clipboard-write";
-  iframe.style.cssText="position:absolute;inset:0;width:100%;height:100%;border:none;opacity:0;pointer-events:none;transition:opacity 400ms ${ease};";
+  iframe.style.cssText="position:absolute;top:28px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 28px);border:none;opacity:0;pointer-events:none;transition:opacity 400ms ${ease};";
 
   el.appendChild(iframe);
   el.appendChild(icon);
-  el.appendChild(close);
+  el.appendChild(bar);
   document.body.appendChild(el);
 
   var open=false;
@@ -67,18 +72,17 @@ export async function GET(request: NextRequest) {
     setTimeout(function(){
       iframe.style.opacity="1";
       iframe.style.pointerEvents="auto";
-      close.style.opacity="1";
-      close.style.pointerEvents="auto";
+      bar.style.opacity="1";
+      bar.style.pointerEvents="auto";
     },300);
   };
 
-  close.onclick=function(e){
-    e.stopPropagation();
+  function closeWidget(){
     open=false;
     iframe.style.opacity="0";
     iframe.style.pointerEvents="none";
-    close.style.opacity="0";
-    close.style.pointerEvents="none";
+    bar.style.opacity="0";
+    bar.style.pointerEvents="none";
     setTimeout(function(){
       icon.style.opacity="1";
       icon.style.pointerEvents="auto";
@@ -88,7 +92,9 @@ export async function GET(request: NextRequest) {
       el.style.cursor="pointer";
       el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15)";
     },150);
-  };
+  }
+
+  xBtn.onclick=function(e){e.stopPropagation();closeWidget();};
 
   window.addEventListener("message",function(e){
     if(e.data&&e.data.type==="struere:message"){
