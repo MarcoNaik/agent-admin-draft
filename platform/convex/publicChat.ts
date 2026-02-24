@@ -45,6 +45,18 @@ export const getPublicAgent = query({
   },
 })
 
+export const getPublicThreadMessages = query({
+  args: { threadId: v.id("threads") },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
+      .order("asc")
+      .take(100)
+  },
+})
+
 export const resolvePublicAgent = internalQuery({
   args: {
     orgSlug: v.string(),
