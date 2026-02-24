@@ -18,6 +18,43 @@ interface Message {
   toolCallId?: string
 }
 
+const TOOL_CALL_RE = /^(?:entity|event|calendar|whatsapp|agent)[._](?:create|get|query|update|delete|link|unlink|emit|list|freeBusy|send|sendTemplate|sendInteractive|sendMedia|listTemplates|getConversation|getStatus|chat)\b/i
+
+function cleanToolCallText(text: string): string {
+  const lines = text.split("\n")
+  const cleaned: string[] = []
+  let inToolBlock = false
+  let braceDepth = 0
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    if (TOOL_CALL_RE.test(trimmed)) {
+      inToolBlock = true
+      braceDepth = 0
+      for (const ch of line) {
+        if (ch === "{" || ch === "(") braceDepth++
+        if (ch === "}" || ch === ")") braceDepth--
+      }
+      if (braceDepth <= 0) inToolBlock = false
+      continue
+    }
+
+    if (inToolBlock) {
+      for (const ch of line) {
+        if (ch === "{" || ch === "(") braceDepth++
+        if (ch === "}" || ch === ")") braceDepth--
+      }
+      if (braceDepth <= 0) inToolBlock = false
+      continue
+    }
+
+    cleaned.push(line)
+  }
+
+  return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim()
+}
+
 interface ChatInterfaceProps {
   agent: { name: string; model?: { name?: string } } | null | undefined
   sendMessage: (args: { message: string; threadId?: Id<"threads"> }) => Promise<{ message: string; threadId: Id<"threads"> }>
@@ -114,14 +151,22 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
   const filteredMessages = useMemo(() => {
     const filtered = messages.filter((m: Message) => m.role !== "system")
     if (mode === "public") {
-      return filtered.filter((m: Message) => {
-        if (m.role === "tool") return false
-        if (m.role === "assistant" && m.toolCalls?.length && !m.content) return false
-        if (m.role === "assistant" && m.toolCalls?.length && m.content) {
+      return filtered
+        .filter((m: Message) => {
+          if (m.role === "tool") return false
+          if (m.role === "assistant" && m.toolCalls?.length && !m.content) return false
           return true
-        }
-        return true
-      })
+        })
+        .map((m: Message) => {
+          if (m.role === "assistant" && m.content) {
+            const cleaned = cleanToolCallText(m.content)
+            if (cleaned !== m.content) {
+              return { ...m, content: cleaned }
+            }
+          }
+          return m
+        })
+        .filter((m: Message) => m.role !== "assistant" || m.content)
     }
     return filtered
   }, [messages, mode])
@@ -364,7 +409,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                 placeholder="Type a message..."
                 className={cn(
                   "min-h-[60px] max-h-[200px] pr-12 resize-none font-input",
-                  embedded && "bg-transparent text-white placeholder:text-white/70 border-none focus-visible:ring-0"
+                  embedded && "bg-transparent text-white placeholder:text-white/70 border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-none"
                 )}
                 disabled={isLoading}
               />
@@ -372,9 +417,9 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                 type="submit"
                 size="icon"
                 className={cn(
-                  "absolute right-2 bottom-2 transition-all ease-out-soft",
+                  "absolute right-2 top-1/2 -translate-y-1/2 transition-all ease-out-soft",
                   embedded
-                    ? "embed-send-btn bg-transparent border border-white/15 text-white hover:border-white/30"
+                    ? "bg-transparent border border-white/15 text-white"
                     : "bg-ocean text-white hover:bg-ocean-light"
                 )}
                 disabled={!input.trim() || isLoading}
