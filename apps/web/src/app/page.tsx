@@ -2,7 +2,6 @@ import { Navigation } from "@/components/navigation"
 import { HeroSection } from "@/components/hero-section"
 import { HowItWorks } from "@/components/how-it-works"
 import { UseCases } from "@/components/use-cases"
-import { DemoSection } from "@/components/demo-section"
 import { Integrations } from "@/components/integrations"
 import { Pricing } from "@/components/pricing"
 import { CTASection } from "@/components/cta-section"
@@ -15,7 +14,6 @@ export default function Home() {
       <HeroSection />
       <HowItWorks />
       <UseCases />
-      <DemoSection />
       <Integrations />
       <Pricing />
       <CTASection />
