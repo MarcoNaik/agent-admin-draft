@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
   icon.firstChild.style.clipPath=clipPath;
 
   var bar=document.createElement("div");
-  bar.style.cssText="position:absolute;top:0;left:0;right:0;z-index:3;height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(20,30,50,0.6);opacity:0;pointer-events:none;transition:opacity 300ms ${ease};";
+  bar.style.cssText="position:absolute;top:0;left:0;right:0;z-index:3;height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(20,30,50,0.3);opacity:0;pointer-events:none;transition:opacity 300ms ${ease};";
   var link=document.createElement("link");
   link.rel="stylesheet";
   link.href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&display=swap";
