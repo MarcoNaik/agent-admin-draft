@@ -796,6 +796,76 @@ export const disableWhatsApp = mutation({
   },
 })
 
+export const registerOwnedTemplate = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    templateName: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const config = await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
+      )
+      .first()
+    if (!config) return null
+
+    const existing = ((config.config as Record<string, unknown>)?.ownedTemplateNames as string[]) ?? []
+    if (existing.includes(args.templateName)) return null
+
+    await ctx.db.patch(config._id, {
+      config: { ...(config.config as Record<string, unknown>), ownedTemplateNames: [...existing, args.templateName] },
+    })
+    return null
+  },
+})
+
+export const unregisterOwnedTemplate = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    templateName: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const config = await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
+      )
+      .first()
+    if (!config) return null
+
+    const existing = ((config.config as Record<string, unknown>)?.ownedTemplateNames as string[]) ?? []
+    const updated = existing.filter((n: string) => n !== args.templateName)
+
+    await ctx.db.patch(config._id, {
+      config: { ...(config.config as Record<string, unknown>), ownedTemplateNames: updated },
+    })
+    return null
+  },
+})
+
+export const getOwnedTemplateNames = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    const config = await ctx.db
+      .query("integrationConfigs")
+      .withIndex("by_org_env_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
+      )
+      .first()
+    if (!config) return []
+    return ((config.config as Record<string, unknown>)?.ownedTemplateNames as string[]) ?? []
+  },
+})
+
 export const getMediaUrl = query({
   args: { storageId: v.id("_storage") },
   returns: v.union(v.string(), v.null()),
