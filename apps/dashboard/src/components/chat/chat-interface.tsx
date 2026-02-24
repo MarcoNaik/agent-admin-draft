@@ -164,7 +164,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
   if (agent === undefined) {
     return (
-      <div className={cn("flex items-center justify-center h-screen", embedded ? "bg-transparent" : "bg-background")}>
+      <div className={cn("flex items-center justify-center h-screen", embedded ? "liquid-glass liquid-glass-dark" : "bg-background")}>
         <Loader2 className={cn("h-8 w-8 animate-spin", embedded ? "text-white" : "text-content-secondary")} />
       </div>
     )
@@ -172,7 +172,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
   if (agent === null) {
     return (
-      <div className={cn("flex flex-col items-center justify-center h-screen gap-4", embedded ? "bg-transparent" : "bg-background")}>
+      <div className={cn("flex flex-col items-center justify-center h-screen gap-4", embedded ? "liquid-glass liquid-glass-dark" : "bg-background")}>
         <AlertCircle className={cn("h-12 w-12", embedded ? "text-white" : "text-destructive")} />
         <h1 className={cn("text-xl font-semibold", embedded ? "text-white" : "text-content-primary")}>Agent Not Found</h1>
         <p className={cn(embedded ? "text-white" : "text-content-secondary")}>This agent does not exist or is not available.</p>
@@ -181,7 +181,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
   }
 
   return (
-    <div className={cn("flex flex-col h-screen", embedded ? "bg-transparent" : "bg-background")}>
+    <div className={cn("flex flex-col h-screen", embedded ? "liquid-glass liquid-glass-dark" : "bg-background")}>
       {!embedded && (
         <header className="border-b px-4 py-3 flex items-center gap-3 shrink-0">
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
