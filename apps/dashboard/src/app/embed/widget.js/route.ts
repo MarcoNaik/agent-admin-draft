@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   var icon=document.createElement("div");
   icon.style.cssText="position:absolute;inset:0;z-index:2;transition:opacity 250ms ${ease},transform 500ms ${ease};filter:drop-shadow(0 4px 16px rgba(0,0,0,0.3));";
   var clipPath="path("+'"'+"M42 30a4 4 0 0 1-4 4H14l-8 8V10a4 4 0 0 1 4-4h28a4 4 0 0 1 4 4z"+'"'+")";
-  icon.innerHTML='<div style="position:absolute;inset:4px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:radial-gradient(ellipse at center,rgba(20,30,50,0.6) 0%,rgba(20,30,50,0.45) 50%,rgba(20,30,50,0.35) 100%);"></div><svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:4px;" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.5" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  icon.innerHTML='<div style="position:absolute;inset:4px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:radial-gradient(ellipse at center,rgba(10,15,30,0.85) 0%,rgba(15,20,40,0.75) 50%,rgba(20,30,50,0.65) 100%);"></div><svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:4px;" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.5" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
   icon.firstChild.style.clipPath=clipPath;
 
   var bar=document.createElement("div");

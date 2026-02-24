@@ -20,7 +20,6 @@ export default function EmbedLayout({
         }
         body > *, body > * > *, body > * > * > *, body > * > * > * > * {
           background: transparent !important;
-          height: 100% !important;
         }
         body::after {
           content: "";
