@@ -91,6 +91,7 @@ export async function GET(request: NextRequest) {
     icon.style.opacity="0";
     icon.style.pointerEvents="none";
     setTimeout(function(){
+      icon.style.display="none";
       iframe.style.opacity="1";
       iframe.style.pointerEvents="auto";
       bar.style.opacity="1";
@@ -118,6 +119,7 @@ export async function GET(request: NextRequest) {
       el.style.boxShadow="none";
       el.offsetHeight;
       el.style.transition="transform 500ms ${ease}";
+      icon.style.display="";
       icon.style.opacity="1";
       icon.style.pointerEvents="auto";
     },150);
