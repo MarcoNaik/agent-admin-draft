@@ -14,8 +14,13 @@ export default function EmbedLayout({
           width: 100%;
           margin: 0;
           overflow: hidden;
+          position: relative;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+        }
+        body > *, body > * > *, body > * > * > *, body > * > * > * > * {
+          background: transparent !important;
+          height: 100% !important;
         }
         body::after {
           content: "";
