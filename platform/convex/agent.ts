@@ -239,6 +239,11 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     }
   }
 
+  await ctx.runMutation(internal.threads.appendMessages, {
+    threadId,
+    messages: [{ role: "user", content: message }],
+  })
+
   const result = await generateText({
     model: createModel(config.model, providerKey?.apiKey),
     system: processedSystemPrompt,
@@ -251,36 +256,42 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     maxRetries: 2,
     temperature: config.model.temperature ?? 0.7,
     maxOutputTokens: config.model.maxTokens ?? 4096,
+    onStepFinish: async ({ text, toolCalls, toolResults }) => {
+      const stepMsgs = fromSteps([{ text, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
+      if (stepMsgs.length > 0) {
+        await ctx.runMutation(internal.threads.appendMessages, {
+          threadId,
+          messages: stepMsgs,
+        })
+      }
+    },
   })
 
   const stepsMessages = fromSteps(result.steps as any)
-  const finalContent = result.text ?? ""
 
+  const lastTextOnlyMessage = [...stepsMessages]
+    .reverse()
+    .find(m => m.role === "assistant" && !m.toolCalls?.length && m.content)
+
+  const responseText = lastTextOnlyMessage?.content ?? ""
   const lastMsg = stepsMessages[stepsMessages.length - 1]
   const lastIsTextOnly = lastMsg?.role === "assistant" && !lastMsg.toolCalls?.length
 
-  const newMessages: Message[] = [
-    { role: "user", content: message },
-    ...stepsMessages,
-  ]
-
-  if (!lastIsTextOnly) {
-    newMessages.push({ role: "assistant", content: finalContent })
+  if (!lastIsTextOnly && responseText) {
+    await ctx.runMutation(internal.threads.appendMessages, {
+      threadId,
+      messages: [{ role: "assistant", content: responseText }],
+    })
   }
-
-  await ctx.runMutation(internal.threads.appendMessages, {
-    threadId,
-    messages: newMessages,
-  })
 
   const durationMs = Date.now() - startTime
   const totalInputTokens = result.totalUsage.inputTokens ?? 0
   const totalOutputTokens = result.totalUsage.outputTokens ?? 0
 
-  const executedToolCalls = newMessages
+  const executedToolCalls = stepsMessages
     .filter(m => m.role === "tool")
     .map(m => {
-      const assistantMsg = newMessages.find(
+      const assistantMsg = stepsMessages.find(
         am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
       )
       const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
@@ -301,7 +312,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     environment,
     conversationId,
     inputMessage: message,
-    outputMessage: finalContent,
+    outputMessage: responseText,
     toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
     inputTokens: totalInputTokens,
     outputTokens: totalOutputTokens,
@@ -329,7 +340,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
   return {
     threadId,
-    message: finalContent,
+    message: responseText,
     usage: {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
