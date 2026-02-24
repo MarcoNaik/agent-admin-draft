@@ -17,13 +17,6 @@ export default function EmbedLayout({
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
-        body::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: rgba(10, 15, 25, 0.55);
-          z-index: 0;
-        }
         body::after {
           content: "";
           position: absolute;
