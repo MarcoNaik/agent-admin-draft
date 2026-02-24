@@ -13,8 +13,9 @@ export default function EmbedLayout({
           height: 100%;
           width: 100%;
           margin: 0;
-          overflow: hidden;
+          overflow: clip;
           position: relative;
+          contain: paint;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
@@ -49,12 +50,6 @@ export default function EmbedLayout({
               rgba(20, 30, 50, 0.3) 50%,
               rgba(20, 30, 50, 0.2) 100%
             ) !important;
-        }
-        [data-clerk-component],
-        .cl-internal-b3fm6y,
-        .cl-dev-mode-notice,
-        div[style*="clerk"] {
-          display: none !important;
         }
       `}</style>
       {children}
