@@ -248,7 +248,15 @@ export const whatsappListTemplates = internalAction({
   returns: v.any(),
   handler: async (ctx, args): Promise<unknown> => {
     const connection = await resolveConnection(ctx, args)
-    return await listPhoneTemplates(connection.kapsoPhoneNumberId)
+
+    const ownedNames = await ctx.runQuery(internal.whatsapp.getOwnedTemplateNames, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+    }) as string[]
+
+    const allTemplates = await listPhoneTemplates(connection.kapsoPhoneNumberId) as { data?: Array<{ name: string }> }
+
+    return { ...allTemplates, data: (allTemplates?.data ?? []).filter((t: { name: string }) => ownedNames.includes(t.name)) }
   },
 })
 
