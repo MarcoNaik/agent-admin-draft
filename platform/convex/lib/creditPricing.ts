@@ -51,8 +51,10 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
   "grok-3": { inputPerMTok: 3.0 * MARKUP, outputPerMTok: 15.0 * MARKUP },
   "grok-3-mini": { inputPerMTok: 0.30 * MARKUP, outputPerMTok: 0.50 * MARKUP },
   "grok-4-0709": { inputPerMTok: 3.0 * MARKUP, outputPerMTok: 15.0 * MARKUP },
-  "grok-4-fast": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
-  "grok-4-1-fast": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-4-1-fast-reasoning": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-4-1-fast-non-reasoning": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-4-fast-reasoning": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
+  "grok-4-fast-non-reasoning": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 0.50 * MARKUP },
   "grok-code-fast-1": { inputPerMTok: 0.20 * MARKUP, outputPerMTok: 1.50 * MARKUP },
 }
 

@@ -16,6 +16,7 @@ Struere supports multiple LLM providers for agent execution. Each agent can be c
 | `anthropic` | Default provider |
 | `openai` | Configure in Settings > Providers |
 | `google` | Configure in Settings > Providers |
+| `xai` | Configure in Settings > Providers |
 | `custom` | Requires `apiKey` in model config. Use for self-hosted or alternative providers. |
 
 ## Anthropic Models
@@ -63,12 +64,25 @@ Anthropic is the default provider.
 | `gemini-1.5-pro` | $1.25 | $5 | Long-context analysis |
 | `gemini-1.5-flash` | $0.075 | $0.30 | Budget-friendly with long context |
 
+## xAI Models
+
+| Model | Input (per MTok) | Output (per MTok) | Context | Best For |
+|-------|-------------------|--------------------|---------|----------|
+| `grok-4-1-fast-reasoning` | $0.20 | $0.50 | 2M | Frontier agentic tool calling with reasoning |
+| `grok-4-1-fast-non-reasoning` | $0.20 | $0.50 | 2M | Fast responses without reasoning overhead |
+| `grok-4-0709` | $3 | $15 | 256K | Most capable Grok — deep reasoning |
+| `grok-3` | $3 | $15 | 131K | Strong general-purpose |
+| `grok-3-mini` | $0.30 | $0.50 | 131K | Cost-effective with reasoning |
+| `grok-code-fast-1` | $0.20 | $1.50 | 256K | Optimized for agentic coding |
+
 ## Choosing a Model
 
 - **claude-sonnet-4** — The default model. Strong reasoning with balanced cost, suitable for most agent tasks including multi-step planning and nuanced decision-making.
 - **claude-haiku-4-5** — Use for high-volume, cost-sensitive agents. Fast and capable enough for entity management, scheduling, and standard workflows.
 - **claude-opus-4-6** — Use for agents that require the highest possible capability, such as complex analysis or research tasks.
 - **gpt-4o-mini** / **gemini-2.5-flash** — Good alternatives for cost-sensitive, high-throughput workloads.
+- **grok-4-1-fast-reasoning** — Best xAI option for agentic workflows with tool calling. 2M context window at low cost.
+- **grok-3-mini** — Budget-friendly xAI option with reasoning capabilities.
 
 ## Configuration Options
 
@@ -86,7 +100,7 @@ model: {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `provider` | `string` | `"anthropic"` | The LLM provider (`"anthropic"`, `"openai"`, `"google"`, or `"custom"`) |
+| `provider` | `string` | `"anthropic"` | The LLM provider (`"anthropic"`, `"openai"`, `"google"`, `"xai"`, or `"custom"`) |
 | `name` | `string` | `"claude-sonnet-4"` (full ID: `claude-sonnet-4-20250514`) | The model name |
 | `temperature` | `number` | `0.7` | Controls randomness. Lower values (0.0-0.3) produce more deterministic output. Higher values (0.7-1.0) produce more creative output. |
 | `maxTokens` | `number` | `4096` | Maximum number of tokens in the model's response |
@@ -186,6 +200,26 @@ export default defineAgent({
   model: {
     provider: "openai",
     name: "gpt-4o-mini",
+    temperature: 0.7,
+    maxTokens: 4096,
+  },
+  tools: ["entity.query"],
+})
+```
+
+### xAI Provider
+
+```typescript
+import { defineAgent } from 'struere'
+
+export default defineAgent({
+  name: "Grok Agent",
+  slug: "grok-agent",
+  version: "0.1.0",
+  systemPrompt: "You assist with general queries.",
+  model: {
+    provider: "xai",
+    name: "grok-4-1-fast-reasoning",
     temperature: 0.7,
     maxTokens: 4096,
   },
