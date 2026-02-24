@@ -432,9 +432,11 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
               </Button>
             </div>
           </div>
-          <p className={cn("text-xs mt-2 text-center", embedded ? "text-white/70" : "text-content-tertiary")}>
-            Press Enter to send, Shift+Enter for new line
-          </p>
+          {!embedded && (
+            <p className="text-xs mt-2 text-center text-content-tertiary">
+              Press Enter to send, Shift+Enter for new line
+            </p>
+          )}
         </form>
       </div>
     </div>
