@@ -733,4 +733,161 @@ http.route({
   }),
 })
 
+http.route({
+  path: "/v1/templates/connections",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const result = await ctx.runQuery(internal.whatsapp.listConnectionsInternal, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+      })
+
+      return new Response(JSON.stringify({ data: result }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/templates/list",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json() as { connectionId: string }
+      const result = await ctx.runAction(internal.whatsappActions.internalListTemplates, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+        connectionId: body.connectionId as Id<"whatsappConnections">,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/templates/create",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json() as {
+        connectionId: string
+        name: string
+        language: string
+        category: string
+        components: Array<Record<string, unknown>>
+        allowCategoryChange?: boolean
+      }
+      const result = await ctx.runAction(internal.whatsappActions.internalCreateTemplate, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+        connectionId: body.connectionId as Id<"whatsappConnections">,
+        name: body.name,
+        language: body.language,
+        category: body.category,
+        components: body.components,
+        allowCategoryChange: body.allowCategoryChange,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/templates/delete",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json() as { connectionId: string; name: string }
+      const result = await ctx.runAction(internal.whatsappActions.internalDeleteTemplate, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+        connectionId: body.connectionId as Id<"whatsappConnections">,
+        name: body.name,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/templates/status",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json() as { connectionId: string; name: string }
+      const result = await ctx.runAction(internal.whatsappActions.internalGetTemplateStatus, {
+        organizationId: authResult.organizationId,
+        environment: authResult.environment,
+        connectionId: body.connectionId as Id<"whatsappConnections">,
+        name: body.name,
+      })
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
 export default http
