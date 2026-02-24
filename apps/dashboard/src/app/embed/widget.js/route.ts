@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   var el=document.createElement("div");
   el.id="struere-widget";
-  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;background:none;border:none;overflow:visible;cursor:pointer;max-width:calc(100vw - 24px);max-height:calc(100vh - 40px);transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease},background 400ms ${ease},border 400ms ${ease};-webkit-transform:translate3d(0,0,0);transform:translate3d(0,0,0);";
+  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;background:none;border:none;overflow:visible;cursor:pointer;max-width:calc(100vw - 24px);max-height:calc(100vh - 40px);transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease},background 400ms ${ease},border 400ms ${ease};";
 
   var icon=document.createElement("div");
   icon.style.cssText="position:absolute;inset:0;z-index:2;transition:opacity 250ms ${ease},transform 500ms ${ease};filter:drop-shadow(0 4px 16px rgba(0,0,0,0.3));";
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     el.style.height=openH;
     el.style.borderRadius=openR;
     el.style.cursor="default";
-    el.style.transform="scale(1) translate3d(0,0,0)";
+    el.style.transform="none";
     icon.style.opacity="0";
     icon.style.pointerEvents="none";
     setTimeout(function(){
