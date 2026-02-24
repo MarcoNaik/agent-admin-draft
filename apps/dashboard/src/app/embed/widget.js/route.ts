@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   const agent = searchParams.get("agent") ?? ""
   const theme = searchParams.get("theme") ?? "dark"
   const position = searchParams.get("position") ?? "br"
-  const accent = searchParams.get("accent") ?? "#3B82F6"
 
   const positionStyles: Record<string, string> = {
     br: "bottom:20px;right:20px;",
@@ -17,48 +16,78 @@ export async function GET(request: NextRequest) {
 
   const posStyle = positionStyles[position] || positionStyles.br
 
-  const iframePositionStyles: Record<string, string> = {
-    br: "bottom:80px;right:20px;",
-    bl: "bottom:80px;left:20px;",
-    tr: "top:80px;right:20px;",
-    tl: "top:80px;left:20px;",
-  }
-
-  const iframePosStyle = iframePositionStyles[position] || iframePositionStyles.br
-
   const origin = request.nextUrl.origin
+  const ease = "cubic-bezier(0.16,1,0.3,1)"
 
   const js = `(function(){
   if(document.getElementById("struere-widget"))return;
 
-  var btn=document.createElement("div");
-  btn.id="struere-widget";
-  btn.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;background:${accent};cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.2s ease;";
-  btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
-  btn.onmouseenter=function(){btn.style.transform="scale(1.1)";};
-  btn.onmouseleave=function(){btn.style.transform="scale(1)";};
+  var el=document.createElement("div");
+  el.id="struere-widget";
+  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,rgba(255,255,255,0.05) 50%,rgba(255,255,255,0.02) 100%);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.2),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.2);overflow:hidden;cursor:pointer;max-width:calc(100vw - 40px);max-height:80vh;transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease};";
 
-  var frame=document.createElement("div");
-  frame.id="struere-frame";
-  frame.style.cssText="position:fixed;${iframePosStyle}z-index:2147483646;width:400px;height:600px;max-height:80vh;max-width:calc(100vw - 40px);border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.2);display:none;transition:opacity 0.2s ease,transform 0.2s ease;opacity:0;transform:translateY(10px);";
-  frame.innerHTML='<iframe src="${origin}/embed/${org}/${agent}?theme=${theme}" style="width:100%;height:100%;border:none;" allow="clipboard-read;clipboard-write"></iframe>';
+  var icon=document.createElement("div");
+  icon.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;transition:opacity 250ms ${ease};";
+  icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
 
-  document.body.appendChild(btn);
-  document.body.appendChild(frame);
+  var close=document.createElement("div");
+  close.style.cssText="position:absolute;top:12px;right:12px;z-index:3;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity 300ms ${ease},transform 300ms ${ease},background 200ms ${ease};";
+  close.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  close.onmouseenter=function(){close.style.background="rgba(255,255,255,0.15)";close.style.transform="scale(1.1)";};
+  close.onmouseleave=function(){close.style.background="rgba(255,255,255,0.08)";close.style.transform="scale(1)";};
+
+  var iframe=document.createElement("iframe");
+  iframe.src="${origin}/embed/${org}/${agent}?theme=${theme}";
+  iframe.allow="clipboard-read;clipboard-write";
+  iframe.style.cssText="position:absolute;inset:0;width:100%;height:100%;border:none;opacity:0;pointer-events:none;transition:opacity 400ms ${ease};";
+
+  el.appendChild(iframe);
+  el.appendChild(icon);
+  el.appendChild(close);
+  document.body.appendChild(el);
 
   var open=false;
-  btn.onclick=function(){
-    open=!open;
-    if(open){
-      frame.style.display="block";
-      setTimeout(function(){frame.style.opacity="1";frame.style.transform="translateY(0)";},10);
-      btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    }else{
-      frame.style.opacity="0";
-      frame.style.transform="translateY(10px)";
-      setTimeout(function(){frame.style.display="none";},200);
-      btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
-    }
+
+  el.onmouseenter=function(){if(!open){el.style.transform="scale(1.08)";el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.3),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.25),0 0 24px rgba(180,140,100,0.12)";el.style.borderColor="rgba(255,255,255,0.35)";}};
+  el.onmouseleave=function(){if(!open){el.style.transform="scale(1)";el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.2),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.2)";el.style.borderColor="rgba(255,255,255,0.2)";}};
+
+  el.onclick=function(){
+    if(open)return;
+    open=true;
+    el.style.width="400px";
+    el.style.height="600px";
+    el.style.borderRadius="16px";
+    el.style.cursor="default";
+    el.style.transform="scale(1)";
+    el.style.background="radial-gradient(ellipse at center,rgba(20,30,50,0.45) 0%,rgba(20,30,50,0.3) 50%,rgba(20,30,50,0.2) 100%)";
+    el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.1),0 8px 32px rgba(0,0,0,0.3),0 32px 64px rgba(0,0,0,0.15)";
+    icon.style.opacity="0";
+    icon.style.pointerEvents="none";
+    setTimeout(function(){
+      iframe.style.opacity="1";
+      iframe.style.pointerEvents="auto";
+      close.style.opacity="1";
+      close.style.pointerEvents="auto";
+    },300);
+  };
+
+  close.onclick=function(e){
+    e.stopPropagation();
+    open=false;
+    iframe.style.opacity="0";
+    iframe.style.pointerEvents="none";
+    close.style.opacity="0";
+    close.style.pointerEvents="none";
+    setTimeout(function(){
+      icon.style.opacity="1";
+      icon.style.pointerEvents="auto";
+      el.style.width="56px";
+      el.style.height="56px";
+      el.style.borderRadius="50%";
+      el.style.cursor="pointer";
+      el.style.background="linear-gradient(135deg,rgba(255,255,255,0.12) 0%,rgba(255,255,255,0.05) 50%,rgba(255,255,255,0.02) 100%)";
+      el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.2),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.2)";
+    },150);
   };
 
   window.addEventListener("message",function(e){
