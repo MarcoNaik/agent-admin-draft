@@ -11,24 +11,25 @@ export default function EmbedLayout({
         html, body {
           background: transparent !important;
           height: 100%;
+          width: 100%;
           margin: 0;
+          overflow: hidden;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
         body::before {
           content: "";
-          position: fixed;
+          position: absolute;
           inset: 0;
-          backdrop-filter: blur(12px) saturate(1.2);
-          -webkit-backdrop-filter: blur(12px) saturate(1.2);
+          background: rgba(10, 15, 25, 0.55);
           z-index: 0;
         }
         body::after {
           content: "";
-          position: fixed;
+          position: absolute;
           inset: 0;
           pointer-events: none;
-          z-index: 9999;
+          z-index: 2;
           opacity: 0.025;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
           background-repeat: repeat;

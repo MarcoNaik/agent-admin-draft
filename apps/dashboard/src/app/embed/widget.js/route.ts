@@ -22,16 +22,23 @@ export async function GET(request: NextRequest) {
   const js = `(function(){
   if(document.getElementById("struere-widget"))return;
 
+  var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  var openW=isMobile?Math.min(400,window.innerWidth-24)+"px":"400px";
+  var openH=isMobile?Math.min(600,window.innerHeight-40)+"px":"600px";
+  var openR=isMobile?"12px":"16px";
+
   var el=document.createElement("div");
   el.id="struere-widget";
-  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(20,30,50,0.45) 0%,rgba(20,30,50,0.3) 50%,rgba(20,30,50,0.2) 100%);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15);overflow:hidden;cursor:pointer;max-width:calc(100vw - 40px);max-height:80vh;transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease};";
+  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;background:none;border:none;overflow:visible;cursor:pointer;max-width:calc(100vw - 24px);max-height:calc(100vh - 40px);transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease},background 400ms ${ease},border 400ms ${ease};-webkit-transform:translate3d(0,0,0);transform:translate3d(0,0,0);";
 
   var icon=document.createElement("div");
-  icon.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;transition:opacity 250ms ${ease};";
-  icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+  icon.style.cssText="position:absolute;inset:0;z-index:2;transition:opacity 250ms ${ease},transform 500ms ${ease};filter:drop-shadow(0 4px 16px rgba(0,0,0,0.3));";
+  var clipPath="path("+'"'+"M42 30a4 4 0 0 1-4 4H14l-8 8V10a4 4 0 0 1 4-4h28a4 4 0 0 1 4 4z"+'"'+")";
+  icon.innerHTML='<div style="position:absolute;inset:4px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:linear-gradient(135deg,rgba(255,255,255,0.15),rgba(255,255,255,0.04));"></div><svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:4px;" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.5" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  icon.firstChild.style.clipPath=clipPath;
 
   var bar=document.createElement("div");
-  bar.style.cssText="position:absolute;top:0;left:0;right:0;z-index:3;height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(20,30,50,0.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity 300ms ${ease};";
+  bar.style.cssText="position:absolute;top:0;left:0;right:0;z-index:3;height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(20,30,50,0.6);opacity:0;pointer-events:none;transition:opacity 300ms ${ease};";
   var link=document.createElement("link");
   link.rel="stylesheet";
   link.href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&display=swap";
@@ -51,7 +58,8 @@ export async function GET(request: NextRequest) {
   var iframe=document.createElement("iframe");
   iframe.src="${origin}/embed/${org}/${agent}?theme=${theme}";
   iframe.allow="clipboard-read;clipboard-write";
-  iframe.style.cssText="position:absolute;top:28px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 28px);border:none;opacity:0;pointer-events:none;transition:opacity 400ms ${ease};";
+  iframe.style.cssText="position:absolute;top:28px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 28px);border:none;opacity:0;pointer-events:none;transition:opacity 400ms ${ease};background:transparent;color-scheme:normal;";
+  iframe.setAttribute("scrolling","no");
 
   el.appendChild(iframe);
   el.appendChild(icon);
@@ -60,17 +68,22 @@ export async function GET(request: NextRequest) {
 
   var open=false;
 
-  el.onmouseenter=function(){if(!open){el.style.transform="scale(1.08)";el.style.borderColor="rgba(255,255,255,0.3)";el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.3),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.2),0 0 24px rgba(180,140,100,0.12)";}};
-  el.onmouseleave=function(){if(!open){el.style.transform="scale(1)";el.style.borderColor="rgba(255,255,255,0.15)";el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15)";}};
+  el.onmouseenter=function(){if(!open){icon.style.transform="scale(1.1)";}};
+  el.onmouseleave=function(){if(!open){icon.style.transform="scale(1)";}};
 
   el.onclick=function(){
     if(open)return;
     open=true;
-    el.style.width="400px";
-    el.style.height="600px";
-    el.style.borderRadius="16px";
+    el.style.width=openW;
+    el.style.height=openH;
+    el.style.borderRadius=openR;
     el.style.cursor="default";
-    el.style.transform="scale(1)";
+    el.style.overflow="hidden";
+    el.style.background="radial-gradient(ellipse at center,rgba(20,30,50,0.45) 0%,rgba(20,30,50,0.3) 50%,rgba(20,30,50,0.2) 100%)";
+    el.style.border="1px solid rgba(255,255,255,0.15)";
+    el.style.backdropFilter="blur(20px)";
+    el.style.webkitBackdropFilter="blur(20px)";
+    el.style.transform="scale(1) translate3d(0,0,0)";
     el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.15),0 8px 32px rgba(0,0,0,0.3),0 32px 64px rgba(0,0,0,0.15)";
     icon.style.opacity="0";
     icon.style.pointerEvents="none";
@@ -93,9 +106,14 @@ export async function GET(request: NextRequest) {
       icon.style.pointerEvents="auto";
       el.style.width="56px";
       el.style.height="56px";
-      el.style.borderRadius="50%";
+      el.style.borderRadius="0";
       el.style.cursor="pointer";
-      el.style.boxShadow="inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15)";
+      el.style.overflow="visible";
+      el.style.background="none";
+      el.style.border="none";
+      el.style.backdropFilter="none";
+      el.style.webkitBackdropFilter="none";
+      el.style.boxShadow="none";
     },150);
   }
 

@@ -238,7 +238,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
   if (agent === undefined) {
     return (
-      <div className={cn("flex items-center justify-center", embedded ? "fixed inset-0 z-10 liquid-glass liquid-glass-dark" : "h-screen bg-background")}>
+      <div className={cn("flex items-center justify-center", embedded ? "absolute inset-0 z-[1] liquid-glass liquid-glass-dark" : "h-screen bg-background")}>
         <Loader2 className={cn("h-8 w-8 animate-spin", embedded ? "text-white" : "text-content-secondary")} />
       </div>
     )
@@ -246,7 +246,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
   if (agent === null) {
     return (
-      <div className={cn("flex flex-col items-center justify-center gap-4", embedded ? "fixed inset-0 z-10 liquid-glass liquid-glass-dark" : "h-screen bg-background")}>
+      <div className={cn("flex flex-col items-center justify-center gap-4", embedded ? "absolute inset-0 z-[1] liquid-glass liquid-glass-dark" : "h-screen bg-background")}>
         <AlertCircle className={cn("h-12 w-12", embedded ? "text-white" : "text-destructive")} />
         <h1 className={cn("text-xl font-semibold", embedded ? "text-white" : "text-content-primary")}>Agent Not Found</h1>
         <p className={cn(embedded ? "text-white" : "text-content-secondary")}>This agent does not exist or is not available.</p>
@@ -255,7 +255,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
   }
 
   return (
-    <div className={cn("flex flex-col", embedded ? "fixed inset-0 z-10 liquid-glass liquid-glass-dark" : "h-screen bg-background")}>
+    <div className={cn("flex flex-col", embedded ? "absolute inset-0 z-[1] liquid-glass liquid-glass-dark" : "h-screen bg-background")}>
       {!embedded && (
         <header className="border-b px-4 py-3 flex items-center gap-3 shrink-0">
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
