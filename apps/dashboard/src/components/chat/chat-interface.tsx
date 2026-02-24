@@ -275,12 +275,12 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {filteredMessages.length === 0 && !isAgentTyping && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot className={cn("h-16 w-16 mb-4", embedded ? "text-white" : "text-content-tertiary")} />
+            {!embedded && <Bot className="h-16 w-16 mb-4 text-content-tertiary" />}
             <h2 className={cn("text-lg font-medium mb-2", embedded ? "text-white" : "text-content-primary")}>
-              Start a conversation
+              {embedded ? agent.name : "Start a conversation"}
             </h2>
-            <p className={cn("max-w-md", embedded ? "text-white" : "text-content-secondary")}>
-              Send a message to start chatting with {agent.name}.
+            <p className={cn("max-w-md", embedded ? "text-white/70" : "text-content-secondary")}>
+              {embedded ? "Send a message to start a conversation." : `Send a message to start chatting with ${agent.name}.`}
             </p>
           </div>
         )}

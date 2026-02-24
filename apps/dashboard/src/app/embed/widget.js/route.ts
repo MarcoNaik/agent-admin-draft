@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
   document.head.appendChild(link);
 
   var label=document.createElement("span");
-  label.style.cssText="font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.5);";
-  label.innerHTML='Powered by <span style="font-family:Fraunces,Georgia,serif;font-weight:600;font-size:11px;letter-spacing:0.01em;">Struere</span>';
+  label.style.cssText="font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:11px;letter-spacing:0.05em;color:rgba(255,255,255,0.5);";
+  label.innerHTML='Powered by <span style="font-family:Fraunces,Georgia,serif;font-weight:600;font-size:12px;letter-spacing:0.01em;">Struere</span>';
   var xBtn=document.createElement("div");
   xBtn.style.cssText="width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;transition:background 200ms;";
   xBtn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
