@@ -4,10 +4,51 @@ const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-1
 
 type Environment = 'development' | 'production'
 
+function getSiteUrl(): string {
+  return CONVEX_URL.replace('.cloud', '.site')
+}
+
 function getToken(): string | null {
   const credentials = loadCredentials()
   const apiKey = getApiKey()
   return apiKey || credentials?.token || null
+}
+
+async function httpPost(path: string, body: Record<string, unknown>): Promise<{ data?: unknown; error?: string }> {
+  const apiKey = getApiKey()
+  if (!apiKey) return { error: 'Not authenticated' }
+
+  const siteUrl = getSiteUrl()
+  try {
+    const response = await fetch(`${siteUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    })
+
+    const text = await response.text()
+    let json: Record<string, unknown>
+    try {
+      json = JSON.parse(text)
+    } catch {
+      return { error: text || `HTTP ${response.status}` }
+    }
+
+    if (!response.ok) {
+      return { error: String(json.error || json.message || text) }
+    }
+
+    return { data: json }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { error: 'Request timed out after 30s' }
+    }
+    return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+  }
 }
 
 async function convexAction(path: string, args: Record<string, unknown>): Promise<{ data?: unknown; error?: string }> {
@@ -73,10 +114,18 @@ async function convexQuery(path: string, args: Record<string, unknown>): Promise
 }
 
 export async function listWhatsAppConnections(env: Environment) {
+  if (getApiKey()) {
+    const result = await httpPost('/v1/templates/connections', {})
+    if (result.error) return result
+    return { data: (result.data as { data: unknown }).data }
+  }
   return convexQuery('whatsapp:listConnections', { environment: env })
 }
 
 export async function listTemplates(connectionId: string, env: Environment) {
+  if (getApiKey()) {
+    return httpPost('/v1/templates/list', { connectionId })
+  }
   return convexAction('whatsappActions:listTemplates', {
     connectionId,
     environment: env,
@@ -92,6 +141,16 @@ export async function createTemplate(
   components: Array<Record<string, unknown>>,
   allowCategoryChange?: boolean
 ) {
+  if (getApiKey()) {
+    return httpPost('/v1/templates/create', {
+      connectionId,
+      name,
+      language,
+      category,
+      components,
+      ...(allowCategoryChange !== undefined && { allowCategoryChange }),
+    })
+  }
   return convexAction('whatsappActions:createTemplate', {
     connectionId,
     environment: env,
@@ -104,6 +163,9 @@ export async function createTemplate(
 }
 
 export async function deleteTemplate(connectionId: string, env: Environment, name: string) {
+  if (getApiKey()) {
+    return httpPost('/v1/templates/delete', { connectionId, name })
+  }
   return convexAction('whatsappActions:deleteTemplate', {
     connectionId,
     environment: env,
@@ -112,6 +174,9 @@ export async function deleteTemplate(connectionId: string, env: Environment, nam
 }
 
 export async function getTemplateStatus(connectionId: string, env: Environment, name: string) {
+  if (getApiKey()) {
+    return httpPost('/v1/templates/status', { connectionId, name })
+  }
   return convexAction('whatsappActions:getTemplateStatus', {
     connectionId,
     environment: env,
