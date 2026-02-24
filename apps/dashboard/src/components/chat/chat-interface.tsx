@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Loader2, Send, Bot, User, AlertCircle } from "lucide-react"
 import { ToolCallBubble, ToolResultBubble } from "@/components/chat/tool-bubbles"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"
-import { useThreadWithMessages } from "@/hooks/use-convex-data"
+import { useThreadWithMessages, usePublicThreadMessages } from "@/hooks/use-convex-data"
 
 interface Message {
   _id: string
@@ -24,30 +24,97 @@ interface ChatInterfaceProps {
   orgName?: string
   environmentLabel?: string
   authenticated?: boolean
+  mode?: "public" | "dev"
+  embedded?: boolean
 }
 
-export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, authenticated }: ChatInterfaceProps) {
+function TypingIndicator() {
+  return (
+    <div className="flex gap-3 max-w-3xl">
+      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+        <Bot className="h-4 w-4" />
+      </div>
+      <div className="rounded-lg px-4 py-3 bg-muted flex items-center gap-1">
+        <span className="w-1.5 h-1.5 bg-content-tertiary rounded-full animate-bounce [animation-delay:0ms]" />
+        <span className="w-1.5 h-1.5 bg-content-tertiary rounded-full animate-bounce [animation-delay:150ms]" />
+        <span className="w-1.5 h-1.5 bg-content-tertiary rounded-full animate-bounce [animation-delay:300ms]" />
+      </div>
+    </div>
+  )
+}
+
+export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, authenticated, mode = "public", embedded }: ChatInterfaceProps) {
   const [threadId, setThreadId] = useState<Id<"threads"> | null>(null)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [localMessages, setLocalMessages] = useState<Message[]>([])
+  const [tempUserMessage, setTempUserMessage] = useState<Message | null>(null)
 
-  const thread = useThreadWithMessages(authenticated ? threadId : undefined)
+  const authenticatedThread = useThreadWithMessages(authenticated ? threadId : undefined)
+  const publicMessages = usePublicThreadMessages(!authenticated ? threadId : undefined)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const messages = thread?.messages ?? localMessages
+  const subscriptionMessages: Message[] = useMemo(() => {
+    if (authenticated && authenticatedThread?.messages) {
+      return authenticatedThread.messages as Message[]
+    }
+    if (!authenticated && publicMessages) {
+      return publicMessages as Message[]
+    }
+    return []
+  }, [authenticated, authenticatedThread?.messages, publicMessages])
+
+  const messages = useMemo(() => {
+    if (subscriptionMessages.length > 0) {
+      return subscriptionMessages
+    }
+    if (tempUserMessage) {
+      return [tempUserMessage]
+    }
+    return []
+  }, [subscriptionMessages, tempUserMessage])
+
+  const filteredMessages = useMemo(() => {
+    const filtered = messages.filter((m: Message) => m.role !== "system")
+    if (mode === "public") {
+      return filtered.filter((m: Message) => {
+        if (m.role === "tool") return false
+        if (m.role === "assistant" && m.toolCalls?.length && !m.content) return false
+        if (m.role === "assistant" && m.toolCalls?.length && m.content) {
+          return true
+        }
+        return true
+      })
+    }
+    return filtered
+  }, [messages, mode])
+
+  const isAgentTyping = useMemo(() => {
+    if (!isLoading) return false
+    if (messages.length === 0) return true
+    const last = messages[messages.length - 1]
+    if (last.role === "user") return true
+    if (last.role === "tool") return true
+    if (last.role === "assistant" && last.toolCalls?.length) return true
+    return false
+  }, [isLoading, messages])
+
+  useEffect(() => {
+    if (subscriptionMessages.length > 0 && tempUserMessage) {
+      const hasUserMsg = subscriptionMessages.some(
+        m => m.role === "user" && m.content === tempUserMessage.content
+      )
+      if (hasUserMsg) {
+        setTempUserMessage(null)
+      }
+    }
+  }, [subscriptionMessages, tempUserMessage])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  useEffect(() => {
-    if (thread?.messages) {
-      setLocalMessages([])
-    }
-  }, [thread?.messages])
+  }, [filteredMessages, isAgentTyping])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,13 +125,12 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
     setError(null)
     setIsLoading(true)
 
-    const tempUserMessage: Message = {
+    setTempUserMessage({
       _id: `temp-${Date.now()}`,
       role: "user",
       content: userMessage,
       createdAt: Date.now(),
-    }
-    setLocalMessages((prev) => [...prev, tempUserMessage])
+    })
 
     try {
       const result = await sendMessage({
@@ -75,17 +141,9 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
       if (!threadId && result.threadId) {
         setThreadId(result.threadId)
       }
-
-      const tempAssistantMessage: Message = {
-        _id: `temp-assistant-${Date.now()}`,
-        role: "assistant",
-        content: result.message,
-        createdAt: Date.now(),
-      }
-      setLocalMessages((prev) => [...prev, tempAssistantMessage])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message")
-      setLocalMessages((prev) => prev.filter((m) => m._id !== tempUserMessage._id))
+      setTempUserMessage(null)
     } finally {
       setIsLoading(false)
     }
@@ -118,22 +176,24 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <header className="border-b px-4 py-3 flex items-center gap-3 shrink-0">
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-          <Bot className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="font-semibold text-content-primary">{agent.name}</h1>
-          <p className="text-xs text-content-secondary">
-            {orgName && <>{orgName} · </>}
-            {agent.model?.name || "claude-sonnet-4-20250514"}
-            {environmentLabel && ` · ${environmentLabel}`}
-          </p>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="border-b px-4 py-3 flex items-center gap-3 shrink-0">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Bot className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="font-semibold text-content-primary">{agent.name}</h1>
+            <p className="text-xs text-content-secondary">
+              {orgName && <>{orgName} · </>}
+              {agent.model?.name || "claude-sonnet-4-20250514"}
+              {environmentLabel && ` · ${environmentLabel}`}
+            </p>
+          </div>
+        </header>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {filteredMessages.length === 0 && !isAgentTyping && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Bot className="h-16 w-16 text-content-tertiary mb-4" />
             <h2 className="text-lg font-medium text-content-primary mb-2">
@@ -145,94 +205,99 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
           </div>
         )}
 
-        {messages
-          .filter((m: Message) => m.role !== "system")
-          .map((message: Message) => {
-            if (message.role === "tool") {
-              return (
-                <ToolResultBubble
-                  key={message._id}
-                  toolCallId={message.toolCallId ?? ""}
-                  content={message.content}
-                  allMessages={messages}
-                />
-              )
-            }
+        {filteredMessages.map((message: Message) => {
+          if (mode === "dev" && message.role === "tool") {
+            return (
+              <ToolResultBubble
+                key={message._id}
+                toolCallId={message.toolCallId ?? ""}
+                content={message.content}
+                allMessages={messages}
+              />
+            )
+          }
 
-            if (message.role === "assistant" && message.toolCalls?.length && !message.content) {
-              return (
-                <div key={message._id} className="space-y-2">
-                  {message.toolCalls.map((tc) => (
-                    <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
-                  ))}
-                </div>
-              )
-            }
+          if (mode === "dev" && message.role === "assistant" && message.toolCalls?.length && !message.content) {
+            return (
+              <div key={message._id} className="space-y-2">
+                {message.toolCalls.map((tc) => (
+                  <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                ))}
+              </div>
+            )
+          }
 
-            if (message.role === "assistant" && message.toolCalls?.length && message.content) {
-              return (
-                <div key={message._id} className="space-y-2">
-                  <div className="flex gap-3 max-w-3xl">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      <Bot className="h-4 w-4" />
-                    </div>
-                    <div className="rounded-lg px-4 py-2 max-w-[80%] bg-muted text-content-primary">
-                      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                    </div>
+          if (mode === "dev" && message.role === "assistant" && message.toolCalls?.length && message.content) {
+            return (
+              <div key={message._id} className="space-y-2">
+                <div className="flex gap-3 max-w-3xl">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Bot className="h-4 w-4" />
                   </div>
-                  {message.toolCalls.map((tc) => (
-                    <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
-                  ))}
+                  <div className="rounded-lg px-4 py-2 max-w-[80%] bg-muted text-content-primary">
+                    <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                  </div>
                 </div>
-              )
-            }
+                {message.toolCalls.map((tc) => (
+                  <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                ))}
+              </div>
+            )
+          }
 
+          if (message.role === "assistant" && message.toolCalls?.length && message.content && mode === "public") {
             return (
               <div
                 key={message._id}
-                className={cn(
-                  "flex gap-3 max-w-3xl",
-                  message.role === "user" ? "ml-auto flex-row-reverse" : ""
-                )}
+                className="flex gap-3 max-w-3xl"
               >
-                <div
-                  className={cn(
-                    "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                    message.role === "user"
-                      ? "bg-ocean text-white"
-                      : "bg-muted"
-                  )}
-                >
-                  {message.role === "user" ? (
-                    <User className="h-4 w-4" />
-                  ) : (
-                    <Bot className="h-4 w-4" />
-                  )}
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Bot className="h-4 w-4" />
                 </div>
-                <div
-                  className={cn(
-                    "rounded-lg px-4 py-2 max-w-[80%]",
-                    message.role === "user"
-                      ? "bg-ocean text-white"
-                      : "bg-muted text-content-primary"
-                  )}
-                >
+                <div className="rounded-lg px-4 py-2 max-w-[80%] bg-muted text-content-primary">
                   <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                 </div>
               </div>
             )
-          })}
+          }
 
-        {isLoading && (
-          <div className="flex gap-3 max-w-3xl">
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <Bot className="h-4 w-4" />
+          return (
+            <div
+              key={message._id}
+              className={cn(
+                "flex gap-3 max-w-3xl",
+                message.role === "user" ? "ml-auto flex-row-reverse" : ""
+              )}
+            >
+              <div
+                className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                  message.role === "user"
+                    ? "bg-ocean text-white"
+                    : "bg-muted"
+                )}
+              >
+                {message.role === "user" ? (
+                  <User className="h-4 w-4" />
+                ) : (
+                  <Bot className="h-4 w-4" />
+                )}
+              </div>
+              <div
+                className={cn(
+                  "rounded-lg px-4 py-2 max-w-[80%]",
+                  message.role === "user"
+                    ? "bg-ocean text-white"
+                    : "bg-muted text-content-primary"
+                )}
+              >
+                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+              </div>
             </div>
-            <div className="rounded-lg px-4 py-2 bg-muted">
-              <Loader2 className="h-4 w-4 animate-spin" />
-            </div>
-          </div>
-        )}
+          )
+        })}
+
+        {isAgentTyping && <TypingIndicator />}
 
         {error && (
           <div className="flex items-center gap-2 text-destructive text-sm p-3 bg-destructive/10 rounded-lg max-w-3xl">
