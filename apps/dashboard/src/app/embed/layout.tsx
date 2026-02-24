@@ -5,5 +5,10 @@ export default function EmbedLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return (
+    <>
+      <style>{`html, body { background: transparent !important; }`}</style>
+      {children}
+    </>
+  )
 }

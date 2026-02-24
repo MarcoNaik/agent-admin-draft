@@ -35,7 +35,7 @@ export default function EmbedChatPage() {
   }
 
   return (
-    <div className={theme === "light" ? "light" : "dark"}>
+    <div className={theme === "light" ? "light" : "dark"} style={{ background: "transparent" }}>
       <ChatInterface
         agent={agent}
         sendMessage={sendMessage}
