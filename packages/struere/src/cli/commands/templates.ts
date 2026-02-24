@@ -1,13 +1,12 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
-import ora from 'ora'
 import { readFileSync } from 'fs'
 import { confirm } from '@inquirer/prompts'
 import { loadCredentials, getApiKey } from '../utils/credentials'
 import { hasProject } from '../utils/project'
 import { performLogin } from './login'
 import { runInit } from './init'
-import { isInteractive } from '../utils/runtime'
+import { isInteractive, createOutput } from '../utils/runtime'
 import {
   listWhatsAppConnections,
   listTemplates,
@@ -61,12 +60,13 @@ async function ensureAuth(): Promise<boolean> {
 async function resolveConnectionId(env: Environment, connectionIdFlag?: string): Promise<string> {
   if (connectionIdFlag) return connectionIdFlag
 
-  const spinner = ora('Fetching WhatsApp connections').start()
+  const out = createOutput()
+  out.start('Fetching WhatsApp connections')
   const { data, error } = await listWhatsAppConnections(env)
 
   if (error || !data) {
-    spinner.fail('Failed to fetch connections')
-    console.log(chalk.red('Error:'), error)
+    out.fail('Failed to fetch connections')
+    out.error(error ?? 'Unknown error')
     process.exit(1)
   }
 
@@ -74,19 +74,26 @@ async function resolveConnectionId(env: Environment, connectionIdFlag?: string):
   const connected = connections.filter((c) => c.status === 'connected')
 
   if (connected.length === 0) {
-    spinner.fail('No connected WhatsApp numbers found')
-    console.log(chalk.gray('Connect a phone number in the dashboard first'))
+    out.fail('No connected WhatsApp numbers found')
+    out.info('Connect a phone number in the dashboard first')
     process.exit(1)
   }
 
   if (connected.length === 1) {
     const c = connected[0]
     const label = c.label || (c.phoneNumber ? `+${c.phoneNumber}` : c._id)
-    spinner.succeed(`Using connection: ${label}`)
+    out.succeed(`Using connection: ${label}`)
     return c._id
   }
 
-  spinner.succeed(`Found ${connected.length} connections`)
+  if (!isInteractive()) {
+    const c = connected[0]
+    const label = c.label || (c.phoneNumber ? `+${c.phoneNumber}` : c._id)
+    out.succeed(`Auto-selected connection: ${label}`)
+    return c._id
+  }
+
+  out.succeed(`Found ${connected.length} connections`)
   console.log()
   for (let i = 0; i < connected.length; i++) {
     const c = connected[i]
@@ -122,18 +129,19 @@ templatesCommand
     const env = opts.env as Environment
     const connectionId = await resolveConnectionId(env, opts.connection)
 
-    const spinner = ora('Fetching templates').start()
+    const out = createOutput()
+    out.start('Fetching templates')
     const { data, error } = await listTemplates(connectionId, env)
 
     if (error) {
-      spinner.fail('Failed to fetch templates')
-      console.log(chalk.red('Error:'), error)
+      out.fail('Failed to fetch templates')
+      out.error(error)
       process.exit(1)
     }
 
     const result = data as { data?: Array<Record<string, unknown>> } | null
     const templates = result?.data ?? []
-    spinner.succeed(`Found ${templates.length} templates`)
+    out.succeed(`Found ${templates.length} templates`)
 
     if (opts.json) {
       console.log(JSON.stringify(templates, null, 2))
@@ -209,7 +217,8 @@ templatesCommand
       process.exit(1)
     }
 
-    const spinner = ora(`Creating template "${name}"`).start()
+    const out = createOutput()
+    out.start(`Creating template "${name}"`)
     const { data, error } = await createTemplate(
       connectionId,
       env,
@@ -221,13 +230,13 @@ templatesCommand
     )
 
     if (error) {
-      spinner.fail('Failed to create template')
-      console.log(chalk.red('Error:'), error)
+      out.fail('Failed to create template')
+      out.error(error)
       process.exit(1)
     }
 
     const result = data as { id: string; status: string; category: string }
-    spinner.succeed(`Template "${name}" created`)
+    out.succeed(`Template "${name}" created`)
 
     if (opts.json) {
       console.log(JSON.stringify(result, null, 2))
@@ -262,16 +271,17 @@ templatesCommand
       }
     }
 
-    const spinner = ora(`Deleting template "${name}"`).start()
+    const out = createOutput()
+    out.start(`Deleting template "${name}"`)
     const { error } = await deleteTemplate(connectionId, env, name)
 
     if (error) {
-      spinner.fail('Failed to delete template')
-      console.log(chalk.red('Error:'), error)
+      out.fail('Failed to delete template')
+      out.error(error)
       process.exit(1)
     }
 
-    spinner.succeed(`Template "${name}" deleted`)
+    out.succeed(`Template "${name}" deleted`)
     console.log()
   })
 
@@ -286,12 +296,13 @@ templatesCommand
     const env = opts.env as Environment
     const connectionId = await resolveConnectionId(env, opts.connection)
 
-    const spinner = ora(`Checking status for "${name}"`).start()
+    const out = createOutput()
+    out.start(`Checking status for "${name}"`)
     const { data, error } = await getTemplateStatus(connectionId, env, name)
 
     if (error) {
-      spinner.fail('Failed to fetch template status')
-      console.log(chalk.red('Error:'), error)
+      out.fail('Failed to fetch template status')
+      out.error(error)
       process.exit(1)
     }
 
@@ -299,11 +310,11 @@ templatesCommand
     const templates = result?.data ?? []
 
     if (templates.length === 0) {
-      spinner.fail(`Template "${name}" not found`)
+      out.fail(`Template "${name}" not found`)
       process.exit(1)
     }
 
-    spinner.succeed(`Template "${name}" found`)
+    out.succeed(`Template "${name}" found`)
 
     if (opts.json) {
       console.log(JSON.stringify(templates, null, 2))
