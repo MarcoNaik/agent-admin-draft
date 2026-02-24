@@ -109,25 +109,6 @@ const translations = {
       ],
       createAgent: "Crear este agente",
     },
-    demo: {
-      title: "Míralo en acción",
-      promptText:
-        "Un agente de WhatsApp para mi restaurante que tome pedidos y confirme reservas",
-      buildSteps: [
-        "Flujo de conversación",
-        "Conexión con WhatsApp",
-        "Base de datos de menú",
-        "Sistema de reservas",
-      ],
-      describeLabel: "Describe tu agente:",
-      buildingLabel: "Struere configura tu agente...",
-      activeLabel: "Agente activo:",
-      agentName: "Agente Struere",
-      customerMessage: "Quiero reservar una mesa para 4 el viernes",
-      agentMessage:
-        "\u00a1Perfecto! Te reservé una mesa para 4 este viernes a las 8pm. \u00bfTe envío confirmación por WhatsApp?",
-      tryIt: "Comenzar gratis",
-    },
     integrations: {
       title: "Integraciones",
       aiModelsLabel: "Modelos de IA",
@@ -332,25 +313,6 @@ const translations = {
         },
       ],
       createAgent: "Build this agent",
-    },
-    demo: {
-      title: "See it in action",
-      promptText:
-        "A WhatsApp agent for my restaurant that takes orders and confirms reservations",
-      buildSteps: [
-        "Conversation flow",
-        "WhatsApp connection",
-        "Menu database",
-        "Reservation system",
-      ],
-      describeLabel: "Describe your agent:",
-      buildingLabel: "Struere configures your agent...",
-      activeLabel: "Agent active:",
-      agentName: "Struere Agent",
-      customerMessage: "I'd like to book a table for 4 on Friday",
-      agentMessage:
-        "Done! I've reserved a table for 4 this Friday at 8pm. Want me to send you a confirmation on WhatsApp?",
-      tryIt: "Start free",
     },
     integrations: {
       title: "Integrations",
