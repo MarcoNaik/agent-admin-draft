@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   var el=document.createElement("div");
   el.id="struere-widget";
-  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(20,30,50,0.65) 0%,rgba(20,30,50,0.5) 50%,rgba(20,30,50,0.4) 100%);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15);overflow:hidden;cursor:pointer;max-width:calc(100vw - 40px);max-height:80vh;transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease};";
+  el.style.cssText="position:fixed;${posStyle}z-index:2147483647;width:56px;height:56px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(20,30,50,0.45) 0%,rgba(20,30,50,0.3) 50%,rgba(20,30,50,0.2) 100%);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.25),inset 0 -1px 0 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.15);overflow:hidden;cursor:pointer;max-width:calc(100vw - 40px);max-height:80vh;transition:width 600ms ${ease},height 600ms ${ease},border-radius 600ms ${ease},box-shadow 500ms ${ease},border-color 500ms ${ease},transform 500ms ${ease};";
 
   var icon=document.createElement("div");
   icon.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;transition:opacity 250ms ${ease};";
