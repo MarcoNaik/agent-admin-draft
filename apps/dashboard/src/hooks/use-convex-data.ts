@@ -397,6 +397,10 @@ export function useSendPublicChat() {
   return useAction(api.publicChat.sendPublicChat)
 }
 
+export function usePublicThreadMessages(threadId: Id<"threads"> | null | undefined) {
+  return useQuery(api.publicChat.getPublicThreadMessages, threadId ? { threadId } : "skip")
+}
+
 export function useReplyToThread() {
   return useAction(api.chat.replyToThread)
 }
