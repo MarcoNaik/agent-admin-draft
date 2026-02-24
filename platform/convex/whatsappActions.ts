@@ -257,7 +257,18 @@ export const listTemplates = action({
       throw new Error("WhatsApp not connected")
     }
 
-    return await listPhoneTemplates(connection.kapsoPhoneNumberId)
+    const ownedNames = await ctx.runQuery(internal.whatsapp.getOwnedTemplateNames, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+    }) as string[]
+
+    const allTemplates = await listPhoneTemplates(connection.kapsoPhoneNumberId) as { data?: Array<{ name: string; [key: string]: unknown }> }
+
+    if (!allTemplates?.data || ownedNames.length === 0) {
+      return { ...allTemplates, data: allTemplates?.data?.filter((t: { name: string }) => ownedNames.includes(t.name)) ?? [] }
+    }
+
+    return { ...allTemplates, data: allTemplates.data.filter((t: { name: string }) => ownedNames.includes(t.name)) }
   },
 })
 
@@ -498,7 +509,7 @@ export const createTemplate = action({
       throw new Error("WhatsApp not connected")
     }
 
-    return await createPhoneTemplate(
+    const result = await createPhoneTemplate(
       connection.kapsoPhoneNumberId,
       args.name,
       args.language,
@@ -506,6 +517,14 @@ export const createTemplate = action({
       args.components as Array<Record<string, unknown>>,
       args.allowCategoryChange
     )
+
+    await ctx.runMutation(internal.whatsapp.registerOwnedTemplate, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+      templateName: args.name,
+    })
+
+    return result
   },
 })
 
@@ -532,7 +551,15 @@ export const deleteTemplate = action({
       throw new Error("WhatsApp not connected")
     }
 
-    return await deletePhoneTemplate(connection.kapsoPhoneNumberId, args.name)
+    const result = await deletePhoneTemplate(connection.kapsoPhoneNumberId, args.name)
+
+    await ctx.runMutation(internal.whatsapp.unregisterOwnedTemplate, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+      templateName: args.name,
+    })
+
+    return result
   },
 })
 
@@ -552,6 +579,143 @@ export const getTemplateStatus = action({
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
     if (!connection || connection.organizationId !== auth.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    return await getPhoneTemplateStatus(connection.kapsoPhoneNumberId, args.name)
+  },
+})
+
+export const internalListTemplates = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== args.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    const ownedNames = await ctx.runQuery(internal.whatsapp.getOwnedTemplateNames, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+    }) as string[]
+
+    const allTemplates = await listPhoneTemplates(connection.kapsoPhoneNumberId) as { data?: Array<{ name: string; [key: string]: unknown }> }
+
+    if (!allTemplates?.data || ownedNames.length === 0) {
+      return { ...allTemplates, data: allTemplates?.data?.filter((t: { name: string }) => ownedNames.includes(t.name)) ?? [] }
+    }
+
+    return { ...allTemplates, data: allTemplates.data.filter((t: { name: string }) => ownedNames.includes(t.name)) }
+  },
+})
+
+export const internalCreateTemplate = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+    name: v.string(),
+    language: v.string(),
+    category: v.string(),
+    components: v.array(v.any()),
+    allowCategoryChange: v.optional(v.boolean()),
+  },
+  returns: v.object({ id: v.string(), status: v.string(), category: v.string() }),
+  handler: async (ctx, args): Promise<{ id: string; status: string; category: string }> => {
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== args.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    const result = await createPhoneTemplate(
+      connection.kapsoPhoneNumberId,
+      args.name,
+      args.language,
+      args.category,
+      args.components as Array<Record<string, unknown>>,
+      args.allowCategoryChange
+    )
+
+    await ctx.runMutation(internal.whatsapp.registerOwnedTemplate, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      templateName: args.name,
+    })
+
+    return result
+  },
+})
+
+export const internalDeleteTemplate = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+    name: v.string(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== args.organizationId) {
+      throw new Error("Connection not found")
+    }
+
+    if (!connection.kapsoPhoneNumberId || connection.status !== "connected") {
+      throw new Error("WhatsApp not connected")
+    }
+
+    const result = await deletePhoneTemplate(connection.kapsoPhoneNumberId, args.name)
+
+    await ctx.runMutation(internal.whatsapp.unregisterOwnedTemplate, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      templateName: args.name,
+    })
+
+    return result
+  },
+})
+
+export const internalGetTemplateStatus = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    connectionId: v.id("whatsappConnections"),
+    name: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      connectionId: args.connectionId,
+    }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
+
+    if (!connection || connection.organizationId !== args.organizationId) {
       throw new Error("Connection not found")
     }
 
