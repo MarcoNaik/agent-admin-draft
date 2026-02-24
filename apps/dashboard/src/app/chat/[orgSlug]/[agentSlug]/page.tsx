@@ -27,6 +27,7 @@ export default function PublicChatPage() {
       agent={agent}
       sendMessage={sendMessage}
       orgName={agent?.orgName}
+      mode="public"
     />
   )
 }

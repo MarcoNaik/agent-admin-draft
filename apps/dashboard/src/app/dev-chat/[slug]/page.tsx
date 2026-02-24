@@ -33,6 +33,7 @@ export default function DevChatPage() {
       orgName={org?.name}
       environmentLabel="development"
       authenticated
+      mode="dev"
     />
   )
 }
