@@ -33,7 +33,7 @@ function TypingIndicator({ embedded }: { embedded?: boolean }) {
     <div className="flex gap-3 max-w-3xl">
       <div className={cn(
         "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-        embedded ? "liquid-glass liquid-glass-dark text-white/70" : "bg-muted"
+        embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted"
       )}>
         <Bot className="h-4 w-4" />
       </div>
@@ -41,9 +41,9 @@ function TypingIndicator({ embedded }: { embedded?: boolean }) {
         "rounded-2xl px-4 py-3 flex items-center gap-1",
         embedded ? "liquid-glass liquid-glass-dark" : "bg-muted"
       )}>
-        <span className={cn("w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0ms]", embedded ? "bg-white/40" : "bg-content-tertiary")} />
-        <span className={cn("w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:150ms]", embedded ? "bg-white/40" : "bg-content-tertiary")} />
-        <span className={cn("w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:300ms]", embedded ? "bg-white/40" : "bg-content-tertiary")} />
+        <span className={cn("w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0ms]", embedded ? "bg-white" : "bg-content-tertiary")} />
+        <span className={cn("w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:150ms]", embedded ? "bg-white" : "bg-content-tertiary")} />
+        <span className={cn("w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:300ms]", embedded ? "bg-white" : "bg-content-tertiary")} />
       </div>
     </div>
   )
@@ -165,7 +165,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
   if (agent === undefined) {
     return (
       <div className={cn("flex items-center justify-center h-screen", embedded ? "bg-transparent" : "bg-background")}>
-        <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        <Loader2 className={cn("h-8 w-8 animate-spin", embedded ? "text-white" : "text-content-secondary")} />
       </div>
     )
   }
@@ -173,9 +173,9 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
   if (agent === null) {
     return (
       <div className={cn("flex flex-col items-center justify-center h-screen gap-4", embedded ? "bg-transparent" : "bg-background")}>
-        <AlertCircle className="h-12 w-12 text-destructive" />
-        <h1 className="text-xl font-semibold text-content-primary">Agent Not Found</h1>
-        <p className="text-content-secondary">This agent does not exist or is not available.</p>
+        <AlertCircle className={cn("h-12 w-12", embedded ? "text-white" : "text-destructive")} />
+        <h1 className={cn("text-xl font-semibold", embedded ? "text-white" : "text-content-primary")}>Agent Not Found</h1>
+        <p className={cn(embedded ? "text-white" : "text-content-secondary")}>This agent does not exist or is not available.</p>
       </div>
     )
   }
@@ -201,11 +201,11 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {filteredMessages.length === 0 && !isAgentTyping && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot className={cn("h-16 w-16 mb-4", embedded ? "text-white/30" : "text-content-tertiary")} />
-            <h2 className={cn("text-lg font-medium mb-2", embedded ? "text-white/90" : "text-content-primary")}>
+            <Bot className={cn("h-16 w-16 mb-4", embedded ? "text-white" : "text-content-tertiary")} />
+            <h2 className={cn("text-lg font-medium mb-2", embedded ? "text-white" : "text-content-primary")}>
               Start a conversation
             </h2>
-            <p className={cn("max-w-md", embedded ? "text-white/60" : "text-content-secondary")}>
+            <p className={cn("max-w-md", embedded ? "text-white" : "text-content-secondary")}>
               Send a message to start chatting with {agent.name}.
             </p>
           </div>
@@ -259,13 +259,13 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
               >
                 <div className={cn(
                   "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                  embedded ? "liquid-glass liquid-glass-dark text-white/70" : "bg-muted"
+                  embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted"
                 )}>
                   <Bot className="h-4 w-4" />
                 </div>
                 <div className={cn(
                   "rounded-2xl px-4 py-2 max-w-[80%]",
-                  embedded ? "liquid-glass liquid-glass-dark text-white/90" : "bg-muted text-content-primary"
+                  embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted text-content-primary"
                 )}>
                   <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                 </div>
@@ -285,8 +285,8 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                 className={cn(
                   "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
                   message.role === "user"
-                    ? embedded ? "liquid-glass border border-white/20 text-white" : "bg-ocean text-white"
-                    : embedded ? "liquid-glass liquid-glass-dark text-white/70" : "bg-muted"
+                    ? embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-ocean text-white"
+                    : embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted"
                 )}
               >
                 {message.role === "user" ? (
@@ -299,8 +299,8 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                 className={cn(
                   "rounded-2xl px-4 py-2 max-w-[80%]",
                   message.role === "user"
-                    ? embedded ? "liquid-glass border border-white/20 text-white/90" : "bg-ocean text-white"
-                    : embedded ? "liquid-glass liquid-glass-dark text-white/90" : "bg-muted text-content-primary"
+                    ? embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-ocean text-white"
+                    : embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted text-content-primary"
                 )}
               >
                 <p className="whitespace-pre-wrap text-sm">{message.content}</p>
@@ -323,14 +323,17 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
       <div className={cn("p-4 shrink-0", embedded ? "border-t border-white/10" : "border-t")}>
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className={cn("relative rounded-2xl", embedded ? "liquid-glass liquid-glass-dark" : "liquid-glass rounded-lg")}>
+          <div className={cn("relative", embedded ? "liquid-glass liquid-glass-dark rounded-2xl" : "liquid-glass rounded-lg")}>
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              className={cn("min-h-[60px] max-h-[200px] pr-12 resize-none font-input", embedded && "text-white/90 placeholder:text-white/40")}
+              className={cn(
+                "min-h-[60px] max-h-[200px] pr-12 resize-none font-input",
+                embedded && "bg-transparent text-white placeholder:text-white/70 border-none focus-visible:ring-0"
+              )}
               disabled={isLoading}
             />
             <Button
@@ -338,7 +341,9 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
               size="icon"
               className={cn(
                 "absolute right-2 bottom-2 transition-all ease-out-soft",
-                embedded ? "liquid-glass border border-white/20 text-white/90 hover:border-white/40" : "bg-ocean text-white hover:bg-ocean-light"
+                embedded
+                  ? "bg-transparent border border-white/15 text-white hover:border-white/30"
+                  : "bg-ocean text-white hover:bg-ocean-light"
               )}
               disabled={!input.trim() || isLoading}
             >
@@ -349,7 +354,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
               )}
             </Button>
           </div>
-          <p className={cn("text-xs mt-2 text-center", embedded ? "text-white/40" : "text-content-tertiary")}>
+          <p className={cn("text-xs mt-2 text-center", embedded ? "text-white/70" : "text-content-tertiary")}>
             Press Enter to send, Shift+Enter for new line
           </p>
         </form>
