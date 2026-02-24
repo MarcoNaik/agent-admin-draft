@@ -10,6 +10,8 @@ export default function EmbedLayout({
       <style>{`
         html, body {
           background: transparent !important;
+          height: 100%;
+          overflow: hidden;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
