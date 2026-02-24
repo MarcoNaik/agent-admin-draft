@@ -55,6 +55,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tempUserMessage, setTempUserMessage] = useState<Message | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
 
   const authenticatedThread = useThreadWithMessages(authenticated ? threadId : undefined)
   const publicMessages = usePublicThreadMessages(!authenticated ? threadId : undefined)
@@ -323,36 +324,40 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
       <div className={cn("p-4 shrink-0", embedded ? "border-t border-white/10" : "border-t")}>
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className={cn("relative", embedded ? "liquid-glass liquid-glass-dark rounded-2xl" : "liquid-glass rounded-lg")}>
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className={cn(
-                "min-h-[60px] max-h-[200px] pr-12 resize-none font-input",
-                embedded && "bg-transparent text-white placeholder:text-white/70 border-none focus-visible:ring-0"
-              )}
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className={cn(
-                "absolute right-2 bottom-2 transition-all ease-out-soft",
-                embedded
-                  ? "bg-transparent border border-white/15 text-white hover:border-white/30"
-                  : "bg-ocean text-white hover:bg-ocean-light"
-              )}
-              disabled={!input.trim() || isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+          <div className={cn(embedded && "embed-prismatic-wrap", embedded && isFocused && "focused")}>
+            <div className={cn("relative", embedded ? "liquid-glass liquid-glass-dark rounded-2xl" : "liquid-glass rounded-lg")}>
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder="Type a message..."
+                className={cn(
+                  "min-h-[60px] max-h-[200px] pr-12 resize-none font-input",
+                  embedded && "bg-transparent text-white placeholder:text-white/70 border-none focus-visible:ring-0"
+                )}
+                disabled={isLoading}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className={cn(
+                  "absolute right-2 bottom-2 transition-all ease-out-soft",
+                  embedded
+                    ? "embed-send-btn bg-transparent border border-white/15 text-white hover:border-white/30"
+                    : "bg-ocean text-white hover:bg-ocean-light"
+                )}
+                disabled={!input.trim() || isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
           <p className={cn("text-xs mt-2 text-center", embedded ? "text-white/70" : "text-content-tertiary")}>
             Press Enter to send, Shift+Enter for new line

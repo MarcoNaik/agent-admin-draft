@@ -25,8 +25,22 @@ export default function EmbedLayout({
           background-size: 256px;
         }
         .liquid-glass {
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
+          backdrop-filter: blur(12px) saturate(1.2) !important;
+          -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+        }
+        .liquid-glass-dark {
+          background:
+            linear-gradient(
+              180deg,
+              rgba(255, 255, 255, 0.06) 0%,
+              transparent 40%
+            ),
+            radial-gradient(
+              ellipse at center,
+              rgba(20, 30, 50, 0.45) 0%,
+              rgba(20, 30, 50, 0.3) 50%,
+              rgba(20, 30, 50, 0.2) 100%
+            ) !important;
         }
       `}</style>
       {children}
