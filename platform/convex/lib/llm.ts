@@ -138,7 +138,7 @@ export function fromSteps(steps: StepData[]): InternalMessage[] {
     if (step.toolCalls.length > 0) {
       result.push({
         role: "assistant",
-        content: step.text || "",
+        content: "",
         toolCalls: step.toolCalls.map((tc) => ({
           id: tc.toolCallId,
           name: desanitizeToolName(tc.toolName),
