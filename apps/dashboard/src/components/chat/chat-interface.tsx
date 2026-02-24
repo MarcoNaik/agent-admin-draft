@@ -49,6 +49,34 @@ function TypingIndicator({ embedded }: { embedded?: boolean }) {
   )
 }
 
+const URL_REGEX = /(https?:\/\/[^\s<>)"']+)/g
+
+function MessageContent({ content, embedded }: { content: string; embedded?: boolean }) {
+  const parts = content.split(URL_REGEX)
+  return (
+    <p className="whitespace-pre-wrap text-sm">
+      {parts.map((part, i) =>
+        URL_REGEX.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "underline underline-offset-2 break-all",
+              embedded ? "text-amber-light hover:text-white" : "text-ocean hover:text-ocean-light"
+            )}
+          >
+            {part}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </p>
+  )
+}
+
 export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, authenticated, mode = "public", embedded }: ChatInterfaceProps) {
   const [threadId, setThreadId] = useState<Id<"threads"> | null>(null)
   const [input, setInput] = useState("")
@@ -242,7 +270,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                     <Bot className="h-4 w-4" />
                   </div>
                   <div className="rounded-lg px-4 py-2 max-w-[80%] bg-muted text-content-primary">
-                    <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                    <MessageContent content={message.content} embedded={embedded} />
                   </div>
                 </div>
                 {message.toolCalls.map((tc) => (
@@ -268,7 +296,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                   "rounded-2xl px-4 py-2 max-w-[80%]",
                   embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted text-content-primary"
                 )}>
-                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                  <MessageContent content={message.content} embedded={embedded} />
                 </div>
               </div>
             )
@@ -304,7 +332,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
                     : embedded ? "liquid-glass liquid-glass-dark text-white" : "bg-muted text-content-primary"
                 )}
               >
-                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                <MessageContent content={message.content} embedded={embedded} />
               </div>
             </div>
           )
