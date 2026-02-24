@@ -32,9 +32,14 @@ export async function GET(request: NextRequest) {
 
   var bar=document.createElement("div");
   bar.style.cssText="position:absolute;top:0;left:0;right:0;z-index:3;height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(20,30,50,0.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity 300ms ${ease};";
+  var link=document.createElement("link");
+  link.rel="stylesheet";
+  link.href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&display=swap";
+  document.head.appendChild(link);
+
   var label=document.createElement("span");
   label.style.cssText="font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.5);";
-  label.textContent="Powered by Struere";
+  label.innerHTML='Powered by <span style="font-family:Fraunces,Georgia,serif;font-weight:600;font-size:11px;letter-spacing:0.01em;">Struere</span>';
   var xBtn=document.createElement("div");
   xBtn.style.cssText="width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;transition:background 200ms;";
   xBtn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';

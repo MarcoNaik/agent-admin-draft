@@ -11,9 +11,17 @@ export default function EmbedLayout({
         html, body {
           background: transparent !important;
           height: 100%;
-          overflow: hidden;
+          margin: 0;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+        }
+        body::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          backdrop-filter: blur(12px) saturate(1.2);
+          -webkit-backdrop-filter: blur(12px) saturate(1.2);
+          z-index: 0;
         }
         body::after {
           content: "";
@@ -27,8 +35,8 @@ export default function EmbedLayout({
           background-size: 256px;
         }
         .liquid-glass {
-          backdrop-filter: blur(12px) saturate(1.2) !important;
-          -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
         }
         .liquid-glass-dark {
           background:
