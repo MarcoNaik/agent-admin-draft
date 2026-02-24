@@ -58,6 +58,11 @@ export default function RootLayout({
         className={`${dmSans.variable} ${fraunces.variable} ${jetbrains.variable} ${ibmPlexMono.variable}`}
       >
         <Providers>{children}</Providers>
+        <script
+          src="https://app.struere.dev/embed/widget.js?org=struere-support-1771842295&agent=struere-customer-service&theme=dark&accent=%231B4F72"
+          async
+          defer
+        />
         <svg style={{ position: "absolute", width: 0, height: 0 }} aria-hidden="true">
           <filter
             id="glass"
