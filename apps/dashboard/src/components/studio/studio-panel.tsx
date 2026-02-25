@@ -1,20 +1,34 @@
 "use client"
 
-import { useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { CreditCard, Terminal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStudio } from "@/contexts/studio-context"
 import { useStudioSession } from "@/hooks/use-studio-session"
 import { useStudioEvents } from "@/hooks/use-studio-events"
+import { useProviderConfigs } from "@/hooks/use-convex-data"
 import { StudioSessionControls } from "@/components/studio/studio-session-controls"
+import { StudioConfigBar } from "@/components/studio/studio-config-bar"
 import { StudioChat } from "@/components/studio/studio-chat"
 import { PermissionRequestCard, QuestionRequestCard } from "@/components/studio/studio-hitl"
+import {
+  STUDIO_PROVIDERS,
+  DEFAULT_PROVIDER,
+  DEFAULT_MODEL,
+  type StudioProvider,
+} from "@/lib/studio/models"
 
 const KEEPALIVE_INTERVAL = 60_000
 
 export function StudioPanel() {
   const { isOpen, setHasActiveSession, initialPrompt, consumeInitialPrompt } = useStudio()
+
+  const [selectedProvider, setSelectedProvider] = useState<StudioProvider>(DEFAULT_PROVIDER)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
+  const [selectedKeySource, setSelectedKeySource] = useState<"platform" | "custom">("platform")
+
+  const providerConfigs = useProviderConfigs()
 
   const {
     session,
@@ -47,6 +61,24 @@ export function StudioPanel() {
   const keepaliveRef = useRef<ReturnType<typeof setInterval>>()
   const pendingMessage = useRef<string | null>(null)
 
+  const hasCustomKey = (() => {
+    if (!providerConfigs) return false
+    const config = providerConfigs.find((c: { provider: string }) => c.provider === selectedProvider)
+    return config?.mode === "custom" && config?.status === "active"
+  })()
+
+  const handleProviderChange = useCallback((provider: StudioProvider) => {
+    setSelectedProvider(provider)
+    const firstModel = STUDIO_PROVIDERS[provider]?.models[0]
+    if (firstModel) {
+      setSelectedModel(firstModel.id)
+    }
+    if (providerConfigs) {
+      const config = providerConfigs.find((c: { provider: string; mode: string; status: string }) => c.provider === provider)
+      setSelectedKeySource(config?.mode === "custom" && config?.status === "active" ? "custom" : "platform")
+    }
+  }, [providerConfigs])
+
   useEffect(() => {
     if (isActive) {
       keepaliveRef.current = setInterval(sendKeepalive, KEEPALIVE_INTERVAL)
@@ -61,8 +93,8 @@ export function StudioPanel() {
   useEffect(() => {
     if (!initialPrompt || isActive || isStarting) return
     pendingMessage.current = consumeInitialPrompt()
-    startSession()
-  }, [initialPrompt, isActive, isStarting, startSession, consumeInitialPrompt])
+    startSession({ provider: selectedProvider, model: selectedModel, keySource: selectedKeySource })
+  }, [initialPrompt, isActive, isStarting, startSession, consumeInitialPrompt, selectedProvider, selectedModel, selectedKeySource])
 
   useEffect(() => {
     if (!pendingMessage.current || !isConnected) return
@@ -71,17 +103,19 @@ export function StudioPanel() {
     sendMessage(message)
   }, [isConnected, sendMessage])
 
+  const canStart = selectedKeySource === "platform" || hasCustomKey
+
   const handleSendMessage = useCallback((text: string) => {
     if (isConnected && isActive) {
       sendMessage(text)
       return
     }
 
-    if (!isActive && !isStarting) {
+    if (!isActive && !isStarting && canStart) {
       pendingMessage.current = text
-      startSession()
+      startSession({ provider: selectedProvider, model: selectedModel, keySource: selectedKeySource })
     }
-  }, [isConnected, isActive, isStarting, sendMessage, startSession])
+  }, [isConnected, isActive, isStarting, canStart, sendMessage, startSession, selectedProvider, selectedModel, selectedKeySource])
 
   const error = sessionError || eventError
   const isCreditsError = error?.toLowerCase().includes("insufficient credits")
@@ -100,6 +134,18 @@ export function StudioPanel() {
           isStopping={isStopping}
           isConnected={isConnected}
           onStop={stopSession}
+          model={isActive ? (session?.model ?? undefined) : undefined}
+        />
+
+        <StudioConfigBar
+          provider={isActive ? ((session?.provider as StudioProvider) ?? selectedProvider) : selectedProvider}
+          model={isActive ? (session?.model ?? selectedModel) : selectedModel}
+          keySource={isActive ? ((session?.keySource as "platform" | "custom") ?? selectedKeySource) : selectedKeySource}
+          onProviderChange={handleProviderChange}
+          onModelChange={setSelectedModel}
+          onKeySourceChange={setSelectedKeySource}
+          isSessionActive={isActive}
+          hasCustomKey={hasCustomKey}
         />
 
         {isCreditsError ? (
@@ -108,7 +154,7 @@ export function StudioPanel() {
               You need credits to use Studio
             </p>
             <p className="text-xs text-content-secondary leading-relaxed">
-              Studio runs on pay-as-you-go credits billed per token. Add credits to start building, or use the <code className="text-xs bg-background-tertiary px-1 py-0.5 rounded">struere</code> CLI locally with your own API keys for free.
+              Studio runs on pay-as-you-go credits billed per token. Add credits to start building, or use your own API key.
             </p>
             <div className="flex items-center gap-2">
               <Link
