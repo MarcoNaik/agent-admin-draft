@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server"
 import { api } from "@convex/_generated/api"
 import { createSandbox } from "@/lib/studio/e2b"
 import { getConvexClient } from "@/lib/studio/client"
+import type { StudioProvider } from "@/lib/studio/models"
 
 const ACP_PROTOCOL_VERSION = 1
 
@@ -40,7 +41,6 @@ let rpcIdCounter = 0
 
 async function createAcpSession(
   sandboxUrl: string,
-  agentType: string,
   cwd: string
 ): Promise<{ serverId: string; agentSessionId: string }> {
   const serverId = `web-${crypto.randomUUID()}`
@@ -53,7 +53,7 @@ async function createAcpSession(
       protocolVersion: ACP_PROTOCOL_VERSION,
       clientInfo: { name: "struere-studio", version: "1.0" },
     },
-  }, { agent: agentType })
+  }, { agent: "opencode" })
 
   const result = await acpPost(sandboxUrl, serverId, {
     jsonrpc: "2.0",
@@ -71,6 +71,13 @@ async function createAcpSession(
   return { serverId, agentSessionId }
 }
 
+const PROVIDER_ENV_VARS: Record<StudioProvider, { envVar: string; platformVar: string }> = {
+  xai: { envVar: "OPENAI_API_KEY", platformVar: "XAI_API_KEY" },
+  anthropic: { envVar: "ANTHROPIC_API_KEY", platformVar: "ANTHROPIC_API_KEY" },
+  openai: { envVar: "OPENAI_API_KEY", platformVar: "OPENAI_API_KEY" },
+  google: { envVar: "GOOGLE_GENERATIVE_AI_API_KEY", platformVar: "GOOGLE_GENERATIVE_AI_API_KEY" },
+}
+
 export async function POST(request: Request) {
   const { getToken } = await auth()
   const token = await getToken({ template: "convex" })
@@ -80,20 +87,43 @@ export async function POST(request: Request) {
   const convex = getConvexClient(token)
 
   const body = await request.json()
-  const { agentType = "opencode", environment = "development" } = body
+  const {
+    environment = "development",
+    provider = "xai" as StudioProvider,
+    model = "grok-code-fast-1",
+    keySource = "platform" as "platform" | "custom",
+  } = body
 
   let sessionId: string | null = null
   let sandboxId: string | null = null
 
   try {
-    const { balance } = await convex.query(api.billing.getBalance, {})
-    if (balance <= 0) {
-      return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
+    let llmApiKey: string | undefined
+
+    if (keySource === "custom") {
+      const resolved = await convex.query(api.providers.resolveStudioKey, { provider })
+      if (!resolved) {
+        return NextResponse.json(
+          { error: `No custom API key configured for ${provider}. Add one in Settings > Providers.` },
+          { status: 400 }
+        )
+      }
+      llmApiKey = resolved.apiKey
+    } else {
+      const { balance } = await convex.query(api.billing.getBalance, {})
+      if (balance <= 0) {
+        return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
+      }
+      const { platformVar } = PROVIDER_ENV_VARS[provider as StudioProvider]
+      llmApiKey = process.env[platformVar]
     }
 
     sessionId = await convex.mutation(api.sandboxSessions.create, {
       environment,
-      agentType,
+      agentType: "opencode",
+      model,
+      provider,
+      keySource,
     })
 
     const apiKeyResult = await convex.mutation(api.apiKeys.create, {
@@ -121,8 +151,9 @@ export async function POST(request: Request) {
       STRUERE_CONVEX_URL: convexUrl,
       OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: "32768",
     }
-    if (process.env.XAI_API_KEY) envVars.OPENAI_API_KEY = process.env.XAI_API_KEY
-    if (process.env.ANTHROPIC_API_KEY) envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+
+    const { envVar } = PROVIDER_ENV_VARS[provider as StudioProvider]
+    if (llmApiKey) envVars[envVar] = llmApiKey
     if (process.env.E2B_API_KEY) envVars.E2B_API_KEY = process.env.E2B_API_KEY
 
     const sandbox = await createSandbox({
@@ -131,13 +162,13 @@ export async function POST(request: Request) {
       apiKey: apiKeyResult.key,
       convexUrl,
       claudeMd,
-      agentType,
+      provider,
+      model,
     })
     sandboxId = sandbox.sandboxId
 
     const { serverId, agentSessionId } = await createAcpSession(
       sandbox.sandboxUrl,
-      agentType,
       "/workspace",
     )
 
