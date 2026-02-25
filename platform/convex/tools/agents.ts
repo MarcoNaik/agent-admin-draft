@@ -85,7 +85,7 @@ export const agentChat = internalAction({
       organizationId: args.organizationId,
       agentId: targetAgent._id,
       environment: args.environment,
-      metadata: {
+      channelParams: {
         conversationId,
         parentAgentSlug: args.callerAgentSlug,
         depth: args.depth + 1,

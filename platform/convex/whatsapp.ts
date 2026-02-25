@@ -467,9 +467,11 @@ export const processInboundMessage = internalMutation({
       .first()
 
     if (thread && thread.organizationId === args.organizationId) {
-      const metadata: Record<string, unknown> = { ...(thread.metadata ?? {}), lastInboundAt: args.timestamp }
-      if (args.contactName) metadata.contactName = args.contactName
-      await ctx.db.patch(thread._id, { metadata, updatedAt: args.timestamp })
+      const existingParams = (thread.channelParams ?? {}) as Record<string, unknown>
+      const updatedParams: Record<string, unknown> = { ...existingParams, lastInboundAt: args.timestamp }
+      if (args.contactName) updatedParams.contactName = args.contactName
+      updatedParams.phoneNumber = args.from
+      await ctx.db.patch(thread._id, { channel: "whatsapp", channelParams: updatedParams, updatedAt: args.timestamp })
     }
 
     return msgId

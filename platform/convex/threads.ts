@@ -66,38 +66,41 @@ export const listWithPreviews = query({
             participantType = "user"
           }
         }
-      } else if (thread.externalId) {
-        const waMatch = thread.externalId.match(/^whatsapp:([^:]+):(.+)$/)
-        if (waMatch) {
-          const connId = waMatch[1]
-          phoneNumber = waMatch[2]
-          const metadata = thread.metadata as Record<string, unknown> | undefined
-          participantName = (metadata?.contactName as string) ?? phoneNumber
-          participantType = "whatsapp"
+      } else if (thread.channel === "whatsapp" || thread.externalId?.startsWith("whatsapp:")) {
+        const channelParams = thread.channelParams as Record<string, unknown> | undefined
+        participantType = "whatsapp"
 
-          if (connectionCache.has(connId)) {
-            const cached = connectionCache.get(connId)!
-            businessPhoneNumber = cached.phoneNumber
-            connectionLabel = cached.label
+        if (thread.externalId) {
+          const waMatch = thread.externalId.match(/^whatsapp:([^:]+):(.+)$/)
+          if (waMatch) {
+            const connId = waMatch[1]
+            phoneNumber = waMatch[2]
+            participantName = (channelParams?.contactName as string) ?? phoneNumber
+
+            if (connectionCache.has(connId)) {
+              const cached = connectionCache.get(connId)!
+              businessPhoneNumber = cached.phoneNumber
+              connectionLabel = cached.label
+            } else {
+              const conn = await ctx.db.get(connId as Id<"whatsappConnections">)
+              if (conn) {
+                businessPhoneNumber = conn.phoneNumber
+                connectionLabel = conn.label
+                connectionCache.set(connId, { phoneNumber: conn.phoneNumber, label: conn.label })
+              }
+            }
           } else {
-            const conn = await ctx.db.get(connId as Id<"whatsappConnections">)
-            if (conn) {
-              businessPhoneNumber = conn.phoneNumber
-              connectionLabel = conn.label
-              connectionCache.set(connId, { phoneNumber: conn.phoneNumber, label: conn.label })
+            const legacyMatch = thread.externalId.match(/^whatsapp:(.+)$/)
+            if (legacyMatch) {
+              phoneNumber = legacyMatch[1]
+              participantName = (channelParams?.contactName as string) ?? phoneNumber
+            } else {
+              participantName = thread.externalId
             }
           }
-        } else {
-          const legacyMatch = thread.externalId.match(/^whatsapp:(.+)$/)
-          if (legacyMatch) {
-            phoneNumber = legacyMatch[1]
-            const metadata = thread.metadata as Record<string, unknown> | undefined
-            participantName = (metadata?.contactName as string) ?? phoneNumber
-            participantType = "whatsapp"
-          } else {
-            participantName = thread.externalId
-          }
         }
+      } else if (thread.externalId) {
+        participantName = thread.externalId
       }
 
       const lastMessageDoc = await ctx.db
@@ -119,6 +122,7 @@ export const listWithPreviews = query({
         businessPhoneNumber,
         connectionLabel,
         lastMessage,
+        channel: thread.channel,
       })
     }
 
@@ -214,7 +218,8 @@ export const create = mutation({
   args: {
     agentId: v.id("agents"),
     externalId: v.optional(v.string()),
-    metadata: v.optional(v.any()),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
     environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
   },
   handler: async (ctx, args) => {
@@ -232,7 +237,8 @@ export const create = mutation({
       agentId: args.agentId,
       userId: auth.userId,
       externalId: args.externalId,
-      metadata: args.metadata,
+      channel: args.channel,
+      channelParams: args.channelParams,
       createdAt: now,
       updatedAt: now,
     })
@@ -242,7 +248,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("threads"),
-    metadata: v.optional(v.any()),
+    channelParams: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -253,7 +259,7 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.id, {
-      metadata: args.metadata,
+      channelParams: args.channelParams,
       updatedAt: Date.now(),
     })
 
@@ -364,7 +370,8 @@ export const getOrCreate = internalMutation({
     agentId: v.id("agents"),
     externalId: v.optional(v.string()),
     userId: v.optional(v.id("users")),
-    metadata: v.optional(v.any()),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
     environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
     conversationId: v.optional(v.string()),
     parentThreadId: v.optional(v.id("threads")),
@@ -377,6 +384,10 @@ export const getOrCreate = internalMutation({
         .first()
 
       if (existing && existing.organizationId === args.organizationId) {
+        if (args.channelParams) {
+          const merged = { ...(existing.channelParams as Record<string, unknown> ?? {}), ...(args.channelParams as Record<string, unknown>) }
+          await ctx.db.patch(existing._id, { channelParams: merged, updatedAt: Date.now() })
+        }
         return existing._id
       }
     }
@@ -387,7 +398,8 @@ export const getOrCreate = internalMutation({
       agentId: args.agentId,
       userId: args.userId,
       externalId: args.externalId,
-      metadata: args.metadata,
+      channel: args.channel,
+      channelParams: args.channelParams,
       environment: args.environment ?? "development",
       conversationId: args.conversationId,
       parentThreadId: args.parentThreadId,

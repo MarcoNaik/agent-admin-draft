@@ -41,6 +41,8 @@ export const getPublicAgent = query({
       description: agent.description,
       model: { name: prodConfig.model.name },
       orgName: org.name,
+      firstMessageSuggestions: prodConfig.firstMessageSuggestions,
+      threadContextParams: prodConfig.threadContextParams,
     }
   },
 })
@@ -108,6 +110,8 @@ export const sendPublicChat = action({
     agentSlug: v.string(),
     message: v.string(),
     threadId: v.optional(v.id("threads")),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
   },
   returns: v.object({
     message: v.string(),
@@ -139,6 +143,8 @@ export const sendPublicChat = action({
       message: args.message,
       threadId: args.threadId,
       environment: "production",
+      channel: args.channel,
+      channelParams: args.channelParams,
     })
   },
 })

@@ -67,11 +67,12 @@ http.route({
     }
 
     const body = await request.json()
-    const { agentId, message, threadId, externalThreadId } = body as {
+    const { agentId, message, threadId, externalThreadId, threadContext } = body as {
       agentId: string
       message: string
       threadId?: string
       externalThreadId?: string
+      threadContext?: { params?: Record<string, unknown> }
     }
 
     if (!agentId || !message) {
@@ -91,6 +92,8 @@ http.route({
         message,
         threadId: threadId as Id<"threads"> | undefined,
         externalThreadId,
+        channel: "api" as const,
+        channelParams: threadContext?.params,
       })
 
       return new Response(JSON.stringify(result), {
@@ -124,10 +127,11 @@ http.route({
     const slug = pathParts[3]
 
     const body = await request.json()
-    const { message, threadId, externalThreadId } = body as {
+    const { message, threadId, externalThreadId, threadContext } = body as {
       message: string
       threadId?: string
       externalThreadId?: string
+      threadContext?: { params?: Record<string, unknown> }
     }
 
     if (!message) {
@@ -144,6 +148,8 @@ http.route({
         message,
         threadId: threadId as Id<"threads"> | undefined,
         externalThreadId,
+        channel: "api" as const,
+        channelParams: threadContext?.params,
       })
 
       return new Response(JSON.stringify(result), {

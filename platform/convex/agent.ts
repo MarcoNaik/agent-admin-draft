@@ -7,7 +7,7 @@ import { calculateCost } from "./lib/creditPricing"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
-import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps } from "./lib/llm"
+import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps, cleanToolCallText } from "./lib/llm"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -58,6 +58,47 @@ function serializeActor(actor: ActorContext) {
     isOrgAdmin: actor.isOrgAdmin,
     environment: actor.environment,
   }
+}
+
+interface ThreadContextParamSchema {
+  name: string
+  type: "string" | "number" | "boolean"
+  required?: boolean
+}
+
+function validateThreadContextParams(
+  channelParams: Record<string, unknown>,
+  schema: ThreadContextParamSchema[]
+): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {}
+  const schemaMap = new Map(schema.map((s) => [s.name, s]))
+
+  for (const param of schema) {
+    const value = channelParams[param.name]
+    if (value === undefined || value === null) {
+      if (param.required) {
+        throw new Error(`Missing required thread context param: ${param.name}`)
+      }
+      continue
+    }
+    if (param.type === "string" && typeof value !== "string") {
+      throw new Error(`Thread context param "${param.name}" must be a string`)
+    }
+    if (param.type === "number" && typeof value !== "number") {
+      throw new Error(`Thread context param "${param.name}" must be a number`)
+    }
+    if (param.type === "boolean" && typeof value !== "boolean") {
+      throw new Error(`Thread context param "${param.name}" must be a boolean`)
+    }
+    cleaned[param.name] = value
+  }
+
+  for (const key of Object.keys(channelParams)) {
+    if (!schemaMap.has(key)) continue
+    if (!(key in cleaned)) continue
+  }
+
+  return cleaned
 }
 
 interface ExecuteChatParams {
@@ -116,7 +157,10 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     actor,
     agent: { name: agent.name, slug: agent.slug },
     agentName: agent.name,
-    thread: { metadata: thread?.metadata as Record<string, unknown> | undefined },
+    threadContext: {
+      channel: thread?.channel as string | undefined,
+      params: (thread?.channelParams as Record<string, unknown>) ?? {},
+    },
     message,
     timestamp: now,
     datetime: currentTimeStr,
@@ -273,7 +317,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     .reverse()
     .find(m => m.role === "assistant" && !m.toolCalls?.length && m.content)
 
-  const responseText = lastTextOnlyMessage?.content ?? ""
+  const responseText = cleanToolCallText(lastTextOnlyMessage?.content ?? "")
   const lastMsg = stepsMessages[stepsMessages.length - 1]
   const lastIsTextOnly = lastMsg?.role === "assistant" && !lastMsg.toolCalls?.length
 
@@ -406,6 +450,8 @@ export const chat = internalAction({
     message: v.string(),
     threadId: v.optional(v.id("threads")),
     externalThreadId: v.optional(v.string()),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
   },
   returns: v.object({
     message: v.string(),
@@ -440,10 +486,17 @@ export const chat = internalAction({
       environment,
     })
 
+    let validatedParams = args.channelParams as Record<string, unknown> | undefined
+    if (validatedParams && config?.threadContextParams) {
+      validatedParams = validateThreadContextParams(validatedParams, config.threadContextParams)
+    }
+
     const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
       organizationId: auth.organizationId,
       agentId: args.agentId,
       externalId: args.externalThreadId,
+      channel: args.channel,
+      channelParams: validatedParams,
       environment,
     })
 
@@ -478,6 +531,8 @@ export const chatBySlug = internalAction({
     message: v.string(),
     threadId: v.optional(v.id("threads")),
     externalThreadId: v.optional(v.string()),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
   },
   returns: v.object({
     message: v.string(),
@@ -511,6 +566,8 @@ export const chatBySlug = internalAction({
       message: args.message,
       threadId: args.threadId,
       externalThreadId: args.externalThreadId,
+      channel: args.channel,
+      channelParams: args.channelParams,
     })
   },
 })
@@ -523,6 +580,8 @@ export const chatAuthenticated = internalAction({
     message: v.string(),
     threadId: v.optional(v.id("threads")),
     environment: v.optional(environmentValidator),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
     evalRunId: v.optional(v.id("evalRuns")),
   },
   returns: v.object({
@@ -551,10 +610,17 @@ export const chatAuthenticated = internalAction({
       environment,
     })
 
+    let validatedParams = args.channelParams as Record<string, unknown> | undefined
+    if (validatedParams && config?.threadContextParams) {
+      validatedParams = validateThreadContextParams(validatedParams, config.threadContextParams)
+    }
+
     const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
       organizationId: args.organizationId,
       agentId: args.agentId,
       userId: args.userId,
+      channel: args.channel,
+      channelParams: validatedParams,
       environment,
     })
 
@@ -1197,6 +1263,77 @@ async function executeBuiltinTool(
         conversationId: params.conversationId,
         depth: params.depth ?? 0,
         callerAgentSlug: params.callerAgentSlug,
+      })
+
+    case "airtable.listBases":
+      return await ctx.runAction(internal.tools.airtable.airtableListBases, {
+        organizationId, actorId, actorType, environment,
+      })
+
+    case "airtable.listTables":
+      if (!args.baseId) throw new Error("airtable.listTables requires 'baseId' parameter")
+      return await ctx.runAction(internal.tools.airtable.airtableListTables, {
+        organizationId, actorId, actorType, environment,
+        baseId: args.baseId as string,
+      })
+
+    case "airtable.listRecords":
+      if (!args.baseId) throw new Error("airtable.listRecords requires 'baseId' parameter")
+      if (!args.tableIdOrName) throw new Error("airtable.listRecords requires 'tableIdOrName' parameter")
+      return await ctx.runAction(internal.tools.airtable.airtableListRecords, {
+        organizationId, actorId, actorType, environment,
+        baseId: args.baseId as string,
+        tableIdOrName: args.tableIdOrName as string,
+        pageSize: args.pageSize as number | undefined,
+        offset: args.offset as string | undefined,
+        filterByFormula: args.filterByFormula as string | undefined,
+        sort: args.sort,
+        fields: args.fields as string[] | undefined,
+        view: args.view as string | undefined,
+      })
+
+    case "airtable.getRecord":
+      if (!args.baseId) throw new Error("airtable.getRecord requires 'baseId' parameter")
+      if (!args.tableIdOrName) throw new Error("airtable.getRecord requires 'tableIdOrName' parameter")
+      if (!args.recordId) throw new Error("airtable.getRecord requires 'recordId' parameter")
+      return await ctx.runAction(internal.tools.airtable.airtableGetRecord, {
+        organizationId, actorId, actorType, environment,
+        baseId: args.baseId as string,
+        tableIdOrName: args.tableIdOrName as string,
+        recordId: args.recordId as string,
+      })
+
+    case "airtable.createRecords":
+      if (!args.baseId) throw new Error("airtable.createRecords requires 'baseId' parameter")
+      if (!args.tableIdOrName) throw new Error("airtable.createRecords requires 'tableIdOrName' parameter")
+      if (!args.records) throw new Error("airtable.createRecords requires 'records' parameter")
+      return await ctx.runAction(internal.tools.airtable.airtableCreateRecords, {
+        organizationId, actorId, actorType, environment,
+        baseId: args.baseId as string,
+        tableIdOrName: args.tableIdOrName as string,
+        records: args.records,
+      })
+
+    case "airtable.updateRecords":
+      if (!args.baseId) throw new Error("airtable.updateRecords requires 'baseId' parameter")
+      if (!args.tableIdOrName) throw new Error("airtable.updateRecords requires 'tableIdOrName' parameter")
+      if (!args.records) throw new Error("airtable.updateRecords requires 'records' parameter")
+      return await ctx.runAction(internal.tools.airtable.airtableUpdateRecords, {
+        organizationId, actorId, actorType, environment,
+        baseId: args.baseId as string,
+        tableIdOrName: args.tableIdOrName as string,
+        records: args.records,
+      })
+
+    case "airtable.deleteRecords":
+      if (!args.baseId) throw new Error("airtable.deleteRecords requires 'baseId' parameter")
+      if (!args.tableIdOrName) throw new Error("airtable.deleteRecords requires 'tableIdOrName' parameter")
+      if (!args.recordIds) throw new Error("airtable.deleteRecords requires 'recordIds' parameter")
+      return await ctx.runAction(internal.tools.airtable.airtableDeleteRecords, {
+        organizationId, actorId, actorType, environment,
+        baseId: args.baseId as string,
+        tableIdOrName: args.tableIdOrName as string,
+        recordIds: args.recordIds as string[],
       })
 
     default:

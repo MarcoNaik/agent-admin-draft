@@ -148,6 +148,8 @@ export const routeInboundToAgent = internalAction({
       organizationId: args.organizationId,
       agentId: args.agentId,
       externalId: externalThreadId,
+      channel: "whatsapp",
+      channelParams: { phoneNumber: args.phoneNumber },
       environment: args.environment,
     })
 
@@ -156,6 +158,7 @@ export const routeInboundToAgent = internalAction({
       agentId: args.agentId,
       message: args.text,
       threadId,
+      channel: "whatsapp",
       environment: args.environment,
     })
 

@@ -15,6 +15,7 @@ export const send = action({
     message: v.string(),
     threadId: v.optional(v.id("threads")),
     environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
   },
   returns: v.object({
     message: v.string(),
@@ -43,6 +44,7 @@ export const send = action({
       message: args.message,
       threadId: args.threadId,
       environment: args.environment,
+      channel: args.channel,
     })
   },
 })
@@ -53,6 +55,7 @@ export const sendBySlug = action({
     message: v.string(),
     threadId: v.optional(v.id("threads")),
     environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
   },
   returns: v.object({
     message: v.string(),
@@ -90,6 +93,7 @@ export const sendBySlug = action({
       message: args.message,
       threadId: args.threadId,
       environment: args.environment,
+      channel: args.channel,
     })
   },
 })
