@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useReducer } from "react"
-import { Bot, Check, CheckCheck, FlaskConical, Loader2, MessageSquare, User, Phone, Send, AlertCircle, X, FileText, Clock, Paperclip, ImageIcon, Mic, Plus, Minus } from "lucide-react"
+import { Bot, Check, CheckCheck, FlaskConical, Loader2, MessageSquare, User, Phone, Send, AlertCircle, X, FileText, Clock, Paperclip, ImageIcon, Mic, Plus, Minus, Globe, Monitor, Code } from "lucide-react"
 import { ToolCallBubble, ToolResultBubble } from "@/components/chat/tool-bubbles"
 import {
   useThreadsWithPreviews,
@@ -748,7 +748,29 @@ type ThreadPreview = {
   phoneNumber?: string
   businessPhoneNumber?: string
   connectionLabel?: string
+  channel?: string
+  channelParams?: Record<string, unknown>
   lastMessage?: { content: string; role: string; createdAt: number } | null
+}
+
+const CHANNEL_CONFIG: Record<string, { label: string; icon: typeof Globe; className: string }> = {
+  widget: { label: "Widget", icon: Globe, className: "bg-ocean/10 text-ocean border-ocean/20" },
+  whatsapp: { label: "WhatsApp", icon: Phone, className: "bg-success/10 text-success border-success/20" },
+  api: { label: "API", icon: Code, className: "bg-warning/10 text-warning border-warning/20" },
+  dashboard: { label: "Dashboard", icon: Monitor, className: "bg-primary/10 text-primary border-primary/20" },
+}
+
+function ChannelBadge({ channel }: { channel?: string }) {
+  if (!channel) return null
+  const config = CHANNEL_CONFIG[channel]
+  if (!config) return null
+  const Icon = config.icon
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium", config.className)}>
+      <Icon className="h-2.5 w-2.5" />
+      {config.label}
+    </span>
+  )
 }
 
 function ThreadView({
@@ -779,7 +801,7 @@ function ThreadView({
   })()
 
   const lastInboundAt = isWhatsAppThread
-    ? (selectedThread?.metadata as Record<string, unknown> | undefined)?.lastInboundAt as number | undefined
+    ? (selectedThread?.channelParams as Record<string, unknown> | undefined)?.lastInboundAt as number | undefined
     : undefined
   const isWithinWindow = lastInboundAt ? (Date.now() - lastInboundAt) < TWENTY_FOUR_HOURS : false
 
@@ -858,6 +880,7 @@ function ThreadView({
             <h2 className="font-semibold text-content-primary text-sm truncate">
               {preview?.participantName ?? "Unknown"}
             </h2>
+            <ChannelBadge channel={preview?.channel} />
             {isWhatsAppThread && <WindowIndicator lastInboundAt={lastInboundAt} />}
           </div>
           <div className="flex items-center gap-2">
@@ -876,6 +899,26 @@ function ThreadView({
               </p>
             )}
           </div>
+          {preview?.channelParams && Object.keys(preview.channelParams).length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-[10px] text-content-tertiary hover:text-content-secondary transition-colors">
+                  {Object.keys(preview.channelParams).length} param{Object.keys(preview.channelParams).length !== 1 ? "s" : ""}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-3" align="start">
+                <p className="text-xs font-medium text-content-primary mb-2">Thread Context</p>
+                <div className="space-y-1">
+                  {Object.entries(preview.channelParams).map(([key, value]) => (
+                    <div key={key} className="flex items-baseline justify-between gap-2 text-xs">
+                      <span className="text-content-tertiary truncate">{key}</span>
+                      <span className="text-content-primary truncate max-w-[140px] text-right">{String(value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </header>
 
@@ -1221,15 +1264,18 @@ export default function ChatPage() {
                             {formatPhoneNumber(thread.phoneNumber)}
                           </p>
                         )}
-                        <p className="text-xs text-content-tertiary mt-0.5">
-                          via {thread.agentName}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <ChannelBadge channel={thread.channel} />
+                          <p className="text-xs text-content-tertiary">
+                            via {thread.agentName}
                           {thread.participantType === "whatsapp" && (thread.connectionLabel || thread.businessPhoneNumber) && (
                             <span className="text-content-tertiary">
                               {" on "}
                               {thread.connectionLabel ?? (thread.businessPhoneNumber ? formatPhoneNumber(`+${thread.businessPhoneNumber}`) : "")}
                             </span>
                           )}
-                        </p>
+                          </p>
+                        </div>
                         {thread.lastMessage && (
                           <p className="text-xs text-content-secondary mt-1 truncate">
                             {thread.lastMessage.role === "assistant" && (
