@@ -5,6 +5,13 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useEnvironment } from "@/contexts/environment-context"
+import type { StudioProvider } from "@/lib/studio/models"
+
+export interface StudioSessionConfig {
+  provider: StudioProvider
+  model: string
+  keySource: "platform" | "custom"
+}
 
 export function useStudioSession() {
   const { environment } = useEnvironment()
@@ -15,7 +22,7 @@ export function useStudioSession() {
   const activeSession = useQuery(api.sandboxSessions.getActiveSafe, { environment })
   const cleanup = useMutation(api.sandboxSessions.cleanup)
 
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (config: StudioSessionConfig) => {
     setIsStarting(true)
     setError(null)
 
@@ -23,7 +30,12 @@ export function useStudioSession() {
       const response = await fetch("/api/studio/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentType: "opencode", environment }),
+        body: JSON.stringify({
+          environment,
+          provider: config.provider,
+          model: config.model,
+          keySource: config.keySource,
+        }),
       })
 
       if (!response.ok) {
