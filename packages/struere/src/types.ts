@@ -213,6 +213,13 @@ export interface StruereProject {
   }
 }
 
+export interface ThreadContextParam {
+  name: string
+  type: 'string' | 'number' | 'boolean'
+  required?: boolean
+  description?: string
+}
+
 export interface AgentConfig {
   name: string
   slug: string
@@ -221,6 +228,8 @@ export interface AgentConfig {
   systemPrompt: string | (() => string | Promise<string>)
   model?: ModelConfig
   tools?: string[]
+  firstMessageSuggestions?: string[]
+  threadContextParams?: ThreadContextParam[]
 }
 
 export interface TriggerAction {
