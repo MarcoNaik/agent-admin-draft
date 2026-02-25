@@ -59,6 +59,13 @@ export const BUILTIN_TOOLS = [
   "whatsapp.getConversation",
   "whatsapp.getStatus",
   "agent.chat",
+  "airtable.listBases",
+  "airtable.listTables",
+  "airtable.listRecords",
+  "airtable.getRecord",
+  "airtable.createRecords",
+  "airtable.updateRecords",
+  "airtable.deleteRecords",
 ] as const
 
 export type BuiltinToolName = (typeof BUILTIN_TOOLS)[number]
