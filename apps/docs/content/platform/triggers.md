@@ -274,15 +274,23 @@ Triggers emit events throughout their lifecycle:
 
 Triggers can execute any built-in tool and custom tools. Actions run as the **system actor** with full permissions.
 
-### Built-in Tools
+### Core Tools
 
 | Category | Tools |
 |----------|-------|
 | Entity | `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete`, `entity.link`, `entity.unlink` |
 | Event | `event.emit`, `event.query` |
-| Calendar | `calendar.list`, `calendar.create`, `calendar.update`, `calendar.delete`, `calendar.freeBusy` |
-| WhatsApp | `whatsapp.send`, `whatsapp.sendTemplate`, `whatsapp.sendInteractive`, `whatsapp.sendMedia`, `whatsapp.listTemplates`, `whatsapp.getConversation`, `whatsapp.getStatus` |
 | Agent | `agent.chat` |
+
+### Integration Tools
+
+Require an active integration configured in the dashboard.
+
+| Integration | Tools |
+|-------------|-------|
+| Google Calendar | `calendar.list`, `calendar.create`, `calendar.update`, `calendar.delete`, `calendar.freeBusy` |
+| WhatsApp | `whatsapp.send`, `whatsapp.sendTemplate`, `whatsapp.sendInteractive`, `whatsapp.sendMedia`, `whatsapp.listTemplates`, `whatsapp.getConversation`, `whatsapp.getStatus` |
+| Airtable | `airtable.listBases`, `airtable.listTables`, `airtable.listRecords`, `airtable.getRecord`, `airtable.createRecords`, `airtable.updateRecords`, `airtable.deleteRecords` |
 
 ### Custom Tools
 
