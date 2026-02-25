@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MessageSquare, Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { MessageSquare, Calendar, Database, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useWhatsAppConnections, useCalendarConnection, useIntegrationConfig } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent } from "@/components/ui/card"
@@ -59,6 +59,7 @@ export default function IntegrationsPage() {
   const whatsappConnections = useWhatsAppConnections(environment)
   const calendarConnection = useCalendarConnection(environment)
   const whatsappConfig = useIntegrationConfig("whatsapp", environment)
+  const airtableConfig = useIntegrationConfig("airtable", environment)
 
   const getWhatsAppStatus = (): "active" | "inactive" | null => {
     if (whatsappConfig === undefined || whatsappConnections === undefined) return null
@@ -70,6 +71,12 @@ export default function IntegrationsPage() {
   const getCalendarStatus = (): "active" | "inactive" | null => {
     if (calendarConnection === undefined) return null
     if (calendarConnection?.status === "connected") return "active"
+    return "inactive"
+  }
+
+  const getAirtableStatus = (): "active" | "inactive" | null => {
+    if (airtableConfig === undefined) return null
+    if (airtableConfig?.status === "active") return "active"
     return "inactive"
   }
 
@@ -113,6 +120,17 @@ export default function IntegrationsPage() {
           href="/settings/integrations/google"
           icon={<Calendar className="h-5 w-5 text-primary" />}
           status={getCalendarStatus()}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Data & Databases</h2>
+        <IntegrationCard
+          name="Airtable"
+          description="Read and write records in your Airtable bases"
+          href="/settings/integrations/airtable"
+          icon={<Database className="h-5 w-5 text-primary" />}
+          status={getAirtableStatus()}
         />
       </div>
     </div>
