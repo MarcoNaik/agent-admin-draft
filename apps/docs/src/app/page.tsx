@@ -43,6 +43,18 @@ const cards = [
 export default function Home() {
   return (
     <div className="px-6 py-8 lg:px-16 lg:py-12">
+      <section aria-label="LLM Documentation Endpoints" className="mb-6 p-4 rounded-lg border border-ocean/20 bg-ocean/5">
+        <p className="text-sm text-charcoal-heading font-medium mb-2">
+          For complete documentation in plain text, fetch: <a href="https://docs.struere.dev/llms-full.txt" className="text-ocean font-mono underline">https://docs.struere.dev/llms-full.txt</a>
+        </p>
+        <p className="text-xs text-content-secondary mb-1">
+          Other LLM endpoints: <a href="https://docs.struere.dev/llms.txt" className="text-ocean font-mono underline">https://docs.struere.dev/llms.txt</a> (index) · <a href="https://docs.struere.dev/llms-api.txt" className="text-ocean font-mono underline">https://docs.struere.dev/llms-api.txt</a> (API) · <a href="https://docs.struere.dev/openapi.yaml" className="text-ocean font-mono underline">https://docs.struere.dev/openapi.yaml</a> (OpenAPI)
+        </p>
+        <p className="text-xs text-content-secondary">
+          Individual pages as markdown: https://docs.struere.dev/[path].md (e.g., https://docs.struere.dev/introduction.md, https://docs.struere.dev/sdk/define-agent.md)
+        </p>
+      </section>
+
       <h1 className="text-4xl font-bold text-charcoal-heading mb-3 font-display tracking-tight">Struere Docs</h1>
       <p className="text-content-secondary mb-8 text-base leading-relaxed max-w-3xl">
         Struere is an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations. Define agents, entity types, and triggers as code — talk to them via API.
@@ -61,17 +73,6 @@ export default function Home() {
         >
           Read the overview
         </Link>
-      </div>
-
-      <div className="mb-8 p-4 rounded-lg border border-border bg-card/50">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-2">For AI Agents &amp; LLMs</h3>
-        <p className="text-sm text-content-secondary mb-2">Use these plain-text endpoints instead of scraping HTML:</p>
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm font-mono">
-          <a href="https://docs.struere.dev/llms.txt" className="text-ocean hover:underline">docs.struere.dev/llms.txt</a>
-          <a href="https://docs.struere.dev/llms-full.txt" className="text-ocean hover:underline">docs.struere.dev/llms-full.txt</a>
-          <a href="https://docs.struere.dev/llms-api.txt" className="text-ocean hover:underline">docs.struere.dev/llms-api.txt</a>
-          <a href="https://docs.struere.dev/openapi.yaml" className="text-ocean hover:underline">docs.struere.dev/openapi.yaml</a>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
