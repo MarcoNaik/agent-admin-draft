@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { usePublicAgent, useSendPublicChat } from "@/hooks/use-convex-data"
 import { ChatInterface } from "@/components/chat/chat-interface"
@@ -12,6 +13,17 @@ export default function EmbedChatPage() {
   const agentSlug = params.agentSlug as string
   const theme = searchParams.get("theme") ?? "dark"
 
+  const channelParams = useMemo(() => {
+    const reserved = new Set(["theme"])
+    const result: Record<string, string> = {}
+    searchParams.forEach((value, key) => {
+      if (!reserved.has(key)) {
+        result[key] = value
+      }
+    })
+    return Object.keys(result).length > 0 ? result : undefined
+  }, [searchParams])
+
   const agent = usePublicAgent(orgSlug, agentSlug)
   const sendPublicChat = useSendPublicChat()
 
@@ -21,6 +33,8 @@ export default function EmbedChatPage() {
       agentSlug,
       message: args.message,
       threadId: args.threadId,
+      channel: "widget" as const,
+      channelParams,
     })
 
     if (typeof window !== "undefined" && window.parent !== window) {
