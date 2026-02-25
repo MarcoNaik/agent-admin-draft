@@ -38,7 +38,13 @@ Send a message to an agent by its Convex document ID.
   "agentId": "abc123def456",
   "message": "Hello, can you help me schedule a session?",
   "threadId": "thread_xyz789",
-  "externalThreadId": "my-app:user-123"
+  "externalThreadId": "my-app:user-123",
+  "threadContext": {
+    "params": {
+      "customerId": "cust_abc123",
+      "plan": "pro"
+    }
+  }
 }
 ```
 
@@ -48,6 +54,8 @@ Send a message to an agent by its Convex document ID.
 | `message` | `string` | Yes | The user's message to the agent |
 | `threadId` | `string` | No | An existing thread ID to continue a conversation |
 | `externalThreadId` | `string` | No | An external identifier for thread reuse (e.g., `"whatsapp:+1234567890"`) |
+| `threadContext` | `object` | No | Custom context for this thread (see [Thread Context](#thread-context)) |
+| `threadContext.params` | `object` | No | Key-value pairs accessible to the agent via `{{threadContext.params.X}}` templates |
 
 ### Response
 
@@ -126,7 +134,10 @@ Send a message to an agent by its slug. This is the preferred endpoint for integ
 {
   "message": "Hello, can you help me schedule a session?",
   "threadId": "thread_xyz789",
-  "externalThreadId": "my-app:user-123"
+  "externalThreadId": "my-app:user-123",
+  "threadContext": {
+    "params": { "email": "jane@example.com" }
+  }
 }
 ```
 
@@ -135,6 +146,7 @@ Send a message to an agent by its slug. This is the preferred endpoint for integ
 | `message` | `string` | Yes | The user's message to the agent |
 | `threadId` | `string` | No | An existing thread ID to continue a conversation |
 | `externalThreadId` | `string` | No | An external identifier for thread reuse |
+| `threadContext` | `object` | No | Custom context for this thread (see [Thread Context](#thread-context)) |
 
 Note that `agentId` is **not** needed since the agent is identified by the `:slug` URL parameter.
 
@@ -259,6 +271,42 @@ When a chat request arrives:
 The Chat API returns a **single JSON response** after the agent finishes processing. There is no streaming or Server-Sent Events (SSE). The agent executes its full tool-call loop (up to 10 iterations) server-side, then returns the final message.
 
 For real-time updates during agent execution, use Convex React subscriptions in your frontend to watch the thread's messages table. The dashboard uses this pattern to show tool calls and intermediate results as they happen.
+
+## Thread Context
+
+Thread context lets you pass structured data about the caller to your agent. The `threadContext.params` object is stored on the thread and made available to the agent's system prompt via `{{threadContext.params.X}}` template variables.
+
+```bash
+curl -X POST https://your-deployment.convex.site/v1/agents/support/chat \
+  -H "Authorization: Bearer sk_prod_xyz789" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "I need help with my account",
+    "threadContext": {
+      "params": {
+        "customerId": "cust_abc123",
+        "email": "jane@example.com",
+        "plan": "pro"
+      }
+    }
+  }'
+```
+
+The agent can then reference these values in its system prompt:
+
+```
+Customer: {{threadContext.params.email}}
+Plan: {{threadContext.params.plan}}
+
+## Customer Profile
+{{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
+```
+
+The channel is automatically set to `api` for API requests, accessible via `{{threadContext.channel}}`.
+
+If the agent defines `threadContextParams` in its config, the backend validates incoming params against the schema — checking required fields, validating types, and dropping unknown params.
+
+For the full template variable reference, see [System Prompt Templates](../tools/system-prompt-templates).
 
 ## Error Handling
 
