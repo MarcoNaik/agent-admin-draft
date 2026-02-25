@@ -2,7 +2,7 @@
 title: "Triggers"
 description: "Automated workflows triggered by entity changes"
 section: "Platform Concepts"
-order: 5
+order: 3
 ---
 
 # Triggers

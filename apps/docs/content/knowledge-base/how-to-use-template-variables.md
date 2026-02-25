@@ -45,7 +45,8 @@ Thread: {{threadId}}`,
 | `{{message}}` | Current user message |
 | `{{entityTypes}}` | JSON array of all entity types |
 | `{{roles}}` | JSON array of all roles |
-| `{{thread.metadata.X}}` | Thread metadata field X |
+| `{{threadContext.channel}}` | Channel type: `widget`, `whatsapp`, `api`, or `dashboard` |
+| `{{threadContext.params.X}}` | Thread context parameter X |
 
 ### 3. Embedded queries (function calls)
 
@@ -73,12 +74,12 @@ Combine variables inside function call arguments:
 systemPrompt: `You are helping a customer.
 
 ## Customer Profile
-{{entity.get({"type": "customer", "id": "{{thread.metadata.customerId}}"})}}
+{{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
 
 Greet them by name and help with their request.`
 ```
 
-Resolution order: inner template `{{thread.metadata.customerId}}` resolves first, then the result is used as the argument to `entity.get`.
+Resolution order: inner template `{{threadContext.params.customerId}}` resolves first, then the result is used as the argument to `entity.get`.
 
 ### 5. What happens on errors
 
@@ -95,7 +96,7 @@ Permission errors return empty results so agents degrade gracefully.
 
 - **Using Handlebars block helpers.** `{{#each}}`, `{{#if}}`, and other block helpers are not supported. Use the raw JSON variable and let the LLM parse it.
 - **Misspelling variable names.** A misspelled variable produces `[TEMPLATE_ERROR: ...]` in the system prompt. Double-check variable names against the reference.
-- **Not passing thread metadata.** `{{thread.metadata.customerId}}` requires the thread to have metadata set. If the metadata key does not exist, the template resolves to an error marker.
+- **Not passing thread context.** `{{threadContext.params.customerId}}` requires the thread to have the `customerId` param set via the widget URL, API `threadContext` field, or other channel. If the param does not exist, the template resolves to an error marker.
 - **Oversized queries.** Results are truncated at 10 KB. Use `limit` in `entity.query` to keep results manageable.
 
 ## Related

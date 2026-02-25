@@ -2,7 +2,7 @@
 title: "Agents"
 description: "AI agent configuration and execution"
 section: "Platform Concepts"
-order: 3
+order: 2
 ---
 
 # Agents

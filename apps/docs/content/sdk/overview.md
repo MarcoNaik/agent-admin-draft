@@ -7,7 +7,7 @@ order: 1
 
 # SDK Overview
 
-The Struere SDK provides a set of TypeScript definition functions for building permission-aware AI agent platforms. It follows an **organization-centric architecture** where all agents, entity types, roles, triggers, and tools are managed from a single project and synced to the Struere platform.
+The Struere SDK provides a set of TypeScript definition functions for building AI agent platforms with structured data, automation, and integrations. It follows an **organization-centric architecture** where all agents, entity types, roles, triggers, and tools are managed from a single project and synced to the Struere platform.
 
 ## Installation
 

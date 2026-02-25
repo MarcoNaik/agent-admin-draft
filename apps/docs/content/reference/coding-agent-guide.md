@@ -35,17 +35,17 @@ This project uses the Struere AI agent platform.
 
 - Docs index: https://docs.struere.dev/llms.txt
 - Full docs: https://docs.struere.dev/llms-full.txt
-- SDK reference: https://docs.struere.dev/llms-sdk.txt
 - API reference: https://docs.struere.dev/llms-api.txt
+- SDK reference: https://docs.struere.dev/llms-sdk.txt
 - OpenAPI spec: https://docs.struere.dev/openapi.yaml
 
 Key patterns:
+- Chat API: POST /v1/agents/:slug/chat with Bearer token (sk_dev_ or sk_prod_)
 - SDK exports: defineAgent, defineEntityType, defineRole, defineTrigger
 - Default model: grok-4-1-fast (provider: xai)
 - Package manager: bun
 - CLI: struere dev (sync), struere deploy (production)
 - Environments: development, production, eval (fully isolated)
-- Permission model: deny overrides allow, scope rules (row-level), field masks (column-level)
 ```
 
 ## Cursor (.cursorrules)
@@ -53,24 +53,31 @@ Key patterns:
 Add to your `.cursorrules` file:
 
 ```
-This project uses Struere (https://struere.dev), a permission-aware AI agent platform.
+This project uses Struere (https://struere.dev), an AI agent platform with built-in data layer, automation, and integrations.
 
 Documentation:
 - Full reference: https://docs.struere.dev/llms-full.txt
-- SDK: https://docs.struere.dev/llms-sdk.txt
 - API: https://docs.struere.dev/llms-api.txt
+- SDK: https://docs.struere.dev/llms-sdk.txt
 
 When working with Struere:
+- Chat API: POST /v1/agents/:slug/chat with Bearer token (sk_dev_ or sk_prod_)
 - Use defineAgent, defineEntityType, defineRole, defineTrigger from 'struere'
 - Default model is grok-4-1-fast (provider: xai)
 - Use bun as the package manager
-- Roles use deny-overrides-allow policy evaluation
 - Scope rule operators: eq, neq, in, contains (NOT ne)
 - Entity link/unlink params: fromId/toId (NOT fromEntityId/toEntityId)
 - PolicyConfig has resource, actions, effect (NO priority field)
 ```
 
 ## Common Agent Workflows
+
+### Integrating via API
+
+1. Agent reads `/llms-api.txt` or `/openapi.yaml`
+2. Uses slug-based endpoint: `POST /v1/agents/:slug/chat` with Bearer token
+3. Handles thread management via `threadId` / `externalThreadId`
+4. Handles errors based on status codes
 
 ### Creating a new agent
 
@@ -85,13 +92,6 @@ When working with Struere:
 2. Creates role with `npx struere add role my-role`
 3. Defines policies, scope rules, and field masks
 4. Tests with development API key
-
-### Integrating via API
-
-1. Agent reads `/llms-api.txt` or `/openapi.yaml`
-2. Generates HTTP client from the OpenAPI spec
-3. Uses slug-based endpoint (`/v1/agents/:slug/chat`)
-4. Handles errors based on status codes
 
 ### Debugging
 

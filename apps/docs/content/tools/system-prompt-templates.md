@@ -46,7 +46,8 @@ Use entity.query to search for entities by type.`,
 | `{{userId}}` | `string` | The current user's ID (if applicable) |
 | `{{threadId}}` | `string` | The current conversation thread ID |
 | `{{message}}` | `string` | The current user message being processed |
-| `{{thread.metadata.X}}` | `any` | Access thread metadata field `X` (replace `X` with the field name) |
+| `{{threadContext.channel}}` | `string` | The channel the conversation came through: `widget`, `whatsapp`, `api`, or `dashboard` |
+| `{{threadContext.params.X}}` | `any` | Access thread context parameter `X` (replace `X` with the param name) |
 | `{{entityTypes}}` | `array` | JSON array of all entity types in the current environment |
 | `{{roles}}` | `array` | JSON array of all roles in the current environment |
 
@@ -55,7 +56,7 @@ Use entity.query to search for entities by type.`,
 Variables support dot notation for nested access. The template engine walks the context object following each dot-separated segment:
 
 - `{{agent.name}}` resolves to `context.agent.name`
-- `{{thread.metadata.customerId}}` resolves to `context.thread.metadata.customerId`
+- `{{threadContext.params.customerId}}` resolves to `context.threadContext.params.customerId`
 
 If a variable resolves to an object or array, it is serialized as JSON. If a variable cannot be resolved, the template outputs `[TEMPLATE_ERROR: variableName not found]`.
 
@@ -127,11 +128,11 @@ Retrieves a single entity by type and ID:
 Function arguments can contain template variables, enabling dynamic queries based on thread context:
 
 ```
-{{entity.get({"type": "customer", "id": "{{thread.metadata.customerId}}"})}}
+{{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
 ```
 
 In this example:
-1. `{{thread.metadata.customerId}}` is resolved first to the actual customer ID
+1. `{{threadContext.params.customerId}}` is resolved first to the actual customer ID
 2. The resolved ID is then used as the argument to `entity.get`
 3. The entity data is fetched and injected into the system prompt
 
@@ -223,7 +224,7 @@ Current time: {{currentTime}}
 })
 ```
 
-A customer-support agent that loads the customer's profile from thread metadata:
+A customer-support agent that loads the customer's profile from thread context. The `customerId` is passed as a URL parameter on the widget script tag or via the `threadContext` field in the API request body:
 
 ```typescript
 import { defineAgent } from 'struere'
@@ -234,14 +235,19 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: `You are a support agent for {{organizationName}}.
 
-## Customer Profile
-{{entity.get({"type": "customer", "id": "{{thread.metadata.customerId}}"})}}
+Channel: {{threadContext.channel}}
 
-## Recent Events
-{{entity.query({"type": "ticket", "filters": {"customerId": "{{thread.metadata.customerId}}"}, "limit": 10})}}
+## Customer Profile
+{{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
+
+## Recent Tickets
+{{entity.query({"type": "ticket", "filters": {"customerId": "{{threadContext.params.customerId}}"}, "limit": 10})}}
 
 Help the customer with their request. You have their profile and recent tickets loaded above.`,
   model: { provider: "anthropic", name: "claude-sonnet-4" },
   tools: ["entity.query", "entity.update", "event.emit"],
+  threadContextParams: [
+    { name: "customerId", type: "string", required: true, description: "Customer entity ID" },
+  ],
 })
 ```

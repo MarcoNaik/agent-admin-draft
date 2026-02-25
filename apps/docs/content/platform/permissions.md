@@ -2,7 +2,7 @@
 title: "Permissions"
 description: "Role-based access control with row and column security"
 section: "Platform Concepts"
-order: 2
+order: 5
 ---
 
 # Permissions

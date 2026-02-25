@@ -35,6 +35,13 @@ Struere provides a set of built-in tools that agents can use to interact with en
 | `whatsapp.getTemplateStatus` | WhatsApp | Check approval status of a template |
 | `whatsapp.getConversation` | WhatsApp | Get conversation history |
 | `whatsapp.getStatus` | WhatsApp | Check WhatsApp connection status |
+| `airtable.listBases` | Airtable | List accessible Airtable bases |
+| `airtable.listTables` | Airtable | List tables in an Airtable base |
+| `airtable.listRecords` | Airtable | List records with filtering and pagination |
+| `airtable.getRecord` | Airtable | Get a single record by ID |
+| `airtable.createRecords` | Airtable | Create up to 10 records |
+| `airtable.updateRecords` | Airtable | Update up to 10 records |
+| `airtable.deleteRecords` | Airtable | Delete up to 10 records |
 | `agent.chat` | Agent | Send a message to another agent and get its response |
 
 ## Enabling Tools
@@ -837,6 +844,196 @@ No parameters required.
 }
 ```
 
+## Airtable Tools
+
+Airtable tools allow agents to read and write records in Airtable bases. Requires an Airtable integration to be configured with a Personal Access Token.
+
+### airtable.listBases
+
+Lists all Airtable bases accessible with the configured token.
+
+**Parameters:**
+
+No parameters required.
+
+**Returns:**
+
+```typescript
+{
+  bases: Array<{
+    id: string
+    name: string
+    permissionLevel: string
+  }>
+}
+```
+
+---
+
+### airtable.listTables
+
+Lists all tables in an Airtable base, including field definitions.
+
+**Parameters:**
+
+```typescript
+{
+  baseId: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseId` | `string` | Yes | Airtable base ID (e.g., `"appXXXXXXXXXXXXXX"`) |
+
+---
+
+### airtable.listRecords
+
+Lists records from an Airtable table with optional filtering, sorting, and pagination.
+
+**Parameters:**
+
+```typescript
+{
+  baseId: string
+  tableIdOrName: string
+  pageSize?: number
+  offset?: string
+  filterByFormula?: string
+  sort?: Array<{ field: string; direction?: "asc" | "desc" }>
+  fields?: string[]
+  view?: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseId` | `string` | Yes | Airtable base ID |
+| `tableIdOrName` | `string` | Yes | Table ID or name |
+| `pageSize` | `number` | No | Records per page (max 100) |
+| `offset` | `string` | No | Pagination offset from a previous response |
+| `filterByFormula` | `string` | No | Airtable formula filter (e.g., `"{Status} = 'Active'"`) |
+| `sort` | `array` | No | Sort config: `[{ field: "Name", direction: "asc" }]` |
+| `fields` | `string[]` | No | Only return specific field names |
+| `view` | `string` | No | Name or ID of an Airtable view |
+
+**Returns:**
+
+```typescript
+{
+  records: Array<{
+    id: string
+    fields: Record<string, unknown>
+    createdTime: string
+  }>
+  offset?: string
+}
+```
+
+When `offset` is present, pass it back to fetch the next page.
+
+---
+
+### airtable.getRecord
+
+Gets a single record by ID.
+
+**Parameters:**
+
+```typescript
+{
+  baseId: string
+  tableIdOrName: string
+  recordId: string
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseId` | `string` | Yes | Airtable base ID |
+| `tableIdOrName` | `string` | Yes | Table ID or name |
+| `recordId` | `string` | Yes | Record ID (e.g., `"recXXXXXXXXXXXXXX"`) |
+
+---
+
+### airtable.createRecords
+
+Creates up to 10 records in a single request.
+
+**Parameters:**
+
+```typescript
+{
+  baseId: string
+  tableIdOrName: string
+  records: Array<{ fields: Record<string, unknown> }>
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseId` | `string` | Yes | Airtable base ID |
+| `tableIdOrName` | `string` | Yes | Table ID or name |
+| `records` | `array` | Yes | Array of `{ fields: { ... } }` objects (max 10) |
+
+**Example agent usage:**
+
+```json
+{
+  "baseId": "appABC123",
+  "tableIdOrName": "Customers",
+  "records": [
+    { "fields": { "Name": "Alice", "Email": "alice@example.com" } },
+    { "fields": { "Name": "Bob", "Email": "bob@example.com" } }
+  ]
+}
+```
+
+---
+
+### airtable.updateRecords
+
+Updates up to 10 records in a single request. Only specified fields are changed.
+
+**Parameters:**
+
+```typescript
+{
+  baseId: string
+  tableIdOrName: string
+  records: Array<{ id: string; fields: Record<string, unknown> }>
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseId` | `string` | Yes | Airtable base ID |
+| `tableIdOrName` | `string` | Yes | Table ID or name |
+| `records` | `array` | Yes | Array of `{ id, fields }` objects (max 10) |
+
+---
+
+### airtable.deleteRecords
+
+Deletes up to 10 records by ID.
+
+**Parameters:**
+
+```typescript
+{
+  baseId: string
+  tableIdOrName: string
+  recordIds: string[]
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseId` | `string` | Yes | Airtable base ID |
+| `tableIdOrName` | `string` | Yes | Table ID or name |
+| `recordIds` | `string[]` | Yes | Array of record IDs to delete (max 10) |
+
 ## Agent Tools
 
 ### agent.chat
@@ -857,7 +1054,7 @@ Sends a message to another agent within the same organization and environment, a
 |-----------|------|----------|-------------|
 | `agent` | `string` | Yes | The target agent's slug |
 | `message` | `string` | Yes | The message to send to the target agent |
-| `context` | `object` | No | Additional context passed to the target agent's thread metadata |
+| `context` | `object` | No | Additional context passed to the target agent's thread context params |
 
 **Returns:**
 

@@ -42,6 +42,7 @@ export default defineAgent({
 | `description` | `string` | No | Human-readable description |
 | `model` | `ModelConfig` | No | LLM provider and model settings |
 | `tools` | `string[]` | No | Array of tool names (built-in and custom) |
+| `threadContextParams` | `ThreadContextParam[]` | No | Schema for expected thread context parameters (see below) |
 
 ### Validation
 
@@ -91,6 +92,47 @@ tools: [
   "send_email",
 ]
 ```
+
+## Thread Context Parameters
+
+The `threadContextParams` field declares what context parameters your agent expects from callers. When defined, the backend validates incoming params — checking required fields, enforcing types, and dropping unknown params.
+
+```typescript
+interface ThreadContextParam {
+  name: string
+  type: 'string' | 'number' | 'boolean'
+  required?: boolean
+  description?: string
+}
+```
+
+```typescript
+export default defineAgent({
+  name: "Support",
+  slug: "support",
+  version: "0.1.0",
+  systemPrompt: `You are a support agent for {{organizationName}}.
+Customer: {{threadContext.params.email}}
+Plan: {{threadContext.params.plan}}`,
+  model: { provider: "xai", name: "grok-4-1-fast" },
+  tools: ["entity.query"],
+  threadContextParams: [
+    { name: "email", type: "string", required: true, description: "Customer email" },
+    { name: "plan", type: "string", description: "Subscription plan" },
+  ],
+})
+```
+
+These parameters are passed differently depending on the channel:
+
+| Channel | How params are passed |
+|---------|----------------------|
+| **Widget** | URL parameters on the `<script>` tag (e.g., `?email=jane@example.com&plan=pro`) |
+| **API** | `threadContext.params` in the JSON request body |
+| **WhatsApp** | Automatically populated from the inbound message (phone number, contact name) |
+| **Dashboard** | Not applicable (no custom params) |
+
+The channel itself is always available via `{{threadContext.channel}}`.
 
 ## System Prompt Templates
 
