@@ -18,6 +18,7 @@ const agentValidator = v.object({
   slug: v.string(),
   version: v.string(),
   description: v.optional(v.string()),
+  firstMessageSuggestions: v.optional(v.array(v.string())),
   systemPrompt: v.string(),
   model: v.object({
     provider: v.string(),

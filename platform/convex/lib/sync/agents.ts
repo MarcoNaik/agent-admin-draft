@@ -6,6 +6,13 @@ export interface AgentInput {
   slug: string
   version: string
   description?: string
+  firstMessageSuggestions?: string[]
+  threadContextParams?: Array<{
+    name: string
+    type: "string" | "number" | "boolean"
+    required?: boolean
+    description?: string
+  }>
   systemPrompt: string
   model: {
     provider: string
@@ -106,6 +113,8 @@ async function syncAgentConfig(
     systemPrompt: agent.systemPrompt,
     model: agent.model,
     tools: agent.tools,
+    firstMessageSuggestions: agent.firstMessageSuggestions,
+    threadContextParams: agent.threadContextParams,
     environment,
     deployedBy: userId,
   }
