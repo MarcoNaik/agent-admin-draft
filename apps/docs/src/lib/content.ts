@@ -100,12 +100,12 @@ export function getRawMarkdown(slug: string): string | null {
 
 const SECTION_ORDER = [
   "Getting Started",
-  "Platform Concepts",
+  "API Reference",
   "SDK",
   "Tools",
-  "CLI",
-  "API Reference",
+  "Platform Concepts",
   "Integrations",
+  "CLI",
   "Knowledge Base",
   "Reference",
 ]

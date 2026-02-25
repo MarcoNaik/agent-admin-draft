@@ -1,4 +1,5 @@
 import { getAllDocs } from "./content"
+import { API_QUICK_START } from "./generate-llms"
 
 const BASE_URL = "https://docs.struere.dev"
 
@@ -22,6 +23,11 @@ export function generateSectionLlmsTxt(sectionKey: string): string {
     `> Filtered section from the Struere docs. Full docs: ${BASE_URL}/llms.txt`,
     "",
   ]
+
+  if (sectionKey === "api") {
+    lines.push(API_QUICK_START)
+    lines.push("")
+  }
 
   for (const doc of docs) {
     lines.push("---")

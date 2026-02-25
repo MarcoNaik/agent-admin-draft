@@ -2,33 +2,58 @@ import { getAllDocs } from "./content"
 
 const BASE_URL = "https://docs.struere.dev"
 
+const API_QUICK_START = `## API Quick Start
+
+To send a message to a Struere agent, use the Chat API:
+
+    POST https://<your-deployment>.convex.site/v1/agents/<agent-slug>/chat
+    Authorization: Bearer <your-api-key>
+    Content-Type: application/json
+
+    {"message": "Hello, what can you help me with?"}
+
+Response:
+
+    {"threadId": "...", "message": "...", "usage": {"inputTokens": ..., "outputTokens": ..., "totalTokens": ...}}
+
+- Use \`/v1/agents/:slug/chat\` (preferred) or \`/v1/chat\` with an \`agentId\` field
+- API keys: created in the dashboard under Settings > API Keys
+- Development keys: \`sk_dev_\` prefix. Production keys: \`sk_prod_\` prefix
+- Pass \`threadId\` from a previous response to continue a conversation
+- Pass \`externalThreadId\` to map external identifiers (e.g., \`"slack:U12345678"\`, \`"whatsapp:+1234567890"\`)
+- Full API docs: ${BASE_URL}/llms-api.txt
+- OpenAPI spec: ${BASE_URL}/openapi.yaml`
+
 export function generateLlmsTxt(): string {
   const docs = getAllDocs()
   const lines: string[] = [
     "# Struere Documentation",
     "",
-    "> Struere is a permission-aware AI agent platform. Build, deploy, and manage AI agents with role-based access control, entity management, and multi-agent communication.",
+    "> Struere is an AI agent platform with a built-in data layer, dynamic system prompts, event-driven automation, and integrations. Define agents, entity types, and triggers as TypeScript code — talk to agents via HTTP API.",
     "",
     `Docs: ${BASE_URL}`,
     "",
+    API_QUICK_START,
+    "",
     "## Quick Reference",
     "",
-    "- **Default model**: `grok-4-1-fast` (provider: `xai`)",
+    "- **Chat endpoint**: `POST /v1/agents/:slug/chat` with Bearer token",
+    "- **Built-in tools**: entity.create, entity.get, entity.query, entity.update, entity.delete, entity.link, entity.unlink, event.emit, event.query, calendar.list, calendar.create, calendar.update, calendar.delete, calendar.freeBusy, whatsapp.send, whatsapp.getConversation, whatsapp.getStatus, airtable.listBases, airtable.listTables, airtable.listRecords, airtable.getRecord, airtable.createRecords, airtable.updateRecords, airtable.deleteRecords, agent.chat",
     "- **SDK exports**: `defineAgent`, `defineTools`, `defineConfig`, `defineEntityType`, `defineRole`, `defineTrigger`",
-    "- **Built-in tools**: entity.create, entity.get, entity.query, entity.update, entity.delete, entity.link, entity.unlink, event.emit, event.query, calendar.list, calendar.create, calendar.update, calendar.delete, calendar.freeBusy, whatsapp.send, whatsapp.getConversation, whatsapp.getStatus, agent.chat",
+    "- **Default model**: `grok-4-1-fast` (provider: `xai`)",
     "- **Environments**: `development`, `production`, `eval` — fully isolated data, roles, and configs",
+    "- **Auth**: API keys prefixed `sk_dev_` / `sk_prod_`, Clerk for dashboard",
     "- **CLI commands**: `init`, `dev`, `deploy`, `add`, `status`, `pull`, `entities`, `login`, `logout`, `whoami`",
-    "- **Auth**: Clerk with Convex integration, API keys prefixed `sk_dev_` / `sk_prod_`",
     "- **Package manager**: Bun",
     "",
     "## Section Files",
     "",
+    `- [API](${BASE_URL}/llms-api.txt): Chat API, HTTP endpoints, webhooks`,
     `- [SDK](${BASE_URL}/llms-sdk.txt): Agent, entity type, role, trigger definitions`,
-    `- [API](${BASE_URL}/llms-api.txt): HTTP endpoints, chat API, webhooks`,
-    `- [CLI](${BASE_URL}/llms-cli.txt): Command-line interface reference`,
-    `- [Platform](${BASE_URL}/llms-platform.txt): Agents, entities, permissions, events, triggers, evals`,
     `- [Tools](${BASE_URL}/llms-tools.txt): Built-in tools, custom tools, system prompt templates`,
-    `- [Integrations](${BASE_URL}/llms-integrations.txt): WhatsApp, Google Calendar, Flow payments`,
+    `- [Platform](${BASE_URL}/llms-platform.txt): Entities, agents, triggers, events, permissions, evals`,
+    `- [Integrations](${BASE_URL}/llms-integrations.txt): WhatsApp, Google Calendar, Flow payments, Airtable`,
+    `- [CLI](${BASE_URL}/llms-cli.txt): Command-line interface reference`,
     "",
     "## Pages",
     "",
@@ -62,7 +87,9 @@ export function generateLlmsFullTxt(): string {
   const sections: string[] = [
     "# Struere Documentation (Full)",
     "",
-    "> This file contains the complete Struere documentation.",
+    "> Struere is an AI agent platform with a built-in data layer, dynamic system prompts, event-driven automation, and integrations.",
+    "",
+    API_QUICK_START,
     "",
   ]
 
@@ -91,3 +118,5 @@ export function generateLlmsFullTxt(): string {
 
   return sections.join("\n")
 }
+
+export { API_QUICK_START }
