@@ -66,7 +66,11 @@ export function middleware(req: NextRequest) {
   if (PASSTHROUGH_PATHS.includes(path)) return NextResponse.next()
   if (path.endsWith(".md")) return NextResponse.next()
 
-  return NextResponse.redirect(new URL("/llms.txt", req.url), 302)
+  if (path === "/") {
+    return NextResponse.redirect(new URL("/llms.txt", req.url), 302)
+  }
+
+  return NextResponse.redirect(new URL(`${path}.md`, req.url), 302)
 }
 
 export const config = {
