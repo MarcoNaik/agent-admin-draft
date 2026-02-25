@@ -7,6 +7,15 @@ export async function GET(request: NextRequest) {
   const theme = searchParams.get("theme") ?? "dark"
   const position = searchParams.get("position") ?? "br"
 
+  const reservedParams = new Set(["org", "agent", "theme", "position"])
+  const extraParams = new URLSearchParams()
+  searchParams.forEach((value, key) => {
+    if (!reservedParams.has(key)) {
+      extraParams.set(key, value)
+    }
+  })
+  const extraParamsStr = extraParams.toString() ? `&${extraParams.toString()}` : ""
+
   const positionStyles: Record<string, string> = {
     br: "bottom:20px;right:20px;",
     bl: "bottom:20px;left:20px;",
@@ -56,7 +65,7 @@ export async function GET(request: NextRequest) {
   bar.appendChild(xBtn);
 
   var iframe=document.createElement("iframe");
-  iframe.src="${origin}/embed/${org}/${agent}?theme=${theme}";
+  iframe.src="${origin}/embed/${org}/${agent}?theme=${theme}${extraParamsStr}";
   iframe.allow="clipboard-read;clipboard-write";
   iframe.style.cssText="position:absolute;top:28px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 28px);border:none;opacity:0;pointer-events:none;transition:opacity 400ms ${ease};background:transparent;color-scheme:normal;";
   iframe.setAttribute("scrolling","no");
