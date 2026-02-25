@@ -67,10 +67,10 @@ export function middleware(req: NextRequest) {
   if (path.endsWith(".md")) return NextResponse.next()
 
   if (path === "/") {
-    return NextResponse.redirect(new URL("/llms.txt", req.url), 302)
+    return NextResponse.rewrite(new URL("/llms.txt", req.url))
   }
 
-  return NextResponse.redirect(new URL(`${path}.md`, req.url), 302)
+  return NextResponse.rewrite(new URL(`/api/raw${path}`, req.url))
 }
 
 export const config = {
