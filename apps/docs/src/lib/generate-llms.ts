@@ -27,36 +27,32 @@ Response:
 export function generateLlmsTxt(): string {
   const docs = getAllDocs()
   const lines: string[] = [
-    "# Struere Documentation",
+    "# Struere",
     "",
-    "> Struere is an AI agent platform with a built-in data layer, dynamic system prompts, event-driven automation, and integrations. Define agents, entity types, and triggers as TypeScript code — talk to agents via HTTP API.",
+    "> AI agent platform with a built-in data layer, dynamic system prompts, event-driven automation, and integrations. Define agents as TypeScript code, talk to them via HTTP API.",
     "",
-    `Docs: ${BASE_URL}`,
+    "## How to read these docs",
     "",
-    API_QUICK_START,
+    "This is the documentation index. Each URL below returns plain-text markdown.",
+    "Fetch any URL directly to read that page. URLs are exact — do not modify them.",
     "",
-    "## Quick Reference",
+    "- To read all docs in one file: " + `${BASE_URL}/llms-full.txt`,
+    "- To read a topic: fetch a section file below",
+    "- To read a specific page: fetch its URL from the page list below",
+    "- OpenAPI spec: " + `${BASE_URL}/openapi.yaml`,
     "",
-    "- **Chat endpoint**: `POST /v1/agents/:slug/chat` with Bearer token",
-    "- **Core tools** (always available): entity.create, entity.get, entity.query, entity.update, entity.delete, entity.link, entity.unlink, event.emit, event.query, agent.chat",
-    "- **Integration tools** (require integration config): calendar.list, calendar.create, calendar.update, calendar.delete, calendar.freeBusy, whatsapp.send, whatsapp.sendTemplate, whatsapp.sendInteractive, whatsapp.sendMedia, whatsapp.listTemplates, whatsapp.getConversation, whatsapp.getStatus, airtable.listBases, airtable.listTables, airtable.listRecords, airtable.getRecord, airtable.createRecords, airtable.updateRecords, airtable.deleteRecords",
-    "- **SDK exports**: `defineAgent`, `defineTools`, `defineConfig`, `defineEntityType`, `defineRole`, `defineTrigger`",
-    "- **Default model**: `grok-4-1-fast` (provider: `xai`)",
-    "- **Environments**: `development`, `production`, `eval` — fully isolated data, roles, and configs",
-    "- **Auth**: API keys prefixed `sk_dev_` / `sk_prod_`, Clerk for dashboard",
-    "- **CLI commands**: `init`, `dev`, `deploy`, `add`, `status`, `pull`, `entities`, `login`, `logout`, `whoami`",
-    "- **Package manager**: Bun",
+    "## Section files",
     "",
-    "## Section Files",
+    `${BASE_URL}/llms-api.txt — Chat API, HTTP endpoints, webhooks`,
+    `${BASE_URL}/llms-sdk.txt — Agent, entity type, role, trigger definitions`,
+    `${BASE_URL}/llms-tools.txt — Built-in tools, custom tools, system prompt templates`,
+    `${BASE_URL}/llms-platform.txt — Entities, agents, triggers, events, permissions, evals`,
+    `${BASE_URL}/llms-integrations.txt — WhatsApp, Google Calendar, Flow payments, Airtable`,
+    `${BASE_URL}/llms-cli.txt — CLI reference`,
     "",
-    `- [API](${BASE_URL}/llms-api.txt): Chat API, HTTP endpoints, webhooks`,
-    `- [SDK](${BASE_URL}/llms-sdk.txt): Agent, entity type, role, trigger definitions`,
-    `- [Tools](${BASE_URL}/llms-tools.txt): Built-in tools, custom tools, system prompt templates`,
-    `- [Platform](${BASE_URL}/llms-platform.txt): Entities, agents, triggers, events, permissions, evals`,
-    `- [Integrations](${BASE_URL}/llms-integrations.txt): WhatsApp, Google Calendar, Flow payments, Airtable`,
-    `- [CLI](${BASE_URL}/llms-cli.txt): Command-line interface reference`,
+    "## All pages",
     "",
-    "## Pages",
+    "Section headers below are labels only — they are NOT part of the URL path.",
     "",
   ]
 
@@ -68,17 +64,18 @@ export function generateLlmsTxt(): string {
       lines.push(`### ${currentSection}`)
       lines.push("")
     }
-    lines.push(`- [${doc.title}](${BASE_URL}/${doc.slug}.md): ${doc.description}`)
+    lines.push(`${BASE_URL}/${doc.slug}.md — ${doc.title}: ${doc.description}`)
   }
 
   lines.push("")
-  lines.push("## Full Documentation")
+  lines.push("## Quick reference")
   lines.push("")
-  lines.push(`For the complete documentation in a single file, see: ${BASE_URL}/llms-full.txt`)
-  lines.push("")
-  lines.push("## Machine-Readable")
-  lines.push("")
-  lines.push(`- [OpenAPI Spec](${BASE_URL}/openapi.yaml): Chat API endpoints (YAML)`)
+  lines.push("- Chat endpoint: `POST /v1/agents/:slug/chat` with Bearer token")
+  lines.push("- SDK exports: `defineAgent`, `defineTools`, `defineConfig`, `defineEntityType`, `defineRole`, `defineTrigger`")
+  lines.push("- Default model: `grok-4-1-fast` (provider: `xai`)")
+  lines.push("- Environments: `development`, `production`, `eval`")
+  lines.push("- Auth: API keys prefixed `sk_dev_` / `sk_prod_`")
+  lines.push("- Package manager: Bun")
   lines.push("")
 
   return lines.join("\n")
