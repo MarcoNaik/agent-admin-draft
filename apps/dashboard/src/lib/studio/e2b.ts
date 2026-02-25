@@ -1,4 +1,5 @@
 import { Sandbox } from "@e2b/code-interpreter"
+import type { StudioProvider } from "./models"
 
 const SANDBOX_AGENT_PORT = 3000
 const SANDBOX_AGENT_VERSION = "0.2.x"
@@ -9,7 +10,8 @@ export interface SandboxConfig {
   apiKey: string
   convexUrl: string
   claudeMd: string
-  agentType: "opencode" | "claude"
+  provider: StudioProvider
+  model: string
 }
 
 export interface SandboxResult {
@@ -27,6 +29,66 @@ async function runCmd(sandbox: Sandbox, label: string, cmd: string, opts: { time
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
     throw new Error(`[${label}] failed: ${detail}`)
+  }
+}
+
+function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<string, unknown> {
+  const base = {
+    $schema: "https://opencode.ai/config.json",
+    instructions: ["CLAUDE.md"],
+    permission: { webfetch: "allow", websearch: "allow" },
+  }
+
+  switch (provider) {
+    case "xai":
+      return {
+        ...base,
+        provider: {
+          openai: {
+            options: { baseURL: "https://api.x.ai/v1" },
+            models: {
+              [model]: { name: model, limit: { context: 131072, output: 32768 } },
+            },
+          },
+        },
+        model: `openai/${model}`,
+      }
+    case "anthropic":
+      return {
+        ...base,
+        provider: {
+          anthropic: {
+            models: {
+              [model]: { name: model, limit: { context: 200000, output: 32768 } },
+            },
+          },
+        },
+        model: `anthropic/${model}`,
+      }
+    case "openai":
+      return {
+        ...base,
+        provider: {
+          openai: {
+            models: {
+              [model]: { name: model, limit: { context: 128000, output: 32768 } },
+            },
+          },
+        },
+        model: `openai/${model}`,
+      }
+    case "google":
+      return {
+        ...base,
+        provider: {
+          google: {
+            models: {
+              [model]: { name: model, limit: { context: 1000000, output: 65536 } },
+            },
+          },
+        },
+        model: `google/${model}`,
+      }
   }
 }
 
@@ -79,25 +141,7 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
     },
     {
       path: "/workspace/opencode.json",
-      content: JSON.stringify({
-        $schema: "https://opencode.ai/config.json",
-        provider: {
-          openai: {
-            options: {
-              baseURL: "https://api.x.ai/v1",
-            },
-            models: {
-              "grok-4-1-fast": { name: "Grok 4.1 Fast", limit: { context: 131072, output: 32768 } },
-            },
-          },
-        },
-        model: "openai/grok-4-1-fast",
-        instructions: ["CLAUDE.md"],
-        permission: {
-          webfetch: "allow",
-          websearch: "allow",
-        },
-      }, null, 2),
+      content: JSON.stringify(buildOpenCodeConfig(config.provider, config.model), null, 2),
     },
   ]
 }
@@ -122,7 +166,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       { timeoutMs: 60_000 }
     )
 
-    await runCmd(sandbox, "install-agent", `sandbox-agent install-agent ${config.agentType}`, {
+    await runCmd(sandbox, "install-agent", "sandbox-agent install-agent opencode", {
       timeoutMs: 120_000,
     })
 
