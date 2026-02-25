@@ -56,7 +56,7 @@ function cleanToolCallText(text: string): string {
 }
 
 interface ChatInterfaceProps {
-  agent: { name: string; model?: { name?: string } } | null | undefined
+  agent: { name: string; model?: { name?: string }; firstMessageSuggestions?: string[] } | null | undefined
   sendMessage: (args: { message: string; threadId?: Id<"threads"> }) => Promise<{ message: string; threadId: Id<"threads"> }>
   orgName?: string
   environmentLabel?: string
@@ -229,6 +229,36 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
     }
   }
 
+  const handleSuggestionClick = async (text: string) => {
+    if (isLoading || !agent) return
+
+    setError(null)
+    setIsLoading(true)
+
+    setTempUserMessage({
+      _id: `temp-${Date.now()}`,
+      role: "user",
+      content: text,
+      createdAt: Date.now(),
+    })
+
+    try {
+      const result = await sendMessage({
+        message: text,
+        threadId: threadId ?? undefined,
+      })
+
+      if (!threadId && result.threadId) {
+        setThreadId(result.threadId)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send message")
+      setTempUserMessage(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -282,6 +312,25 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
             <p className={cn("max-w-md", embedded ? "text-white/70" : "text-content-secondary")}>
               {embedded ? "Send a message to start a conversation." : `Send a message to start chatting with ${agent.name}.`}
             </p>
+            {agent.firstMessageSuggestions && agent.firstMessageSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-2 max-w-lg mt-4 justify-center">
+                {agent.firstMessageSuggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    disabled={isLoading}
+                    className={cn(
+                      "rounded-full px-4 py-2 text-sm transition-all ease-out-soft disabled:opacity-50",
+                      embedded
+                        ? "liquid-glass liquid-glass-dark text-white hover:bg-white/20"
+                        : "border border-border-primary text-content-secondary hover:bg-background-secondary hover:text-content-primary"
+                    )}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
