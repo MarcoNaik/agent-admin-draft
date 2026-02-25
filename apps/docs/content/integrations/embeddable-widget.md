@@ -81,6 +81,95 @@ The widget accepts configuration through URL parameters on the script `src`:
 ></script>
 ```
 
+## Thread Context
+
+You can pass custom context about the current user or session to your agent by adding extra URL parameters to the script tag. Any parameter that isn't a reserved config parameter (`org`, `agent`, `theme`, `position`) is forwarded as thread context.
+
+```html
+<script
+  src="https://app.struere.dev/embed/widget.js?org=my-company&agent=support-bot&email=jane@example.com&name=Jane&plan=pro"
+  async
+  defer
+></script>
+```
+
+The extra parameters (`email`, `name`, `plan`) are stored on the thread as `channelParams` and become available to the agent via system prompt templates:
+
+```
+{{threadContext.channel}}          → "widget"
+{{threadContext.params.email}}     → "jane@example.com"
+{{threadContext.params.name}}      → "Jane"
+{{threadContext.params.plan}}      → "pro"
+```
+
+### Using Thread Context in System Prompts
+
+Define `threadContextParams` in your agent config to declare what parameters your agent expects:
+
+```typescript
+import { defineAgent } from 'struere'
+
+export default defineAgent({
+  name: "Support",
+  slug: "support-bot",
+  version: "0.1.0",
+  systemPrompt: `You are a support agent for {{organizationName}}.
+
+Channel: {{threadContext.channel}}
+Customer email: {{threadContext.params.email}}
+Customer name: {{threadContext.params.name}}
+Plan: {{threadContext.params.plan}}
+
+## Customer Profile
+{{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
+
+Greet them by name and tailor your responses to their plan level.`,
+  model: { provider: "xai", name: "grok-4-1-fast" },
+  tools: ["entity.query", "entity.get"],
+  threadContextParams: [
+    { name: "email", type: "string", required: true, description: "Customer email" },
+    { name: "name", type: "string", description: "Customer display name" },
+    { name: "plan", type: "string", description: "Subscription plan" },
+    { name: "customerId", type: "string", description: "Entity ID for customer lookup" },
+  ],
+})
+```
+
+### Validation
+
+When `threadContextParams` is defined, the backend validates incoming parameters:
+
+- **Required params** — If a param has `required: true` and is missing, the request fails with an error
+- **Type checking** — Values are validated against the declared type (`string`, `number`, `boolean`)
+- **Unknown params** — Parameters not declared in `threadContextParams` are silently dropped
+
+### Dynamic Widget Parameters
+
+You can set parameters dynamically using JavaScript:
+
+```html
+<script>
+  const user = getCurrentUser()
+  const script = document.createElement("script")
+  script.src = `https://app.struere.dev/embed/widget.js?org=my-company&agent=support-bot&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&customerId=${user.id}`
+  script.async = true
+  script.defer = true
+  document.body.appendChild(script)
+</script>
+```
+
+### Direct Iframe with Context
+
+Thread context works identically with direct iframe embeds. Add parameters to the iframe `src`:
+
+```html
+<iframe
+  src="https://app.struere.dev/embed/my-company/support-bot?theme=dark&email=jane@example.com&name=Jane"
+  style="width: 100%; height: 600px; border: none; border-radius: 12px;"
+  allow="clipboard-read; clipboard-write"
+></iframe>
+```
+
 ## Direct Iframe Embed
 
 If you prefer to embed the chat directly in your page layout (not as a floating widget), use an iframe:
