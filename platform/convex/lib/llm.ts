@@ -125,6 +125,43 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
   return result
 }
 
+const TOOL_CALL_PATTERN = /^(?:entity|event|calendar|whatsapp|agent)[._](?:create|get|query|update|delete|link|unlink|emit|list|freeBusy|send|sendTemplate|sendInteractive|sendMedia|listTemplates|getConversation|getStatus|chat)\b/i
+
+export function cleanToolCallText(text: string): string {
+  const lines = text.split("\n")
+  const cleaned: string[] = []
+  let inToolBlock = false
+  let braceDepth = 0
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    if (TOOL_CALL_PATTERN.test(trimmed)) {
+      inToolBlock = true
+      braceDepth = 0
+      for (const ch of line) {
+        if (ch === "{" || ch === "(") braceDepth++
+        if (ch === "}" || ch === ")") braceDepth--
+      }
+      if (braceDepth <= 0) inToolBlock = false
+      continue
+    }
+
+    if (inToolBlock) {
+      for (const ch of line) {
+        if (ch === "{" || ch === "(") braceDepth++
+        if (ch === "}" || ch === ")") braceDepth--
+      }
+      if (braceDepth <= 0) inToolBlock = false
+      continue
+    }
+
+    cleaned.push(line)
+  }
+
+  return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim()
+}
+
 interface StepData {
   text: string
   toolCalls: Array<{ toolCallId: string; toolName: string; input?: unknown; args?: unknown }>
@@ -154,10 +191,13 @@ export function fromSteps(steps: StepData[]): InternalMessage[] {
         })
       }
     } else if (step.text) {
-      result.push({
-        role: "assistant",
-        content: step.text,
-      })
+      const cleaned = cleanToolCallText(step.text)
+      if (cleaned) {
+        result.push({
+          role: "assistant",
+          content: cleaned,
+        })
+      }
     }
   }
 
