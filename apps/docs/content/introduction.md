@@ -7,7 +7,7 @@ order: 1
 
 # Introduction
 
-Struere is a **permission-aware AI agent platform** that lets you build, deploy, and manage intelligent agents with fine-grained access control. Every operation your agents perform is governed by role-based access control (RBAC) with row-level security (scope rules) and column-level security (field masks), ensuring that agents and users only access the data they are authorized to see.
+Struere is an **AI agent platform** with a built-in data layer, dynamic system prompts, event-driven automation, and integrations. Define agents, entity types, and triggers as TypeScript code, sync them with the CLI, and talk to agents via HTTP API.
 
 ## Platform Architecture
 
@@ -19,66 +19,29 @@ apps/                        packages/                   platform/
 └── web (Marketing)                                     └── tool-executor (Sandboxed)
 ```
 
-- **Dashboard** — A Next.js 14 application providing a real-time admin interface for managing agents, entities, roles, permissions, and integrations.
+- **Dashboard** — A Next.js 14 application for managing agents, entities, and integrations in real-time.
 - **SDK + CLI** — The `struere` package gives you `defineAgent`, `defineEntityType`, `defineRole`, `defineTrigger`, and other helpers to define your platform configuration as code. The CLI syncs these definitions to your backend.
-- **Convex Backend** — The core backend powering real-time data, permission evaluation, agent execution, and tool orchestration.
+- **Convex Backend** — The core backend powering real-time data, agent execution, and tool orchestration.
 - **Tool Executor** — A sandboxed server that runs custom tool handlers with a restricted fetch allowlist.
 
 ## Key Capabilities
 
-### Role-Based Access Control (RBAC)
+### Entity Management (Data Layer)
 
-Define roles with granular policies that control which resources each role can access and what actions they can perform. Struere supports five action types: `create`, `read`, `update`, `delete`, and `list`.
-
-```typescript
-import { defineRole } from 'struere'
-
-export default defineRole({
-  name: "teacher",
-  description: "Tutors who conduct sessions",
-  policies: [
-    { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
-    { resource: "payment", actions: ["*"], effect: "deny" },
-  ],
-})
-```
-
-### Row-Level Security (Scope Rules)
-
-Scope rules filter data at the row level so users only see records they own or are assigned to.
-
-```typescript
-scopeRules: [
-  { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
-]
-```
-
-### Column-Level Security (Field Masks)
-
-Field masks use an allowlist strategy to control which fields are visible to each role. New fields are hidden by default, making the system fail-safe.
-
-```typescript
-fieldMasks: [
-  { entityType: "session", fieldPath: "data.paymentId", maskType: "hide" },
-]
-```
-
-### Entity Management
-
-Define structured entity types with JSON schemas, then create, query, update, and relate entities through both the dashboard and agent tool calls.
+Define structured entity types with JSON schemas. Agents get full CRUD operations — `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete` — plus relationships via `entity.link`/`entity.unlink`, full-text search, and audit trails.
 
 ```typescript
 import { defineEntityType } from 'struere'
 
 export default defineEntityType({
-  name: "Teacher",
-  slug: "teacher",
+  name: "Customer",
+  slug: "customer",
   schema: {
     type: "object",
     properties: {
       name: { type: "string" },
       email: { type: "string", format: "email" },
-      hourlyRate: { type: "number" },
+      plan: { type: "string", enum: ["free", "pro", "enterprise"] },
     },
     required: ["name", "email"],
   },
@@ -86,26 +49,27 @@ export default defineEntityType({
 })
 ```
 
-### Multi-Agent Communication
+### Dynamic System Prompts
 
-Agents can delegate tasks to other agents using the `agent.chat` built-in tool. The platform enforces a depth limit of 3 and detects cycles to prevent infinite loops.
+System prompts are templates evaluated at runtime. Inject live data with `{{variables}}` and embedded queries like `{{entity.query({"type": "customer", "limit": 5})}}`. Agents always have up-to-date context — organization name, current time, entity schemas, and even query results loaded directly into the prompt before the LLM is called.
 
 ```typescript
 export default defineAgent({
-  name: "Coordinator",
-  slug: "coordinator",
-  tools: ["entity.query", "agent.chat"],
-  systemPrompt: "You coordinate between specialized agents...",
+  name: "Support Agent",
+  slug: "support",
+  systemPrompt: `You are {{agentName}} for {{organizationName}}.
+Current time: {{currentTime}}
+
+Available entity types: {{entityTypes}}
+
+Recent tickets: {{entity.query({"type": "ticket", "limit": 10})}}`,
+  tools: ["entity.query", "entity.update", "event.emit"],
 })
 ```
 
-### Environment Isolation
+### Triggers & Automation
 
-All data, roles, configurations, and permissions are fully isolated between `development`, `production`, and `eval` environments. Development API keys cannot access production data. The CLI's `dev` command syncs to both development and eval environments, while `deploy` pushes to production. The eval environment is purpose-built for automated testing with controlled fixture data.
-
-### Triggers and Automations
-
-Define event-driven automations that fire when entities are created, updated, or deleted. Triggers support scheduling, retries, and template variable resolution.
+Define event-driven automations that fire when entities are created, updated, or deleted. Triggers support scheduling, retries, conditional filters, and template variable resolution.
 
 ```typescript
 import { defineTrigger } from 'struere'
@@ -120,14 +84,95 @@ export default defineTrigger({
   },
   actions: [
     {
-      tool: "event.emit",
+      tool: "whatsapp.send",
       args: {
-        eventType: "session.notification",
-        entityId: "{{trigger.entityId}}",
+        phoneNumber: "{{trigger.data.teacherPhone}}",
+        message: "New session scheduled: {{trigger.data.subject}}",
       },
     },
   ],
 })
+```
+
+### Multi-Agent Communication
+
+Agents delegate tasks to other agents using `agent.chat`. Build coordinator agents that route to specialists — billing, scheduling, support. The platform enforces a depth limit of 3 and detects cycles to prevent infinite loops.
+
+```typescript
+export default defineAgent({
+  name: "Coordinator",
+  slug: "coordinator",
+  tools: ["entity.query", "agent.chat"],
+  systemPrompt: "Route billing questions to the billing-agent, scheduling to scheduler...",
+})
+```
+
+### Integrations
+
+Built-in tools for WhatsApp messaging, Google Calendar, Airtable, and Flow/Polar payments. Agents can send WhatsApp messages, manage calendar events, read/write Airtable records, and generate payment links — all without custom code.
+
+### Custom Tools
+
+Define arbitrary TypeScript functions your agents can call. They run on the sandboxed tool executor service and can fetch external APIs, compute data, or format responses.
+
+```typescript
+import { defineTools } from 'struere'
+
+export default defineTools({
+  "weather.get": {
+    description: "Get current weather for a city",
+    parameters: { city: { type: "string" } },
+    handler: async ({ city }) => {
+      const res = await fetch(`https://api.weather.com/v1/current?city=${city}`)
+      return res.json()
+    },
+  },
+})
+```
+
+### Security & Access Control
+
+Role-based access control (RBAC) with row-level security (scope rules) and column-level security (field masks). Every operation is permission-checked. Define what each role can see and do — deny overrides allow.
+
+```typescript
+import { defineRole } from 'struere'
+
+export default defineRole({
+  name: "teacher",
+  description: "Tutors who conduct sessions",
+  policies: [
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
+    { resource: "payment", actions: ["*"], effect: "deny" },
+  ],
+  scopeRules: [
+    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
+  ],
+})
+```
+
+### Environment Isolation
+
+All data, roles, configurations, and permissions are fully isolated between `development`, `production`, and `eval` environments. Development API keys cannot access production data. The eval environment is purpose-built for automated testing with controlled fixture data.
+
+## How It Works
+
+```
+Define agents, entity types, triggers as code
+    │
+    ▼
+CLI syncs definitions to Convex backend (struere dev)
+    │
+    ▼
+Agents receive messages via API: POST /v1/agents/:slug/chat
+    │
+    ▼
+System prompt assembled with live data (template variables + embedded queries)
+    │
+    ▼
+Agents use built-in tools to read/write entities, emit events, send messages
+    │
+    ▼
+Triggers fire automations, events log audit trail
 ```
 
 ## Tech Stack
@@ -140,34 +185,11 @@ export default defineTrigger({
 | **Clerk** | Authentication and organization management |
 | **TypeScript** | End-to-end type safety |
 | **Bun** | Package management and runtime |
-| **Anthropic Claude** | Default LLM provider for agents |
-
-## How It Works
-
-```
-Define agents, roles, entity types as code
-    │
-    ▼
-CLI syncs definitions to Convex backend
-    │
-    ▼
-Agents receive messages via API or dashboard
-    │
-    ▼
-Permission engine evaluates access on every operation
-    │
-    ▼
-Agents use built-in and custom tools (permission-checked)
-    │
-    ▼
-Results are persisted, events are logged, triggers fire
-```
-
-Every request flows through the permission engine: an `ActorContext` is built with the caller's organization, roles, and environment. Policies are evaluated with a deny-overrides-allow model. Scope rules filter query results. Field masks strip unauthorized fields from responses.
 
 ## Next Steps
 
+- [Chat API](./api/chat) — Send messages to agents via HTTP
 - [Getting Started](./getting-started) — Install Struere and create your first agent
+- [Agent Configuration](./sdk/define-agent) — Configure models, tools, and system prompts
+- [Built-in Tools](./tools/built-in-tools) — All available agent tools
 - [CLI Overview](./cli/overview) — Learn the command-line interface
-- [Agent Configuration](./sdk/define-agent) — Deep dive into agent configuration
-- [Permissions](./platform/permissions) — Understand the permission engine
