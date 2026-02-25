@@ -289,7 +289,7 @@ export function useCurrentUserRoles() {
   )
 }
 
-export function useIntegrationConfig(provider: "whatsapp" | "flow" | "google" | "zoom", environment: Environment) {
+export function useIntegrationConfig(provider: "whatsapp" | "flow" | "google" | "zoom" | "airtable", environment: Environment) {
   return useQuery(api.integrations.getConfig, { provider, environment })
 }
 
