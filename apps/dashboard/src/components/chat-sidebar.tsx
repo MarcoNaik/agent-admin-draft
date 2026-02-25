@@ -22,9 +22,11 @@ interface AgentInfo {
   slug: string
   developmentConfig?: {
     model?: { name?: string }
+    firstMessageSuggestions?: string[]
   } | null
   productionConfig?: {
     model?: { name?: string }
+    firstMessageSuggestions?: string[]
   } | null
 }
 
@@ -88,6 +90,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
         message: userMessage,
         threadId: threadId ?? undefined,
         environment,
+        channel: "dashboard" as const,
       })
 
       if (!threadId && result.threadId) {
@@ -113,6 +116,48 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e)
+    }
+  }
+
+  const handleSuggestionClick = async (text: string) => {
+    if (isLoading) return
+
+    setError(null)
+    setIsLoading(true)
+
+    const tempUserMessage: Message = {
+      _id: `temp-${Date.now()}`,
+      role: "user",
+      content: text,
+      createdAt: Date.now(),
+    }
+    setLocalMessages((prev) => [...prev, tempUserMessage])
+
+    try {
+      const result = await sendMessage({
+        agentId: agent._id,
+        message: text,
+        threadId: threadId ?? undefined,
+        environment,
+        channel: "dashboard" as const,
+      })
+
+      if (!threadId && result.threadId) {
+        setThreadId(result.threadId)
+      }
+
+      const tempAssistantMessage: Message = {
+        _id: `temp-assistant-${Date.now()}`,
+        role: "assistant",
+        content: result.message,
+        createdAt: Date.now(),
+      }
+      setLocalMessages((prev) => [...prev, tempAssistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send message")
+      setLocalMessages((prev) => prev.filter((m) => m._id !== tempUserMessage._id))
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -170,6 +215,20 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
             <p className="text-xs text-content-secondary max-w-[180px]">
               Send a message to start chatting with {agent.name}
             </p>
+            {config?.firstMessageSuggestions && config.firstMessageSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3 justify-center max-w-[220px]">
+                {config.firstMessageSuggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    disabled={isLoading}
+                    className="rounded-full px-2.5 py-1 text-[10px] border border-border-primary text-content-secondary hover:bg-background-secondary hover:text-content-primary transition-all ease-out-soft disabled:opacity-50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
