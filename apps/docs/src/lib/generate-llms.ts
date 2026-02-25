@@ -62,6 +62,7 @@ export function generateLlmsTxt(): string {
   let currentSection = ""
   for (const doc of docs) {
     if (doc.section !== currentSection) {
+      if (currentSection) lines.push("")
       currentSection = doc.section
       lines.push(`### ${currentSection}`)
       lines.push("")
