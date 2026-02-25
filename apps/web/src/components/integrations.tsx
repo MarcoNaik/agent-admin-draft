@@ -24,7 +24,7 @@ export function Integrations() {
     <section id="integraciones" className="bg-stone-deep py-20 md:py-28">
       <div ref={ref} className="mx-auto max-w-4xl px-6 md:px-12">
         <div
-          className={`text-center mb-12 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`text-center mb-12 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
@@ -34,7 +34,7 @@ export function Integrations() {
         </div>
 
         <div
-          className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-200 ${
+          className={`transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-200 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
@@ -45,7 +45,7 @@ export function Integrations() {
             {aiProviders.map((provider) => (
               <div
                 key={provider.name}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/50 border border-amber/20 text-sm text-charcoal hover:-translate-y-0.5 hover:shadow-sm transition-all duration-300"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/50 border border-amber/20 text-sm text-charcoal hover:-translate-y-0.5 hover:shadow-sm transition-[transform,box-shadow] duration-300"
               >
                 <span className="font-medium">{provider.name}</span>
                 <span className="text-[10px] text-charcoal/40">{provider.label}</span>
@@ -57,7 +57,7 @@ export function Integrations() {
             {available.map((item) => (
               <div
                 key={item.name}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/70 border border-ocean/15 text-sm text-charcoal hover:-translate-y-0.5 hover:shadow-sm transition-all duration-300"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/70 border border-ocean/15 text-sm text-charcoal hover:-translate-y-0.5 hover:shadow-sm transition-[transform,box-shadow] duration-300"
               >
                 <span>{item.icon}</span>
                 <span>{item.name}</span>

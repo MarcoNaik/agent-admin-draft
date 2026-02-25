@@ -12,7 +12,7 @@ export function EarlyAccess() {
       <div className="mx-auto max-w-2xl px-6 md:px-12">
         <div
           ref={ref}
-          className={`text-center mb-12 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`text-center mb-12 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
@@ -25,7 +25,7 @@ export function EarlyAccess() {
         </div>
 
         <div
-          className={`relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-150 ${
+          className={`relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-150 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
@@ -70,7 +70,7 @@ export function EarlyAccess() {
 
             <a
               href="https://app.struere.dev?studio="
-              className="inline-block w-full max-w-xs text-center text-sm font-medium py-3 rounded-xl bg-ocean text-white hover:bg-ocean-light transition-all duration-200"
+              className="inline-block w-full max-w-xs text-center text-sm font-medium py-3 rounded-xl bg-ocean text-white hover:bg-ocean-light transition-colors duration-200"
             >
               {t.earlyAccess.cta}
             </a>

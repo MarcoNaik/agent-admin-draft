@@ -38,7 +38,7 @@ function TestimonialCard({
   return (
     <div
       ref={ref}
-      className={`relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      className={`relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
       }`}
     >
@@ -70,7 +70,7 @@ export function Testimonials() {
       <div className="mx-auto max-w-5xl px-6 md:px-12">
         <div
           ref={ref}
-          className={`text-center mb-16 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`text-center mb-16 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >

@@ -16,7 +16,7 @@ function Step({
   return (
     <div
       ref={ref}
-      className={`relative py-16 md:py-20 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      className={`relative py-16 md:py-20 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
       }`}
     >
@@ -86,7 +86,7 @@ export function HowItWorks() {
         >
           <h2
             ref={headingRef}
-            className="font-display text-6xl md:text-8xl font-medium text-charcoal-heading transition-opacity duration-1000 ease-in"
+            className="font-display text-6xl md:text-8xl font-medium text-charcoal-heading"
             style={{
               opacity: 0,
               transform: "translateY(-200px)",

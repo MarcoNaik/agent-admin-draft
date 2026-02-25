@@ -21,7 +21,7 @@ export function Pricing() {
       <div className="mx-auto max-w-4xl px-6 md:px-12">
         <div
           ref={ref}
-          className={`text-center mb-12 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`text-center mb-12 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
@@ -34,7 +34,7 @@ export function Pricing() {
         </div>
 
         <div
-          className={`relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 mb-6 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-150 ${
+          className={`relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 mb-6 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-150 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
@@ -80,7 +80,7 @@ export function Pricing() {
 
               <a
                 href="https://app.struere.dev"
-                className="inline-block text-center text-sm font-medium py-3 px-8 rounded-xl bg-ocean text-white hover:bg-ocean-light transition-all duration-200"
+                className="inline-block text-center text-sm font-medium py-3 px-8 rounded-xl bg-ocean text-white hover:bg-ocean-light transition-colors duration-200"
               >
                 {t.pricing.freeCta}
               </a>

@@ -244,7 +244,7 @@ export function HeroSection() {
                     <button
                       type="button"
                       onClick={() => setPrompt(s.prompt)}
-                      className="px-4 py-2 text-xs text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-all duration-200 font-sans"
+                      className="px-4 py-2 text-xs text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-colors duration-200 font-sans"
                     >
                       {s.label}
                     </button>

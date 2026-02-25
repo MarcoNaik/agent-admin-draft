@@ -46,7 +46,7 @@ export function CTASection() {
     <section className="relative bg-gradient-to-b from-stone-base to-stone-deep py-24 md:py-32">
       <div ref={ref} className="mx-auto max-w-3xl px-6 md:px-12 text-center">
         <div
-          className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
@@ -57,7 +57,7 @@ export function CTASection() {
 
           <form onSubmit={handleSubmit}>
             <div
-              className={`relative bg-white/60 backdrop-blur-xl rounded-2xl transition-all duration-300 overflow-hidden ${
+              className={`relative bg-white/60 backdrop-blur-xl rounded-2xl transition-shadow duration-300 overflow-hidden ${
                 isFocused ? "shadow-lg shadow-ocean/10" : ""
               }`}
             >
@@ -100,7 +100,7 @@ export function CTASection() {
                 <div className="absolute bottom-3 right-3 z-10">
                   <button
                     type="submit"
-                    className="px-6 py-2.5 text-sm font-medium bg-ocean text-white hover:bg-ocean-light rounded-xl transition-all duration-200"
+                    className="px-6 py-2.5 text-sm font-medium bg-ocean text-white hover:bg-ocean-light rounded-xl transition-colors duration-200"
                   >
                     {t.cta.createButton} &rarr;
                   </button>
@@ -114,7 +114,7 @@ export function CTASection() {
                   key={s.label}
                   type="button"
                   onClick={() => setPrompt(s.prompt)}
-                  className="px-4 py-2 text-xs text-charcoal/50 hover:text-charcoal/80 bg-charcoal/3 hover:bg-charcoal/8 border border-charcoal/5 hover:border-charcoal/15 rounded-full transition-all duration-200"
+                  className="px-4 py-2 text-xs text-charcoal/50 hover:text-charcoal/80 bg-charcoal/3 hover:bg-charcoal/8 border border-charcoal/5 hover:border-charcoal/15 rounded-full transition-colors duration-200"
                 >
                   {s.label}
                 </button>

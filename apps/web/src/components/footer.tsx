@@ -11,7 +11,7 @@ export function Footer() {
     <footer ref={ref} className="bg-stone-card border-t border-charcoal/5">
       <div className="mx-auto max-w-5xl px-6 md:px-12 py-16 md:py-20">
         <div
-          className={`grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
           }`}
         >
@@ -37,7 +37,7 @@ export function Footer() {
         </div>
 
         <div
-          className={`mt-16 pt-8 border-t border-charcoal/5 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-700 delay-200 ${
+          className={`mt-16 pt-8 border-t border-charcoal/5 flex flex-col md:flex-row items-center justify-between gap-4 transition-opacity duration-700 delay-200 ${
             isVisible ? "opacity-100" : "opacity-0"
           }`}
         >
