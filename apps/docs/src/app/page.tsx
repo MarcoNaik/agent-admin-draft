@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { BookOpen, Terminal, Wrench, Shield, Zap, Code } from "lucide-react"
+import { BookOpen, Terminal, Wrench, Zap, Code, Globe } from "lucide-react"
 
 const cards = [
   {
@@ -9,10 +9,10 @@ const cards = [
     icon: Zap,
   },
   {
-    title: "Platform Concepts",
-    description: "Entities, permissions, agents, events, and triggers.",
-    href: "/platform/entities",
-    icon: BookOpen,
+    title: "Chat API",
+    description: "POST /v1/agents/:slug/chat — send messages to agents via HTTP.",
+    href: "/api/chat",
+    icon: Globe,
   },
   {
     title: "SDK Reference",
@@ -22,21 +22,21 @@ const cards = [
   },
   {
     title: "Built-in Tools",
-    description: "Entity, event, calendar, WhatsApp, and agent tools.",
+    description: "Entity, event, calendar, WhatsApp, Airtable, and agent tools.",
     href: "/tools/built-in-tools",
     icon: Wrench,
+  },
+  {
+    title: "Platform Concepts",
+    description: "Entities, agents, triggers, events, permissions, and evals.",
+    href: "/platform/entities",
+    icon: BookOpen,
   },
   {
     title: "CLI Commands",
     description: "init, dev, deploy, add, status, and pull.",
     href: "/cli/overview",
     icon: Terminal,
-  },
-  {
-    title: "Permissions",
-    description: "Policies, scope rules, field masks, and environment isolation.",
-    href: "/platform/permissions",
-    icon: Shield,
   },
 ]
 
@@ -45,7 +45,7 @@ export default function Home() {
     <div className="px-6 py-8 lg:px-16 lg:py-12">
       <h1 className="text-4xl font-bold text-charcoal-heading mb-3 font-display tracking-tight">Struere Docs</h1>
       <p className="text-content-secondary mb-8 text-base leading-relaxed max-w-3xl">
-        Struere is a permission-aware AI agent platform. Define agents, entity types, roles, and triggers as code — then sync and deploy with the CLI.
+        Struere is an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations. Define agents, entity types, and triggers as code — talk to them via API.
       </p>
 
       <div className="mb-10 flex gap-3">

@@ -32,13 +32,22 @@ export const metadata: Metadata = {
     default: "Struere Docs",
     template: "%s | Struere Docs",
   },
-  description: "Documentation for the Struere permission-aware AI agent platform.",
+  description: "Documentation for Struere — an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations. Chat API: POST /v1/agents/:slug/chat. LLM docs: https://docs.struere.dev/llms.txt",
   icons: {
     icon: "/favicon.svg",
   },
+  alternates: {
+    types: {
+      "text/plain": [
+        { url: "/llms.txt", title: "LLM Documentation Index" },
+        { url: "/llms-full.txt", title: "Full LLM Documentation" },
+        { url: "/llms-api.txt", title: "API Reference for LLMs" },
+      ],
+    },
+  },
   openGraph: {
     title: "Struere Docs",
-    description: "Documentation for the Struere permission-aware AI agent platform.",
+    description: "Documentation for Struere — an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations.",
     url: "https://docs.struere.dev",
     siteName: "Struere Docs",
     type: "website",
@@ -47,7 +56,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "Struere Docs",
-    description: "Documentation for the Struere permission-aware AI agent platform.",
+    description: "Documentation for Struere — an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations.",
   },
 }
 
