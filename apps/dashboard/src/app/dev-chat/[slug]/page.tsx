@@ -14,7 +14,7 @@ export default function DevChatPage() {
   const sendBySlug = useSendChatMessageBySlug()
 
   const agentDisplay = agent
-    ? { name: agent.name, model: agent.developmentConfig?.model }
+    ? { name: agent.name, model: agent.developmentConfig?.model, firstMessageSuggestions: agent.developmentConfig?.firstMessageSuggestions }
     : agent
 
   const sendMessage = async (args: { message: string; threadId?: Id<"threads"> }) => {
@@ -23,6 +23,7 @@ export default function DevChatPage() {
       message: args.message,
       threadId: args.threadId,
       environment: "development",
+      channel: "dashboard" as const,
     })
   }
 
