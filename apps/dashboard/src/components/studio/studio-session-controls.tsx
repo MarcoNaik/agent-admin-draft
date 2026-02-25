@@ -10,6 +10,7 @@ interface StudioSessionControlsProps {
   isStopping: boolean
   isConnected: boolean
   onStop: () => void
+  model?: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -36,6 +37,7 @@ export function StudioSessionControls({
   isStopping,
   isConnected,
   onStop,
+  model,
 }: StudioSessionControlsProps) {
   const isActive = status === "provisioning" || status === "ready" || status === "active" || status === "idle"
 
@@ -57,6 +59,12 @@ export function StudioSessionControls({
             {STATUS_LABELS[status] ?? status}
           </span>
         </div>
+      )}
+
+      {isActive && model && (
+        <Badge variant="outline" className="text-[10px] font-normal text-content-tertiary">
+          {model}
+        </Badge>
       )}
 
       {isConnected && (
