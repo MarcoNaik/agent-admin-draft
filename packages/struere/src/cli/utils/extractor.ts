@@ -31,6 +31,13 @@ const BUILTIN_TOOLS = [
   'whatsapp.getConversation',
   'whatsapp.getStatus',
   'agent.chat',
+  'airtable.listBases',
+  'airtable.listTables',
+  'airtable.listRecords',
+  'airtable.getRecord',
+  'airtable.createRecords',
+  'airtable.updateRecords',
+  'airtable.deleteRecords',
 ]
 
 export interface SyncPayload {
@@ -39,6 +46,13 @@ export interface SyncPayload {
     slug: string
     version: string
     description?: string
+    firstMessageSuggestions?: string[]
+    threadContextParams?: Array<{
+      name: string
+      type: 'string' | 'number' | 'boolean'
+      required?: boolean
+      description?: string
+    }>
     systemPrompt: string
     model: {
       provider: string
@@ -312,6 +326,8 @@ function extractAgentPayload(
     slug: agent.slug,
     version: agent.version,
     description: agent.description,
+    firstMessageSuggestions: agent.firstMessageSuggestions,
+    threadContextParams: agent.threadContextParams,
     systemPrompt,
     model: {
       provider: agent.model?.provider || 'xai',
@@ -347,6 +363,13 @@ function getBuiltinToolDescription(name: string): string {
     'whatsapp.getConversation': 'Get WhatsApp conversation history with a phone number',
     'whatsapp.getStatus': 'Get WhatsApp connection status for this organization',
     'agent.chat': 'Send a message to another agent and get its response',
+    'airtable.listBases': 'List all Airtable bases accessible with the configured token',
+    'airtable.listTables': 'List all tables in an Airtable base',
+    'airtable.listRecords': 'List records from an Airtable table with optional filtering and sorting',
+    'airtable.getRecord': 'Get a single record from an Airtable table by ID',
+    'airtable.createRecords': 'Create up to 10 records in an Airtable table',
+    'airtable.updateRecords': 'Update up to 10 records in an Airtable table',
+    'airtable.deleteRecords': 'Delete up to 10 records from an Airtable table',
   }
   return descriptions[name] || name
 }
@@ -583,6 +606,67 @@ function getBuiltinToolParameters(name: string): unknown {
         context: { type: 'object', description: 'Optional context data to pass to the target agent' },
       },
       required: ['agent', 'message'],
+    },
+    'airtable.listBases': {
+      type: 'object',
+      properties: {},
+    },
+    'airtable.listTables': {
+      type: 'object',
+      properties: {
+        baseId: { type: 'string', description: 'Airtable base ID (e.g., "appXXXXXXXXXXXXXX")' },
+      },
+      required: ['baseId'],
+    },
+    'airtable.listRecords': {
+      type: 'object',
+      properties: {
+        baseId: { type: 'string', description: 'Airtable base ID' },
+        tableIdOrName: { type: 'string', description: 'Table ID or name' },
+        pageSize: { type: 'number', description: 'Number of records per page (max 100)' },
+        offset: { type: 'string', description: 'Pagination offset from a previous response' },
+        filterByFormula: { type: 'string', description: 'Airtable formula to filter records (e.g., "{Status} = \'Active\'")' },
+        sort: { type: 'array', items: { type: 'object', properties: { field: { type: 'string' }, direction: { type: 'string', enum: ['asc', 'desc'] } }, required: ['field'] }, description: 'Sort configuration' },
+        fields: { type: 'array', items: { type: 'string' }, description: 'Only return specific field names' },
+        view: { type: 'string', description: 'Name or ID of an Airtable view to use' },
+      },
+      required: ['baseId', 'tableIdOrName'],
+    },
+    'airtable.getRecord': {
+      type: 'object',
+      properties: {
+        baseId: { type: 'string', description: 'Airtable base ID' },
+        tableIdOrName: { type: 'string', description: 'Table ID or name' },
+        recordId: { type: 'string', description: 'Record ID (e.g., "recXXXXXXXXXXXXXX")' },
+      },
+      required: ['baseId', 'tableIdOrName', 'recordId'],
+    },
+    'airtable.createRecords': {
+      type: 'object',
+      properties: {
+        baseId: { type: 'string', description: 'Airtable base ID' },
+        tableIdOrName: { type: 'string', description: 'Table ID or name' },
+        records: { type: 'array', items: { type: 'object', properties: { fields: { type: 'object', description: 'Field values for the record' } }, required: ['fields'] }, description: 'Array of records to create (max 10)' },
+      },
+      required: ['baseId', 'tableIdOrName', 'records'],
+    },
+    'airtable.updateRecords': {
+      type: 'object',
+      properties: {
+        baseId: { type: 'string', description: 'Airtable base ID' },
+        tableIdOrName: { type: 'string', description: 'Table ID or name' },
+        records: { type: 'array', items: { type: 'object', properties: { id: { type: 'string', description: 'Record ID to update' }, fields: { type: 'object', description: 'Field values to update' } }, required: ['id', 'fields'] }, description: 'Array of records to update (max 10)' },
+      },
+      required: ['baseId', 'tableIdOrName', 'records'],
+    },
+    'airtable.deleteRecords': {
+      type: 'object',
+      properties: {
+        baseId: { type: 'string', description: 'Airtable base ID' },
+        tableIdOrName: { type: 'string', description: 'Table ID or name' },
+        recordIds: { type: 'array', items: { type: 'string' }, description: 'Array of record IDs to delete (max 10)' },
+      },
+      required: ['baseId', 'tableIdOrName', 'recordIds'],
     },
   }
   return schemas[name] || { type: 'object', properties: {} }
