@@ -47,7 +47,15 @@ function isBot(req: NextRequest): boolean {
   const ua = req.headers.get("user-agent") || ""
   if (!ua || ua.length < 10) return true
   if (BOT_UA_PATTERNS.some((p) => p.test(ua))) return true
+
+  const accept = req.headers.get("accept") || ""
+  if (!accept.includes("text/html")) return true
+
   if (!req.headers.get("sec-fetch-mode")) return true
+
+  const secFetchDest = req.headers.get("sec-fetch-dest")
+  if (secFetchDest && secFetchDest !== "document") return true
+
   return false
 }
 

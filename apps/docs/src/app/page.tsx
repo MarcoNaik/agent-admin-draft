@@ -82,7 +82,7 @@ export default function Home() {
       <div className="mt-10 pt-6 prismatic-border">
         <div className="pt-6">
           <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-3">For LLMs</h3>
-          <div className="flex gap-4 text-sm">
+          <div className="flex gap-4 text-sm mb-4">
             <Link href="/llms.txt" className="text-content-tertiary hover:text-ocean underline underline-offset-2 transition-colors">
               llms.txt
             </Link>
@@ -90,6 +90,19 @@ export default function Home() {
               llms-full.txt
             </Link>
           </div>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-content-tertiary hover:text-ocean transition-colors text-xs select-none">
+              Are you an AI? How to read these docs
+            </summary>
+            <div className="mt-3 pl-4 border-l border-border space-y-1.5 text-content-secondary text-xs leading-relaxed">
+              <p><strong className="text-charcoal">/llms.txt</strong> — Documentation index. Start here to see all available pages and section files.</p>
+              <p><strong className="text-charcoal">/llms-full.txt</strong> — Complete documentation in one file. No further fetches needed.</p>
+              <p><strong className="text-charcoal">{"/{path}.md"}</strong> — Any page as raw markdown. Example: <code className="text-[11px] bg-surface px-1 py-0.5 rounded">/introduction.md</code>, <code className="text-[11px] bg-surface px-1 py-0.5 rounded">/api/chat.md</code></p>
+              <p><strong className="text-charcoal">/llms-{"[section]"}.txt</strong> — Section files: <code className="text-[11px] bg-surface px-1 py-0.5 rounded">api</code>, <code className="text-[11px] bg-surface px-1 py-0.5 rounded">sdk</code>, <code className="text-[11px] bg-surface px-1 py-0.5 rounded">tools</code>, <code className="text-[11px] bg-surface px-1 py-0.5 rounded">platform</code>, <code className="text-[11px] bg-surface px-1 py-0.5 rounded">integrations</code>, <code className="text-[11px] bg-surface px-1 py-0.5 rounded">cli</code></p>
+              <p><strong className="text-charcoal">/openapi.yaml</strong> — OpenAPI spec for the Chat API.</p>
+              <p className="text-content-tertiary pt-1">Non-browser requests are automatically redirected to /llms.txt. For direct access to plain text, use .txt or .md URLs.</p>
+            </div>
+          </details>
         </div>
       </div>
     </div>
