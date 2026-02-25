@@ -59,6 +59,13 @@ export default defineSchema({
         isBuiltin: v.boolean(),
       })
     ),
+    firstMessageSuggestions: v.optional(v.array(v.string())),
+    threadContextParams: v.optional(v.array(v.object({
+      name: v.string(),
+      type: v.union(v.literal("string"), v.literal("number"), v.literal("boolean")),
+      required: v.optional(v.boolean()),
+      description: v.optional(v.string()),
+    }))),
     createdAt: v.number(),
     deployedBy: v.optional(v.id("users")),
   })
@@ -71,7 +78,8 @@ export default defineSchema({
     environment: environmentValidator,
     userId: v.optional(v.id("users")),
     externalId: v.optional(v.string()),
-    metadata: v.optional(v.any()),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    channelParams: v.optional(v.any()),
     conversationId: v.optional(v.string()),
     parentThreadId: v.optional(v.id("threads")),
     createdAt: v.number(),
@@ -389,7 +397,7 @@ export default defineSchema({
   integrationConfigs: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom")),
+    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable")),
     config: v.any(),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
     lastVerifiedAt: v.union(v.number(), v.null()),
@@ -603,7 +611,7 @@ export default defineSchema({
     ),
     sandboxProvider: v.literal("e2b"),
     sandboxId: v.optional(v.string()),
-    agentType: v.union(v.literal("opencode"), v.literal("claude")),
+    agentType: v.literal("opencode"),
     agentSessionId: v.optional(v.string()),
     acpServerId: v.optional(v.string()),
     sandboxUrl: v.optional(v.string()),
@@ -617,6 +625,8 @@ export default defineSchema({
     totalOutputTokens: v.optional(v.number()),
     totalCreditsConsumed: v.optional(v.number()),
     model: v.optional(v.string()),
+    provider: v.optional(v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai"))),
+    keySource: v.optional(v.union(v.literal("platform"), v.literal("custom"))),
   })
     .index("by_org_env_user", ["organizationId", "environment", "userId"])
     .index("by_org_env_status", ["organizationId", "environment", "status"])
