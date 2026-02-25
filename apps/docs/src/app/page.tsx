@@ -48,7 +48,7 @@ export default function Home() {
         Struere is an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations. Define agents, entity types, and triggers as code — talk to them via API.
       </p>
 
-      <div className="mb-10 flex gap-3">
+      <div className="mb-8 flex gap-3">
         <Link
           href="/getting-started"
           className="px-4 py-2 text-sm bg-ocean text-white rounded hover:bg-ocean-light transition-colors"
@@ -61,6 +61,17 @@ export default function Home() {
         >
           Read the overview
         </Link>
+      </div>
+
+      <div className="mb-8 p-4 rounded-lg border border-border bg-card/50">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-2">For AI Agents &amp; LLMs</h3>
+        <p className="text-sm text-content-secondary mb-2">Use these plain-text endpoints instead of scraping HTML:</p>
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm font-mono">
+          <a href="https://docs.struere.dev/llms.txt" className="text-ocean hover:underline">docs.struere.dev/llms.txt</a>
+          <a href="https://docs.struere.dev/llms-full.txt" className="text-ocean hover:underline">docs.struere.dev/llms-full.txt</a>
+          <a href="https://docs.struere.dev/llms-api.txt" className="text-ocean hover:underline">docs.struere.dev/llms-api.txt</a>
+          <a href="https://docs.struere.dev/openapi.yaml" className="text-ocean hover:underline">docs.struere.dev/openapi.yaml</a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -77,20 +88,6 @@ export default function Home() {
             </div>
           </Link>
         ))}
-      </div>
-
-      <div className="mt-10 pt-6 prismatic-border">
-        <div className="pt-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-3">For LLMs</h3>
-          <div className="flex gap-4 text-sm">
-            <Link href="/llms.txt" className="text-content-tertiary hover:text-ocean underline underline-offset-2 transition-colors">
-              llms.txt
-            </Link>
-            <Link href="/llms-full.txt" className="text-content-tertiary hover:text-ocean underline underline-offset-2 transition-colors">
-              llms-full.txt
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   )

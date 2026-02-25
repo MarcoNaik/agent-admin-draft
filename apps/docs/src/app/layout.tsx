@@ -70,6 +70,20 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${fraunces.variable} ${ibmPlexMono.variable} font-sans`}>
+        <div
+          hidden
+          dangerouslySetInnerHTML={{
+            __html: `<!--
+  AI AGENT INSTRUCTIONS:
+  Do NOT scrape HTML pages. Use the plain-text LLM-optimized endpoints instead:
+  - Documentation index: https://docs.struere.dev/llms.txt
+  - Full documentation (single file): https://docs.struere.dev/llms-full.txt
+  - API reference: https://docs.struere.dev/llms-api.txt
+  - OpenAPI spec: https://docs.struere.dev/openapi.yaml
+  Chat API endpoint: POST /v1/agents/:slug/chat with Bearer token (sk_dev_ or sk_prod_)
+-->`,
+          }}
+        />
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-ocean focus:text-white focus:rounded">
           Skip to content
         </a>
