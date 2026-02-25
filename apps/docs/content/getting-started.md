@@ -171,15 +171,9 @@ Every time you save a file, the CLI re-syncs your changes.
 
 Once synced, you can interact with your agent in two ways:
 
-### Via the Dashboard
-
-1. Open [app.struere.dev](https://app.struere.dev) and navigate to **Agents**
-2. Select your agent ("My First Agent")
-3. Use the built-in chat interface to send a message
-
 ### Via the API
 
-First, create an API key in the dashboard under **Settings > API Keys**. Select the **development** environment.
+Create an API key in the dashboard under **Settings > API Keys**. Select the **development** environment.
 
 Then send a request using the slug-based endpoint:
 
@@ -206,6 +200,12 @@ You should receive a JSON response:
 
 Your API URL is shown in the dashboard under **Settings > API Keys**.
 
+### Via the Dashboard
+
+1. Open [app.struere.dev](https://app.struere.dev) and navigate to **Agents**
+2. Select your agent ("My First Agent")
+3. Use the built-in chat interface to send a message
+
 ## Deploy to Production
 
 When you are ready to go live, deploy your agents to the production environment:
@@ -218,8 +218,9 @@ This promotes all agent configurations to the production environment where they 
 
 ## Next Steps
 
+- [Chat API](./api/chat) — Full API reference for sending messages to agents
 - [CLI Overview](./cli/overview) — Learn all available CLI commands
 - [Agent Configuration](./sdk/define-agent) — Configure models, tools, and system prompts
 - [Entity Types](./sdk/define-entity-type) — Define structured data schemas
-- [Roles & Permissions](./sdk/define-role) — Set up access control
+- [Built-in Tools](./tools/built-in-tools) — All available agent tools
 - [Triggers](./sdk/define-trigger) — Build event-driven automations
