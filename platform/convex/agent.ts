@@ -8,6 +8,7 @@ import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } fr
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
 import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps, cleanToolCallText } from "./lib/llm"
+import { isBuiltinTool } from "./tools/helpers"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -46,7 +47,6 @@ interface ToolConfig {
   description: string
   parameters: unknown
   handlerCode?: string
-  isBuiltin: boolean
 }
 
 function serializeActor(actor: ActorContext) {
@@ -237,7 +237,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
             { actor: serializeActor(actor), agentId, toolName: originalName }
           )
 
-          if (toolConfig?.isBuiltin) {
+          if (isBuiltinTool(originalName)) {
             return await executeBuiltinTool(ctx, {
               organizationId: toolIdentity.organizationId,
               actorId: toolIdentity.actorId,

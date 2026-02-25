@@ -65,7 +65,6 @@ export interface SyncPayload {
       description: string
       parameters: unknown
       handlerCode?: string
-      isBuiltin: boolean
     }>
   }>
   entityTypes: Array<{
@@ -300,7 +299,6 @@ function extractAgentPayload(
         name: toolName,
         description: getBuiltinToolDescription(toolName),
         parameters: getBuiltinToolParameters(toolName),
-        isBuiltin: true,
       }
     }
 
@@ -317,7 +315,6 @@ function extractAgentPayload(
       description: customTool.description,
       parameters: customTool.parameters || { type: 'object', properties: {} },
       handlerCode: extractHandlerCode(customTool._originalHandler || customTool.handler),
-      isBuiltin: false,
     }
   })
 

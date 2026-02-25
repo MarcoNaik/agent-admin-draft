@@ -120,7 +120,6 @@ export interface SyncPayload {
       description: string
       parameters: unknown
       handlerCode?: string
-      isBuiltin: boolean
     }>
   }>
   entityTypes: Array<{
@@ -423,7 +422,7 @@ export interface PullStateAgent {
   version: string
   systemPrompt: string
   model: { provider: string; name: string; temperature?: number; maxTokens?: number }
-  tools: Array<{ name: string; description: string; parameters: unknown; handlerCode?: string; isBuiltin: boolean }>
+  tools: Array<{ name: string; description: string; parameters: unknown; handlerCode?: string }>
 }
 
 export interface PullStateEntityType {

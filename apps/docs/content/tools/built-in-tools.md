@@ -5,9 +5,14 @@ section: "Tools"
 order: 1
 ---
 
-Struere provides a set of built-in tools that agents can use to interact with entities, events, calendars, WhatsApp, and other agents. All built-in tools are **permission-aware** — every invocation builds an `ActorContext` from the calling agent's identity and evaluates policies, scope rules, and field masks before returning results.
+Struere provides a set of built-in tools that agents can use to interact with entities, events, calendars, WhatsApp, Airtable, and other agents. All built-in tools are **permission-aware** — every invocation builds an `ActorContext` from the calling agent's identity and evaluates policies, scope rules, and field masks before returning results.
 
-## Tool Reference
+Built-in tools fall into two categories:
+
+- **Core tools** — Always available, no external setup required. These interact with Struere's own data layer.
+- **Integration tools** — Require an active integration configured in the dashboard. These connect to external services like Google Calendar, WhatsApp, and Airtable.
+
+## Core Tools
 
 | Tool | Category | Description |
 |------|----------|-------------|
@@ -20,21 +25,31 @@ Struere provides a set of built-in tools that agents can use to interact with en
 | `entity.unlink` | Entity | Remove a relation between two entities |
 | `event.emit` | Event | Emit a custom event for audit logging |
 | `event.query` | Event | Query historical events with filters |
-| `calendar.list` | Calendar | List calendar events for a user |
-| `calendar.create` | Calendar | Create a calendar event |
-| `calendar.update` | Calendar | Update a calendar event |
-| `calendar.delete` | Calendar | Delete a calendar event |
-| `calendar.freeBusy` | Calendar | Check free/busy availability |
-| `whatsapp.send` | WhatsApp | Send a WhatsApp message |
-| `whatsapp.sendTemplate` | WhatsApp | Send a WhatsApp template message |
-| `whatsapp.sendInteractive` | WhatsApp | Send an interactive button message |
-| `whatsapp.sendMedia` | WhatsApp | Send an image or audio message |
-| `whatsapp.listTemplates` | WhatsApp | List available message templates |
-| `whatsapp.createTemplate` | WhatsApp | Create a new message template on Meta |
-| `whatsapp.deleteTemplate` | WhatsApp | Delete a message template from Meta |
-| `whatsapp.getTemplateStatus` | WhatsApp | Check approval status of a template |
-| `whatsapp.getConversation` | WhatsApp | Get conversation history |
-| `whatsapp.getStatus` | WhatsApp | Check WhatsApp connection status |
+| `agent.chat` | Agent | Send a message to another agent and get its response |
+
+## Integration Tools
+
+Integration tools connect your agents to external services. They work exactly like core tools (same permission enforcement, same API) but require you to configure the corresponding integration in the dashboard first.
+
+If an agent calls an integration tool and the integration isn't configured, the tool returns a clear error explaining what's missing — not a generic "no handler" error.
+
+| Tool | Integration | Description |
+|------|-------------|-------------|
+| `calendar.list` | Google Calendar | List calendar events for a user |
+| `calendar.create` | Google Calendar | Create a calendar event |
+| `calendar.update` | Google Calendar | Update a calendar event |
+| `calendar.delete` | Google Calendar | Delete a calendar event |
+| `calendar.freeBusy` | Google Calendar | Check free/busy availability |
+| `whatsapp.send` | WhatsApp (Kapso) | Send a WhatsApp message |
+| `whatsapp.sendTemplate` | WhatsApp (Kapso) | Send a WhatsApp template message |
+| `whatsapp.sendInteractive` | WhatsApp (Kapso) | Send an interactive button message |
+| `whatsapp.sendMedia` | WhatsApp (Kapso) | Send an image or audio message |
+| `whatsapp.listTemplates` | WhatsApp (Kapso) | List available message templates |
+| `whatsapp.createTemplate` | WhatsApp (Kapso) | Create a new message template on Meta |
+| `whatsapp.deleteTemplate` | WhatsApp (Kapso) | Delete a message template from Meta |
+| `whatsapp.getTemplateStatus` | WhatsApp (Kapso) | Check approval status of a template |
+| `whatsapp.getConversation` | WhatsApp (Kapso) | Get conversation history |
+| `whatsapp.getStatus` | WhatsApp (Kapso) | Check WhatsApp connection status |
 | `airtable.listBases` | Airtable | List accessible Airtable bases |
 | `airtable.listTables` | Airtable | List tables in an Airtable base |
 | `airtable.listRecords` | Airtable | List records with filtering and pagination |
@@ -42,7 +57,14 @@ Struere provides a set of built-in tools that agents can use to interact with en
 | `airtable.createRecords` | Airtable | Create up to 10 records |
 | `airtable.updateRecords` | Airtable | Update up to 10 records |
 | `airtable.deleteRecords` | Airtable | Delete up to 10 records |
-| `agent.chat` | Agent | Send a message to another agent and get its response |
+
+### Setting Up Integrations
+
+Each integration requires configuration in the dashboard under **Settings > Integrations**:
+
+- **Google Calendar** — Connect a Google account with calendar access. See [Google Calendar integration](/integrations/google-calendar).
+- **WhatsApp** — Connect via Kapso with a WhatsApp Business number. See [WhatsApp integration](/integrations/whatsapp).
+- **Airtable** — Provide a Personal Access Token with access to your bases. See [Airtable integration](/integrations/airtable).
 
 ## Enabling Tools
 

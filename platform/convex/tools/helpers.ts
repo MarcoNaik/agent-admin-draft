@@ -73,3 +73,13 @@ export type BuiltinToolName = (typeof BUILTIN_TOOLS)[number]
 export function isBuiltinTool(name: string): name is BuiltinToolName {
   return BUILTIN_TOOLS.includes(name as BuiltinToolName)
 }
+
+export const INTEGRATION_TOOL_PREFIXES = [
+  "calendar.",
+  "whatsapp.",
+  "airtable.",
+] as const
+
+export function isIntegrationTool(name: string): boolean {
+  return INTEGRATION_TOOL_PREFIXES.some(prefix => name.startsWith(prefix))
+}

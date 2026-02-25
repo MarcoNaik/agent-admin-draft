@@ -2,6 +2,7 @@ import { ActionCtx } from "../_generated/server"
 import { internal } from "../_generated/api"
 import { Id } from "../_generated/dataModel"
 import { ActorContext, PermissionError } from "./permissions/types"
+import { isBuiltinTool } from "../tools/helpers"
 
 const MAX_RESULT_SIZE = 10 * 1024
 
@@ -33,7 +34,6 @@ export interface TemplateContext {
 
 interface ToolConfig {
   name: string
-  isBuiltin?: boolean
   handlerCode?: string
 }
 
@@ -414,7 +414,7 @@ async function executeTemplateFunction(
   try {
     let result: unknown
 
-    if (tool.isBuiltin) {
+    if (isBuiltinTool(name)) {
       result = await executor.executeBuiltin(name, args)
     } else if (tool.handlerCode) {
       result = await executor.executeCustom(name, args)

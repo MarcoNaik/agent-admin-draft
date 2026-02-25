@@ -385,7 +385,7 @@ export const getCompileData = internalQuery({
 
 interface CompileData {
   agent: { name: string; slug: string }
-  config: { systemPrompt: string; tools: Array<{ name: string; isBuiltin?: boolean; handlerCode?: string }> }
+  config: { systemPrompt: string; tools: Array<{ name: string; handlerCode?: string }> }
   organization: { name: string } | null
   entityTypesRaw: Array<{ name: string; slug: string; description?: string; schema: unknown; searchFields?: string[] }>
   rolesRaw: Array<{ name: string; description?: string }>

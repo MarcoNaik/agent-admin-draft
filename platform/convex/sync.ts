@@ -32,7 +32,6 @@ const agentValidator = v.object({
       description: v.string(),
       parameters: v.any(),
       handlerCode: v.optional(v.string()),
-      isBuiltin: v.boolean(),
     })
   ),
 })

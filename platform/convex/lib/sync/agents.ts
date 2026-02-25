@@ -25,7 +25,6 @@ export interface AgentInput {
     description: string
     parameters: unknown
     handlerCode?: string
-    isBuiltin: boolean
   }>
 }
 
