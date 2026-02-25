@@ -208,6 +208,7 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
     systemPrompt: string | (() => string | Promise<string>)
     model?: ModelConfig
     tools?: string[]
+    firstMessageSuggestions?: string[]
   }
 
   export interface JSONSchemaProperty {
