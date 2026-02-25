@@ -455,7 +455,7 @@ export const compileSystemPrompt = action({
       actor,
       agent: { name: agent.name, slug: agent.slug },
       agentName: agent.name,
-      thread: { metadata: sampleContext.threadMetadata || {} },
+      threadContext: { channel: undefined, params: sampleContext.threadMetadata || {} },
       message: sampleContext.message || "Hello, this is a sample message.",
       timestamp: now,
       datetime: currentTimeStr,

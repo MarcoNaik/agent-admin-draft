@@ -22,7 +22,7 @@ export interface TemplateContext {
   actor: ActorContext
   agent: { name: string; slug: string }
   agentName: string
-  thread: { metadata?: Record<string, unknown> }
+  threadContext: { channel?: string; params: Record<string, unknown> }
   message: string
   timestamp: number
   datetime: string
