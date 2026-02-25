@@ -6,7 +6,7 @@ import { requireAuth } from "./lib/auth"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
-const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"))
+const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable"))
 
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
@@ -39,6 +39,11 @@ interface ZoomConfig {
   accountId: string
   clientId: string
   clientSecret: string
+}
+
+interface AirtableConfig {
+  personalAccessToken: string
+  defaultBaseId?: string
 }
 
 export const getConfig = query({
@@ -366,6 +371,32 @@ export const testConnection = action({
           lastVerifiedAt: now,
         })
         return { success: true, message: "Zoom configuration saved" }
+      }
+
+      if (args.provider === "airtable") {
+        const airtableConfig = config.config as AirtableConfig
+        if (!airtableConfig.personalAccessToken) {
+          return { success: false, message: "Missing Airtable Personal Access Token" }
+        }
+
+        const response = await fetch("https://api.airtable.com/v0/meta/bases", {
+          headers: { Authorization: `Bearer ${airtableConfig.personalAccessToken}` },
+        })
+
+        if (!response.ok) {
+          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            configId: config._id,
+            status: "error",
+          })
+          return { success: false, message: "Airtable Personal Access Token is invalid or unreachable" }
+        }
+
+        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          configId: config._id,
+          status: "active",
+          lastVerifiedAt: now,
+        })
+        return { success: true, message: "Airtable connection verified" }
       }
 
       return { success: false, message: "Unknown provider" }
