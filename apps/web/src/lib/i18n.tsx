@@ -48,7 +48,7 @@ const translations = {
           number: "02",
           title: "Struere lo construye",
           description:
-            "Nuestros modelos de IA ensamblan un agente con acceso a los datos de tu negocio, integraciones y flujos de conversación. Crea equipos de agentes que colaboran entre sí. En minutos, no semanas.",
+            "Nuestros modelos de IA ensamblan un agente con acceso a tu base de datos, WhatsApp y calendario. Configura permisos, conecta integraciones y despliega — todo desde el navegador o el CLI.",
         },
         {
           number: "03",
@@ -113,9 +113,8 @@ const translations = {
       title: "Integraciones",
       aiModelsLabel: "Modelos de IA",
       available: "Disponible",
-      comingSoon: "Próximamente",
-      moreComingSoon:
-        "Más integraciones en desarrollo.",
+      comingSoon: "",
+      moreComingSoon: "",
     },
     earlyAccess: {
       title: "Gratis durante el acceso anticipado",
@@ -129,7 +128,7 @@ const translations = {
         "WhatsApp Business con inbox en tiempo real",
         "Google Calendar",
         "Base de datos de tu negocio",
-        "Equipos multi-agente",
+        "Delegación entre agentes",
         "Soporte directo del equipo fundador",
       ],
       cta: "Unirme al acceso anticipado",
@@ -145,7 +144,7 @@ const translations = {
         "Agentes ilimitados",
         "WhatsApp, Calendar, API",
         "CLI local de desarrollo",
-        "Equipos multi-agente",
+        "Delegación entre agentes",
         "Analytics y monitoreo",
         "Sin fees de plataforma",
       ],
@@ -252,7 +251,7 @@ const translations = {
           number: "02",
           title: "Struere builds it",
           description:
-            "Our AI models assemble a working agent with your business data, integrations, and conversation flows. Build agent teams that collaborate. In minutes, not weeks.",
+            "Our AI models assemble a working agent with access to your database, WhatsApp, and calendar. Set up permissions, connect integrations, and deploy — all from the browser or CLI.",
         },
         {
           number: "03",
@@ -318,8 +317,8 @@ const translations = {
       title: "Integrations",
       aiModelsLabel: "AI models",
       available: "Available",
-      comingSoon: "Coming soon",
-      moreComingSoon: "More integrations in development.",
+      comingSoon: "",
+      moreComingSoon: "",
     },
     earlyAccess: {
       title: "Free during early access",
@@ -333,7 +332,7 @@ const translations = {
         "WhatsApp Business with real-time inbox",
         "Google Calendar",
         "Your own business database",
-        "Multi-agent teams",
+        "Agent-to-agent delegation",
         "Direct support from the founding team",
       ],
       cta: "Join early access",
@@ -349,7 +348,7 @@ const translations = {
         "Unlimited agents",
         "WhatsApp, Calendar, API",
         "Local CLI development",
-        "Multi-agent teams",
+        "Agent-to-agent delegation",
         "Analytics & monitoring",
         "No platform fees",
       ],

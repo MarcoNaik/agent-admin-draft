@@ -15,12 +15,6 @@ const available = [
   { icon: "\uD83D\uDCC5", name: "Google Calendar" },
 ]
 
-const comingSoon = [
-  { icon: "\uD83D\uDCAC", name: "Slack" },
-  { icon: "\uD83D\uDCCA", name: "Google Sheets" },
-  { icon: "\uD83D\uDECD\uFE0F", name: "Shopify" },
-  { icon: "\uD83D\uDCDD", name: "Notion" },
-]
 
 export function Integrations() {
   const { t } = useI18n()
@@ -74,29 +68,8 @@ export function Integrations() {
             ))}
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3">
-            {comingSoon.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/30 border border-charcoal/5 text-sm text-charcoal/40"
-              >
-                <span className="opacity-50">{item.icon}</span>
-                <span>{item.name}</span>
-                <span className="ml-1 text-[10px] font-medium text-charcoal/30 bg-charcoal/3 px-2 py-0.5 rounded-full">
-                  {t.integrations.comingSoon}
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <p
-          className={`text-center mt-8 text-sm text-charcoal/40 transition-all duration-700 delay-400 ${
-            isVisible ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          {t.integrations.moreComingSoon}
-        </p>
       </div>
     </section>
   )
