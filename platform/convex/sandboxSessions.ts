@@ -5,22 +5,29 @@ import { requireAuth } from "./lib/auth"
 import { calculateCost } from "./lib/creditPricing"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
+const providerValidator = v.optional(v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai")))
+const keySourceValidator = v.optional(v.union(v.literal("platform"), v.literal("custom")))
 
 export const create = mutation({
   args: {
     environment: environmentValidator,
-    agentType: v.union(v.literal("opencode"), v.literal("claude")),
+    agentType: v.literal("opencode"),
     idleTimeoutMs: v.optional(v.number()),
+    model: v.optional(v.string()),
+    provider: providerValidator,
+    keySource: keySourceValidator,
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
-    const balance = await ctx.db
-      .query("creditBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .first()
-    if ((balance?.balance ?? 0) <= 0) {
-      throw new Error("Insufficient credits")
+    if (args.keySource !== "custom") {
+      const balance = await ctx.db
+        .query("creditBalances")
+        .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+        .first()
+      if ((balance?.balance ?? 0) <= 0) {
+        throw new Error("Insufficient credits")
+      }
     }
 
     const existing = await ctx.db
@@ -41,14 +48,14 @@ export const create = mutation({
     }
 
     const now = Date.now()
-    const model = args.agentType === "claude" ? "claude-sonnet-4" : "grok-4-1-fast"
+    const model = args.model ?? "grok-code-fast-1"
     const id = await ctx.db.insert("sandboxSessions", {
       organizationId: auth.organizationId,
       environment: args.environment,
       userId: auth.userId,
       status: "provisioning",
       sandboxProvider: "e2b",
-      agentType: args.agentType,
+      agentType: "opencode",
       lastActivityAt: now,
       idleTimeoutMs: args.idleTimeoutMs ?? 900000,
       createdAt: now,
@@ -56,6 +63,8 @@ export const create = mutation({
       totalInputTokens: 0,
       totalOutputTokens: 0,
       totalCreditsConsumed: 0,
+      provider: args.provider,
+      keySource: args.keySource,
     })
 
     return id
@@ -163,6 +172,8 @@ export const getActiveSafe = query({
       totalOutputTokens: session.totalOutputTokens,
       totalCreditsConsumed: session.totalCreditsConsumed,
       model: session.model,
+      provider: session.provider,
+      keySource: session.keySource,
     }
   },
 })
@@ -372,7 +383,7 @@ export const processUsageEvent = internalMutation({
     const session = await ctx.db.get(args.sessionId)
     if (!session) return
 
-    const model = session.model ?? "grok-4-1-fast"
+    const model = session.model ?? "grok-code-fast-1"
     const cost = calculateCost(model, args.inputTokens, args.outputTokens)
 
     await ctx.db.patch(args.sessionId, {
@@ -381,7 +392,7 @@ export const processUsageEvent = internalMutation({
       totalCreditsConsumed: (session.totalCreditsConsumed ?? 0) + cost,
     })
 
-    if (cost > 0) {
+    if (cost > 0 && session.keySource !== "custom") {
       await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
         organizationId: session.organizationId,
         amount: cost,
