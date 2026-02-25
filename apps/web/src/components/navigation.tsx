@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
@@ -10,16 +10,20 @@ export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pastHero, setPastHero] = useState(false)
   const [hasScrolled, setHasScrolled] = useState(false)
+  const hasScrolledRef = useRef(false)
 
   useEffect(() => {
     const onScroll = () => {
       setPastHero(window.scrollY > window.innerHeight * 0.85)
-      if (!hasScrolled && window.scrollY > 10) setHasScrolled(true)
+      if (!hasScrolledRef.current && window.scrollY > 10) {
+        hasScrolledRef.current = true
+        setHasScrolled(true)
+      }
     }
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [hasScrolled])
+  }, [])
 
   const navLinks = [
     { label: t.nav.howItWorks, href: "#como-funciona" },

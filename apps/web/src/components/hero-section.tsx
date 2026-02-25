@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
 import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
@@ -60,15 +60,20 @@ export function HeroSection() {
   const { mounted, setImageLoaded } = useHeroEntrance()
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
-  const [parallaxY, setParallaxY] = useState(0)
+  const parallaxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    let ticking = false
     const onScroll = () => {
-      const prefersReduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches
-      if (prefersReduced) return
-      setParallaxY(window.scrollY * 0.08)
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        if (parallaxRef.current) {
+          parallaxRef.current.style.transform = `translateY(${window.scrollY * 0.08}px)`
+        }
+        ticking = false
+      })
     }
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
@@ -90,8 +95,8 @@ export function HeroSection() {
         }}
       >
         <div
+          ref={parallaxRef}
           className="absolute inset-0 overflow-hidden"
-          style={{ transform: `translateY(${parallaxY}px)` }}
         >
           <Image
             src="/hero-bg.png"

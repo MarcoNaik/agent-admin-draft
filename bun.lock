@@ -106,7 +106,7 @@
     },
     "packages/struere": {
       "name": "struere",
-      "version": "0.8.3",
+      "version": "0.9.3",
       "bin": {
         "struere": "./dist/bin/struere.js",
       },

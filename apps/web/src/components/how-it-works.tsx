@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect, useCallback } from "react"
+import { useRef, useEffect } from "react"
 import { useReveal } from "@/hooks/use-reveal"
 import { useI18n } from "@/lib/i18n"
 
@@ -40,28 +40,42 @@ export function HowItWorks() {
   const { t } = useI18n()
   const { ref, isVisible } = useReveal({ threshold: 0.2 })
   const headingRef = useRef<HTMLHeadingElement>(null)
-  const [headingProgress, setHeadingProgress] = useState(0.75)
-  const [headingVisible, setHeadingVisible] = useState(false)
+  const headingVisibleRef = useRef(false)
 
   useEffect(() => {
-    const timeout = setTimeout(() => setHeadingVisible(true), 9000)
-    return () => clearTimeout(timeout)
-  }, [])
+    let ticking = false
 
-  const updateProgress = useCallback(() => {
-    if (!headingRef.current) return
-    const rect = headingRef.current.getBoundingClientRect()
-    const vh = window.innerHeight
-    const normalized = 1 - (rect.top / vh)
-    const progress = Math.min(1, Math.max(0.75, 0.75 + (normalized / 0.5) * 0.25))
-    setHeadingProgress(progress)
-  }, [])
+    function updateHeading() {
+      if (!headingRef.current) return
+      const rect = headingRef.current.getBoundingClientRect()
+      const vh = window.innerHeight
+      const normalized = 1 - (rect.top / vh)
+      const progress = Math.min(1, Math.max(0.75, 0.75 + (normalized / 0.5) * 0.25))
+      headingRef.current.style.opacity = headingVisibleRef.current ? String(progress) : "0"
+      headingRef.current.style.transform = `translateY(${-200 + (progress - 0.75) * 800}px)`
+    }
 
-  useEffect(() => {
-    window.addEventListener("scroll", updateProgress, { passive: true })
-    updateProgress()
-    return () => window.removeEventListener("scroll", updateProgress)
-  }, [updateProgress])
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        updateHeading()
+        ticking = false
+      })
+    }
+
+    const timeout = setTimeout(() => {
+      headingVisibleRef.current = true
+      updateHeading()
+    }, 9000)
+
+    window.addEventListener("scroll", onScroll, { passive: true })
+    updateHeading()
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener("scroll", onScroll)
+    }
+  }, [])
 
   return (
     <section id="como-funciona" className="bg-stone-base py-20 md:py-28">
@@ -74,8 +88,8 @@ export function HowItWorks() {
             ref={headingRef}
             className="font-display text-6xl md:text-8xl font-medium text-charcoal-heading transition-opacity duration-1000 ease-in"
             style={{
-              opacity: headingVisible ? headingProgress : 0,
-              transform: `translateY(${-200 + (headingProgress - 0.75) * 800}px)`,
+              opacity: 0,
+              transform: "translateY(-200px)",
               willChange: "opacity, transform",
             }}
           >
