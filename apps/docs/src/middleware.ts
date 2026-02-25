@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const BOT_PATTERNS = [
+const BOT_UA_PATTERNS = [
   /claude/i,
   /anthropic/i,
   /chatgpt/i,
@@ -8,13 +8,12 @@ const BOT_PATTERNS = [
   /gpt/i,
   /perplexity/i,
   /cohere/i,
-  /ai2/i,
   /crawler/i,
   /spider/i,
   /scraper/i,
-  /fetch/i,
   /bot\b/i,
   /python-requests/i,
+  /python-httpx/i,
   /axios/i,
   /node-fetch/i,
   /undici/i,
@@ -23,28 +22,23 @@ const BOT_PATTERNS = [
   /wget/i,
   /go-http-client/i,
   /java\//i,
-  /ruby/i,
-  /perl/i,
   /libwww/i,
   /http\.rb/i,
+  /aiohttp/i,
+  /requests/i,
 ]
 
-function isLikelyBot(req: NextRequest): boolean {
+function isBot(req: NextRequest): boolean {
   const ua = req.headers.get("user-agent") || ""
-  if (BOT_PATTERNS.some((p) => p.test(ua))) return true
   if (!ua || ua.length < 10) return true
-  const secFetchMode = req.headers.get("sec-fetch-mode")
-  if (!secFetchMode) return true
+  if (BOT_UA_PATTERNS.some((p) => p.test(ua))) return true
+  if (!req.headers.get("sec-fetch-mode")) return true
   return false
 }
 
 export function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname !== "/") return NextResponse.next()
-  if (!isLikelyBot(req)) return NextResponse.next()
-
-  const url = req.nextUrl.clone()
-  url.pathname = "/llms-full.txt"
-  return NextResponse.rewrite(url)
+  if (!isBot(req)) return NextResponse.next()
+  return NextResponse.redirect(new URL("/llms-full.txt", req.url), 302)
 }
 
 export const config = {

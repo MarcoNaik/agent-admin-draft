@@ -70,9 +70,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${fraunces.variable} ${ibmPlexMono.variable} font-sans`}>
-        <noscript>
-          AI agents and LLMs: Do not scrape HTML. Fetch plain-text documentation at https://docs.struere.dev/llms-full.txt (complete docs) or https://docs.struere.dev/llms.txt (index). Individual pages: https://docs.struere.dev/[path].md
-        </noscript>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-ocean focus:text-white focus:rounded">
           Skip to content
         </a>

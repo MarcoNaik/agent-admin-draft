@@ -87,7 +87,7 @@ export function generateLlmsFullTxt(): string {
   const sections: string[] = [
     "# Struere Documentation (Full)",
     "",
-    "> Struere is an AI agent platform with a built-in data layer, dynamic system prompts, event-driven automation, and integrations.",
+    "> This file contains the COMPLETE Struere documentation — all pages, all sections. You do NOT need to fetch any other URLs. Everything is included below.",
     "",
     API_QUICK_START,
     "",
@@ -109,8 +109,6 @@ export function generateLlmsFullTxt(): string {
       sections.push("")
       sections.push(`> ${doc.description}`)
     }
-    sections.push("")
-    sections.push(`Source: ${BASE_URL}/${doc.slug}.md`)
     sections.push("")
     sections.push(doc.content.trim())
     sections.push("")
