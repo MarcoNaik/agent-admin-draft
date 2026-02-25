@@ -126,6 +126,30 @@ export const resolveApiKey = internalQuery({
   },
 })
 
+export const resolveStudioKey = query({
+  args: {
+    provider: providerValidator,
+  },
+  returns: v.union(v.object({ apiKey: v.string() }), v.null()),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
+
+    const config = await ctx.db
+      .query("providerConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
+      )
+      .first()
+
+    if (!config || config.mode !== "custom" || !config.apiKey || config.status !== "active") {
+      return null
+    }
+
+    return { apiKey: config.apiKey }
+  },
+})
+
 export const updateConfig = mutation({
   args: {
     provider: providerValidator,
