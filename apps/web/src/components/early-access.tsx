@@ -1,25 +1,21 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useScrollAnimation } from "@/hooks/use-scroll-animation"
-import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-transforms"
+import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
 export function EarlyAccess() {
   const { t } = useI18n()
-  const { ref, smoothProgress } = useScrollAnimation()
-  const headingY = useParallaxY(smoothProgress)
-  const { scale, opacity, y } = useScaleIn(smoothProgress, {
-    scaleRange: [0.18, 0.42],
-  })
+  const { ref: headingRef, y: headingY } = useParallaxY()
+  const { ref, scale, opacity, y } = useScaleIn()
 
   return (
     <section id="precios" className="bg-stone-deep py-20 md:py-28">
       <div className="mx-auto max-w-2xl px-6 md:px-12">
-        <div ref={ref} className="text-center mb-12">
+        <div ref={headingRef} className="text-center mb-12">
           <motion.h2
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
-            style={{ y: headingY }}
+            style={{ y: headingY, willChange: "transform" }}
           >
             {t.earlyAccess.title}
           </motion.h2>
@@ -29,7 +25,8 @@ export function EarlyAccess() {
         </div>
 
         <motion.div
-          style={{ scale, opacity, y }}
+          ref={ref}
+          style={{ scale, opacity, y, willChange: "transform, opacity" }}
           className="relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5"
         >
           <div className="absolute inset-0 rounded-2xl p-[1px] pointer-events-none">

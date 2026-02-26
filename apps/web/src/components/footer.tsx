@@ -1,27 +1,20 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useScrollAnimation } from "@/hooks/use-scroll-animation"
-import { useFadeSlideUp } from "@/hooks/use-scroll-transforms"
+import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
 export function Footer() {
   const { t } = useI18n()
-  const { ref, smoothProgress } = useScrollAnimation()
-  const grid = useFadeSlideUp(smoothProgress, {
-    fadeRange: [0.1, 0.3],
-    slideRange: [0.08, 0.32],
-  })
-  const bottom = useFadeSlideUp(smoothProgress, {
-    fadeRange: [0.2, 0.4],
-    slideRange: [0.18, 0.42],
-  })
+  const grid = useFadeSlideUp()
+  const bottom = useFadeSlideUp()
 
   return (
-    <footer ref={ref} className="bg-stone-card border-t border-charcoal/5">
+    <footer className="bg-stone-card border-t border-charcoal/5">
       <div className="mx-auto max-w-5xl px-6 md:px-12 py-16 md:py-20">
         <motion.div
-          style={{ opacity: grid.opacity, y: grid.y }}
+          ref={grid.ref}
+          style={{ opacity: grid.opacity, y: grid.y, willChange: "transform, opacity" }}
           className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12"
         >
           {t.footer.columns.map((column) => (
@@ -41,7 +34,8 @@ export function Footer() {
         </motion.div>
 
         <motion.div
-          style={{ opacity: bottom.opacity }}
+          ref={bottom.ref}
+          style={{ opacity: bottom.opacity, willChange: "opacity" }}
           className="mt-16 pt-8 border-t border-charcoal/5 flex flex-col md:flex-row items-center justify-between gap-4"
         >
           <a href="#" className="font-display text-lg font-semibold text-charcoal-heading tracking-tight">

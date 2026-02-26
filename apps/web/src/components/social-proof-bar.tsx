@@ -1,8 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useScrollAnimation } from "@/hooks/use-scroll-animation"
-import { useFadeSlideUp } from "@/hooks/use-scroll-transforms"
+import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
 
 const metrics = [
   { value: "2,000+", label: "negocios" },
@@ -12,13 +11,13 @@ const metrics = [
 ]
 
 export function SocialProofBar() {
-  const { ref, smoothProgress } = useScrollAnimation()
-  const { opacity, y } = useFadeSlideUp(smoothProgress)
+  const { ref, opacity, y } = useFadeSlideUp()
 
   return (
-    <section ref={ref} className="bg-stone-deep py-10 border-y border-charcoal/5">
+    <section className="bg-stone-deep py-10 border-y border-charcoal/5">
       <motion.div
-        style={{ opacity, y }}
+        ref={ref}
+        style={{ opacity, y, willChange: "transform, opacity" }}
         className="mx-auto max-w-4xl px-6 md:px-12"
       >
         <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12">

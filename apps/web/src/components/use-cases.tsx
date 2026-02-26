@@ -1,25 +1,19 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useScrollAnimation } from "@/hooks/use-scroll-animation"
-import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-transforms"
+import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
-function UseCaseCard({ useCase, index, ctaLabel }: {
+function UseCaseCard({ useCase, ctaLabel }: {
   useCase: { icon: string; title: string; description: string; prompt: string }
-  index: number
   ctaLabel: string
 }) {
-  const { ref, smoothProgress } = useScrollAnimation()
-  const offset = index * 0.03
-  const { scale, opacity, y } = useScaleIn(smoothProgress, {
-    scaleRange: [0.12 + offset, 0.38 + offset],
-  })
+  const { ref, scale, opacity, y } = useScaleIn()
 
   return (
     <motion.div
       ref={ref}
-      style={{ scale, opacity, y }}
+      style={{ scale, opacity, y, willChange: "transform, opacity" }}
       whileHover={{ y: -4 }}
       className="group relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5 shadow-none hover:shadow-lg hover:shadow-ocean/5"
     >
@@ -45,8 +39,7 @@ function UseCaseCard({ useCase, index, ctaLabel }: {
 
 export function UseCases() {
   const { t } = useI18n()
-  const { ref, smoothProgress } = useScrollAnimation()
-  const headingY = useParallaxY(smoothProgress)
+  const { ref, y } = useParallaxY()
 
   return (
     <section id="agentes" className="bg-stone-deep py-20 md:py-28">
@@ -54,15 +47,15 @@ export function UseCases() {
         <div ref={ref} className="text-center mb-16">
           <motion.h2
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
-            style={{ y: headingY }}
+            style={{ y, willChange: "transform" }}
           >
             {t.useCases.title}
           </motion.h2>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {t.useCases.cases.map((useCase, index) => (
-            <UseCaseCard key={useCase.title} useCase={useCase} index={index} ctaLabel={t.useCases.createAgent} />
+          {t.useCases.cases.map((useCase) => (
+            <UseCaseCard key={useCase.title} useCase={useCase} ctaLabel={t.useCases.createAgent} />
           ))}
         </div>
       </div>

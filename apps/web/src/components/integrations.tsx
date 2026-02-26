@@ -1,8 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useScrollAnimation } from "@/hooks/use-scroll-animation"
-import { useParallaxY, useFadeSlideUp } from "@/hooks/use-scroll-transforms"
+import { useParallaxY, useFadeSlideUp } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
 const aiProviders = [
@@ -19,30 +18,23 @@ const available = [
 
 export function Integrations() {
   const { t } = useI18n()
-  const { ref, smoothProgress } = useScrollAnimation()
-  const headingY = useParallaxY(smoothProgress)
-  const aiGroup = useFadeSlideUp(smoothProgress, {
-    fadeRange: [0.18, 0.36],
-    slideRange: [0.14, 0.38],
-  })
-  const intGroup = useFadeSlideUp(smoothProgress, {
-    fadeRange: [0.24, 0.42],
-    slideRange: [0.2, 0.44],
-  })
+  const { ref: headingRef, y: headingY } = useParallaxY()
+  const ai = useFadeSlideUp()
+  const int = useFadeSlideUp()
 
   return (
     <section id="integraciones" className="bg-stone-deep py-20 md:py-28">
-      <div ref={ref} className="mx-auto max-w-4xl px-6 md:px-12">
-        <div className="text-center mb-12">
+      <div className="mx-auto max-w-4xl px-6 md:px-12">
+        <div ref={headingRef} className="text-center mb-12">
           <motion.h2
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
-            style={{ y: headingY }}
+            style={{ y: headingY, willChange: "transform" }}
           >
             {t.integrations.title}
           </motion.h2>
         </div>
 
-        <motion.div style={{ opacity: aiGroup.opacity, y: aiGroup.y }}>
+        <motion.div ref={ai.ref} style={{ opacity: ai.opacity, y: ai.y, willChange: "transform, opacity" }}>
           <p className="text-center text-xs font-medium uppercase tracking-widest text-charcoal/40 mb-4">
             {t.integrations.aiModelsLabel}
           </p>
@@ -59,7 +51,7 @@ export function Integrations() {
           </div>
         </motion.div>
 
-        <motion.div style={{ opacity: intGroup.opacity, y: intGroup.y }}>
+        <motion.div ref={int.ref} style={{ opacity: int.opacity, y: int.y, willChange: "transform, opacity" }}>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
             {available.map((item) => (
               <div

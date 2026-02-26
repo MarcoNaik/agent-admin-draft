@@ -1,8 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useScrollAnimation } from "@/hooks/use-scroll-animation"
-import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-transforms"
+import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
 
 const testimonials = [
   {
@@ -30,21 +29,15 @@ const testimonials = [
 
 function TestimonialCard({
   testimonial,
-  index,
 }: {
   testimonial: (typeof testimonials)[0]
-  index: number
 }) {
-  const { ref, smoothProgress } = useScrollAnimation()
-  const offset = index * 0.03
-  const { scale, opacity, y } = useScaleIn(smoothProgress, {
-    scaleRange: [0.12 + offset, 0.38 + offset],
-  })
+  const { ref, scale, opacity, y } = useScaleIn()
 
   return (
     <motion.div
       ref={ref}
-      style={{ scale, opacity, y }}
+      style={{ scale, opacity, y, willChange: "transform, opacity" }}
       className="relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5"
     >
       <div className="absolute top-0 left-0 w-[2px] h-16 rounded-full prismatic-border" />
@@ -68,8 +61,7 @@ function TestimonialCard({
 }
 
 export function Testimonials() {
-  const { ref, smoothProgress } = useScrollAnimation()
-  const headingY = useParallaxY(smoothProgress)
+  const { ref, y } = useParallaxY()
 
   return (
     <section className="bg-stone-base py-20 md:py-28">
@@ -77,18 +69,17 @@ export function Testimonials() {
         <div ref={ref} className="text-center mb-16">
           <motion.h2
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
-            style={{ y: headingY }}
+            style={{ y, willChange: "transform" }}
           >
             Lo que dicen nuestros usuarios
           </motion.h2>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5">
-          {testimonials.map((testimonial, index) => (
+          {testimonials.map((testimonial) => (
             <TestimonialCard
               key={testimonial.name}
               testimonial={testimonial}
-              index={index}
             />
           ))}
         </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
 import { motion, useTransform } from "motion/react"
-import { usePageScrollAnimation } from "@/hooks/use-scroll-animation"
+import { usePageParallax } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
@@ -68,7 +68,7 @@ export function HeroSection() {
   const promptPillsRef = useRef<HTMLDivElement>(null)
   const promptRevealedRef = useRef(false)
 
-  const { scrollY } = usePageScrollAnimation()
+  const { scrollY } = usePageParallax()
   const bgY = useTransform(scrollY, (v) => v * 0.08)
 
   useEffect(() => {
