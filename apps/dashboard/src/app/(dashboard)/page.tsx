@@ -112,9 +112,9 @@ function HomeContent() {
         <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Overview</h2>
         <div className="space-y-1.5">
           <StatCard label="Conversations" value={threads?.length} icon={MessageSquare} href="/conversations" />
-          <StatCard label="Entity Types" value={entityTypes?.length} icon={Database} href="/entities" />
+          <StatCard label="Data Types" value={entityTypes?.length} icon={Database} href="/entities" />
           <StatCard label="Roles" value={roles?.length} icon={Shield} href="/roles" />
-          <StatCard label="Triggers" value={triggers?.length} icon={Zap} href="/triggers" />
+          <StatCard label="Automations" value={triggers?.length} icon={Zap} href="/triggers" />
         </div>
       </section>
     </div>

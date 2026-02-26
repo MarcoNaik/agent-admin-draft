@@ -76,7 +76,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
         </Link>
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">Entity not found</p>
+            <p className="text-muted-foreground">Record not found</p>
           </CardContent>
         </Card>
       </div>
@@ -94,7 +94,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
         </Link>
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">Entity or entity type not found</p>
+            <p className="text-muted-foreground">Record or data type not found</p>
           </CardContent>
         </Card>
       </div>
@@ -127,7 +127,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
   }))
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this entity? This action cannot be undone.")) {
+    if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) {
       return
     }
     await deleteEntity({ id: entity._id })
@@ -174,7 +174,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
               <Link2 className="h-5 w-5" />
               Relations ({totalRelations})
             </CardTitle>
-            <CardDescription>Connected entities</CardDescription>
+            <CardDescription>Connected records</CardDescription>
           </CardHeader>
           <CardContent>
             {totalRelations === 0 ? (

@@ -166,9 +166,9 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
       <Dialog open={!!pendingEntityCreation} onOpenChange={(open) => !open && setPendingEntityCreation(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create {pendingEntityCreation?.name} Entity</DialogTitle>
+            <DialogTitle>Create {pendingEntityCreation?.name}</DialogTitle>
             <DialogDescription>
-              No {pendingEntityCreation?.name} entity is linked to {user.name || user.email} yet. Would you like to create one now?
+              No {pendingEntityCreation?.name} record is linked to {user.name || user.email} yet. Would you like to create one now?
             </DialogDescription>
           </DialogHeader>
           <div className="text-sm text-content-secondary space-y-1">

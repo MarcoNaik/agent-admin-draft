@@ -387,7 +387,7 @@ function TriggerExecutionRow({ event }: { event: Record<string, any> }) {
         <div className="border-t border-border/20 px-3 pb-3 pt-2 space-y-3">
           {payload.triggerData && (
             <div>
-              <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wider">Trigger Data</span>
+              <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wider">Automation Data</span>
               <pre className="mt-1 text-[11px] text-content-secondary font-mono whitespace-pre-wrap break-all bg-background-tertiary/50 rounded px-2 py-1.5 max-h-[150px] overflow-auto">
                 {JSON.stringify(payload.triggerData, null, 2)}
               </pre>
@@ -635,7 +635,7 @@ function StatsBar({ triggers }: { triggers: Trigger[] }) {
       {enabledCount > 0 && <span>{enabledCount} enabled</span>}
       {disabledCount > 0 && <span>{disabledCount} disabled</span>}
       {scheduledCount > 0 && <span>{scheduledCount} scheduled</span>}
-      <span>{entityTypes.size} entity type{entityTypes.size !== 1 ? "s" : ""}</span>
+      <span>{entityTypes.size} data type{entityTypes.size !== 1 ? "s" : ""}</span>
     </div>
   )
 }
@@ -753,7 +753,7 @@ function ScheduledRunsTab() {
           <Timer className="mb-3 h-8 w-8 text-content-tertiary/50" />
           <p className="text-sm text-content-secondary">No scheduled runs</p>
           <p className="mt-1 text-xs text-content-tertiary">
-            Scheduled trigger runs will appear here
+            Scheduled automation runs will appear here
           </p>
         </div>
       ) : (
@@ -826,9 +826,9 @@ function TriggersPageContent() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-display font-semibold text-content-primary">Triggers</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Automations</h1>
           <p className="text-sm text-content-secondary mt-1">
-            Automated actions on entity changes
+            Automated actions on data changes
           </p>
         </div>
         <div className="flex items-center justify-center py-16">
@@ -857,9 +857,9 @@ function TriggersPageContent() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-display font-semibold text-content-primary">Triggers</h1>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Automations</h1>
           <p className="text-sm text-content-secondary mt-1">
-            Automated actions on entity changes
+            Automated actions on data changes
           </p>
         </div>
         <Badge
@@ -873,7 +873,7 @@ function TriggersPageContent() {
       <div className="flex items-center gap-3 rounded-md border border-border/20 bg-background-secondary/30 px-3 py-2 text-xs text-content-tertiary">
         <Terminal className="h-3.5 w-3.5 shrink-0 text-content-tertiary" />
         <span>
-          Triggers are managed via{" "}
+          Automations are managed via{" "}
           <code className="mx-0.5 rounded bg-background-tertiary px-1.5 py-0.5 text-[11px] font-mono text-content-secondary">
             defineTrigger()
           </code>{" "}
@@ -888,7 +888,7 @@ function TriggersPageContent() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="h-9 bg-background-tertiary/50">
             <TabsTrigger value="triggers" className="text-xs px-4 py-1.5 h-7">
-              Triggers
+              Automations
             </TabsTrigger>
             <TabsTrigger value="runs" className="text-xs px-4 py-1.5 h-7">
               Scheduled Runs
@@ -952,7 +952,7 @@ function TriggersListContent({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter triggers..."
+              placeholder="Filter automations..."
               className="h-8 font-input bg-background-secondary/50 border-border/30 pl-9 text-xs placeholder:text-content-tertiary"
             />
           </div>
@@ -966,16 +966,16 @@ function TriggersListContent({
             <Zap className="h-6 w-6 text-content-tertiary" />
           </div>
           <p className="text-sm font-medium text-content-secondary">
-            No triggers defined
+            No automations defined
           </p>
           <p className="text-xs text-content-tertiary mt-1.5 max-w-[280px] text-center">
-            Define triggers in your project using the CLI to automate actions when entities change
+            Define automations in your project using the CLI to run actions when data changes
           </p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-sm text-content-tertiary">
-            No triggers matching &quot;{search}&quot;
+            No automations matching &quot;{search}&quot;
           </p>
         </div>
       ) : (

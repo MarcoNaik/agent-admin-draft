@@ -162,7 +162,7 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
 
 const CATEGORY_INFO = {
   entity: {
-    label: "Entity Tools",
+    label: "Data Tools",
     description: "CRUD operations on business data",
     icon: Database,
   },
@@ -322,15 +322,15 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
     return (
       <div className="rounded-lg border border-dashed p-6 text-center">
         <Database className="h-6 w-6 mx-auto text-content-tertiary mb-2" />
-        <p className="text-sm text-content-secondary mb-1">No entity types defined</p>
+        <p className="text-sm text-content-secondary mb-1">No data types defined</p>
         <p className="text-xs text-content-tertiary mb-3">
-          Entity types define the data structures your agent can interact with.
+          Data types define the structures your agent can interact with.
         </p>
         <Link
           href="/entities"
           className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline cursor-pointer"
         >
-          Create Entity Type
+          Create Data Type
           <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
@@ -341,7 +341,7 @@ function EntityTypesPanel({ entityTypes }: { entityTypes: Array<{ _id: string; n
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-content-secondary">
-          Your agent can perform CRUD operations on these entity types:
+          Your agent can perform CRUD operations on these data types:
         </p>
         <Link
           href="/entities"
@@ -509,7 +509,7 @@ export default function AgentFunctionsPage({ params }: AgentFunctionsPageProps) 
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="all">All Tools</TabsTrigger>
-          <TabsTrigger value="entities">Entity Types</TabsTrigger>
+          <TabsTrigger value="entities">Data Types</TabsTrigger>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
         </TabsList>
 

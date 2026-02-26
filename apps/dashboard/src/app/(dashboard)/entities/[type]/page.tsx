@@ -155,7 +155,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
         </div>
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Layers className="mb-4 h-10 w-10 text-muted-foreground/50" />
-          <h3 className="text-lg font-medium">Entity type not found</h3>
+          <h3 className="text-lg font-medium">Data type not found</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             &quot;{typeSlug}&quot; does not exist in your organization
           </p>

@@ -27,7 +27,7 @@ export function EntityCreateForm({ entityTypeSlug, onSuccess }: EntityCreateForm
   if (!entityType) {
     return (
       <div className="py-8 text-center text-muted-foreground">
-        Entity type not found
+        Data type not found
       </div>
     )
   }

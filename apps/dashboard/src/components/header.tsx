@@ -36,10 +36,10 @@ type NavItem = {
 
 const adminNavigation: NavItem[] = [
   { name: "Conversations", href: "/conversations" },
-  { name: "Entities", href: "/entities" },
+  { name: "Data", href: "/entities" },
   { name: "Roles", href: "/roles" },
   { name: "Tools", href: "/tools" },
-  { name: "Triggers", href: "/triggers" },
+  { name: "Automations", href: "/triggers" },
   { name: "Settings", href: "/settings" },
 ]
 
@@ -57,7 +57,7 @@ const guardianNavigation: NavItem[] = [
 ]
 
 const memberNavigation: NavItem[] = [
-  { name: "Entities", href: "/entities" },
+  { name: "Data", href: "/entities" },
   { name: "Conversations", href: "/conversations" },
   { name: "Profile", href: "/profile", icon: User },
 ]

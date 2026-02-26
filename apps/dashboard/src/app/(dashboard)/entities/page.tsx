@@ -16,17 +16,17 @@ export default function EntitiesPage() {
         <Database className="h-8 w-8 text-primary" />
       </div>
       <h2 className="text-xl font-semibold font-display text-content-primary mb-2">
-        Entity Browser
+        Data Browser
       </h2>
       <p className="text-content-secondary max-w-md mb-6">
         {totalTypes > 0
-          ? `Select an entity type from the sidebar to view and manage its instances. You have ${totalTypes} entity type${totalTypes !== 1 ? "s" : ""} configured.`
-          : "No entity types configured yet. Install a pack or create custom entity types to get started."}
+          ? `Select a data type from the sidebar to view and manage its instances. You have ${totalTypes} data type${totalTypes !== 1 ? "s" : ""} configured.`
+          : "No data types configured yet. Install a pack or create custom data types to get started."}
       </p>
       {totalTypes > 0 && (
         <div className="flex items-center gap-1 text-sm text-primary">
           <ArrowRight className="h-4 w-4" />
-          <span>Select an entity type from the sidebar</span>
+          <span>Select a data type from the sidebar</span>
         </div>
       )}
     </div>

@@ -157,7 +157,7 @@ const CATEGORY_INFO: Record<string, {
   icon: React.ComponentType<{ className?: string }>
 }> = {
   entity: {
-    label: "Entity Tools",
+    label: "Data Tools",
     description: "CRUD operations on business data",
     icon: Database,
   },

@@ -62,7 +62,7 @@ export default function EntityEditPage({ params }: EntityEditPageProps) {
         </Link>
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">Entity or entity type not found</p>
+            <p className="text-muted-foreground">Record or data type not found</p>
           </CardContent>
         </Card>
       </div>
