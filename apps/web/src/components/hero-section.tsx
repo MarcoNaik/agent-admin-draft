@@ -61,23 +61,59 @@ export function HeroSection() {
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const parallaxRef = useRef<HTMLDivElement>(null)
+  const promptCardRef = useRef<HTMLDivElement>(null)
+  const promptBtnRef = useRef<HTMLDivElement>(null)
+  const promptPillsRef = useRef<HTMLDivElement>(null)
+  const promptRevealedRef = useRef(false)
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    function revealPrompt() {
+      if (promptRevealedRef.current) return
+      promptRevealedRef.current = true
+      if (promptCardRef.current) {
+        promptCardRef.current.style.opacity = "1"
+        promptCardRef.current.style.transform = "translateY(0)"
+      }
+      if (promptBtnRef.current) {
+        const btn = promptBtnRef.current
+        setTimeout(() => { btn.style.opacity = "1" }, 800)
+      }
+      if (promptPillsRef.current) {
+        const pills = promptPillsRef.current.children
+        for (let i = 0; i < pills.length; i++) {
+          const pill = pills[i] as HTMLElement
+          const delay = 200 + i * 150
+          setTimeout(() => {
+            pill.style.opacity = "1"
+            pill.style.transform = "translateY(0)"
+          }, delay)
+        }
+      }
+    }
+
+    if (!mounted) return
+    const timeout = setTimeout(revealPrompt, 3100)
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     let ticking = false
     const onScroll = () => {
       if (ticking) return
       ticking = true
       requestAnimationFrame(() => {
-        if (parallaxRef.current) {
+        if (!reducedMotion && parallaxRef.current) {
           parallaxRef.current.style.transform = `translateY(${window.scrollY * 0.08}px)`
         }
+        revealPrompt()
         ticking = false
       })
     }
     window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener("scroll", onScroll)
+    }
+  }, [mounted])
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
@@ -112,6 +148,13 @@ export function HeroSection() {
           />
         </div>
       </div>
+
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.06) 35%, transparent 60%)",
+        }}
+      />
 
       <div className="absolute top-[8%] md:top-[10%] left-0 right-0 text-center px-6 md:px-12">
         <div className="max-w-3xl mx-auto">
@@ -168,12 +211,12 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit}>
             <div
-              className={`liquid-glass liquid-glass-dark rounded-2xl ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+              ref={promptCardRef}
+              className="liquid-glass liquid-glass-dark rounded-2xl"
               style={{
-                transitionProperty: "opacity, transform",
-                transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
-                transitionDuration: "400ms, 2000ms",
-                transitionDelay: mounted ? "3100ms, 3200ms" : "0ms, 0ms",
+                opacity: 0,
+                transform: "translateY(40px)",
+                transition: "opacity 400ms cubic-bezier(0.16,1,0.3,1), transform 2000ms cubic-bezier(0.16,1,0.3,1)",
               }}
             >
               <div className="relative z-10">
@@ -206,11 +249,10 @@ export function HeroSection() {
                 </div>
                 <div className="absolute bottom-3 right-3">
                   <div
-                    className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100" : "opacity-0"}`}
+                    ref={promptBtnRef}
                     style={{
-                      transitionProperty: "opacity",
-                      transitionDuration: "1000ms",
-                      transitionDelay: mounted ? "7600ms" : "0ms",
+                      opacity: 0,
+                      transition: "opacity 1000ms cubic-bezier(0.16,1,0.3,1)",
                     }}
                   >
                     <button
@@ -227,18 +269,16 @@ export function HeroSection() {
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {t.hero.suggestions.map((s, i) => {
-                const base = 4300 + i * 250
+            <div ref={promptPillsRef} className="flex flex-wrap justify-center gap-2 mt-4">
+              {t.hero.suggestions.map((s) => {
                 return (
                   <div
                     key={s.label}
-                    className={`liquid-glass liquid-glass-dark rounded-full ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+                    className="liquid-glass liquid-glass-dark rounded-full"
                     style={{
-                      transitionProperty: "opacity, transform",
-                      transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
-                      transitionDuration: "300ms, 500ms",
-                      transitionDelay: mounted ? `${base}ms, ${base + 100}ms` : "0ms, 0ms",
+                      opacity: 0,
+                      transform: "translateY(12px)",
+                      transition: "opacity 300ms cubic-bezier(0.16,1,0.3,1), transform 500ms cubic-bezier(0.16,1,0.3,1)",
                     }}
                   >
                     <button
