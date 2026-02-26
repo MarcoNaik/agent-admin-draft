@@ -57,6 +57,7 @@ If an agent calls an integration tool and the integration isn't configured, the 
 | `airtable.createRecords` | Airtable | Create up to 10 records |
 | `airtable.updateRecords` | Airtable | Update up to 10 records |
 | `airtable.deleteRecords` | Airtable | Delete up to 10 records |
+| `email.send` | Resend | Send a transactional email |
 
 ### Setting Up Integrations
 
@@ -65,6 +66,7 @@ Each integration requires configuration in the dashboard under **Settings > Inte
 - **Google Calendar** — Connect a Google account with calendar access. See [Google Calendar integration](/integrations/google-calendar).
 - **WhatsApp** — Connect via Kapso with a WhatsApp Business number. See [WhatsApp integration](/integrations/whatsapp).
 - **Airtable** — Provide a Personal Access Token with access to your bases. See [Airtable integration](/integrations/airtable).
+- **Resend** — Platform-managed email sending. Optionally configure sender identity. See [Resend integration](/integrations/resend).
 
 ## Enabling Tools
 
