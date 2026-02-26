@@ -23,9 +23,19 @@ Go to [airtable.com/create/tokens](https://airtable.com/create/tokens) and creat
 
 Select the specific bases the token should have access to, or grant access to all bases.
 
-### 2. Configure in the dashboard
+### 2. Configure the integration
 
-Navigate to **Settings > Integrations > Airtable**, paste your PAT, and click **Save**. Then click **Test Connection** to verify the token is valid.
+You can configure Airtable from the **CLI** or the **dashboard**.
+
+**CLI:**
+
+```bash
+npx struere integration airtable --token <your-pat> --base-id <optional-base-id> --test
+```
+
+**Dashboard:** Navigate to **Settings > Integrations > Airtable**, paste your PAT, and click **Save**. Then click **Test Connection** to verify the token is valid.
+
+See [`struere integration`](/cli/integration) for all CLI options.
 
 ### 3. Add Airtable tools to your agent
 
@@ -305,4 +315,4 @@ Use Airtable formulas to filter server-side:
 
 ## Environment Scoping
 
-The Airtable integration configuration is environment-scoped. You can use different PATs (or the same PAT) for development and production environments. Configure each environment separately in the dashboard.
+The Airtable integration configuration is environment-scoped. You can use different PATs (or the same PAT) for development and production environments. Configure each environment separately via `--env development` / `--env production` in the CLI, or in the dashboard.

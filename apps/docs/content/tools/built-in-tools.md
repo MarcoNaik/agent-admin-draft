@@ -61,12 +61,12 @@ If an agent calls an integration tool and the integration isn't configured, the 
 
 ### Setting Up Integrations
 
-Each integration requires configuration in the dashboard under **Settings > Integrations**:
+Each integration requires configuration via the CLI ([`struere integration`](/cli/integration)) or the dashboard (**Settings > Integrations**):
 
 - **Google Calendar** — Connect a Google account with calendar access. See [Google Calendar integration](/integrations/google-calendar).
 - **WhatsApp** — Connect via Kapso with a WhatsApp Business number. See [WhatsApp integration](/integrations/whatsapp).
-- **Airtable** — Provide a Personal Access Token with access to your bases. See [Airtable integration](/integrations/airtable).
-- **Resend** — Platform-managed email sending. Optionally configure sender identity. See [Resend integration](/integrations/resend).
+- **Airtable** — Provide a Personal Access Token: `npx struere integration airtable --token <pat> --test`. See [Airtable integration](/integrations/airtable).
+- **Resend** — Configure sender identity: `npx struere integration resend --from-email <email> --test`. See [Resend integration](/integrations/resend).
 
 ## Enabling Tools
 

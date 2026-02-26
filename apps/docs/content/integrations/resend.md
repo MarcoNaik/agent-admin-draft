@@ -34,15 +34,31 @@ Status updated: sent → delivered / bounced / complained
 
 ### 1. Configure sender identity (optional)
 
-Navigate to **Settings > Integrations > Resend** in the dashboard. You can customize three optional fields:
+You can configure sender identity from the **CLI** or the **dashboard**.
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| From Email | `noreply@mail.struere.dev` | The sender email address |
-| From Name | None | Display name shown to recipients |
-| Reply-To | None | Where replies are directed |
+**CLI:**
+
+```bash
+npx struere integration resend \
+  --from-email noreply@yourapp.com \
+  --from-name "Your App" \
+  --reply-to support@yourapp.com \
+  --test
+```
+
+**Dashboard:** Navigate to **Settings > Integrations > Resend**.
+
+Both methods configure the same three optional fields:
+
+| Field | Default | CLI Flag | Description |
+|-------|---------|----------|-------------|
+| From Email | `noreply@mail.struere.dev` | `--from-email` | The sender email address |
+| From Name | None | `--from-name` | Display name shown to recipients |
+| Reply-To | None | `--reply-to` | Where replies are directed |
 
 If you skip this step, emails are sent from `noreply@mail.struere.dev` with no reply-to.
+
+See [`struere integration`](/cli/integration) for all CLI options.
 
 ### 2. Add the email tool to your agent
 
