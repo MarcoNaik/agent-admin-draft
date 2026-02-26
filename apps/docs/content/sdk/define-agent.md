@@ -42,6 +42,7 @@ export default defineAgent({
 | `description` | `string` | No | Human-readable description |
 | `model` | `ModelConfig` | No | LLM provider and model settings |
 | `tools` | `string[]` | No | Array of tool names (built-in and custom) |
+| `firstMessageSuggestions` | `string[]` | No | Clickable suggestion chips shown in the chat empty state |
 | `threadContextParams` | `ThreadContextParam[]` | No | Schema for expected thread context parameters (see below) |
 
 ### Validation
@@ -92,6 +93,28 @@ tools: [
   "send_email",
 ]
 ```
+
+## First Message Suggestions
+
+The `firstMessageSuggestions` field provides an array of strings displayed as clickable chips in the chat empty state. When a user clicks a suggestion, it sends that text as their first message.
+
+```typescript
+export default defineAgent({
+  name: "Support",
+  slug: "support",
+  version: "0.1.0",
+  systemPrompt: "You are a support agent for {{organizationName}}.",
+  model: { provider: "xai", name: "grok-4-1-fast" },
+  tools: ["entity.query"],
+  firstMessageSuggestions: [
+    "What can you help me with?",
+    "Show me recent activity",
+    "Create a new record",
+  ],
+})
+```
+
+Suggestions appear in all chat surfaces: the dashboard dev chat, public chat, embedded widget, and the chat sidebar on the agent detail page. Agents without suggestions show the default "Start a conversation" empty state.
 
 ## Thread Context Parameters
 
