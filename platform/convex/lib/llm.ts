@@ -11,7 +11,7 @@ interface ModelConfig {
   maxTokens?: number
 }
 
-const BUILTIN_PREFIXES = ["entity", "event", "agent", "calendar", "whatsapp", "airtable"]
+const BUILTIN_PREFIXES = ["entity", "event", "agent", "calendar", "whatsapp", "airtable", "email"]
 
 export function createModel(config: ModelConfig, apiKeyOverride?: string): LanguageModel {
   switch (config.provider) {
