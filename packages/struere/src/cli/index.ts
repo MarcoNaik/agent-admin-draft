@@ -14,6 +14,7 @@ import { entitiesCommand } from './commands/entities'
 import { docsCommand } from './commands/docs'
 import { evalCommand } from './commands/eval'
 import { templatesCommand } from './commands/templates'
+import { integrationCommand } from './commands/integration'
 import pkg from '../../package.json'
 
 const CURRENT_VERSION = pkg.version
@@ -71,5 +72,6 @@ program.addCommand(entitiesCommand)
 program.addCommand(docsCommand)
 program.addCommand(evalCommand)
 program.addCommand(templatesCommand)
+program.addCommand(integrationCommand)
 
 program.parse()
