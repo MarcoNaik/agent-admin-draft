@@ -66,6 +66,7 @@ export const BUILTIN_TOOLS = [
   "airtable.createRecords",
   "airtable.updateRecords",
   "airtable.deleteRecords",
+  "email.send",
 ] as const
 
 export type BuiltinToolName = (typeof BUILTIN_TOOLS)[number]
@@ -78,6 +79,7 @@ export const INTEGRATION_TOOL_PREFIXES = [
   "calendar.",
   "whatsapp.",
   "airtable.",
+  "email.",
 ] as const
 
 export function isIntegrationTool(name: string): boolean {

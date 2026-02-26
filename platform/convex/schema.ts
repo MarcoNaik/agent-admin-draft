@@ -394,10 +394,31 @@ export default defineSchema({
     .index("by_connection_phone", ["connectionId", "phoneNumber"])
     .index("by_message_id", ["messageId"]),
 
+  emailMessages: defineTable({
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    direction: v.literal("outbound"),
+    to: v.string(),
+    from: v.string(),
+    subject: v.string(),
+    resendId: v.string(),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("bounced"),
+      v.literal("complained"),
+      v.literal("failed")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_org_env", ["organizationId", "environment"])
+    .index("by_resend_id", ["resendId"]),
+
   integrationConfigs: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,
-    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable")),
+    provider: v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable"), v.literal("resend")),
     config: v.any(),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
     lastVerifiedAt: v.union(v.number(), v.null()),

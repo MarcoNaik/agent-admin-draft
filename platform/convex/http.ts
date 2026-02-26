@@ -652,6 +652,128 @@ http.route({
 })
 
 http.route({
+  path: "/webhook/resend",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET
+    if (!webhookSecret) {
+      return new Response("Webhook secret not configured", { status: 500 })
+    }
+
+    const svixId = request.headers.get("svix-id")
+    const svixTimestamp = request.headers.get("svix-timestamp")
+    const svixSignature = request.headers.get("svix-signature")
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      return new Response("Missing webhook headers", { status: 400 })
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const ts = parseInt(svixTimestamp)
+    if (Math.abs(now - ts) > 300) {
+      return new Response("Timestamp too old", { status: 400 })
+    }
+
+    const body = await request.text()
+
+    const rawSecret = webhookSecret.startsWith("whsec_") ? webhookSecret.slice(6) : webhookSecret
+    const secretBytes = Uint8Array.from(atob(rawSecret), (c) => c.charCodeAt(0))
+    const key = await crypto.subtle.importKey(
+      "raw",
+      secretBytes.buffer as ArrayBuffer,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    )
+    const toSign = new TextEncoder().encode(`${svixId}.${svixTimestamp}.${body}`)
+    const signatureBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, toSign.buffer as ArrayBuffer))
+    const expectedSig = base64Encode(signatureBytes)
+
+    const signatures = svixSignature.split(" ")
+    const verified = signatures.some((sig) => {
+      const parts = sig.split(",")
+      return parts[1] === expectedSig
+    })
+
+    if (!verified) {
+      return new Response("Invalid signature", { status: 400 })
+    }
+
+    const event = JSON.parse(body) as {
+      type: string
+      data: { email_id: string }
+    }
+
+    const statusMap: Record<string, string> = {
+      "email.sent": "sent",
+      "email.delivered": "delivered",
+      "email.bounced": "bounced",
+      "email.complained": "complained",
+    }
+
+    const mappedStatus = statusMap[event.type]
+    if (mappedStatus && event.data?.email_id) {
+      await ctx.runMutation(internal.email.updateEmailStatus, {
+        resendId: event.data.email_id,
+        status: mappedStatus as "sent" | "delivered" | "bounced" | "complained",
+      })
+    }
+
+    return new Response("OK", { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/v1/auth/refresh",
+  method: "POST",
+  handler: httpAction(async (_ctx, request) => {
+    const body = await request.json() as { sessionId: string }
+    const { sessionId } = body
+
+    if (!sessionId) {
+      return new Response(JSON.stringify({ error: "sessionId is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const clerkSecretKey = process.env.CLERK_SECRET_KEY
+    if (!clerkSecretKey) {
+      return new Response(JSON.stringify({ error: "CLERK_SECRET_KEY not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const clerkResponse = await fetch(
+      `https://api.clerk.com/v1/sessions/${sessionId}/tokens/convex`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${clerkSecretKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    )
+
+    if (!clerkResponse.ok) {
+      const error = await clerkResponse.text()
+      return new Response(JSON.stringify({ error: `Session expired or invalid: ${error}` }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const data = await clerkResponse.json() as { jwt: string }
+
+    return new Response(JSON.stringify({ token: data.jwt }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  }),
+})
+
+http.route({
   path: "/v1/sync",
   method: "POST",
   handler: httpAction(async (ctx, request) => {

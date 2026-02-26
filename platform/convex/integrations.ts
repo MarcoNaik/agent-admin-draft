@@ -6,7 +6,7 @@ import { requireAuth } from "./lib/auth"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
-const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable"))
+const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable"), v.literal("resend"))
 
 async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
   const membership = await ctx.db
@@ -44,6 +44,12 @@ interface ZoomConfig {
 interface AirtableConfig {
   personalAccessToken: string
   defaultBaseId?: string
+}
+
+interface ResendConfig {
+  fromEmail?: string
+  fromName?: string
+  replyTo?: string
 }
 
 export const getConfig = query({
@@ -397,6 +403,32 @@ export const testConnection = action({
           lastVerifiedAt: now,
         })
         return { success: true, message: "Airtable connection verified" }
+      }
+
+      if (args.provider === "resend") {
+        const apiKey = process.env.RESEND_API_KEY
+        if (!apiKey) {
+          return { success: false, message: "RESEND_API_KEY not configured" }
+        }
+
+        const response = await fetch("https://api.resend.com/domains", {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        })
+
+        if (!response.ok) {
+          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            configId: config._id,
+            status: "error",
+          })
+          return { success: false, message: "Resend API key is invalid or unreachable" }
+        }
+
+        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          configId: config._id,
+          status: "active",
+          lastVerifiedAt: now,
+        })
+        return { success: true, message: "Resend connection verified" }
       }
 
       return { success: false, message: "Unknown provider" }

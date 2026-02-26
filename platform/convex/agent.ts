@@ -1336,6 +1336,19 @@ async function executeBuiltinTool(
         recordIds: args.recordIds as string[],
       })
 
+    case "email.send":
+      if (!args.to) throw new Error("email.send requires 'to' parameter")
+      if (!args.subject) throw new Error("email.send requires 'subject' parameter")
+      if (!args.html && !args.text) throw new Error("email.send requires 'html' or 'text' parameter")
+      return await ctx.runAction(internal.tools.email.emailSend, {
+        organizationId, actorId, actorType, environment,
+        to: args.to as string,
+        subject: args.subject as string,
+        html: args.html as string | undefined,
+        text: args.text as string | undefined,
+        replyTo: args.replyTo as string | undefined,
+      })
+
     default:
       throw new Error(`Unknown builtin tool: ${toolName}`)
   }
