@@ -10,7 +10,7 @@ type AuthState = "loading" | "unauthenticated" | "authorizing" | "success" | "er
 
 export default function AuthorizePage() {
   const searchParams = useSearchParams()
-  const { isLoaded, isSignedIn, getToken } = useAuth()
+  const { isLoaded, isSignedIn, getToken, sessionId } = useAuth()
   const { user } = useUser()
   const [state, setState] = useState<AuthState>("loading")
   const [error, setError] = useState<string | null>(null)
@@ -53,10 +53,9 @@ export default function AuthorizePage() {
         return
       }
 
-      const sessionId = user?.id || crypto.randomUUID()
       const redirectUrl = new URL(callback)
       redirectUrl.searchParams.set("token", token)
-      redirectUrl.searchParams.set("session_id", sessionId)
+      redirectUrl.searchParams.set("session_id", sessionId || "")
 
       setState("success")
       window.location.href = redirectUrl.toString()
