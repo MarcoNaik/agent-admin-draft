@@ -15,6 +15,7 @@ import type * as billing from "../billing.js";
 import type * as calendar from "../calendar.js";
 import type * as chat from "../chat.js";
 import type * as crons from "../crons.js";
+import type * as email from "../email.js";
 import type * as entities from "../entities.js";
 import type * as entityTypes from "../entityTypes.js";
 import type * as evalRunner from "../evalRunner.js";
@@ -29,6 +30,7 @@ import type * as lib_integrations_airtable from "../lib/integrations/airtable.js
 import type * as lib_integrations_flow from "../lib/integrations/flow.js";
 import type * as lib_integrations_googleCalendar from "../lib/integrations/googleCalendar.js";
 import type * as lib_integrations_kapso from "../lib/integrations/kapso.js";
+import type * as lib_integrations_resend from "../lib/integrations/resend.js";
 import type * as lib_llm from "../lib/llm.js";
 import type * as lib_permissions_context from "../lib/permissions/context.js";
 import type * as lib_permissions_evaluate from "../lib/permissions/evaluate.js";
@@ -68,6 +70,7 @@ import type * as threads from "../threads.js";
 import type * as tools_agents from "../tools/agents.js";
 import type * as tools_airtable from "../tools/airtable.js";
 import type * as tools_calendar from "../tools/calendar.js";
+import type * as tools_email from "../tools/email.js";
 import type * as tools_entities from "../tools/entities.js";
 import type * as tools_events from "../tools/events.js";
 import type * as tools_helpers from "../tools/helpers.js";
@@ -92,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   calendar: typeof calendar;
   chat: typeof chat;
   crons: typeof crons;
+  email: typeof email;
   entities: typeof entities;
   entityTypes: typeof entityTypes;
   evalRunner: typeof evalRunner;
@@ -106,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   "lib/integrations/flow": typeof lib_integrations_flow;
   "lib/integrations/googleCalendar": typeof lib_integrations_googleCalendar;
   "lib/integrations/kapso": typeof lib_integrations_kapso;
+  "lib/integrations/resend": typeof lib_integrations_resend;
   "lib/llm": typeof lib_llm;
   "lib/permissions/context": typeof lib_permissions_context;
   "lib/permissions/evaluate": typeof lib_permissions_evaluate;
@@ -145,6 +150,7 @@ declare const fullApi: ApiFromModules<{
   "tools/agents": typeof tools_agents;
   "tools/airtable": typeof tools_airtable;
   "tools/calendar": typeof tools_calendar;
+  "tools/email": typeof tools_email;
   "tools/entities": typeof tools_entities;
   "tools/events": typeof tools_events;
   "tools/helpers": typeof tools_helpers;
