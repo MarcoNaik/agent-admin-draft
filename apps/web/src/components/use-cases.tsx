@@ -14,7 +14,6 @@ function UseCaseCard({ useCase, ctaLabel }: {
     <motion.div
       ref={ref}
       style={{ scale, opacity, y, willChange: "transform, opacity" }}
-      whileHover={{ y: -4 }}
       className="group relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5 shadow-none hover:shadow-lg hover:shadow-ocean/5"
     >
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none p-[1px]">
