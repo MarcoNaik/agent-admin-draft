@@ -23,9 +23,9 @@ async function resolveFromConfig(
   })
 
   if (config?.status === "active" && config.config) {
-    const cfg = config.config as { fromEmail?: string; fromName?: string; replyTo?: string }
+    const cfg = config.config as { fromName?: string; replyTo?: string }
     return {
-      fromEmail: cfg.fromEmail || DEFAULT_FROM_EMAIL,
+      fromEmail: DEFAULT_FROM_EMAIL,
       fromName: cfg.fromName,
       replyTo: cfg.replyTo,
     }

@@ -7,7 +7,7 @@ order: 6
 
 # Resend
 
-Struere integrates with [Resend](https://resend.com) to give agents the ability to send transactional emails. The integration is **platform-managed** — Struere holds the Resend API key, so organizations only need to optionally configure sender identity (from address, name, reply-to). Delivery status is tracked automatically via webhooks.
+Struere integrates with [Resend](https://resend.com) to give agents the ability to send transactional emails. The integration is **platform-managed** — Struere holds the Resend API key, and all emails are sent from `noreply@mail.struere.dev`. Organizations can optionally configure a display name and reply-to address. Delivery status is tracked automatically via webhooks.
 
 ## Architecture
 
@@ -40,7 +40,6 @@ You can configure sender identity from the **CLI** or the **dashboard**.
 
 ```bash
 npx struere integration resend \
-  --from-email noreply@yourapp.com \
   --from-name "Your App" \
   --reply-to support@yourapp.com \
   --test
@@ -48,15 +47,14 @@ npx struere integration resend \
 
 **Dashboard:** Navigate to **Settings > Integrations > Resend**.
 
-Both methods configure the same three optional fields:
+All emails are sent from `noreply@mail.struere.dev`. You can optionally configure:
 
 | Field | Default | CLI Flag | Description |
 |-------|---------|----------|-------------|
-| From Email | `noreply@mail.struere.dev` | `--from-email` | The sender email address |
 | From Name | None | `--from-name` | Display name shown to recipients |
 | Reply-To | None | `--reply-to` | Where replies are directed |
 
-If you skip this step, emails are sent from `noreply@mail.struere.dev` with no reply-to.
+If you skip this step, emails are sent from `noreply@mail.struere.dev` with no display name or reply-to.
 
 See [`struere integration`](/cli/integration) for all CLI options.
 
@@ -128,7 +126,7 @@ Every outbound email is stored in the `emailMessages` table with full lifecycle 
 | `organizationId` | Owning organization |
 | `environment` | `development` or `production` |
 | `to` | Recipient address |
-| `from` | Sender address (resolved from org config or default) |
+| `from` | Sender address (`noreply@mail.struere.dev`) |
 | `subject` | Email subject |
 | `resendId` | Resend's unique email ID |
 | `status` | Current delivery status |
@@ -212,7 +210,7 @@ For simple notifications, use `text` instead of `html`:
 
 ## Environment Scoping
 
-The Resend integration configuration is environment-scoped. You can configure different sender identities for development and production. In development, you might use a test from-address to avoid accidentally emailing real users.
+The Resend integration configuration is environment-scoped. You can configure different display names and reply-to addresses for development and production.
 
 ## Webhook Configuration
 

@@ -24,7 +24,6 @@ export default function ResendSettingsPage() {
   const testConnection = useTestIntegrationConnection()
   const deleteConfig = useDeleteIntegrationConfig()
 
-  const [fromEmail, setFromEmail] = useState("")
   const [fromName, setFromName] = useState("")
   const [replyTo, setReplyTo] = useState("")
   const [saving, setSaving] = useState(false)
@@ -37,11 +36,9 @@ export default function ResendSettingsPage() {
     setMessage(null)
     try {
       const configData: Record<string, string> = {}
-      if (fromEmail) configData.fromEmail = fromEmail
       if (fromName) configData.fromName = fromName
       if (replyTo) configData.replyTo = replyTo
       await updateConfig({ provider: "resend", environment, config: configData })
-      setFromEmail("")
       setFromName("")
       setReplyTo("")
       setMessage({ type: "success", text: "Configuration saved" })
@@ -147,24 +144,10 @@ export default function ResendSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base text-content-primary">Configuration</CardTitle>
           <CardDescription className="text-content-secondary">
-            Customize the sender identity for outbound emails. The API key is managed by the platform.
+            Customize the sender identity for outbound emails. Emails are always sent from noreply@mail.struere.dev.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs">From Email</Label>
-            <Input
-              value={fromEmail}
-              onChange={(e) => setFromEmail(e.target.value)}
-              placeholder={
-                config?.config?.fromEmail
-                  ? String(config.config.fromEmail)
-                  : "noreply@mail.struere.dev"
-              }
-              className="font-input text-sm"
-            />
-          </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs">From Name</Label>
             <Input
