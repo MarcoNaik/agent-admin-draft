@@ -27,7 +27,7 @@ The `pull` command:
 
 The `pull` command is useful when:
 
-- **Resources were created via the dashboard** — If you or a team member created agents, entity types, roles, or triggers through the web dashboard, `pull` brings those definitions into your local project so they can be managed as code.
+- **Resources were created via the dashboard** — If you or a team member created agents, data types, roles, or automations through the web dashboard, `pull` brings those definitions into your local project so they can be managed as code.
 
 - **Onboarding to an existing project** — When joining a team that already has resources configured in Convex, `pull` gives you the local files to start working with.
 

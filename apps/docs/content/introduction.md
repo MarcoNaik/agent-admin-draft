@@ -7,7 +7,7 @@ order: 1
 
 # Introduction
 
-Struere is an **AI agent platform** with a built-in data layer, dynamic system prompts, event-driven automation, and integrations. Define agents, entity types, and triggers as TypeScript code, sync them with the CLI, and talk to agents via HTTP API.
+Struere is an **AI agent platform** with a built-in data layer, dynamic system prompts, event-driven automation, and integrations. Define agents, data types, and automations as TypeScript code, sync them with the CLI, and talk to agents via HTTP API.
 
 ## Platform Architecture
 
@@ -19,16 +19,16 @@ apps/                        packages/                   platform/
 └── web (Marketing)                                     └── tool-executor (Sandboxed)
 ```
 
-- **Dashboard** — A Next.js 14 application for managing agents, entities, and integrations in real-time.
+- **Dashboard** — A Next.js 14 application for managing agents, data, and integrations in real-time.
 - **SDK + CLI** — The `struere` package gives you `defineAgent`, `defineEntityType`, `defineRole`, `defineTrigger`, and other helpers to define your platform configuration as code. The CLI syncs these definitions to your backend.
 - **Convex Backend** — The core backend powering real-time data, agent execution, and tool orchestration.
 - **Tool Executor** — A sandboxed server that runs custom tool handlers with a restricted fetch allowlist.
 
 ## Key Capabilities
 
-### Entity Management (Data Layer)
+### Data Management (Data Layer)
 
-Define structured entity types with JSON schemas. Agents get full CRUD operations — `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete` — plus relationships via `entity.link`/`entity.unlink`, full-text search, and audit trails.
+Define structured data types with JSON schemas. Agents get full CRUD operations — `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete` — plus relationships via `entity.link`/`entity.unlink`, full-text search, and audit trails.
 
 ```typescript
 import { defineEntityType } from 'struere'
@@ -67,9 +67,9 @@ Recent tickets: {{entity.query({"type": "ticket", "limit": 10})}}`,
 })
 ```
 
-### Triggers & Automation
+### Automations
 
-Define event-driven automations that fire when entities are created, updated, or deleted. Triggers support scheduling, retries, conditional filters, and template variable resolution.
+Define event-driven automations that fire when data is created, updated, or deleted. Automations support scheduling, retries, conditional filters, and template variable resolution.
 
 ```typescript
 import { defineTrigger } from 'struere'
@@ -157,7 +157,7 @@ All data, roles, configurations, and permissions are fully isolated between `dev
 ## How It Works
 
 ```
-Define agents, entity types, triggers as code
+Define agents, data types, automations as code
     │
     ▼
 CLI syncs definitions to Convex backend (struere dev)
@@ -172,7 +172,7 @@ System prompt assembled with live data (template variables + embedded queries)
 Agents use built-in tools to read/write entities, emit events, send messages
     │
     ▼
-Triggers fire automations, events log audit trail
+Automations fire actions, events log audit trail
 ```
 
 ## Tech Stack

@@ -1,13 +1,13 @@
 ---
 title: "defineEntityType"
-description: "Define entity type schemas for your domain"
+description: "Define data type schemas for your domain"
 section: "SDK"
 order: 2
 ---
 
 # defineEntityType
 
-The `defineEntityType` function creates and validates entity type schema definitions. Each entity type is defined in its own file under the `entity-types/` directory.
+The `defineEntityType` function creates and validates data type schema definitions. Each data type is defined in its own file under the `entity-types/` directory.
 
 ```typescript
 import { defineEntityType } from 'struere'
@@ -41,12 +41,12 @@ export default defineEntityType({
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | Yes | Display name for the entity type |
+| `name` | `string` | Yes | Display name for the data type |
 | `slug` | `string` | Yes | URL-safe identifier, used in API queries and tool calls |
-| `schema` | `JSONSchema` | Yes | JSON Schema definition for entity data |
+| `schema` | `JSONSchema` | Yes | JSON Schema definition for the data |
 | `searchFields` | `string[]` | No | Fields indexed for text search (defaults to `[]`) |
-| `displayConfig` | `object` | No | Controls how entities are displayed in the dashboard |
-| `boundToRole` | `string` | No | Binds this entity type to a role name for automatic user linking |
+| `displayConfig` | `object` | No | Controls how records are displayed in the dashboard |
+| `boundToRole` | `string` | No | Binds this data type to a role name for automatic user linking |
 | `userIdField` | `string` | No | Field that stores the Clerk user ID (defaults to `"userId"` when `boundToRole` is set) |
 
 ### Validation
@@ -61,7 +61,7 @@ export default defineEntityType({
 
 ## JSON Schema
 
-Entity schemas use the JSON Schema format with the following type system:
+Data type schemas use the JSON Schema format with the following type system:
 
 ```typescript
 interface JSONSchema {
@@ -149,7 +149,7 @@ The root schema must always be `type: "object"`. Nested objects must declare the
 
 ## Display Configuration
 
-The `displayConfig` field controls how entities appear in the dashboard:
+The `displayConfig` field controls how records appear in the dashboard:
 
 ```typescript
 displayConfig: {
@@ -177,7 +177,7 @@ When an agent uses `entity.query` with a search term, only these fields are matc
 
 ## Role Binding
 
-The `boundToRole` and `userIdField` fields create an automatic link between an entity type and a user role. When a user with the bound role logs in, they are associated with the matching entity:
+The `boundToRole` and `userIdField` fields create an automatic link between a data type and a user role. When a user with the bound role logs in, they are associated with the matching record:
 
 ```typescript
 export default defineEntityType({
@@ -201,7 +201,7 @@ When `boundToRole` is set and `userIdField` is omitted, it defaults to `"userId"
 
 ## Full Examples
 
-### Student Entity Type
+### Student Data Type
 
 ```typescript
 import { defineEntityType } from 'struere'
@@ -232,7 +232,7 @@ export default defineEntityType({
 })
 ```
 
-### Session Entity Type
+### Session Data Type
 
 ```typescript
 import { defineEntityType } from 'struere'
@@ -273,7 +273,7 @@ export default defineEntityType({
 })
 ```
 
-### Entitlement Entity Type (Credits System)
+### Entitlement Data Type (Credits System)
 
 ```typescript
 import { defineEntityType } from 'struere'

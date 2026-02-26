@@ -127,7 +127,7 @@ Higher weight assertions have more impact on the overall score.
 
 - **Vague judge criteria.** "Good response" is too vague. Use specific criteria like "Response mentions the order status and expected delivery date."
 - **Not creating fixtures.** Without fixtures, `entity.query` returns empty results in the eval environment. Always create fixture data for your tests.
-- **Testing in development.** Evals run in the isolated eval environment. Development entities are not visible during eval runs.
+- **Testing in development.** Evals run in the isolated eval environment. Development data is not visible during eval runs.
 - **Missing agent slug.** The `agent` field must match an agent slug defined in `agents/`.
 
 ## Related

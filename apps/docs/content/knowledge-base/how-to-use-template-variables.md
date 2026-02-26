@@ -43,7 +43,7 @@ Thread: {{threadId}}`,
 | `{{userId}}` | Current user ID |
 | `{{threadId}}` | Current thread ID |
 | `{{message}}` | Current user message |
-| `{{entityTypes}}` | JSON array of all entity types |
+| `{{entityTypes}}` | JSON array of all data types |
 | `{{roles}}` | JSON array of all roles |
 | `{{threadContext.channel}}` | Channel type: `widget`, `whatsapp`, `api`, or `dashboard` |
 | `{{threadContext.params.X}}` | Thread context parameter X |
@@ -103,4 +103,4 @@ Permission errors return empty results so agents degrade gracefully.
 
 - [System Prompt Templates](/tools/system-prompt-templates) — Full template reference
 - [Define Agent](/sdk/define-agent) — Agent configuration
-- [Entities](/platform/entities) — Entity data model
+- [Data](/platform/entities) — Data model

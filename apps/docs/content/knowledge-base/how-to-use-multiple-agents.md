@@ -38,7 +38,7 @@ export default defineAgent({
   name: "Billing",
   slug: "billing",
   tools: ["entity.query", "entity.update", "event.emit"],
-  systemPrompt: "You handle billing inquiries. Look up payment entities and answer questions about charges.",
+  systemPrompt: "You handle billing inquiries. Look up payment records and answer questions about charges.",
   model: { provider: "xai", name: "grok-4-1-fast" },
 })
 ```

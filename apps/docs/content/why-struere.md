@@ -26,21 +26,21 @@ Struere handles all of these as a unified platform:
 
 | Capability | What you get |
 |------------|--------------|
-| **Entity management** | Typed entities with JSON schemas, relationships, search, soft-delete, and full audit trails |
+| **Data management** | Typed data with JSON schemas, relationships, search, soft-delete, and full audit trails |
 | **Dynamic system prompts** | Template variables (`{{entityTypes}}`, `{{currentTime}}`) and embedded queries (`{{entity.query(...)}}`) inject live data at runtime |
 | **Agent execution** | Tool-call loop with multi-agent delegation (depth limit 3, cycle detection), conversation threading |
-| **Triggers & automation** | Event-driven workflows on entity changes with scheduling, retries, and template variable resolution |
+| **Automations** | Event-driven workflows on data changes with scheduling, retries, and template variable resolution |
 | **Integrations** | WhatsApp (via Kapso), Google Calendar, Airtable, Flow/Polar payments — all available as agent tools |
 | **Environment isolation** | Development, production, and eval environments with fully isolated data, roles, and configurations |
 | **Evaluation system** | YAML-based eval suites with multi-turn conversations, LLM-as-judge scoring, controlled fixture data |
 | **Security & RBAC** | Roles with policies (deny overrides allow), scope rules (row-level security), field masks (column-level security) |
-| **CLI workflow** | Define agents, entity types, roles, and triggers as code. Sync with `struere dev`, deploy with `struere deploy` |
+| **CLI workflow** | Define agents, data types, roles, and automations as code. Sync with `struere dev`, deploy with `struere deploy` |
 
 ## When to Use Struere
 
 **Use Struere when:**
 
-- Your agents need a structured data layer (entities with schemas, relationships, CRUD operations)
+- Your agents need a structured data layer (data types with schemas, relationships, CRUD operations)
 - You want dynamic system prompts with live data injection
 - You need event-driven automations that trigger on data changes
 - You want built-in integrations (WhatsApp, Calendar, Airtable) without custom code
@@ -60,19 +60,19 @@ Struere handles all of these as a unified platform:
 
 Raw APIs give you text generation and tool calling, but you must build everything else: data storage, conversation threading, prompt templating, automation, error handling, environment management, and evaluation.
 
-Struere wraps the LLM call in a full execution environment with a data layer, dynamic prompts, triggers, and integrations. You define what the agent can do; the platform handles storage, threading, and orchestration.
+Struere wraps the LLM call in a full execution environment with a data layer, dynamic prompts, automations, and integrations. You define what the agent can do; the platform handles storage, threading, and orchestration.
 
 ### vs. LangChain / LlamaIndex
 
 Framework libraries help you chain LLM calls and manage prompts, but they run in your application process. You still need to build the data layer, automation engine, and deployment pipeline.
 
-Struere is a hosted backend (Convex) with a CLI for configuration-as-code. The entity system, triggers, and agent executor are built into the platform, not assembled from library components.
+Struere is a hosted backend (Convex) with a CLI for configuration-as-code. The data system, automations, and agent executor are built into the platform, not assembled from library components.
 
 ### vs. Custom agent infrastructure
 
 Building your own agent infrastructure gives you maximum flexibility but requires ongoing maintenance of the data layer, tool executor, evaluation system, and deployment pipeline.
 
-Struere provides these as a cohesive platform. The tradeoff is that you work within Struere's data model (entities, entity types, relations) and automation model (triggers, events) rather than designing your own from scratch.
+Struere provides these as a cohesive platform. The tradeoff is that you work within Struere's data model (data types, records, relations) and automation model (automations, events) rather than designing your own from scratch.
 
 ## Getting Started
 

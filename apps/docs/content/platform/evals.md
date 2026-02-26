@@ -306,10 +306,10 @@ relations:
 
 When `struere dev` runs, it makes two sync calls:
 
-1. **Development** — agents, entity types, roles, triggers (your normal dev workflow)
+1. **Development** — agents, data types, roles, automations (your normal dev workflow)
 2. **Eval** — agents, entity types, roles, eval suites, and fixtures
 
-The eval environment mirrors your dev schema (types, roles, agent configs) but also receives fixture entities and eval suites. Triggers are **not** synced to eval to prevent side effects during test runs.
+The eval environment mirrors your dev schema (types, roles, agent configs) but also receives fixture data and eval suites. Automations are **not** synced to eval to prevent side effects during test runs.
 
 On every sync, the eval environment is reset: all existing entities and relations are deleted, then recreated from fixture YAML. This guarantees a clean, known state for every eval run.
 

@@ -78,7 +78,7 @@ Anthropic is the default provider.
 ## Choosing a Model
 
 - **claude-sonnet-4** — The default model. Strong reasoning with balanced cost, suitable for most agent tasks including multi-step planning and nuanced decision-making.
-- **claude-haiku-4-5** — Use for high-volume, cost-sensitive agents. Fast and capable enough for entity management, scheduling, and standard workflows.
+- **claude-haiku-4-5** — Use for high-volume, cost-sensitive agents. Fast and capable enough for data management, scheduling, and standard workflows.
 - **claude-opus-4-6** — Use for agents that require the highest possible capability, such as complex analysis or research tasks.
 - **gpt-4o-mini** / **gemini-2.5-flash** — Good alternatives for cost-sensitive, high-throughput workloads.
 - **grok-4-1-fast-reasoning** — Best xAI option for agentic workflows with tool calling. 2M context window at low cost.
@@ -132,7 +132,7 @@ export default defineAgent({
   name: "Data Entry Agent",
   slug: "data-entry",
   version: "0.1.0",
-  systemPrompt: "You process incoming data and create entities.",
+  systemPrompt: "You process incoming data and create records.",
   model: {
     provider: "anthropic",
     name: "claude-haiku-4-5",
@@ -176,7 +176,7 @@ export default defineAgent({
   name: "Report Generator",
   slug: "reports",
   version: "0.1.0",
-  systemPrompt: "You generate structured reports from entity data.",
+  systemPrompt: "You generate structured reports from your data.",
   model: {
     provider: "anthropic",
     name: "claude-haiku-4-5",

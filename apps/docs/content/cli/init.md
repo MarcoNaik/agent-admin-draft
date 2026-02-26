@@ -7,7 +7,7 @@ order: 2
 
 # struere init
 
-The `init` command scaffolds a new Struere project with all the directories and configuration needed to define agents, entity types, roles, triggers, and tools.
+The `init` command scaffolds a new Struere project with all the directories and configuration needed to define agents, data types, roles, automations, and tools.
 
 ## Usage
 
@@ -49,9 +49,9 @@ my-project/
 | Directory | Purpose |
 |-----------|---------|
 | `agents/` | Agent definitions using `defineAgent()` |
-| `entity-types/` | Entity type schemas using `defineEntityType()` |
+| `entity-types/` | Data type schemas using `defineEntityType()` |
 | `roles/` | Role definitions with policies, scope rules, and field masks using `defineRole()` |
-| `triggers/` | Trigger automations using `defineTrigger()` |
+| `triggers/` | Automations using `defineTrigger()` |
 | `tools/` | Custom tool definitions using `defineTools()` |
 | `evals/` | Eval suite definitions as YAML |
 | `fixtures/` | Fixture data for eval environment as YAML |
@@ -80,7 +80,7 @@ The configuration file links your project to a Struere organization:
 
 ## Organization-Centric Architecture
 
-Struere projects are organized around a single organization. All resources you define — agents, entity types, roles, triggers, and tools — belong to that organization.
+Struere projects are organized around a single organization. All resources you define — agents, data types, roles, automations, and tools — belong to that organization.
 
 This means:
 

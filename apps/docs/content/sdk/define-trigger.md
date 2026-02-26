@@ -7,7 +7,7 @@ order: 5
 
 # defineTrigger
 
-The `defineTrigger` function creates event-driven automation rules that fire when entities are created, updated, or deleted. Each trigger is defined in its own file under the `triggers/` directory.
+The `defineTrigger` function creates event-driven automation rules that fire when data is created, updated, or deleted. Each automation is defined in its own file under the `triggers/` directory.
 
 ```typescript
 import { defineTrigger } from 'struere'
@@ -42,11 +42,11 @@ export default defineTrigger({
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | Yes | Display name for the trigger |
-| `slug` | `string` | Yes | Unique identifier for the trigger |
+| `name` | `string` | Yes | Display name for the automation |
+| `slug` | `string` | Yes | Unique identifier for the automation |
 | `description` | `string` | No | Human-readable description |
-| `on` | `object` | Yes | Event configuration that activates the trigger |
-| `on.entityType` | `string` | Yes | Entity type slug to watch |
+| `on` | `object` | Yes | Event configuration that activates the automation |
+| `on.entityType` | `string` | Yes | Data type slug to watch |
 | `on.action` | `'created' \| 'updated' \| 'deleted'` | Yes | Entity lifecycle event |
 | `on.condition` | `object` | No | Optional filter on entity data fields |
 | `schedule` | `TriggerSchedule` | No | Delay or schedule execution for a future time |
@@ -85,7 +85,7 @@ interface TriggerAction {
 | `args` | `object` | Arguments passed to the tool, supports template variables |
 | `as` | `string` | Optional name for referencing this step's result in later steps |
 
-Actions execute in order. If any action fails, the trigger stops (fail-fast behavior).
+Actions execute in order. If any action fails, the automation stops (fail-fast behavior).
 
 ### Available Tools
 
@@ -100,14 +100,14 @@ Actions execute in order. If any action fails, the trigger stops (fail-fast beha
 
 ## Template Variables
 
-Trigger action arguments support `{{variable}}` template syntax for dynamic value resolution.
+Automation action arguments support `{{variable}}` template syntax for dynamic value resolution.
 
-### Trigger Context Variables
+### Automation Context Variables
 
 | Variable | Description |
 |----------|-------------|
-| `{{trigger.entityId}}` | ID of the entity that triggered the event |
-| `{{trigger.entityType}}` | Entity type slug |
+| `{{trigger.entityId}}` | ID of the record that activated the automation |
+| `{{trigger.entityType}}` | Data type slug |
 | `{{trigger.action}}` | The action that occurred (`"created"`, `"updated"`, `"deleted"`) |
 | `{{trigger.data.X}}` | Field `X` from the entity's current data |
 | `{{trigger.previousData.X}}` | Field `X` from the entity's data before the update (only for `"updated"` actions) |
@@ -148,7 +148,7 @@ actions: [
 
 ## Conditions
 
-The `on.condition` field filters which entity mutations trigger the actions. Only entities whose data matches all condition fields will activate the trigger:
+The `on.condition` field filters which data mutations activate the automation. Only records whose data matches all condition fields will activate the automation:
 
 ```typescript
 on: {
@@ -158,11 +158,11 @@ on: {
 }
 ```
 
-This trigger only fires when a session is updated and its `status` field is `"completed"`.
+This automation only fires when a session is updated and its `status` field is `"completed"`.
 
-## Scheduled Triggers
+## Scheduled Automations
 
-Triggers can be scheduled to run at a future time instead of executing immediately.
+Automations can be scheduled to run at a future time instead of executing immediately.
 
 ```typescript
 interface TriggerSchedule {
@@ -226,9 +226,9 @@ schedule: {
 }
 ```
 
-### Trigger Runs
+### Automation Runs
 
-Scheduled triggers create records in the `triggerRuns` table with status tracking:
+Scheduled automations create records in the `triggerRuns` table with status tracking:
 
 | Status | Description |
 |--------|-------------|
@@ -240,7 +240,7 @@ Scheduled triggers create records in the `triggerRuns` table with status trackin
 
 ## Retry Configuration
 
-Failed triggers can be retried with exponential backoff.
+Failed automations can be retried with exponential backoff.
 
 ```typescript
 interface TriggerRetry {
@@ -265,12 +265,12 @@ This retries up to 3 times with 5-second base backoff between attempts.
 
 ## Execution Behavior
 
-- Triggers execute **asynchronously** (scheduled after the originating mutation completes)
-- Triggers run as the **system actor** with full permissions
+- Automations execute **asynchronously** (scheduled after the originating mutation completes)
+- Automations run as the **system actor** with full permissions
 - Actions execute in **fail-fast** order (first failure stops the chain)
-- Successful triggers emit a `trigger.executed` event
-- Failed triggers emit a `trigger.failed` event
-- Triggers fire from **all mutation sources**: dashboard CRUD, agent tool calls, and API mutations
+- Successful automations emit a `trigger.executed` event
+- Failed automations emit a `trigger.failed` event
+- Automations fire from **all mutation sources**: dashboard CRUD, agent tool calls, and API mutations
 
 ## Full Examples
 

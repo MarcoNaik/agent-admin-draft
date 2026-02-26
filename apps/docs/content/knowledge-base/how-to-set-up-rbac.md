@@ -39,7 +39,7 @@ Policies support five actions: `create`, `read`, `update`, `delete`, `list`. Use
 
 ### 3. Add scope rules (row-level security)
 
-Scope rules filter which entities a role can see:
+Scope rules filter which records a role can see:
 
 ```typescript
 export default defineRole({

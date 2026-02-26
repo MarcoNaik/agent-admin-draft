@@ -38,7 +38,7 @@ The dev command follows this flow:
 
 The CLI makes two sync calls on every change:
 
-**Development environment** — receives agents, entity types, roles, and triggers:
+**Development environment** — receives agents, data types, roles, and automations:
 
 ```typescript
 {
@@ -50,7 +50,7 @@ The CLI makes two sync calls on every change:
 }
 ```
 
-**Eval environment** — receives agents, entity types, roles, eval suites, and fixtures (no triggers):
+**Eval environment** — receives agents, data types, roles, eval suites, and fixtures (no automations):
 
 ```typescript
 {
@@ -65,7 +65,7 @@ The CLI makes two sync calls on every change:
 
 Each resource is upserted by its slug or name, so both new resources and updates are handled transparently.
 
-Triggers are excluded from the eval environment to prevent side effects during test runs. Fixture sync deletes all existing entities and relations in the eval environment and recreates them from YAML, ensuring a clean, known state on every sync.
+Automations are excluded from the eval environment to prevent side effects during test runs. Fixture sync deletes all existing entities and relations in the eval environment and recreates them from YAML, ensuring a clean, known state on every sync.
 
 To deploy to production, use `struere deploy`.
 
@@ -74,9 +74,9 @@ To deploy to production, use `struere deploy`.
 The CLI watches the following directories for changes:
 
 - `agents/` — Agent definition files
-- `entity-types/` — Entity type schema files
+- `entity-types/` — Data type schema files
 - `roles/` — Role definition files
-- `triggers/` — Trigger definition files
+- `triggers/` — Automation definition files
 - `tools/` — Custom tool definition files
 - `evals/` — Eval suite definition files
 - `fixtures/` — Fixture data files

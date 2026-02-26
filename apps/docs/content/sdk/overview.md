@@ -1,13 +1,13 @@
 ---
 title: "SDK Overview"
-description: "TypeScript SDK for defining agents, entities, roles, and triggers"
+description: "TypeScript SDK for defining agents, data, roles, and automations"
 section: "SDK"
 order: 1
 ---
 
 # SDK Overview
 
-The Struere SDK provides a set of TypeScript definition functions for building AI agent platforms with structured data, automation, and integrations. It follows an **organization-centric architecture** where all agents, entity types, roles, triggers, and tools are managed from a single project and synced to the Struere platform.
+The Struere SDK provides a set of TypeScript definition functions for building AI agent platforms with structured data, automation, and integrations. It follows an **organization-centric architecture** where all agents, data types, roles, automations, and tools are managed from a single project and synced to the Struere platform.
 
 ## Installation
 
@@ -69,9 +69,9 @@ import {
 | Function | Purpose | File Location |
 |----------|---------|---------------|
 | `defineAgent` | Create and configure AI agent definitions | `agents/*.ts` |
-| `defineEntityType` | Define domain data schemas | `entity-types/*.ts` |
+| `defineEntityType` | Define data type schemas | `entity-types/*.ts` |
 | `defineRole` | Create roles with policies, scope rules, and field masks | `roles/*.ts` |
-| `defineTrigger` | Define event-driven automation rules | `triggers/*.ts` |
+| `defineTrigger` | Define automation rules | `triggers/*.ts` |
 | `defineTools` | Create custom tool handlers | `tools/index.ts` |
 | `defineConfig` | Create framework configuration with defaults | Project root |
 
@@ -123,9 +123,9 @@ import type {
 Struere uses a single-project approach where one repository defines the entire organization's AI infrastructure:
 
 - **Agents** share entity types, roles, and tools across the organization
-- **Entity types** define the domain schema once and are available to all agents
+- **Data types** define the domain schema once and are available to all agents
 - **Roles** enforce access control consistently across all agents and API access
-- **Triggers** automate workflows that fire from any mutation source (dashboard, agents, or API)
+- **Automations** automate workflows that fire from any mutation source (dashboard, agents, or API)
 - **Tools** can be referenced by any agent by name
 
 The `struere dev` command watches all directories and syncs changes to the Convex backend in real time. The `struere deploy` command pushes all agents to production.

@@ -5,7 +5,7 @@ section: "Tools"
 order: 1
 ---
 
-Struere provides a set of built-in tools that agents can use to interact with entities, events, calendars, WhatsApp, Airtable, and other agents. All built-in tools are **permission-aware** — every invocation builds an `ActorContext` from the calling agent's identity and evaluates policies, scope rules, and field masks before returning results.
+Struere provides a set of built-in tools that agents can use to interact with data, events, calendars, WhatsApp, Airtable, and other agents. All built-in tools are **permission-aware** — every invocation builds an `ActorContext` from the calling agent's identity and evaluates policies, scope rules, and field masks before returning results.
 
 Built-in tools fall into two categories:
 
@@ -16,13 +16,13 @@ Built-in tools fall into two categories:
 
 | Tool | Category | Description |
 |------|----------|-------------|
-| `entity.create` | Entity | Create a new entity of a specified type |
-| `entity.get` | Entity | Retrieve a single entity by ID |
-| `entity.query` | Entity | Query entities by type with optional filters |
-| `entity.update` | Entity | Update an existing entity's data |
-| `entity.delete` | Entity | Soft-delete an entity |
-| `entity.link` | Entity | Create a relation between two entities |
-| `entity.unlink` | Entity | Remove a relation between two entities |
+| `entity.create` | Data | Create a new record of a specified data type |
+| `entity.get` | Data | Retrieve a single record by ID |
+| `entity.query` | Data | Query records by type with optional filters |
+| `entity.update` | Data | Update an existing record's data |
+| `entity.delete` | Data | Soft-delete a record |
+| `entity.link` | Data | Create a relation between two records |
+| `entity.unlink` | Data | Remove a relation between two records |
 | `event.emit` | Event | Emit a custom event for audit logging |
 | `event.query` | Event | Query historical events with filters |
 | `agent.chat` | Agent | Send a message to another agent and get its response |
@@ -100,11 +100,11 @@ Every tool call goes through the full permission pipeline:
 
 If a permission check fails, the tool returns an error to the agent, which can then inform the user.
 
-## Entity Tools
+## Data Tools
 
 ### entity.create
 
-Creates a new entity of a specified type. Emits a `{type}.created` event and fires any matching triggers.
+Creates a new record of a specified data type. Emits a `{type}.created` event and fires any matching automations.
 
 **Parameters:**
 
@@ -118,8 +118,8 @@ Creates a new entity of a specified type. Emits a `{type}.created` event and fir
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `type` | `string` | Yes | The entity type slug (e.g., `"teacher"`, `"student"`) |
-| `data` | `object` | Yes | The entity's data fields, matching the entity type schema |
+| `type` | `string` | Yes | The data type slug (e.g., `"teacher"`, `"student"`) |
+| `data` | `object` | Yes | The record's data fields, matching the data type schema |
 | `status` | `string` | No | Initial status. Defaults to `"active"` |
 
 **Returns:**
@@ -130,7 +130,7 @@ Creates a new entity of a specified type. Emits a `{type}.created` event and fir
 
 **Example agent usage:**
 
-The agent receives a request to create a new student and calls `entity.create` with the appropriate data:
+The agent receives a request to create a new student and calls `entity.create` with the appropriate data type:
 
 ```json
 {
@@ -147,7 +147,7 @@ The agent receives a request to create a new student and calls `entity.create` w
 
 ### entity.get
 
-Retrieves a single entity by its ID. The response is filtered through scope rules and field masks.
+Retrieves a single record by its ID. The response is filtered through scope rules and field masks.
 
 **Parameters:**
 
@@ -159,7 +159,7 @@ Retrieves a single entity by its ID. The response is filtered through scope rule
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | `string` | Yes | The entity ID to retrieve |
+| `id` | `string` | Yes | The record ID to retrieve |
 
 **Returns:**
 
@@ -174,13 +174,13 @@ Retrieves a single entity by its ID. The response is filtered through scope rule
 }
 ```
 
-The `data` field will have hidden fields removed based on the actor's field masks. If the entity is outside the actor's scope, a permission error is thrown.
+The `data` field will have hidden fields removed based on the actor's field masks. If the record is outside the actor's scope, a permission error is thrown.
 
 ---
 
 ### entity.query
 
-Queries entities by type with optional filters. Results are scope-filtered and field-masked.
+Queries records by type with optional filters. Results are scope-filtered and field-masked.
 
 **Parameters:**
 
@@ -195,9 +195,9 @@ Queries entities by type with optional filters. Results are scope-filtered and f
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `type` | `string` | Yes | The entity type slug to query |
-| `filters` | `object` | No | Key-value filters applied to entity `data` fields |
-| `status` | `string` | No | Filter by entity status |
+| `type` | `string` | Yes | The data type slug to query |
+| `filters` | `object` | No | Key-value filters applied to record `data` fields |
+| `status` | `string` | No | Filter by record status |
 | `limit` | `number` | No | Maximum number of results. Defaults to `100` |
 
 **Filter operators:**
@@ -246,7 +246,7 @@ Array<{
 
 ### entity.update
 
-Updates an existing entity's data fields. The update is merged with existing data. Emits a `{type}.updated` event and fires matching triggers.
+Updates an existing record's data fields. The update is merged with existing data. Emits a `{type}.updated` event and fires matching automations.
 
 **Parameters:**
 
@@ -261,8 +261,8 @@ Updates an existing entity's data fields. The update is merged with existing dat
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | `string` | Yes | The entity ID to update |
-| `type` | `string` | No | Entity type slug for validation. If provided, the update will fail if the entity is not of this type. |
+| `id` | `string` | Yes | The record ID to update |
+| `type` | `string` | No | Data type slug for validation. If provided, the update will fail if the record is not of this type. |
 | `data` | `object` | Yes | Fields to update (merged with existing data) |
 | `status` | `string` | No | New status value |
 
@@ -278,7 +278,7 @@ Field masks are applied to the update — the actor can only modify fields their
 
 ### entity.delete
 
-Soft-deletes an entity by setting its status to `"deleted"` and recording a `deletedAt` timestamp. Emits a `{type}.deleted` event and fires matching triggers.
+Soft-deletes a record by setting its status to `"deleted"` and recording a `deletedAt` timestamp. Emits a `{type}.deleted` event and fires matching automations.
 
 **Parameters:**
 
@@ -290,7 +290,7 @@ Soft-deletes an entity by setting its status to `"deleted"` and recording a `del
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | `string` | Yes | The entity ID to delete |
+| `id` | `string` | Yes | The record ID to delete |
 
 **Returns:**
 
@@ -302,7 +302,7 @@ Soft-deletes an entity by setting its status to `"deleted"` and recording a `del
 
 ### entity.link
 
-Creates a typed relation between two entities. Requires `update` permission on the source entity and `read` permission on the target entity. Emits an `entity.linked` event.
+Creates a typed relation between two records. Requires `update` permission on the source record and `read` permission on the target record. Emits an `entity.linked` event.
 
 **Parameters:**
 
@@ -317,8 +317,8 @@ Creates a typed relation between two entities. Requires `update` permission on t
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `fromId` | `string` | Yes | The source entity ID |
-| `toId` | `string` | Yes | The target entity ID |
+| `fromId` | `string` | Yes | The source record ID |
+| `toId` | `string` | Yes | The target record ID |
 | `relationType` | `string` | Yes | The relation type label (e.g., `"teaches"`, `"guardian_of"`) |
 | `metadata` | `object` | No | Arbitrary metadata to attach to the relation |
 
@@ -337,7 +337,7 @@ If the relation already exists, the existing relation ID is returned with `exist
 
 ### entity.unlink
 
-Removes a relation between two entities. Requires `update` permission on the source entity and `read` permission on the target entity. Emits an `entity.unlinked` event.
+Removes a relation between two records. Requires `update` permission on the source record and `read` permission on the target record. Emits an `entity.unlinked` event.
 
 **Parameters:**
 
@@ -351,8 +351,8 @@ Removes a relation between two entities. Requires `update` permission on the sou
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `fromId` | `string` | Yes | The source entity ID |
-| `toId` | `string` | Yes | The target entity ID |
+| `fromId` | `string` | Yes | The source record ID |
+| `toId` | `string` | Yes | The target record ID |
 | `relationType` | `string` | Yes | The relation type to remove |
 
 **Returns:**
@@ -381,8 +381,8 @@ Emits a custom event for audit logging and tracking. Events are scoped to the cu
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `eventType` | `string` | Yes | The event type identifier (e.g., `"session.notification"`, `"payment.reminder"`) |
-| `entityId` | `string` | No | The related entity ID, if applicable |
-| `entityTypeSlug` | `string` | No | The entity type slug, used for visibility filtering |
+| `entityId` | `string` | No | The related record ID, if applicable |
+| `entityTypeSlug` | `string` | No | The data type slug, used for visibility filtering |
 | `payload` | `object` | No | Arbitrary event data |
 
 **Returns:**
@@ -395,7 +395,7 @@ Emits a custom event for audit logging and tracking. Events are scoped to the cu
 
 ### event.query
 
-Queries historical events with optional filters. Results are visibility-filtered based on the actor's permissions on related entities.
+Queries historical events with optional filters. Results are visibility-filtered based on the actor's permissions on related records.
 
 **Parameters:**
 
@@ -412,12 +412,12 @@ Queries historical events with optional filters. Results are visibility-filtered
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `eventType` | `string` | No | Filter by event type |
-| `entityId` | `string` | No | Filter by related entity ID |
-| `entityTypeSlug` | `string` | No | Filter by entity type slug |
+| `entityId` | `string` | No | Filter by related record ID |
+| `entityTypeSlug` | `string` | No | Filter by data type slug |
 | `since` | `number` | No | Unix timestamp in milliseconds; only return events after this time |
 | `limit` | `number` | No | Maximum number of results. Defaults to `50` |
 
-When an `entityId` is specified, the actor must have `read` permission on that entity and the entity must be within the actor's scope. When querying by `eventType` or without filters, events associated with entities outside the actor's scope are automatically excluded.
+When an `entityId` is specified, the actor must have `read` permission on that record and the record must be within the actor's scope. When querying by `eventType` or without filters, events associated with records outside the actor's scope are automatically excluded.
 
 **Returns:**
 

@@ -5,7 +5,7 @@ section: "Tools"
 order: 2
 ---
 
-Custom tools extend your agents' capabilities beyond the built-in entity, event, and agent tools. Tool handlers are defined in your project and executed on the tool executor service with a restricted fetch allowlist.
+Custom tools extend your agents' capabilities beyond the built-in data, event, and agent tools. Tool handlers are defined in your project and executed on the tool executor service with a restricted fetch allowlist.
 
 ## Defining Custom Tools
 

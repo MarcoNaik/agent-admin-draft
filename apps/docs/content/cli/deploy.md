@@ -51,11 +51,11 @@ Local files ──[struere dev]──► Development environment
 The following resources are scoped per environment:
 
 - Agent configurations (model, system prompt, tools)
-- Entity types and entities
+- Data types and data
 - Roles, policies, scope rules, and field masks
 - Threads and messages
 - Events and executions
-- Trigger runs
+- Automation runs
 - API keys
 - Installed packs
 

@@ -54,7 +54,7 @@ Roles are resolved once when the `ActorContext` is built, not on each permission
 | Function | Use Case |
 |----------|----------|
 | `buildActorContext()` | For authenticated user requests |
-| `buildSystemActorContext()` | For system operations (triggers, webhooks) |
+| `buildSystemActorContext()` | For system operations (automations, webhooks) |
 | `buildActorContextForAgent()` | For agent execution with environment from API key |
 
 ## Permission Flow
@@ -255,7 +255,7 @@ The permission engine guarantees the following security properties:
 
 | Property | Description |
 |----------|-------------|
-| No privileged data paths | Templates, tools, and triggers all go through the permission engine |
+| No privileged data paths | Templates, tools, and automations all go through the permission engine |
 | Defense in depth | Organization boundary checked at multiple layers |
 | Environment isolation | All queries, roles, configs, and entities scoped to environment |
 | Deny-safe | Any deny policy blocks access, regardless of allow policies |
@@ -266,7 +266,7 @@ The permission engine guarantees the following security properties:
 
 The system actor bypasses all permission checks. It is used for:
 
-- Trigger execution (automated workflows need full data access)
+- Automation execution (automated workflows need full data access)
 - Webhook processing (inbound messages need to create entities)
 - Internal operations (migrations, system maintenance)
 

@@ -29,7 +29,7 @@ If any step fails, the error is returned as the tool result text. The agent then
 |-------|-------|------------|
 | Permission denied | Role lacks the required policy | `"Permission denied: cannot perform 'update' on 'payment'"` |
 | Entity not found | Invalid entity ID | `"Entity not found"` |
-| Validation error | Data does not match entity type schema | `"Validation error: 'email' is required"` |
+| Validation error | Data does not match data type schema | `"Validation error: 'email' is required"` |
 | Tool not found | Tool not in agent's tools list | `"Tool not available: entity.delete"` |
 | Custom tool error | Handler code threw an exception | The error message from the handler |
 
@@ -82,7 +82,7 @@ The agent has a maximum of 10 tool call iterations per request. If the agent ent
 
 - **Not mentioning errors in system prompts.** Without instructions, agents may retry failed calls repeatedly until hitting the 10-iteration limit.
 - **Throwing generic errors in custom tools.** `throw new Error("failed")` gives the agent no context. Include what failed and why.
-- **Confusing empty results with errors.** `entity.query` returning `[]` is not an error — it means no entities matched the filters (possibly due to scope rules).
+- **Confusing empty results with errors.** `entity.query` returning `[]` is not an error — it means no records matched the filters (possibly due to scope rules).
 
 ## Related
 

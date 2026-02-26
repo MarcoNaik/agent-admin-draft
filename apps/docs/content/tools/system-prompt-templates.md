@@ -7,7 +7,7 @@ order: 3
 
 # System Prompt Templates
 
-System prompts support a template syntax that injects dynamic data at runtime. This allows agents to receive up-to-date context about the organization, current time, available entity types, and even live query results directly in their system prompt.
+System prompts support a template syntax that injects dynamic data at runtime. This allows agents to receive up-to-date context about the organization, current time, available data types, and even live query results directly in their system prompt.
 
 ## Template Syntax
 
@@ -23,9 +23,9 @@ export default defineAgent({
   systemPrompt: `You are {{agentName}}, an assistant for {{organizationName}}.
 Current time: {{currentTime}}
 
-Available entity types: {{entityTypes}}
+Available data types: {{entityTypes}}
 
-Use entity.query to search for entities by type.`,
+Use entity.query to search for records by type.`,
   model: { provider: "anthropic", name: "claude-sonnet-4" },
   tools: ["entity.query", "entity.get", "event.emit"],
 })
@@ -48,7 +48,7 @@ Use entity.query to search for entities by type.`,
 | `{{message}}` | `string` | The current user message being processed |
 | `{{threadContext.channel}}` | `string` | The channel the conversation came through: `widget`, `whatsapp`, `api`, or `dashboard` |
 | `{{threadContext.params.X}}` | `any` | Access thread context parameter `X` (replace `X` with the param name) |
-| `{{entityTypes}}` | `array` | JSON array of all entity types in the current environment |
+| `{{entityTypes}}` | `array` | JSON array of all data types in the current environment |
 | `{{roles}}` | `array` | JSON array of all roles in the current environment |
 
 ### Variable Resolution
@@ -62,7 +62,7 @@ If a variable resolves to an object or array, it is serialized as JSON. If a var
 
 ### entityTypes Structure
 
-The `{{entityTypes}}` variable resolves to a JSON array of entity type objects:
+The `{{entityTypes}}` variable resolves to a JSON array of data type objects:
 
 ```json
 [
@@ -95,7 +95,7 @@ The `{{entityTypes}}` variable resolves to a JSON array of entity type objects:
 ]
 ```
 
-This gives agents full awareness of the data model so they can construct valid `entity.query` and `entity.create` calls.
+This gives agents full awareness of the data types so they can construct valid `entity.query` and `entity.create` calls.
 
 ## Function Calls (Embedded Queries)
 
@@ -107,17 +107,17 @@ Templates can embed live queries that execute at prompt-resolution time. Functio
 
 ### entity.query
 
-Queries entities by type and injects the results into the system prompt:
+Queries records by type and injects the results into the system prompt:
 
 ```
 {{entity.query({"type": "teacher", "limit": 5})}}
 ```
 
-This resolves to a JSON array of entity objects, filtered through the agent's permissions (scope rules and field masks apply).
+This resolves to a JSON array of record objects, filtered through the agent's permissions (scope rules and field masks apply).
 
 ### entity.get
 
-Retrieves a single entity by type and ID:
+Retrieves a single record by type and ID:
 
 ```
 {{entity.get({"type": "customer", "id": "ent_abc123"})}}
@@ -136,7 +136,7 @@ In this example:
 2. The resolved ID is then used as the argument to `entity.get`
 3. The entity data is fetched and injected into the system prompt
 
-This is particularly useful for agents that need context about a specific entity associated with the current conversation thread.
+This is particularly useful for agents that need context about a specific record associated with the current conversation thread.
 
 ## Unsupported Syntax
 
@@ -157,7 +157,7 @@ Handlebars block helpers are **not supported**. The following will not work:
 Instead, use the raw variable which returns the JSON representation:
 
 ```
-Available types: {{entityTypes}}
+Available data types: {{entityTypes}}
 ```
 
 The LLM can parse the JSON array directly.
@@ -194,7 +194,7 @@ export default defineAgent({
 
 Current time: {{currentTime}}
 
-## Available Entity Types
+## Available Data Types
 {{entityTypes}}
 
 ## Current Teachers
@@ -204,7 +204,7 @@ Current time: {{currentTime}}
 {{entity.query({"type": "student"})}}
 
 ## Instructions
-- Use the entity types above to understand the data schema
+- Use the data types above to understand the schema
 - Query sessions with entity.query to check for conflicts
 - Create new sessions with entity.create
 - Always verify teacher availability before booking

@@ -1,6 +1,6 @@
 ---
 title: "struere add"
-description: "Scaffold new agents, entity types, roles, and triggers"
+description: "Scaffold new agents, data types, roles, and automations"
 section: "CLI"
 order: 4
 ---
@@ -52,7 +52,7 @@ export default defineAgent({
 })
 ```
 
-### Scaffold an Entity Type
+### Scaffold a Data Type
 
 ```bash
 npx struere add entity-type customer
@@ -98,7 +98,7 @@ export default defineRole({
 })
 ```
 
-### Scaffold a Trigger
+### Scaffold an Automation
 
 ```bash
 npx struere add trigger notify-on-signup

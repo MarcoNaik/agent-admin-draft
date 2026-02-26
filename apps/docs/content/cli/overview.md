@@ -16,7 +16,7 @@ The Struere CLI is your primary interface for defining, syncing, and deploying a
 | `struere init` | Initialize an organization-centric project, scaffold directories |
 | `struere dev` | Watch all files, sync everything to Convex on change |
 | `struere deploy` | Deploy all agents to production |
-| `struere add <type> <name>` | Scaffold a new agent, entity-type, role, trigger, eval, or fixture |
+| `struere add <type> <name>` | Scaffold a new agent, entity-type, role, automation, eval, or fixture |
 | `struere entities` | Browse and manage entities interactively |
 | `struere status` | Compare local file definitions vs remote state |
 | `struere pull` | Pull remote resources to local files |
@@ -126,9 +126,9 @@ Resources are upserted by slug or name, meaning the CLI handles both creation an
 Struere uses an organization-centric architecture. A single project defines all resources for one organization:
 
 - All agents in `agents/`
-- All entity types in `entity-types/`
+- All data types in `entity-types/`
 - All roles in `roles/`
-- All triggers in `triggers/`
+- All automations in `triggers/`
 - Shared custom tools in `tools/`
 - Eval suites in `evals/`
 - Fixture data in `fixtures/`

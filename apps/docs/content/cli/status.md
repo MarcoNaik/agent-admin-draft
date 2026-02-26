@@ -40,7 +40,7 @@ Agents:
   ~ support-agent      (modified)
   = onboarding-agent   (unchanged)
 
-Entity Types:
+Data Types:
   + invoice            (new)
   = customer           (unchanged)
   = teacher            (unchanged)
@@ -50,7 +50,7 @@ Roles:
   ~ teacher            (modified)
   - legacy-role        (deleted)
 
-Triggers:
+Automations:
   + notify-on-signup   (new)
 ```
 

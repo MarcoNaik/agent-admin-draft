@@ -1,30 +1,30 @@
 ---
-title: "Triggers"
-description: "Automated workflows triggered by entity changes"
+title: "Automations"
+description: "Automated workflows triggered by data changes"
 section: "Platform Concepts"
 order: 3
 ---
 
-# Triggers
+# Automations
 
-Triggers are automated workflows that execute when entities are created, updated, or deleted. They enable event-driven architecture by running a sequence of tool calls in response to data mutations, without requiring manual intervention.
+Automations are automated workflows that execute when data is created, updated, or deleted. They enable event-driven architecture by running a sequence of tool calls in response to data mutations, without requiring manual intervention.
 
-## How Triggers Work
+## How Automations Work
 
-When a mutation occurs (from the dashboard, an agent tool call, or an API request), the trigger engine checks for matching triggers and schedules them for execution:
+When a mutation occurs (from the dashboard, an agent tool call, or an API request), the automation engine checks for matching automations and schedules them for execution:
 
 ```
-Entity mutation (create/update/delete)
+Data mutation (create/update/delete)
     │
     ▼
-Trigger engine scans for matching triggers
+Automation engine scans for matching automations
     │
     ├─ Match on entityType
     ├─ Match on action (created/updated/deleted)
     └─ Match on condition (optional data filter)
     │
     ▼
-Matched triggers scheduled asynchronously
+Matched automations scheduled asynchronously
     │
     ▼
 Actions execute in order (fail-fast)
@@ -44,9 +44,9 @@ Actions execute in order (fail-fast)
 | Failure event | Emits `trigger.failed` |
 | Sources | Fires from dashboard CRUD, agent tool calls, and API mutations |
 
-## Immediate Triggers
+## Immediate Automations
 
-By default, triggers execute as soon as they are scheduled (immediately after the originating mutation). The actions run in sequence:
+By default, automations execute as soon as they are scheduled (immediately after the originating mutation). The actions run in sequence:
 
 ```typescript
 {
@@ -75,9 +75,9 @@ By default, triggers execute as soon as they are scheduled (immediately after th
 }
 ```
 
-## Scheduled Triggers
+## Scheduled Automations
 
-Triggers can be delayed or scheduled for a specific time using the `schedule` field:
+Automations can be delayed or scheduled for a specific time using the `schedule` field:
 
 ### Delay-Based
 
@@ -89,11 +89,11 @@ schedule: {
 }
 ```
 
-This runs the trigger 5 minutes after the entity mutation.
+This runs the automation 5 minutes after the data mutation.
 
 ### Time-Based
 
-Execute at a specific time derived from entity data:
+Execute at a specific time derived from the data:
 
 ```typescript
 schedule: {
@@ -102,11 +102,11 @@ schedule: {
 }
 ```
 
-This schedules the trigger for 1 hour before the session's `startTime`. The `at` field supports template expressions that resolve to an ISO timestamp or Unix timestamp.
+This schedules the automation for 1 hour before the session's `startTime`. The `at` field supports template expressions that resolve to an ISO timestamp or Unix timestamp.
 
 ### Cancel Previous
 
-When an entity is updated multiple times, `cancelPrevious` ensures only the latest scheduled run is kept:
+When a record is updated multiple times, `cancelPrevious` ensures only the latest scheduled run is kept:
 
 ```typescript
 schedule: {
@@ -118,9 +118,9 @@ schedule: {
 
 If a session's start time is changed, the old reminder is cancelled and a new one is scheduled.
 
-## Trigger Runs
+## Automation Runs
 
-Scheduled triggers create records in the `triggerRuns` table for status tracking.
+Scheduled automations create records in the `triggerRuns` table for status tracking.
 
 ### Status Lifecycle
 
@@ -142,16 +142,16 @@ pending ──► running ──► completed
 | `failed` | An action failed (may be retried) |
 | `dead` | Failed and exhausted all retry attempts |
 
-### Trigger Run Fields
+### Automation Run Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `triggerId` | ID | Reference to the trigger definition |
-| `triggerSlug` | string | Slug of the trigger definition |
-| `entityId` | string | Entity that triggered the run |
+| `triggerId` | ID | Reference to the automation definition |
+| `triggerSlug` | string | Slug of the automation definition |
+| `entityId` | string | Record that triggered the run |
 | `status` | enum | Current lifecycle status |
-| `data` | object | Entity data at time of trigger |
-| `previousData` | object | Entity data before the mutation (for updates) |
+| `data` | object | Record data at time of activation |
+| `previousData` | object | Record data before the mutation (for updates) |
 | `scheduledFor` | number | When the run is scheduled to execute |
 | `startedAt` | number | When execution began |
 | `completedAt` | number | When execution finished |
@@ -164,7 +164,7 @@ pending ──► running ──► completed
 
 ## Retry Configuration
 
-Failed triggers can be retried with backoff:
+Failed automations can be retried with backoff:
 
 ```typescript
 retry: {
@@ -178,7 +178,7 @@ retry: {
 | `maxAttempts` | number | Maximum retry attempts (minimum 1) |
 | `backoffMs` | number | Base delay in milliseconds between retries |
 
-When a trigger fails:
+When an automation fails:
 
 1. If `attempts < maxAttempts`, the run is rescheduled with exponential backoff: `backoffMs * 2^(attempts-1)`, capped at 1 hour
 2. The status transitions back to `pending`
@@ -187,17 +187,17 @@ When a trigger fails:
 
 ## Template Variable Resolution
 
-Trigger action arguments support template variables that are resolved at execution time.
+Automation action arguments support template variables that are resolved at execution time.
 
-### Trigger Context
+### Automation Context
 
 | Variable | Description |
 |----------|-------------|
-| `{{trigger.entityId}}` | ID of the entity that triggered the event |
-| `{{trigger.entityType}}` | Entity type slug |
+| `{{trigger.entityId}}` | ID of the record that activated the automation |
+| `{{trigger.entityType}}` | Data type slug |
 | `{{trigger.action}}` | The action: `"created"`, `"updated"`, or `"deleted"` |
-| `{{trigger.data.X}}` | Field `X` from the entity's current data |
-| `{{trigger.previousData.X}}` | Field `X` from the entity's data before an update |
+| `{{trigger.data.X}}` | Field `X` from the record's current data |
+| `{{trigger.previousData.X}}` | Field `X` from the record's data before an update |
 
 ### Step References
 
@@ -205,7 +205,7 @@ Trigger action arguments support template variables that are resolved at executi
 |----------|-------------|
 | `{{steps.NAME.X}}` | Field `X` from the result of a named step |
 
-Steps are named using the `as` field on a trigger action. Later actions can reference the result:
+Steps are named using the `as` field on an automation action. Later actions can reference the result:
 
 ```typescript
 actions: [
@@ -226,7 +226,7 @@ actions: [
 
 ## Condition Matching
 
-The `on.condition` field filters which mutations activate the trigger. All condition fields must match for the trigger to fire:
+The `on.condition` field filters which mutations activate the automation. All condition fields must match for the automation to fire:
 
 ```typescript
 on: {
@@ -236,7 +236,7 @@ on: {
 }
 ```
 
-This trigger only fires when a session entity is updated and its `data.status` field equals `"completed"`.
+This automation only fires when a session record is updated and its `data.status` field equals `"completed"`.
 
 Multiple conditions act as AND filters:
 
@@ -249,7 +249,7 @@ condition: {
 
 ## Mutation Sources
 
-Triggers fire from all mutation sources in the platform:
+Automations fire from all mutation sources in the platform:
 
 | Source | Example |
 |--------|---------|
@@ -261,24 +261,24 @@ This ensures that automated workflows execute regardless of how the mutation ori
 
 ## Events
 
-Triggers emit events throughout their lifecycle:
+Automations emit events throughout their lifecycle:
 
 | Event | When |
 |-------|------|
-| `trigger.executed` | Immediate trigger completed successfully |
-| `trigger.failed` | Immediate trigger action failed |
-| `trigger.scheduled.completed` | Scheduled trigger run completed successfully |
-| `trigger.scheduled.dead` | Scheduled trigger run exhausted all retry attempts |
+| `trigger.executed` | Immediate automation completed successfully |
+| `trigger.failed` | Immediate automation action failed |
+| `trigger.scheduled.completed` | Scheduled automation run completed successfully |
+| `trigger.scheduled.dead` | Scheduled automation run exhausted all retry attempts |
 
 ## Available Tools
 
-Triggers can execute any built-in tool and custom tools. Actions run as the **system actor** with full permissions.
+Automations can execute any built-in tool and custom tools. Actions run as the **system actor** with full permissions.
 
 ### Core Tools
 
 | Category | Tools |
 |----------|-------|
-| Entity | `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete`, `entity.link`, `entity.unlink` |
+| Data | `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete`, `entity.link`, `entity.unlink` |
 | Event | `event.emit`, `event.query` |
 | Agent | `agent.chat` |
 
@@ -294,15 +294,14 @@ Require an active integration configured in the dashboard.
 
 ### Custom Tools
 
-Triggers can also execute custom tools defined in the `tools/` directory. If the tool name doesn't match a built-in tool, the trigger engine delegates to the custom tool executor. Custom tool handlers run in the sandboxed Hono server on Fly.io.
+Automations can also execute custom tools defined in the `tools/` directory. If the tool name doesn't match a built-in tool, the automation engine delegates to the custom tool executor. Custom tool handlers run in the sandboxed Hono server on Fly.io.
 
 ## Dashboard Management
 
-The dashboard provides trigger management at `/triggers`:
+The dashboard provides automation management at `/triggers`:
 
-- View all configured triggers
-- See trigger run history with status
+- View all configured automations
+- See automation run history with status
 - View scheduled (pending) runs
 - Retry failed runs
 - Cancel pending runs
-

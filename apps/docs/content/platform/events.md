@@ -26,7 +26,7 @@ Each event captures the full context of what happened, who did it, and when:
 
 ## Event Types
 
-Events fall into two categories: system events emitted automatically by the platform, and custom events emitted explicitly by tools or triggers.
+Events fall into two categories: system events emitted automatically by the platform, and custom events emitted explicitly by tools or automations.
 
 ### System Events
 
@@ -39,8 +39,8 @@ These events are emitted automatically when entity mutations occur:
 | `{type}.deleted` | An entity is soft-deleted |
 | `entity.linked` | A relation is created between two entities |
 | `entity.unlinked` | A relation is removed between two entities |
-| `trigger.executed` | A trigger completes successfully |
-| `trigger.failed` | A trigger fails during execution |
+| `trigger.executed` | An automation completes successfully |
+| `trigger.failed` | An automation fails during execution |
 
 ### Custom Events
 
@@ -157,9 +157,9 @@ Custom events can include any JSON-serializable payload:
 }
 ```
 
-## Events and Triggers
+## Events and Automations
 
-Events serve as the input for the trigger system. When an entity mutation emits an event, matching triggers are activated:
+Events serve as the input for the automation system. When a data mutation emits an event, matching automations are activated:
 
 ```
 Entity mutation occurs
@@ -168,14 +168,14 @@ Entity mutation occurs
 System event emitted ({type}.created, {type}.updated, etc.)
     │
     ▼
-Trigger engine checks for matching triggers
+Automation engine checks for matching automations
     │
     ▼
-Matching triggers scheduled for execution
+Matching automations scheduled for execution
     │
     ▼
-Trigger actions execute (may emit more events)
+Automation actions execute (may emit more events)
 ```
 
-Triggers can also emit events via the `event.emit` tool in their action chains, creating observable side effects for other triggers or audit purposes.
+Automations can also emit events via the `event.emit` tool in their action chains, creating observable side effects for other automations or audit purposes.
 

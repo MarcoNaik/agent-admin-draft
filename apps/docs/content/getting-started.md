@@ -48,11 +48,11 @@ my-org/
 ├── agents/
 │   └── (your agent definitions)
 ├── entity-types/
-│   └── (your entity type schemas)
+│   └── (your data type schemas)
 ├── roles/
 │   └── (your role definitions with policies)
 ├── triggers/
-│   └── (your trigger automations)
+│   └── (your automations)
 ├── tools/
 │   └── index.ts
 ├── evals/
@@ -101,7 +101,7 @@ This defines an agent that:
 - Has access to query entities and emit events
 - Receives the organization name and current time in its system prompt via template variables
 
-## Define an Entity Type
+## Define a Data Type
 
 Create a file at `entity-types/customer.ts`:
 
@@ -153,7 +153,7 @@ You should see output like:
 
 ```
 ✓ Logged in as you@example.com
-✓ Loaded 1 agent, 1 entity type, 1 role, 0 triggers
+✓ Loaded 1 agent, 1 data type, 1 role, 0 automations
 ✓ Synced to development environment
   Watching for changes...
 ```
@@ -221,6 +221,6 @@ This promotes all agent configurations to the production environment where they 
 - [Chat API](./api/chat) — Full API reference for sending messages to agents
 - [CLI Overview](./cli/overview) — Learn all available CLI commands
 - [Agent Configuration](./sdk/define-agent) — Configure models, tools, and system prompts
-- [Entity Types](./sdk/define-entity-type) — Define structured data schemas
+- [Data Types](./sdk/define-entity-type) — Define structured data schemas
 - [Built-in Tools](./tools/built-in-tools) — All available agent tools
-- [Triggers](./sdk/define-trigger) — Build event-driven automations
+- [Automations](./sdk/define-trigger) — Build event-driven automations

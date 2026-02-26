@@ -19,7 +19,7 @@ Struere has three environments: `development`, `production`, and `eval`. Use `st
 npx struere dev
 ```
 
-This syncs your local definitions (agents, entity types, roles, triggers) to the **development** environment and eval suites/fixtures to the **eval** environment. It watches for file changes and re-syncs automatically.
+This syncs your local definitions (agents, data types, roles, automations) to the **development** environment and eval suites/fixtures to the **eval** environment. It watches for file changes and re-syncs automatically.
 
 ### 2. Test with development API keys
 
@@ -32,7 +32,7 @@ curl -X POST https://api.struere.dev/v1/agents/my-agent/chat \
   -d '{"message": "Hello"}'
 ```
 
-This request accesses development agent configurations, development entities, and development threads.
+This request accesses development agent configurations, development data, and development threads.
 
 ### 3. Deploy to production
 
@@ -61,11 +61,11 @@ A production API key **cannot** access development data, and vice versa.
 
 | Isolated per environment | Shared across environments |
 |--------------------------|---------------------------|
-| Entity types, entities, relations | Agent identity (name, slug) |
+| Data types, data, relations | Agent identity (name, slug) |
 | Roles, policies, scope rules, field masks | Users, organizations |
 | Agent configurations (prompt, model, tools) | Tool permission configs |
 | Threads, messages | |
-| Events, executions, trigger runs | |
+| Events, executions, automation runs | |
 | API keys, integration configs | |
 
 The `agents` table is shared so the same agent can have different configurations per environment. The `agentConfigs` table stores the environment-specific config.
@@ -78,7 +78,7 @@ Use `struere status` to compare your local definitions against what is deployed:
 npx struere status
 ```
 
-This shows which agents, types, roles, and triggers differ between your local files and the remote environment.
+This shows which agents, types, roles, and automations differ between your local files and the remote environment.
 
 ### 7. Dashboard environment switching
 
@@ -88,8 +88,8 @@ The dashboard lets admins switch between environments to view and manage data. T
 
 - **Using a dev API key in production.** Always verify the key prefix matches the intended environment.
 - **Forgetting to deploy.** Changes from `struere dev` only affect development. Run `struere deploy` to push to production.
-- **Expecting shared entities.** Entities created in development do not exist in production. Each environment has its own data.
-- **Mixing up eval and development.** The eval environment is for automated testing with fixture data. It receives eval suites and fixtures but not triggers.
+- **Expecting shared data.** Data created in development does not exist in production. Each environment has its own data.
+- **Mixing up eval and development.** The eval environment is for automated testing with fixture data. It receives eval suites and fixtures but not automations.
 
 ## Related
 

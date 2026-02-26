@@ -16,19 +16,19 @@ const cards = [
   },
   {
     title: "SDK Reference",
-    description: "defineAgent, defineEntityType, defineRole, and more.",
+    description: "defineAgent, defineDataType, defineRole, and more.",
     href: "/sdk/overview",
     icon: Code,
   },
   {
     title: "Built-in Tools",
-    description: "Entity, event, calendar, WhatsApp, Airtable, and agent tools.",
+    description: "Data, event, calendar, WhatsApp, Airtable, and agent tools.",
     href: "/tools/built-in-tools",
     icon: Wrench,
   },
   {
     title: "Platform Concepts",
-    description: "Entities, agents, triggers, events, permissions, and evals.",
+    description: "Data, agents, automations, events, permissions, and evals.",
     href: "/platform/entities",
     icon: BookOpen,
   },
@@ -45,7 +45,7 @@ export default function Home() {
     <div className="px-6 py-8 lg:px-16 lg:py-12">
       <h1 className="text-4xl font-bold text-charcoal-heading mb-3 font-display tracking-tight">Struere Docs</h1>
       <p className="text-content-secondary mb-8 text-base leading-relaxed max-w-3xl">
-        Struere is an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations. Define agents, entity types, and triggers as code — talk to them via API.
+        Struere is an AI agent platform with a built-in data layer, dynamic prompts, automation, and integrations. Define agents, data types, and automations as code — talk to them via API.
       </p>
 
       <div className="mb-10 flex gap-3">

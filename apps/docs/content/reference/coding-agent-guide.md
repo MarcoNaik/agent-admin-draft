@@ -15,7 +15,7 @@ Struere's documentation is optimized for consumption by coding agents. This guid
 |----------|---------|----------|
 | `/llms.txt` | Index of all pages with quick reference | Agent discovery and navigation |
 | `/llms-full.txt` | Complete documentation in one file | Comprehensive context loading |
-| `/llms-sdk.txt` | SDK section only | Agent/entity/role definition tasks |
+| `/llms-sdk.txt` | SDK section only | Agent/data type/role definition tasks |
 | `/llms-api.txt` | API reference only | HTTP integration tasks |
 | `/llms-cli.txt` | CLI reference only | CLI command questions |
 | `/llms-platform.txt` | Platform concepts only | Architecture and permission questions |

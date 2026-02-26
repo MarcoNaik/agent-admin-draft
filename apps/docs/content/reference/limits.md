@@ -29,10 +29,10 @@ order: 3
 
 | Limit | Value |
 |-------|-------|
-| Default `entity.query` limit | 50 entities |
-| Maximum `entity.query` limit | 100 entities |
+| Default `entity.query` limit | 50 records |
+| Maximum `entity.query` limit | 100 records |
 | Default `event.query` limit | 50 events |
-| Entity soft-delete | Entities are soft-deleted (status set to `"deleted"`) |
+| Record soft-delete | Records are soft-deleted (status set to `"deleted"`) |
 | Environments | `development`, `production`, `eval` |
 
 ## Custom Tool Executor
@@ -45,7 +45,7 @@ order: 3
 
 Custom tool handlers can only make HTTP requests to the 8 domains listed above. Requests to other domains are blocked by the sandbox.
 
-## Triggers
+## Automations
 
 | Limit | Value |
 |-------|-------|

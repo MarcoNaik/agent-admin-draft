@@ -9,7 +9,7 @@ order: 2
 
 ## Quick Answer
 
-Permission denials happen when: (1) no allow policy matches the resource and action, (2) a deny policy overrides an allow, or (3) scope rules filter out the target entity. Check the actor's roles, policies, and scope rules in the dashboard under the relevant environment.
+Permission denials happen when: (1) no allow policy matches the resource and action, (2) a deny policy overrides an allow, or (3) scope rules filter out the target record. Check the actor's roles, policies, and scope rules in the dashboard under the relevant environment.
 
 ## Step by Step
 
@@ -48,7 +48,7 @@ If the agent tries `entity.update` on a session, it will be denied because there
 
 ### 3. Check scope rules
 
-Even with an allow policy, scope rules can filter out specific entities. A teacher with this scope rule:
+Even with an allow policy, scope rules can filter out specific records. A teacher with this scope rule:
 
 ```typescript
 scopeRules: [
@@ -60,7 +60,7 @@ scopeRules: [
 
 ### 4. Check field masks
 
-Field masks hide fields but do not block access to the entity itself. If an agent tries to read a masked field, it will be missing from the response rather than causing a permission error.
+Field masks hide fields but do not block access to the record itself. If an agent tries to read a masked field, it will be missing from the response rather than causing a permission error.
 
 ### 5. Check tool permissions
 
@@ -86,9 +86,9 @@ npx struere status
 ## Common Mistakes
 
 - **Wrong environment.** A role synced to development does not exist in production until you run `struere deploy`.
-- **Missing list permission.** `entity.query` requires the `list` action, not `read`. The `read` action is for `entity.get` (single entity by ID).
+- **Missing list permission.** `entity.query` requires the `list` action, not `read`. The `read` action is for `entity.get` (single record by ID).
 - **Deny on wildcard.** `{ resource: "payment", actions: ["*"], effect: "deny" }` blocks all five actions on payments, including `list` and `read`.
-- **System actor bypass.** System actors (triggers, webhooks) bypass all permission checks. If a trigger works but a user cannot perform the same action, it is a permission issue on the user's role.
+- **System actor bypass.** System actors (automations, webhooks) bypass all permission checks. If an automation works but a user cannot perform the same action, it is a permission issue on the user's role.
 
 ## Related
 

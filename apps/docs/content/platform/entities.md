@@ -1,27 +1,27 @@
 ---
-title: "Entities"
+title: "Data"
 description: "Domain data with permission-aware CRUD operations"
 section: "Platform Concepts"
 order: 1
 ---
 
-# Entities
+# Data
 
-Entities are the primary data model in Struere. They represent domain objects (teachers, students, sessions, payments) with typed schemas, environment isolation, full-text search, and permission-aware CRUD operations.
+Data is the primary data model in Struere. It represents domain objects (teachers, students, sessions, payments) with typed schemas, environment isolation, full-text search, and permission-aware CRUD operations.
 
-## Entity Types
+## Data Types
 
-Entity types define the schema for a category of entities. They are created using the `defineEntityType` SDK function and synced to the platform.
+Data types define the schema for a category of data. They are created using the `defineEntityType` SDK function and synced to the platform.
 
-Each entity type specifies:
+Each data type specifies:
 
 - **Schema**: JSON Schema defining the data structure
 - **Search fields**: Fields indexed for text search
-- **Display config**: How entities appear in the dashboard
+- **Display config**: How records appear in the dashboard
 
-Entity types are scoped per environment using the `by_org_env_slug` index, so development and production can have different schemas.
+Data types are scoped per environment using the `by_org_env_slug` index, so development and production can have different schemas.
 
-### Entity Type Schema in the Database
+### Data Type Schema in the Database
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -35,29 +35,29 @@ Entity types are scoped per environment using the `by_org_env_slug` index, so de
 | `boundToRole` | string | Role binding for user linking |
 | `userIdField` | string | Field storing Clerk user ID |
 
-## Entities
+## Records
 
-Entities are instances of an entity type. Each entity stores its data as a flexible JSON object that conforms to the entity type's schema.
+Records are instances of a data type. Each record stores its data as a flexible JSON object that conforms to the data type's schema.
 
-### Entity Schema in the Database
+### Record Schema in the Database
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `organizationId` | ID | Owning organization |
 | `environment` | enum | `"development"` or `"production"` |
-| `entityTypeId` | ID | Reference to entity type |
-| `data` | object | Entity data conforming to the type's JSON Schema |
+| `entityTypeId` | ID | Reference to data type |
+| `data` | object | Record data conforming to the type's JSON Schema |
 | `status` | string | Lifecycle status (e.g., `"active"`, `"deleted"`) |
 | `createdAt` | number | Creation timestamp |
 | `updatedAt` | number | Last update timestamp |
 
 ### Environment Scoping
 
-All entity queries are scoped to the current environment using the `by_org_env_type` and `by_org_env_type_status` indexes. An agent running in the development environment cannot access production entities.
+All data queries are scoped to the current environment using the `by_org_env_type` and `by_org_env_type_status` indexes. An agent running in the development environment cannot access production data.
 
 ## CRUD Operations
 
-All entity operations are permission-aware, flowing through the permission engine before executing.
+All data operations are permission-aware, flowing through the permission engine before executing.
 
 ### Create
 
@@ -76,7 +76,7 @@ entity.create({
 })
 ```
 
-Creates an entity and emits an event. The actor must have `create` permission on the entity type.
+Creates a record and emits an event. The actor must have `create` permission on the data type.
 
 ### Read
 
@@ -84,7 +84,7 @@ Creates an entity and emits an event. The actor must have `create` permission on
 entity.get({ id: "ent_abc123" })
 ```
 
-Retrieves a single entity by ID. The response is filtered through field masks based on the actor's role, hiding or redacting fields the actor should not see.
+Retrieves a single record by ID. The response is filtered through field masks based on the actor's role, hiding or redacting fields the actor should not see.
 
 ### Query
 
@@ -96,7 +96,7 @@ entity.query({
 })
 ```
 
-Queries entities by type with optional filters. Scope rules are applied automatically, so a teacher only sees their own sessions and a guardian only sees sessions for their children.
+Queries records by type with optional filters. Scope rules are applied automatically, so a teacher only sees their own sessions and a guardian only sees sessions for their children.
 
 ### Update
 
@@ -107,7 +107,7 @@ entity.update({
 })
 ```
 
-Updates entity data and emits an event. The actor must have `update` permission.
+Updates record data and emits an event. The actor must have `update` permission.
 
 ### Delete
 
@@ -119,7 +119,7 @@ Performs a soft delete (sets status to `"deleted"`) and emits an event. The acto
 
 ## Relations
 
-Entities can be linked to each other through the `entityRelations` table. Relations are typed and directional.
+Records can be linked to each other through the `entityRelations` table. Relations are typed and directional.
 
 ### Link
 
@@ -151,7 +151,7 @@ The `entityRelations` table indexes (`by_from` and `by_to`) do not include the e
 
 ## Search
 
-Entity types define `searchFields` that are indexed for text search. The `entity.query` tool supports searching across these fields:
+Data types define `searchFields` that are indexed for text search. The `entity.query` tool supports searching across these fields:
 
 ```typescript
 entity.query({
@@ -161,11 +161,11 @@ entity.query({
 })
 ```
 
-This searches across all fields listed in the entity type's `searchFields` array.
+This searches across all fields listed in the data type's `searchFields` array.
 
-## Permission Flow for Entities
+## Permission Flow for Data
 
-Every entity operation passes through the full permission pipeline:
+Every data operation passes through the full permission pipeline:
 
 ```
 Actor makes request
@@ -173,11 +173,11 @@ Actor makes request
     ▼
 1. Permission Check
    Does the actor's role have a policy allowing this action
-   on this entity type? (deny overrides allow)
+   on this data type? (deny overrides allow)
     │
     ▼
 2. Scope Rules (row-level)
-   Filter query results to only entities the actor
+   Filter query results to only records the actor
    is allowed to see (e.g., teacher sees own sessions)
     │
     ▼
@@ -191,10 +191,10 @@ Filtered response returned
 
 ## Tutoring Domain Example
 
-The tutoring pack defines 6 entity types that demonstrate the full entity system:
+The tutoring pack defines 6 data types that demonstrate the full data system:
 
-| Entity Type | Key Fields | Relationships |
-|-------------|------------|---------------|
+| Data Type | Key Fields | Relationships |
+|-----------|------------|---------------|
 | `teacher` | name, email, subjects, availability, hourlyRate, userId | Linked to sessions |
 | `student` | name, grade, subjects, notes, guardianId, preferredTeacherId | Linked to guardian |
 | `guardian` | name, email, phone, whatsappNumber, billingAddress, userId | Parent of students |
@@ -225,4 +225,3 @@ pending_payment ──[payment.success]──► scheduled
 - Teacher availability validation
 - No double booking
 - Credit consumption on session completion
-

@@ -7,7 +7,7 @@ order: 2
 
 # Project Structure
 
-Struere uses an **organization-centric** project layout where all agents, entity types, roles, triggers, and tools are defined as code in a single project directory. The CLI watches these files and syncs them to the Convex backend.
+Struere uses an **organization-centric** project layout where all agents, data types, roles, automations, and tools are defined as code in a single project directory. The CLI watches these files and syncs them to the Convex backend.
 
 ## Directory Layout
 
@@ -60,7 +60,7 @@ export default defineAgent({
 
 ### entity-types/
 
-Each file exports a single entity type definition using `defineEntityType`. Entity types define the schema for structured data that agents can create, query, and manage.
+Each file exports a single data type definition using `defineEntityType`. Data types define the schema for structured data that agents can create, query, and manage.
 
 ```typescript
 import { defineEntityType } from 'struere'
@@ -109,7 +109,7 @@ export default defineRole({
 
 ### triggers/
 
-Each file exports a single trigger definition using `defineTrigger`. Triggers define automations that fire when entities are created, updated, or deleted.
+Each file exports a single automation definition using `defineTrigger`. Automations fire when data is created, updated, or deleted.
 
 ```typescript
 import { defineTrigger } from 'struere'
@@ -241,7 +241,7 @@ The Convex backend stores all platform data across the following table categorie
 | **Conversation** | `threads`, `messages` | Conversation threads and message history |
 | **Business Data** | `entityTypes`, `entities`, `entityRelations` | Structured data types, instances, and relations (all env-scoped) |
 | **Events & Audit** | `events`, `executions` | Event log and agent execution tracking (env-scoped) |
-| **Triggers** | `triggers`, `triggerRuns` | Automation rules and execution records (env-scoped) |
+| **Automations** | `triggers`, `triggerRuns` | Automation rules and execution records (env-scoped) |
 | **RBAC** | `roles`, `policies`, `scopeRules`, `fieldMasks`, `toolPermissions`, `userRoles`, `pendingRoleAssignments` | Access control definitions (roles are env-scoped) |
 | **Integrations** | `integrationConfigs`, `whatsappConnections`, `whatsappMessages`, `providerConfigs`, `calendarConnections` | External service configurations and integration data |
 | **Billing** | `creditBalances`, `creditTransactions` | Organization credit balances and transaction history |
@@ -263,8 +263,8 @@ When you run `struere dev`, the CLI performs a **dual sync**:
 
 1. Loads all resource files from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/`
 2. Builds a sync payload containing all definitions
-3. Syncs to the **development** environment (agents, entity types, roles, triggers)
-4. Syncs to the **eval** environment (agents, entity types, roles, eval suites, fixtures — triggers excluded)
+3. Syncs to the **development** environment (agents, data types, roles, automations)
+4. Syncs to the **eval** environment (agents, data types, roles, eval suites, fixtures — automations excluded)
 5. Watches all directories with chokidar for file changes
 6. Re-syncs on any file change (add, modify, or delete)
 
