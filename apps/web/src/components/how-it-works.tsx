@@ -38,59 +38,69 @@ function Step({
 
 export function HowItWorks() {
   const { t } = useI18n()
-  const { ref, isVisible } = useReveal({ threshold: 0.2 })
   const headingRef = useRef<HTMLHeadingElement>(null)
-  const headingVisibleRef = useRef(false)
+  const revealedRef = useRef(false)
 
   useEffect(() => {
-    let ticking = false
+    const el = headingRef.current
+    if (!el) return
 
-    function updateHeading() {
-      if (!headingRef.current) return
-      const rect = headingRef.current.getBoundingClientRect()
-      const vh = window.innerHeight
-      const normalized = 1 - (rect.top / vh)
-      const progress = Math.min(1, Math.max(0.75, 0.75 + (normalized / 0.5) * 0.25))
-      headingRef.current.style.opacity = headingVisibleRef.current ? String(progress) : "0"
-      headingRef.current.style.transform = `translateY(${-200 + (progress - 0.75) * 800}px)`
+    let ticking = false
+    let elTop = el.getBoundingClientRect().top + window.scrollY
+
+    function reveal() {
+      if (revealedRef.current) return
+      revealedRef.current = true
+      el!.style.opacity = "1"
     }
+
+    function updateParallax() {
+      const vh = window.innerHeight
+      const viewportTop = elTop - window.scrollY
+      const normalized = Math.min(1, Math.max(0, 1 - viewportTop / vh))
+      el!.style.transform = `translateY(${-200 + normalized * 200}px)`
+    }
+
+    const timeout = setTimeout(reveal, 9000)
 
     const onScroll = () => {
       if (ticking) return
       ticking = true
       requestAnimationFrame(() => {
-        updateHeading()
+        reveal()
+        updateParallax()
         ticking = false
       })
     }
 
-    const timeout = setTimeout(() => {
-      headingVisibleRef.current = true
-      updateHeading()
-    }, 9000)
+    const onResize = () => {
+      el!.style.transform = "none"
+      elTop = el!.getBoundingClientRect().top + window.scrollY
+      updateParallax()
+    }
 
     window.addEventListener("scroll", onScroll, { passive: true })
-    updateHeading()
+    window.addEventListener("resize", onResize, { passive: true })
+    updateParallax()
+
     return () => {
       clearTimeout(timeout)
       window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onResize)
     }
   }, [])
 
   return (
     <section id="como-funciona" className="bg-stone-base py-20 md:py-28">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
-        <div
-          ref={ref}
-          className="text-center mb-8"
-        >
+        <div className="text-center mb-8">
           <h2
             ref={headingRef}
             className="font-display text-6xl md:text-8xl font-medium text-charcoal-heading"
             style={{
               opacity: 0,
-              transform: "translateY(-200px)",
               willChange: "opacity, transform",
+              transition: "opacity 0.8s ease-out",
             }}
           >
             {t.howItWorks.title}
