@@ -1,9 +1,35 @@
-import { loadCredentials, getApiKey } from './credentials'
+import { loadCredentials, getApiKey, saveCredentials } from './credentials'
 
 const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
 
 function getSiteUrl(): string {
   return CONVEX_URL.replace('.cloud', '.site')
+}
+
+export async function refreshToken(): Promise<string | null> {
+  const credentials = loadCredentials()
+  if (!credentials?.sessionId) return null
+
+  const siteUrl = getSiteUrl()
+  try {
+    const response = await fetch(`${siteUrl}/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: credentials.sessionId }),
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!response.ok) return null
+
+    const data = await response.json() as { token: string }
+    if (!data.token) return null
+
+    credentials.token = data.token
+    saveCredentials(credentials)
+    return data.token
+  } catch {
+    return null
+  }
 }
 
 export interface UserInfo {
@@ -291,7 +317,12 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
     return syncViaHttp(apiKey, payload)
   }
 
-  const token = apiKey || credentials?.token
+  if (credentials?.sessionId) {
+    await refreshToken()
+  }
+
+  const freshCredentials = loadCredentials()
+  const token = apiKey || freshCredentials?.token
 
   if (!token) {
     return { success: false, error: 'Not authenticated' }
@@ -379,7 +410,12 @@ export async function getSyncState(organizationId?: string, environment?: 'devel
     }
   }
 
-  const token = apiKey || credentials?.token
+  if (credentials?.sessionId) {
+    await refreshToken()
+  }
+
+  const freshCredentials = loadCredentials()
+  const token = apiKey || freshCredentials?.token
 
   if (!token) {
     return { error: 'Not authenticated' }
@@ -491,7 +527,12 @@ export async function getPullState(
     }
   }
 
-  const token = apiKey || credentials?.token
+  if (credentials?.sessionId) {
+    await refreshToken()
+  }
+
+  const freshCredentials = loadCredentials()
+  const token = apiKey || freshCredentials?.token
 
   if (!token) {
     return { error: 'Not authenticated' }

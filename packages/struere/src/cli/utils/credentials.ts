@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from '
 
 export interface Credentials {
   token: string
+  sessionId?: string
   apiKey?: string
   user: {
     id: string

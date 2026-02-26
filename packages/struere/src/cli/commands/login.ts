@@ -41,6 +41,7 @@ async function browserLogin(spinner: ReturnType<typeof ora>) {
   if (result) {
     printNextSteps()
   }
+  process.exit(0)
 }
 
 async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Credentials | null> {
@@ -107,7 +108,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
   spinner.start('Waiting for authentication')
 
   try {
-    const { token } = await authPromise
+    const { token, sessionId } = await authPromise
 
     spinner.text = 'Fetching user info'
 
@@ -121,6 +122,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
 
     const credentials: Credentials = {
       token,
+      sessionId,
       user: {
         id: user.id,
         email: user.email,

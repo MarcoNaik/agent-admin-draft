@@ -1,12 +1,13 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import { confirm } from '@inquirer/prompts'
-import { loadCredentials, getApiKey } from '../utils/credentials'
+import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProject } from '../utils/project'
 import { syncOrganization, getSyncState, type SyncResult, type SyncOptions } from '../utils/convex'
 import { loadAllResources, type LoadedResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
-import { isInteractive, createOutput } from '../utils/runtime'
+import { isInteractive, createOutput, isAuthError } from '../utils/runtime'
+import { performLogin } from './login'
 
 type Environment = SyncOptions['environment']
 
@@ -308,12 +309,31 @@ export const syncCommand = new Command('sync')
         }))
       }
     } catch (error) {
-      if (jsonMode) {
-        console.log(JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }))
+      if (isAuthError(error) && interactive && !jsonMode) {
+        output.fail('Session expired - re-authenticating...')
+        clearCredentials()
+        const newCredentials = await performLogin()
+        if (!newCredentials) {
+          output.error('Authentication failed')
+          process.exit(1)
+        }
+        output.start('Syncing to Convex')
+        try {
+          const result = await syncToEnvironment(cwd, project.organization.id, environment)
+          output.succeed(`Synced to ${environment}`)
+        } catch (retryError) {
+          output.fail('Sync failed')
+          output.error(retryError instanceof Error ? retryError.message : String(retryError))
+          process.exit(1)
+        }
       } else {
-        output.fail('Sync failed')
-        output.error(error instanceof Error ? error.message : String(error))
+        if (jsonMode) {
+          console.log(JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }))
+        } else {
+          output.fail('Sync failed')
+          output.error(error instanceof Error ? error.message : String(error))
+        }
+        process.exit(1)
       }
-      process.exit(1)
     }
   })

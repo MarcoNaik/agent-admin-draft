@@ -38,6 +38,7 @@ const BUILTIN_TOOLS = [
   'airtable.createRecords',
   'airtable.updateRecords',
   'airtable.deleteRecords',
+  'email.send',
 ]
 
 export interface SyncPayload {
@@ -367,6 +368,7 @@ function getBuiltinToolDescription(name: string): string {
     'airtable.createRecords': 'Create up to 10 records in an Airtable table',
     'airtable.updateRecords': 'Update up to 10 records in an Airtable table',
     'airtable.deleteRecords': 'Delete up to 10 records from an Airtable table',
+    'email.send': 'Send an email via Resend',
   }
   return descriptions[name] || name
 }
@@ -664,6 +666,17 @@ function getBuiltinToolParameters(name: string): unknown {
         recordIds: { type: 'array', items: { type: 'string' }, description: 'Array of record IDs to delete (max 10)' },
       },
       required: ['baseId', 'tableIdOrName', 'recordIds'],
+    },
+    'email.send': {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Recipient email address' },
+        subject: { type: 'string', description: 'Email subject line' },
+        html: { type: 'string', description: 'HTML body content' },
+        text: { type: 'string', description: 'Plain text body content' },
+        replyTo: { type: 'string', description: 'Reply-to email address' },
+      },
+      required: ['to', 'subject'],
     },
   }
   return schemas[name] || { type: 'object', properties: {} }
