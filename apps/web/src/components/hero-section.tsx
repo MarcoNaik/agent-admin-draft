@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
+import { motion, useTransform } from "motion/react"
+import { usePageScrollAnimation } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
@@ -60,11 +62,14 @@ export function HeroSection() {
   const { mounted, setImageLoaded } = useHeroEntrance()
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
-  const parallaxRef = useRef<HTMLDivElement>(null)
+  const [heroLooping, setHeroLooping] = useState(false)
   const promptCardRef = useRef<HTMLDivElement>(null)
   const promptBtnRef = useRef<HTMLDivElement>(null)
   const promptPillsRef = useRef<HTMLDivElement>(null)
   const promptRevealedRef = useRef(false)
+
+  const { scrollY } = usePageScrollAnimation()
+  const bgY = useTransform(scrollY, (v) => v * 0.08)
 
   useEffect(() => {
     function revealPrompt() {
@@ -94,18 +99,9 @@ export function HeroSection() {
     if (!mounted) return
     const timeout = setTimeout(revealPrompt, 3100)
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    let ticking = false
     const onScroll = () => {
-      if (ticking) return
-      ticking = true
-      requestAnimationFrame(() => {
-        if (!reducedMotion && parallaxRef.current) {
-          parallaxRef.current.style.transform = `translateY(${window.scrollY * 0.08}px)`
-        }
-        revealPrompt()
-        ticking = false
-      })
+      revealPrompt()
+      window.removeEventListener("scroll", onScroll)
     }
     window.addEventListener("scroll", onScroll, { passive: true })
 
@@ -130,10 +126,7 @@ export function HeroSection() {
           WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
         }}
       >
-        <div
-          ref={parallaxRef}
-          className="absolute inset-0 overflow-hidden"
-        >
+        <motion.div className="absolute inset-0 overflow-hidden" style={{ y: bgY }}>
           <Image
             src="/hero-bg.png"
             alt=""
@@ -141,32 +134,23 @@ export function HeroSection() {
             priority
             onLoad={setImageLoaded}
             className={`object-cover transition-transform duration-[10000ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] ${mounted ? "scale-[1.03]" : "scale-100"}`}
-            style={{
-              objectPosition: "center center",
-            }}
+            style={{ objectPosition: "center center" }}
             sizes="100vw"
           />
-        </div>
+        </motion.div>
       </div>
-
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.06) 35%, transparent 60%)",
-        }}
-      />
 
       <div className="absolute top-[8%] md:top-[10%] left-0 right-0 text-center px-6 md:px-12">
         <div className="max-w-3xl mx-auto">
           <div
             className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100" : "opacity-0"}`}
-            style={{
-              transitionProperty: "opacity",
-              transitionDuration: "900ms",
-            }}
+            style={{ transitionProperty: "opacity", transitionDuration: "900ms" }}
           >
             <h1
-              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] whitespace-nowrap ${mounted ? "hero-animate" : ""}`}
+              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] whitespace-nowrap ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
+              onAnimationEnd={(e) => {
+                if (e.animationName === "hero-gradient-flow") setHeroLooping(true)
+              }}
               style={{
                 backgroundImage:
                   "linear-gradient(-90deg, #98a8b0, #7898b0, #5880a8, #5880a8, #4878a8, #4870a0, #5078a0, #6890a8, #90a8b8, #b8c0c8 56%, #d8d0c0 58%, #f0e8d8 59%, #e8e8e0 60%, #a0c0e0 62%, #80a8d0, #6888a8, #8898a8)",
@@ -174,7 +158,7 @@ export function HeroSection() {
                 WebkitBackgroundClip: "text",
                 color: "transparent",
                 WebkitTextFillColor: "transparent",
-                filter: "drop-shadow(0 2px 24px rgba(0,0,0,0.15))",
+                filter: "drop-shadow(0 0 2px rgba(255,255,255,0.85)) drop-shadow(0 2px 24px rgba(0,0,0,0.15))",
               }}
             >
               {t.hero.headline}
@@ -198,7 +182,7 @@ export function HeroSection() {
                 WebkitBackgroundClip: "text",
                 color: "transparent",
                 WebkitTextFillColor: "transparent",
-                filter: "drop-shadow(0 1px 8px rgba(0,0,0,0.15))",
+                filter: "drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 1px 8px rgba(0,0,0,0.15))",
               }}
             >
               {t.hero.tagline}
@@ -250,10 +234,7 @@ export function HeroSection() {
                 <div className="absolute bottom-3 right-3">
                   <div
                     ref={promptBtnRef}
-                    style={{
-                      opacity: 0,
-                      transition: "opacity 1000ms cubic-bezier(0.16,1,0.3,1)",
-                    }}
+                    style={{ opacity: 0, transition: "opacity 1000ms cubic-bezier(0.16,1,0.3,1)" }}
                   >
                     <button
                       type="submit"
@@ -293,7 +274,6 @@ export function HeroSection() {
               })}
             </div>
           </form>
-
         </div>
       </div>
     </section>

@@ -1,6 +1,8 @@
 "use client"
 
-import { useReveal } from "@/hooks/use-reveal"
+import { motion } from "motion/react"
+import { useScrollAnimation } from "@/hooks/use-scroll-animation"
+import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-transforms"
 
 const testimonials = [
   {
@@ -33,14 +35,17 @@ function TestimonialCard({
   testimonial: (typeof testimonials)[0]
   index: number
 }) {
-  const { ref, isVisible } = useReveal({ threshold: 0.2, delay: index * 150 })
+  const { ref, smoothProgress } = useScrollAnimation()
+  const offset = index * 0.03
+  const { scale, opacity, y } = useScaleIn(smoothProgress, {
+    scaleRange: [0.12 + offset, 0.38 + offset],
+  })
 
   return (
-    <div
+    <motion.div
       ref={ref}
-      className={`relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-      }`}
+      style={{ scale, opacity, y }}
+      className="relative p-6 md:p-8 rounded-2xl bg-white/50 backdrop-blur-sm border border-charcoal/5"
     >
       <div className="absolute top-0 left-0 w-[2px] h-16 rounded-full prismatic-border" />
 
@@ -58,25 +63,24 @@ function TestimonialCard({
           {testimonial.role} {testimonial.flag}
         </p>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 export function Testimonials() {
-  const { ref, isVisible } = useReveal({ threshold: 0.2 })
+  const { ref, smoothProgress } = useScrollAnimation()
+  const headingY = useParallaxY(smoothProgress)
 
   return (
     <section className="bg-stone-base py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-6 md:px-12">
-        <div
-          ref={ref}
-          className={`text-center mb-16 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
-          }`}
-        >
-          <h2 className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading">
+        <div ref={ref} className="text-center mb-16">
+          <motion.h2
+            className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
+            style={{ y: headingY }}
+          >
             Lo que dicen nuestros usuarios
-          </h2>
+          </motion.h2>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5">

@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useReveal } from "@/hooks/use-reveal"
+import { motion } from "motion/react"
+import { useScrollAnimation } from "@/hooks/use-scroll-animation"
+import { useFadeSlideUp } from "@/hooks/use-scroll-transforms"
 import { useI18n } from "@/lib/i18n"
 
 function CyclingPlaceholder({ items }: { items: readonly string[] }) {
@@ -20,11 +22,7 @@ function CyclingPlaceholder({ items }: { items: readonly string[] }) {
   }, [items.length])
 
   return (
-    <span
-      className={`font-mono text-charcoal/25 transition-opacity duration-600 ${
-        visible ? "opacity-100" : "opacity-0"
-      }`}
-    >
+    <span className={`font-mono text-charcoal/25 transition-opacity duration-600 ${visible ? "opacity-100" : "opacity-0"}`}>
       {items[index]}
     </span>
   )
@@ -32,7 +30,8 @@ function CyclingPlaceholder({ items }: { items: readonly string[] }) {
 
 export function CTASection() {
   const { t } = useI18n()
-  const { ref, isVisible } = useReveal({ threshold: 0.2 })
+  const { ref, smoothProgress } = useScrollAnimation()
+  const { opacity, y } = useFadeSlideUp(smoothProgress)
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
 
@@ -45,14 +44,8 @@ export function CTASection() {
   return (
     <section className="relative bg-gradient-to-b from-stone-base to-stone-deep py-24 md:py-32">
       <div ref={ref} className="mx-auto max-w-3xl px-6 md:px-12 text-center">
-        <div
-          className={`transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
-          }`}
-        >
-          <h2 className="font-display text-4xl md:text-5xl font-medium text-charcoal-heading mb-4">
-            {t.cta.title}
-          </h2>
+        <motion.div style={{ opacity, y }}>
+          <h2 className="font-display text-4xl md:text-5xl font-medium text-charcoal-heading mb-4">{t.cta.title}</h2>
           <p className="text-lg text-charcoal/50 mb-10">{t.cta.subtitle}</p>
 
           <form onSubmit={handleSubmit}>
@@ -121,7 +114,7 @@ export function CTASection() {
               ))}
             </div>
           </form>
-        </div>
+        </motion.div>
       </div>
     </section>
   )

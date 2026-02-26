@@ -117,6 +117,21 @@ body::after {
   }
 }
 
+.hero-gradient-text.hero-gradient-loop {
+  background-size: 400% 100% !important;
+  animation: hero-gradient-breathe 24s linear infinite !important;
+  transition: background-size 3s ease !important;
+}
+
+@keyframes hero-gradient-breathe {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: -200% 0%;
+  }
+}
+
 @keyframes typing {
   from { width: 0 }
   to { width: 100% }

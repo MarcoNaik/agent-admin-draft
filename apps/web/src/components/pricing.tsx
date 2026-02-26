@@ -1,6 +1,8 @@
 "use client"
 
-import { useReveal } from "@/hooks/use-reveal"
+import { motion } from "motion/react"
+import { useScrollAnimation } from "@/hooks/use-scroll-animation"
+import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-transforms"
 import { useI18n } from "@/lib/i18n"
 
 const models = [
@@ -13,30 +15,28 @@ const models = [
 
 export function Pricing() {
   const { t } = useI18n()
-  const { ref, isVisible } = useReveal({ threshold: 0.2 })
-  const { ref: managedRef, isVisible: managedVisible } = useReveal({ threshold: 0.2, delay: 200 })
+  const { ref, smoothProgress } = useScrollAnimation()
+  const headingY = useParallaxY(smoothProgress)
+  const { scale, opacity, y } = useScaleIn(smoothProgress, {
+    scaleRange: [0.18, 0.42],
+  })
 
   return (
     <section id="precios" className="bg-stone-deep py-20 md:py-28">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
-        <div
-          ref={ref}
-          className={`text-center mb-12 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
-          }`}
-        >
-          <h2 className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading">
+        <div ref={ref} className="text-center mb-12">
+          <motion.h2
+            className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
+            style={{ y: headingY }}
+          >
             {t.pricing.title}
-          </h2>
-          <p className="mt-4 text-base text-charcoal/60 max-w-lg mx-auto">
-            {t.pricing.subtitle}
-          </p>
+          </motion.h2>
+          <p className="mt-4 text-base text-charcoal/60 max-w-lg mx-auto">{t.pricing.subtitle}</p>
         </div>
 
-        <div
-          className={`relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 mb-6 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] delay-150 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
+        <motion.div
+          style={{ scale, opacity, y }}
+          className="relative p-8 md:p-10 rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 mb-6"
         >
           <div className="absolute inset-0 rounded-2xl p-[1px] pointer-events-none">
             <div className="absolute inset-0 rounded-2xl prismatic-border opacity-20" />
@@ -53,20 +53,12 @@ export function Pricing() {
                   {t.pricing.freePrice}
                 </span>
               </div>
-              <p className="text-sm text-charcoal/50 mb-6">
-                {t.pricing.freePriceNote}
-              </p>
+              <p className="text-sm text-charcoal/50 mb-6">{t.pricing.freePriceNote}</p>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-6">
                 {t.pricing.freeFeatures.map((feature) => (
                   <div key={feature} className="flex items-center gap-2">
-                    <svg
-                      className="w-3.5 h-3.5 text-ocean flex-shrink-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2.5}
-                    >
+                    <svg className="w-3.5 h-3.5 text-ocean flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                     <span className="text-sm text-charcoal/70">{feature}</span>
@@ -74,9 +66,7 @@ export function Pricing() {
                 ))}
               </div>
 
-              <p className="text-xs text-charcoal/50 leading-relaxed mb-6">
-                {t.pricing.freeHow}
-              </p>
+              <p className="text-xs text-charcoal/50 leading-relaxed mb-6">{t.pricing.freeHow}</p>
 
               <a
                 href="https://app.struere.dev"
@@ -84,20 +74,14 @@ export function Pricing() {
               >
                 {t.pricing.freeCta}
               </a>
-              <p className="mt-3 text-xs text-charcoal/40">
-                {t.pricing.freeNote}
-              </p>
+              <p className="mt-3 text-xs text-charcoal/40">{t.pricing.freeNote}</p>
             </div>
 
             <div className="hidden md:block w-px bg-charcoal/10 self-stretch" />
 
             <div className="flex-1 pt-6 md:pt-0 border-t md:border-t-0 border-charcoal/10">
-              <h3 className="text-sm font-medium text-charcoal-heading mb-2">
-                {t.pricing.managedTitle}
-              </h3>
-              <p className="text-xs text-charcoal/50 leading-relaxed mb-4">
-                {t.pricing.managedNote}
-              </p>
+              <h3 className="text-sm font-medium text-charcoal-heading mb-2">{t.pricing.managedTitle}</h3>
+              <p className="text-xs text-charcoal/50 leading-relaxed mb-4">{t.pricing.managedNote}</p>
 
               <table className="w-full text-xs mb-3">
                 <thead>
@@ -125,15 +109,11 @@ export function Pricing() {
                 </tbody>
               </table>
 
-              <p className="text-[11px] text-charcoal/40 leading-relaxed">
-                {t.pricing.managedIncludes}
-              </p>
-              <p className="text-[11px] text-charcoal/30 mt-1">
-                {t.pricing.tableFooter}
-              </p>
+              <p className="text-[11px] text-charcoal/40 leading-relaxed">{t.pricing.managedIncludes}</p>
+              <p className="text-[11px] text-charcoal/30 mt-1">{t.pricing.tableFooter}</p>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )
