@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MessageSquare, Calendar, Database, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { MessageSquare, Calendar, Database, Mail, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useWhatsAppConnections, useCalendarConnection, useIntegrationConfig } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent } from "@/components/ui/card"
@@ -60,6 +60,7 @@ export default function IntegrationsPage() {
   const calendarConnection = useCalendarConnection(environment)
   const whatsappConfig = useIntegrationConfig("whatsapp", environment)
   const airtableConfig = useIntegrationConfig("airtable", environment)
+  const resendConfig = useIntegrationConfig("resend", environment)
 
   const getWhatsAppStatus = (): "active" | "inactive" | null => {
     if (whatsappConfig === undefined || whatsappConnections === undefined) return null
@@ -77,6 +78,12 @@ export default function IntegrationsPage() {
   const getAirtableStatus = (): "active" | "inactive" | null => {
     if (airtableConfig === undefined) return null
     if (airtableConfig?.status === "active") return "active"
+    return "inactive"
+  }
+
+  const getResendStatus = (): "active" | "inactive" | null => {
+    if (resendConfig === undefined) return null
+    if (resendConfig?.status === "active") return "active"
     return "inactive"
   }
 
@@ -109,6 +116,13 @@ export default function IntegrationsPage() {
           href="/settings/integrations/whatsapp"
           icon={<MessageSquare className="h-5 w-5 text-primary" />}
           status={getWhatsAppStatus()}
+        />
+        <IntegrationCard
+          name="Resend"
+          description="Send transactional emails from your agents via Resend"
+          href="/settings/integrations/resend"
+          icon={<Mail className="h-5 w-5 text-primary" />}
+          status={getResendStatus()}
         />
       </div>
 
