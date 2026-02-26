@@ -409,6 +409,7 @@ export default defineSchema({
       v.literal("complained"),
       v.literal("failed")
     ),
+    creditsConsumed: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
