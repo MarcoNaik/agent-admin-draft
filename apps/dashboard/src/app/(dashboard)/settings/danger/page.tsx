@@ -1,7 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { AlertTriangle, Trash2 } from "lucide-react"
+import { useMutation } from "convex/react"
+import { useOrganization } from "@clerk/nextjs"
+import { AlertTriangle, Trash2, Loader2 } from "lucide-react"
+import { api } from "@convex/_generated/api"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,14 +12,27 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function DangerZonePage() {
-  const organization = useCurrentOrganization()
+  const convexOrg = useCurrentOrganization()
+  const { organization: clerkOrg } = useOrganization()
+  const removeOrg = useMutation(api.organizations.remove)
   const [confirmText, setConfirmText] = useState("")
-  const orgName = organization?.name || ""
-  const canDelete = confirmText === orgName
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const orgName = convexOrg?.name || ""
+  const canDelete = confirmText === orgName && !isDeleting
 
-  const handleDelete = () => {
-    if (!canDelete) return
-    alert("Organization deletion is not implemented yet")
+  const handleDelete = async () => {
+    if (!canDelete || !convexOrg) return
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await removeOrg({ id: convexOrg._id })
+      await clerkOrg?.destroy()
+      window.location.href = "/create-organization"
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete organization")
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -58,16 +74,30 @@ export default function DangerZonePage() {
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={orgName}
               className="font-input max-w-sm"
+              disabled={isDeleting}
             />
           </div>
+
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
 
           <Button
             variant="destructive"
             disabled={!canDelete}
             onClick={handleDelete}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Organization
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Organization
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
