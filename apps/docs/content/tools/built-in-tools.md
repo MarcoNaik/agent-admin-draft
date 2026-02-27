@@ -58,6 +58,8 @@ If an agent calls an integration tool and the integration isn't configured, the 
 | `airtable.updateRecords` | Airtable | Update up to 10 records |
 | `airtable.deleteRecords` | Airtable | Delete up to 10 records |
 | `email.send` | Resend | Send a transactional email |
+| `payment.create` | Flow.cl | Create a payment link and return the URL |
+| `payment.getStatus` | Flow.cl | Check the current status of a payment |
 
 ### Setting Up Integrations
 
@@ -67,6 +69,7 @@ Each integration requires configuration via the CLI ([`struere integration`](/cl
 - **WhatsApp** — Connect via Kapso with a WhatsApp Business number. See [WhatsApp integration](/integrations/whatsapp).
 - **Airtable** — Provide a Personal Access Token: `npx struere integration airtable --token <pat> --test`. See [Airtable integration](/integrations/airtable).
 - **Resend** — Configure sender identity: `npx struere integration resend --from-email <email> --test`. See [Resend integration](/integrations/resend).
+- **Flow.cl** — Provide API credentials: `npx struere integration flow --api-url <url> --api-key <key> --secret-key <secret> --test`. See [Flow Payments integration](/integrations/flow-payments).
 
 ## Enabling Tools
 
@@ -1154,3 +1157,67 @@ When the coordinator receives a scheduling request, it calls:
 ```
 
 The scheduler agent runs its own LLM loop with its own tools and permissions, then returns its response to the coordinator.
+
+## Payment Tools
+
+Payment tools let agents create payment links via Flow.cl and check payment status. They require the Flow integration to be configured in the dashboard.
+
+### `payment.create`
+
+Creates a payment entity, calls the Flow API to generate a payment link, and returns the link URL.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `amount` | `number` | Yes | Payment amount |
+| `description` | `string` | Yes | Description of the payment |
+| `currency` | `string` | No | Currency code (defaults to `"CLP"` or the config default) |
+| `customerEmail` | `string` | No | Customer email address |
+| `entityId` | `string` | No | Optional entity ID to link the payment to |
+
+**Returns:**
+
+```json
+{
+  "paymentId": "ent_abc123",
+  "paymentLinkUrl": "https://www.flow.cl/app/web/pay.php?token=xyz",
+  "flowOrderId": "12345"
+}
+```
+
+**Example agent config:**
+
+```typescript
+export default defineAgent({
+  name: "Billing Agent",
+  slug: "billing",
+  version: "0.1.0",
+  systemPrompt: "You help users make payments. When a user wants to pay, create a payment link.",
+  tools: ["payment.create", "payment.getStatus", "entity.query"],
+})
+```
+
+### `payment.getStatus`
+
+Checks the current status of a payment entity. If the payment has a Flow provider reference, it also queries the Flow API for live status.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `entityId` | `string` | Yes | Payment entity ID to check |
+
+**Returns:**
+
+```json
+{
+  "entityId": "ent_abc123",
+  "status": "pending",
+  "flowStatus": "1",
+  "flowStatusMessage": "Pending payment",
+  "paymentLinkUrl": "https://www.flow.cl/app/web/pay.php?token=xyz",
+  "amount": 5000,
+  "currency": "CLP"
+}
+```
