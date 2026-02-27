@@ -32,6 +32,65 @@ async function resolveFlowConfig(
   return flowConfig
 }
 
+async function queryPaymentEntityType(
+  ctx: any,
+  organizationId: Id<"organizations">,
+  environment: Environment
+): Promise<{ _id: Id<"entityTypes">; slug: string }> {
+  const paymentType = await ctx.runQuery(internal.payments.getPaymentEntityType, {
+    organizationId,
+    environment,
+  })
+  if (!paymentType) {
+    throw new Error("Payment entity type not found. Create a 'payment' entity type first.")
+  }
+  return paymentType
+}
+
+async function createPaymentEntityMutation(
+  ctx: any,
+  args: {
+    organizationId: Id<"organizations">
+    environment: Environment
+    entityTypeId: Id<"entityTypes">
+    data: Record<string, unknown>
+    actorId: string
+    actorType: string
+  }
+): Promise<Id<"entities">> {
+  return await ctx.runMutation(internal.payments.createPaymentEntity, args)
+}
+
+async function storePaymentLinkMutation(
+  ctx: any,
+  args: { paymentId: Id<"entities">; paymentLinkUrl: string; providerReference: string }
+): Promise<void> {
+  await ctx.runMutation(internal.payments.storePaymentLink, args)
+}
+
+async function linkPaymentMutation(
+  ctx: any,
+  args: {
+    organizationId: Id<"organizations">
+    environment: Environment
+    paymentId: Id<"entities">
+    entityId: Id<"entities">
+  }
+): Promise<void> {
+  await ctx.runMutation(internal.payments.linkPaymentToEntity, args)
+}
+
+async function queryPaymentInternal(
+  ctx: any,
+  paymentId: Id<"entities">,
+  organizationId: Id<"organizations">
+): Promise<Record<string, unknown> | null> {
+  return await ctx.runQuery(internal.payments.getPaymentInternal, {
+    paymentId,
+    organizationId,
+  })
+}
+
 export const paymentCreate = internalAction({
   args: {
     organizationId: v.id("organizations"),
@@ -49,19 +108,11 @@ export const paymentCreate = internalAction({
     const currency = args.currency || config.defaultCurrency || "CLP"
     const returnUrl = config.returnUrl || config.webhookBaseUrl || ""
 
-    const paymentType = await ctx.runQuery(internal.payments.getPaymentEntityType, {
-      organizationId: args.organizationId,
-      environment: args.environment,
-    })
+    const paymentType = await queryPaymentEntityType(ctx, args.organizationId, args.environment as Environment)
 
-    if (!paymentType) {
-      throw new Error("Payment entity type not found. Create a 'payment' entity type first.")
-    }
-
-    const now = Date.now()
-    const paymentId = await ctx.runMutation(internal.payments.createPaymentEntity, {
+    const paymentId = await createPaymentEntityMutation(ctx, {
       organizationId: args.organizationId,
-      environment: args.environment,
+      environment: args.environment as Environment,
       entityTypeId: paymentType._id,
       data: {
         amount: args.amount,
@@ -83,16 +134,16 @@ export const paymentCreate = internalAction({
       returnUrl,
     })
 
-    await ctx.runMutation(internal.payments.storePaymentLink, {
+    await storePaymentLinkMutation(ctx, {
       paymentId,
       paymentLinkUrl: result.url,
       providerReference: result.flowOrder,
     })
 
     if (args.entityId) {
-      await ctx.runMutation(internal.payments.linkPaymentToEntity, {
+      await linkPaymentMutation(ctx, {
         organizationId: args.organizationId,
-        environment: args.environment,
+        environment: args.environment as Environment,
         paymentId,
         entityId: args.entityId as Id<"entities">,
       })
@@ -115,10 +166,7 @@ export const paymentGetStatus = internalAction({
     entityId: v.string(),
   },
   handler: async (ctx, args) => {
-    const entity = await ctx.runQuery(internal.payments.getPaymentInternal, {
-      paymentId: args.entityId as Id<"entities">,
-      organizationId: args.organizationId,
-    })
+    const entity = await queryPaymentInternal(ctx, args.entityId as Id<"entities">, args.organizationId)
 
     if (!entity) {
       throw new Error("Payment entity not found")
