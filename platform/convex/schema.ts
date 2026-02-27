@@ -134,6 +134,7 @@ export default defineSchema({
     data: v.any(),
     searchText: v.optional(v.string()),
     providerReference: v.optional(v.string()),
+    flowToken: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
@@ -143,6 +144,7 @@ export default defineSchema({
     .index("by_org_env_type", ["organizationId", "environment", "entityTypeId"])
     .index("by_org_env_type_status", ["organizationId", "environment", "entityTypeId", "status"])
     .index("by_provider_reference", ["providerReference"])
+    .index("by_flow_token", ["flowToken"])
     .searchIndex("search_text", { searchField: "searchText" }),
 
   entityRelations: defineTable({
