@@ -255,6 +255,8 @@ export const createCase = mutation({
       assertions: v.optional(v.array(assertionValidator)),
     })),
     finalAssertions: v.optional(v.array(assertionValidator)),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    contextParams: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -284,6 +286,8 @@ export const createCase = mutation({
       tags: args.tags,
       turns: args.turns,
       finalAssertions: args.finalAssertions,
+      channel: args.channel,
+      contextParams: args.contextParams,
       order: maxOrder + 1,
       createdAt: now,
       updatedAt: now,
@@ -302,6 +306,8 @@ export const updateCase = mutation({
       assertions: v.optional(v.array(assertionValidator)),
     }))),
     finalAssertions: v.optional(v.array(assertionValidator)),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    contextParams: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -321,6 +327,8 @@ export const updateCase = mutation({
     if (args.tags !== undefined) updates.tags = args.tags
     if (args.turns !== undefined) updates.turns = args.turns
     if (args.finalAssertions !== undefined) updates.finalAssertions = args.finalAssertions
+    if (args.channel !== undefined) updates.channel = args.channel
+    if (args.contextParams !== undefined) updates.contextParams = args.contextParams
 
     await ctx.db.patch(args.id, updates)
     return await ctx.db.get(args.id)

@@ -544,6 +544,8 @@ export default defineSchema({
       value: v.optional(v.string()),
       weight: v.optional(v.number()),
     }))),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+    contextParams: v.optional(v.any()),
     order: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),

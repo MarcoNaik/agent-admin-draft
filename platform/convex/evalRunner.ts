@@ -122,7 +122,9 @@ export const executeCase = internalAction({
           suite.judgeContext,
           run.organizationId,
           run.agentId,
-          run.environment
+          run.environment,
+          evalCase.channel,
+          evalCase.contextParams
         )
       } catch {
         state.resolvedJudgeContext = suite.judgeContext
@@ -135,7 +137,9 @@ export const executeCase = internalAction({
           ctx,
           run.organizationId,
           run.agentId,
-          run.environment
+          run.environment,
+          evalCase.channel,
+          evalCase.contextParams
         )
       } catch {
         state.resolvedAgentPrompt = ""
@@ -150,6 +154,8 @@ export const executeCase = internalAction({
           agentId: run.agentId,
           externalId,
           environment: run.environment,
+          channel: evalCase.channel,
+          channelParams: evalCase.contextParams,
         })
       }
 
@@ -192,6 +198,8 @@ export const executeCase = internalAction({
           message: turn.userMessage,
           threadId,
           environment: run.environment,
+          channel: evalCase.channel,
+          channelParams: evalCase.contextParams,
           evalRunId: args.runId,
         })
 
@@ -686,7 +694,9 @@ async function resolveJudgeContext(
   template: string,
   organizationId: Id<"organizations">,
   agentId: Id<"agents">,
-  environment: "development" | "production" | "eval"
+  environment: "development" | "production" | "eval",
+  channel?: "widget" | "whatsapp" | "api" | "dashboard",
+  contextParams?: Record<string, unknown>
 ): Promise<string> {
   const actor = buildSystemActorContext(organizationId, environment)
   const org = await ctx.runQuery(internal.evals.getOrgName, { organizationId })
@@ -698,7 +708,7 @@ async function resolveJudgeContext(
     actor,
     agent: { name: "", slug: "" },
     agentName: "",
-    threadContext: { channel: undefined, params: {} },
+    threadContext: { channel: channel ?? undefined, params: contextParams ?? {} },
     message: "",
     timestamp: Date.now(),
     datetime: new Date().toISOString(),
@@ -717,7 +727,9 @@ async function resolveAgentSystemPrompt(
   ctx: ActionCtx,
   organizationId: Id<"organizations">,
   agentId: Id<"agents">,
-  environment: "development" | "production" | "eval"
+  environment: "development" | "production" | "eval",
+  channel?: "widget" | "whatsapp" | "api" | "dashboard",
+  contextParams?: Record<string, unknown>
 ): Promise<string> {
   const config = await ctx.runQuery(internal.evals.getAgentConfig, { agentId, environment })
   if (!config?.systemPrompt) return ""
@@ -743,7 +755,7 @@ async function resolveAgentSystemPrompt(
     actor,
     agent: { name: agent?.name ?? "", slug: agent?.slug ?? "" },
     agentName: agent?.name ?? "",
-    threadContext: { channel: undefined, params: {} },
+    threadContext: { channel: channel ?? undefined, params: contextParams ?? {} },
     message: "",
     timestamp: Date.now(),
     datetime: new Date().toISOString(),

@@ -19,6 +19,12 @@ const agentValidator = v.object({
   version: v.string(),
   description: v.optional(v.string()),
   firstMessageSuggestions: v.optional(v.array(v.string())),
+  threadContextParams: v.optional(v.array(v.object({
+    name: v.string(),
+    type: v.union(v.literal("string"), v.literal("number"), v.literal("boolean")),
+    required: v.optional(v.boolean()),
+    description: v.optional(v.string()),
+  }))),
   systemPrompt: v.string(),
   model: v.object({
     provider: v.string(),
@@ -128,6 +134,8 @@ const evalSuiteValidator = v.object({
           weight: v.optional(v.number()),
         })
       )),
+      channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
+      contextParams: v.optional(v.any()),
     })
   ),
 })

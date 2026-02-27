@@ -32,6 +32,8 @@ export interface EvalSuiteInput {
       value?: string
       weight?: number
     }>
+    channel?: "widget" | "whatsapp" | "api" | "dashboard"
+    contextParams?: Record<string, unknown>
   }>
 }
 
@@ -104,6 +106,8 @@ export async function syncEvalSuites(
           tags: c.tags,
           turns: c.turns,
           finalAssertions: c.finalAssertions,
+          channel: c.channel,
+          contextParams: c.contextParams,
           order: i,
           createdAt: now,
           updatedAt: now,
@@ -138,6 +142,8 @@ export async function syncEvalSuites(
           tags: c.tags,
           turns: c.turns,
           finalAssertions: c.finalAssertions,
+          channel: c.channel,
+          contextParams: c.contextParams,
           order: i,
           createdAt: now,
           updatedAt: now,
