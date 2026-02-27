@@ -18,7 +18,7 @@ import { renderTable } from '../utils/table'
 
 type Environment = 'development' | 'production'
 
-const VALID_PROVIDERS = ['airtable', 'resend'] as const
+const VALID_PROVIDERS = ['airtable', 'resend', 'flow'] as const
 
 async function ensureAuth(): Promise<boolean> {
   const cwd = process.cwd()
@@ -74,6 +74,8 @@ function getProviderHelp(provider: string): string {
       return `Usage: struere integration airtable --token <pat> [--base-id <id>] [--test]`
     case 'resend':
       return `Usage: struere integration resend --from-email <email> [--from-name <name>] [--reply-to <email>]`
+    case 'flow':
+      return `Usage: struere integration flow --api-url <url> --api-key <key> --secret-key <secret> [--return-url <url>]`
     default:
       return ''
   }
@@ -97,18 +99,32 @@ function buildConfigFromOpts(provider: string, opts: Record<string, unknown>): R
     return config
   }
 
+  if (provider === 'flow') {
+    const config: Record<string, unknown> = {}
+    if (opts.apiUrl) config.apiUrl = opts.apiUrl
+    if (opts.apiKey) config.apiKey = opts.apiKey
+    if (opts.secretKey) config.secretKey = opts.secretKey
+    if (opts.returnUrl) config.returnUrl = opts.returnUrl
+    if (Object.keys(config).length === 0) return null
+    return config
+  }
+
   return null
 }
 
 export const integrationCommand = new Command('integration')
   .description('Manage integrations')
-  .argument('[provider]', 'Integration provider (airtable, resend)')
+  .argument('[provider]', 'Integration provider (airtable, resend, flow)')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--token <pat>', 'Personal access token (airtable)')
   .option('--base-id <id>', 'Default base ID (airtable)')
   .option('--from-email <email>', 'From email address (resend)')
   .option('--from-name <name>', 'From display name (resend)')
   .option('--reply-to <email>', 'Reply-to address (resend)')
+  .option('--api-url <url>', 'API URL (flow)')
+  .option('--api-key <key>', 'API key (flow)')
+  .option('--secret-key <secret>', 'Secret key (flow)')
+  .option('--return-url <url>', 'Return URL after payment (flow)')
   .option('--test', 'Test the connection after saving')
   .option('--remove', 'Remove integration config')
   .option('--enable', 'Enable integration')
