@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, action, internalMutation, internalAction, internalQuery } from "./_generated/server"
+import { query, action, internalMutation, internalAction, internalQuery, mutation } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
@@ -7,9 +7,12 @@ import {
   FlowConfig,
   createFlowPaymentLinkAction,
   checkFlowOrderStatusAction,
+  verifyPaymentStatusAction,
 } from "./lib/integrations/flow"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
+
+type ActorType = "user" | "system" | "agent" | "webhook"
 
 interface PaymentData {
   amount: number
@@ -22,6 +25,30 @@ interface PaymentData {
   paidAt?: number
   failedAt?: number
   failureReason?: string
+}
+
+async function queryConfigInternal(
+  ctx: any,
+  organizationId: Id<"organizations">,
+  environment: string,
+): Promise<any> {
+  return await ctx.runQuery(internal.integrations.getConfigInternal, {
+    organizationId,
+    environment,
+    provider: "flow" as const,
+  })
+}
+
+async function queryPendingPayments(ctx: any): Promise<any[]> {
+  return await ctx.runQuery(internal.payments.getPendingPayments)
+}
+
+async function runMarkAsPaid(ctx: any, providerReference: string, paidAt: number): Promise<void> {
+  await ctx.runMutation(internal.payments.markAsPaid, { providerReference, paidAt })
+}
+
+async function runMarkAsFailed(ctx: any, providerReference: string, reason: string): Promise<void> {
+  await ctx.runMutation(internal.payments.markAsFailed, { providerReference, reason })
 }
 
 export const createPaymentLink = action({
@@ -37,7 +64,7 @@ export const createPaymentLink = action({
     const auth = await ctx.runQuery(internal.chat.getAuthInfo)
     if (!auth) throw new Error("Not authenticated")
 
-    const payment = await ctx.runQuery(internal.payments.getPaymentInternal, {
+    const payment = await (ctx as any).runQuery(internal.payments.getPaymentInternal, {
       paymentId: args.paymentId,
       organizationId: auth.organizationId,
     })
@@ -49,11 +76,7 @@ export const createPaymentLink = action({
       throw new Error("Payment is not in a valid state to generate a link")
     }
 
-    const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
-      organizationId: auth.organizationId,
-      environment: payment.environment,
-      provider: "flow",
-    })
+    const config = await queryConfigInternal(ctx, auth.organizationId, payment.environment)
 
     if (!config || config.status !== "active") {
       throw new Error("Flow integration not configured or inactive")
@@ -71,19 +94,19 @@ export const createPaymentLink = action({
       returnUrl,
     })
 
-    await ctx.runMutation(internal.payments.storePaymentLink, {
+    await (ctx as any).runMutation(internal.payments.storePaymentLink, {
       paymentId: args.paymentId,
       paymentLinkUrl: result.url,
       providerReference: result.flowOrder,
     })
 
-    await ctx.runMutation(internal.payments.emitPaymentEvent, {
+    await (ctx as any).runMutation(internal.payments.emitPaymentEvent, {
       organizationId: auth.organizationId,
       environment: payment.environment,
       entityId: args.paymentId,
       eventType: "payment.link_created",
       actorId: auth.userId as unknown as string,
-      actorType: auth.actorType,
+      actorType: "user" as const,
       payload: {
         paymentLinkUrl: result.url,
         flowOrderId: result.flowOrder,
@@ -140,7 +163,7 @@ export const markAsPaid = internalMutation({
       eventType: "payment.paid",
       schemaVersion: 1,
       actorId: "system",
-      actorType: "webhook",
+      actorType: "webhook" as ActorType,
       payload: {
         providerReference: args.providerReference,
         paidAt: args.paidAt,
@@ -196,7 +219,7 @@ export const markAsFailed = internalMutation({
       eventType: "payment.failed",
       schemaVersion: 1,
       actorId: "system",
-      actorType: "webhook",
+      actorType: "webhook" as ActorType,
       payload: {
         providerReference: args.providerReference,
         reason: args.reason,
@@ -263,7 +286,7 @@ export const emitPaymentEvent = internalMutation({
     entityId: v.id("entities"),
     eventType: v.string(),
     actorId: v.string(),
-    actorType: v.string(),
+    actorType: v.union(v.literal("user"), v.literal("system"), v.literal("agent"), v.literal("webhook")),
     payload: v.any(),
   },
   returns: v.null(),
@@ -348,7 +371,7 @@ export const createPaymentEntity = internalMutation({
       eventType: "payment.created",
       schemaVersion: 1,
       actorId: args.actorId,
-      actorType: args.actorType,
+      actorType: args.actorType as ActorType,
       payload: args.data,
       timestamp: now,
     })
@@ -406,7 +429,7 @@ export const reconcilePayments = internalAction({
   args: {},
   returns: v.object({ reconciled: v.number() }),
   handler: async (ctx) => {
-    const pendingPayments = await ctx.runQuery(internal.payments.getPendingPayments) as Array<{
+    const pendingPayments = await queryPendingPayments(ctx) as Array<{
       _id: Id<"entities">
       organizationId: Id<"organizations">
       environment: "development" | "production" | "eval"
@@ -417,11 +440,7 @@ export const reconcilePayments = internalAction({
 
     for (const payment of pendingPayments) {
       try {
-        const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
-          organizationId: payment.organizationId,
-          environment: payment.environment,
-          provider: "flow" as const,
-        })
+        const config = await queryConfigInternal(ctx, payment.organizationId, payment.environment)
 
         if (!config || config.status !== "active") continue
 
@@ -429,16 +448,10 @@ export const reconcilePayments = internalAction({
         const flowStatus = await checkFlowOrderStatusAction(flowConfig, payment.data.providerReference!)
 
         if (flowStatus.status === "2") {
-          await ctx.runMutation(internal.payments.markAsPaid, {
-            providerReference: payment.data.providerReference!,
-            paidAt: Date.now(),
-          })
+          await runMarkAsPaid(ctx, payment.data.providerReference!, Date.now())
           reconciled++
         } else if (flowStatus.status === "3" || flowStatus.status === "4") {
-          await ctx.runMutation(internal.payments.markAsFailed, {
-            providerReference: payment.data.providerReference!,
-            reason: flowStatus.statusMessage,
-          })
+          await runMarkAsFailed(ctx, payment.data.providerReference!, flowStatus.statusMessage)
         }
       } catch (error) {
         console.error("Reconciliation error for payment:", payment._id, error)
@@ -464,19 +477,13 @@ export const verifyPaymentFromWebhook = internalAction({
     payer: v.string(),
   }),
   handler: async (ctx, args) => {
-    const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      provider: "flow",
-    })
+    const config = await queryConfigInternal(ctx, args.organizationId, args.environment)
 
     if (!config || config.status !== "active") {
       throw new Error("Flow integration not configured")
     }
 
     const flowConfig = config.config as FlowConfig
-    const { verifyPaymentStatusAction } = await import("./lib/integrations/flow")
-
     return await verifyPaymentStatusAction(flowConfig, args.token)
   },
 })
@@ -534,7 +541,7 @@ export const listPayments = query({
   },
 })
 
-export const createPayment = action({
+export const createPayment = mutation({
   args: {
     amount: v.number(),
     currency: v.string(),
@@ -543,30 +550,52 @@ export const createPayment = action({
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
-    if (!auth) throw new Error("Not authenticated")
+    const auth = await requireAuth(ctx)
 
-    const paymentType = await ctx.runQuery(internal.payments.getPaymentEntityType, {
-      organizationId: auth.organizationId,
-      environment: args.environment,
-    })
+    const paymentType = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment).eq("slug", "payment")
+      )
+      .first()
 
     if (!paymentType) {
       throw new Error("Payment entity type not found")
     }
 
-    return await ctx.runMutation(internal.payments.createPaymentEntity, {
+    const now = Date.now()
+    const paymentId = await ctx.db.insert("entities", {
       organizationId: auth.organizationId,
       environment: args.environment,
       entityTypeId: paymentType._id,
+      status: "draft",
       data: {
         amount: args.amount,
         currency: args.currency,
         description: args.description,
         status: "draft",
       },
-      actorId: auth.userId as unknown as string,
-      actorType: auth.actorType,
+      createdAt: now,
+      updatedAt: now,
     })
+
+    await ctx.db.insert("events", {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+      entityId: paymentId,
+      entityTypeSlug: "payment",
+      eventType: "payment.created",
+      schemaVersion: 1,
+      actorId: auth.userId as unknown as string,
+      actorType: auth.actorType as ActorType,
+      payload: {
+        amount: args.amount,
+        currency: args.currency,
+        description: args.description,
+      },
+      timestamp: now,
+    })
+
+    return paymentId
   },
 })
