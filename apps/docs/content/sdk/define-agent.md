@@ -153,7 +153,7 @@ These parameters are passed differently depending on the channel:
 | **Widget** | URL parameters on the `<script>` tag (e.g., `?email=jane@example.com&plan=pro`) |
 | **API** | `threadContext.params` in the JSON request body |
 | **WhatsApp** | Automatically populated from the inbound message (phone number, contact name) |
-| **Dashboard** | Not applicable (no custom params) |
+| **Dashboard** | Editable in the system prompt compile panel (auto-detected from `{{threadContext.params.*}}` references if not explicitly declared) |
 
 The channel itself is always available via `{{threadContext.channel}}`.
 
