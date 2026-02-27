@@ -1,61 +1,109 @@
 ---
 title: "Flow Payments"
-description: "Payment processing with Flow integration"
+description: "Payment processing with Flow.cl integration"
 section: "Integrations"
 order: 2
 ---
 
 # Flow Payments
 
-Struere integrates with **Flow** (flow.cl) as a payment provider for processing payments within the platform. This integration supports payment link generation, HMAC-SHA256 request signing, webhook-based status updates, and reconciliation for missed webhooks.
+Struere integrates with **Flow** (flow.cl) as a payment provider. AI agents can create payment links during conversations and return URLs to users. The integration supports payment link generation, HMAC-SHA256 request signing, webhook-based status updates, automatic reconciliation, and agent tools.
 
-## Configuration
+## Setup
 
-Flow integration is configured per organization and environment through the `integrationConfigs` table with provider `"flow"`.
+### 1. Configure via Dashboard
 
-The configuration requires:
+Navigate to **Settings > Integrations > Flow.cl** and provide:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiUrl` | `string` | Flow API base URL |
-| `apiKey` | `string` | Your Flow API key |
-| `secretKey` | `string` | Your Flow secret key for request signing |
-| `webhookBaseUrl` | `string` | Base URL for webhook callbacks |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `apiUrl` | `string` | Yes | Flow API base URL (`https://www.flow.cl/api` or `https://sandbox.flow.cl/api` for testing) |
+| `apiKey` | `string` | Yes | Your Flow API key |
+| `secretKey` | `string` | Yes | Your Flow secret key for request signing |
+| `returnUrl` | `string` | No | URL to redirect users after payment completion |
+| `defaultCurrency` | `string` | No | Default currency code (defaults to `"CLP"`) |
 
-Configure the integration through the Struere dashboard at **Settings > Integrations > Flow**.
+The webhook URL is displayed on the settings page — set this as your confirmation URL in Flow.cl.
 
-## Payment Link Generation
+### 2. Configure via CLI
 
-To create a payment link, the platform constructs a signed request to the Flow API:
+```bash
+npx struere integration flow \
+  --api-url https://www.flow.cl/api \
+  --api-key YOUR_API_KEY \
+  --secret-key YOUR_SECRET_KEY \
+  --return-url https://yoursite.com/payment/complete \
+  --test
+```
+
+### 3. Add Tools to Your Agent
 
 ```typescript
-interface CreatePaymentLinkParams {
-  organizationId: Id<"organizations">
-  environment: "development" | "production"
-  paymentId: Id<"entities">
-  amount: number
-  currency: string
-  description: string
-  customerEmail: string
-  returnUrl: string
+export default defineAgent({
+  name: "Billing Agent",
+  slug: "billing",
+  version: "0.1.0",
+  systemPrompt: "You help users make payments.",
+  tools: ["payment.create", "payment.getStatus"],
+})
+```
+
+## Agent Tools
+
+### `payment.create`
+
+Creates a payment entity, calls the Flow API to generate a payment link, and returns the link URL.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `amount` | `number` | Yes | Payment amount |
+| `description` | `string` | Yes | Description of the payment |
+| `currency` | `string` | No | Currency code (defaults to config default or `"CLP"`) |
+| `customerEmail` | `string` | No | Customer email address |
+| `entityId` | `string` | No | Optional entity ID to link the payment to via a `payment_for` relation |
+
+**Returns:**
+
+```json
+{
+  "paymentId": "ent_abc123",
+  "paymentLinkUrl": "https://www.flow.cl/app/web/pay.php?token=xyz",
+  "flowOrderId": "12345"
 }
 ```
 
-The payment creation flow:
+### `payment.getStatus`
 
-1. Load the Flow configuration for the organization and environment
-2. Build the order data with the API key, amount, currency, email, and callback URLs
-3. Sign the request using HMAC-SHA256 with the secret key
-4. POST to Flow's `/payment/create` endpoint
-5. Store the returned payment link URL and Flow order ID on the payment entity
-6. Return the payment link URL for the customer
+Checks the current status of a payment. Queries the Flow API for live status if a provider reference exists.
 
-### Request Signing
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `entityId` | `string` | Yes | Payment entity ID to check |
+
+**Returns:**
+
+```json
+{
+  "entityId": "ent_abc123",
+  "status": "pending",
+  "flowStatus": "1",
+  "flowStatusMessage": "Pending payment",
+  "paymentLinkUrl": "https://www.flow.cl/app/web/pay.php?token=xyz",
+  "amount": 5000,
+  "currency": "CLP"
+}
+```
+
+## Request Signing
 
 All requests to the Flow API are signed using HMAC-SHA256:
 
 1. Sort the request parameters alphabetically by key
-2. Concatenate them as `key1=value1&key2=value2&...`
+2. Concatenate them as `key1value1key2value2` (key-value pairs with no separators)
 3. Compute the HMAC-SHA256 digest using the secret key
 4. Append the hex-encoded signature as the `s` parameter
 
@@ -63,7 +111,7 @@ All requests to the Flow API are signed using HMAC-SHA256:
 
 **Endpoint:** `POST /webhook/flow`
 
-Flow sends payment status updates as form-encoded POST data with a `token` parameter.
+Flow sends payment status updates as form-encoded POST data with a `token` parameter. The webhook tries both `production` and `development` environments to find the matching configuration.
 
 ### Processing Flow
 
@@ -77,7 +125,8 @@ Extract token from form data
 Query all active Flow configurations
     |
     v
-For each config, verify payment status via Flow API
+For each config, try both environments:
+  Verify payment status via Flow API
     |
     v
 Map status code to action:
@@ -88,82 +137,33 @@ Map status code to action:
 
 ### Status Codes
 
-| Flow Status | Meaning | Struere Action |
-|-------------|---------|----------------|
-| `1` | Pending | No action (payment still in progress) |
-| `2` | Paid | Mark payment as paid with timestamp |
-| `3` | Rejected | Mark payment as failed with reason |
-| `4` | Cancelled | Mark payment as failed with reason |
-
-### Verification
-
-The token received in the webhook is verified against the Flow API by calling the `payment/getStatus` endpoint with a signed request. This confirms the payment status directly with Flow rather than trusting the webhook payload alone.
-
-## Session Lifecycle Integration
-
-Payments are tied to the session lifecycle in the tutoring domain:
-
-```
-pending_payment ──[payment.success]──> scheduled
-                                          |
-                    ┌─────────────────────┼─────────────────────┐
-                    |                     |                     |
-                    v                     v                     v
-               cancelled            in_progress              no_show
-                                          |
-                                          v
-                                      completed
-```
-
-### Status Transitions
-
-1. **Session created** — Status is `pending_payment`. A payment link is generated and sent to the guardian.
-2. **Payment completed** — The webhook fires, the payment entity is marked as paid, and the session transitions to `scheduled`.
-3. **Session occurs** — Status moves to `in_progress` when the session starts.
-4. **Session ends** — Status moves to `completed`. Credits are consumed from the guardian's entitlement.
-
-### Credit Consumption
-
-When a session completes:
-1. The system looks up the guardian's active entitlement for the student
-2. The remaining credits are decremented
-3. An event is emitted recording the credit consumption
+| Flow Status | Meaning | Action |
+|-------------|---------|--------|
+| `1` | Pending | No action |
+| `2` | Paid | Mark payment as paid |
+| `3` | Rejected | Mark payment as failed |
+| `4` | Cancelled | Mark payment as failed |
 
 ## Reconciliation
 
-For missed webhooks or uncertain payment states, the platform supports manual reconciliation by checking payment status directly with the Flow API:
-
-```typescript
-interface FlowPaymentStatus {
-  flowOrder: number
-  status: string
-  statusMessage: string
-  amount: number
-  currency: string
-  payer: string
-}
-```
-
-The `checkFlowOrderStatus` function queries Flow's `/payment/getStatusByFlowOrder` endpoint using the Flow order ID, allowing the system to verify and update payment status independently of webhooks.
+A cron job runs every 5 minutes to reconcile pending payments older than 1 hour. For each pending payment with a Flow provider reference, it queries the Flow API directly to check the current status and updates the payment entity accordingly.
 
 ## Payment Entity Schema
 
-Payments are stored as entities of type `payment` with the following data fields:
+Payments are stored as entities of type `payment`:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `guardianId` | `string` | The guardian entity ID responsible for payment |
 | `amount` | `number` | Payment amount |
 | `currency` | `string` | Currency code (e.g., `"CLP"`) |
-| `status` | `string` | Payment status (`"pending"`, `"paid"`, `"failed"`) |
+| `description` | `string` | Payment description |
+| `status` | `string` | Payment status (`"draft"`, `"pending"`, `"paid"`, `"failed"`) |
 | `providerReference` | `string` | The Flow order ID |
 | `paymentLinkUrl` | `string` | The generated payment link URL |
-| `sessionId` | `string` | The associated session entity ID |
+| `customerEmail` | `string` | Customer email address |
 | `paidAt` | `number?` | Timestamp when payment was confirmed |
-| `failedReason` | `string?` | Reason for payment failure |
+| `failureReason` | `string?` | Reason for payment failure |
 
-## Required Environment Variables
+## Configuration Storage
 
-Flow credentials are stored in the `integrationConfigs` table rather than as environment variables. The configuration is loaded at runtime from the database for each organization and environment.
-
-No Convex environment variables are required specifically for Flow. All credentials are managed through the integration configuration in the dashboard.
+Flow credentials are stored in the `integrationConfigs` table rather than as environment variables. The configuration is loaded at runtime from the database for each organization and environment. No Convex environment variables are required specifically for Flow.
