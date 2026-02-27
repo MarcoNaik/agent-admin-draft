@@ -1173,7 +1173,7 @@ Creates a payment entity, calls the Flow API to generate a payment link, and ret
 | `amount` | `number` | Yes | Payment amount |
 | `description` | `string` | Yes | Description of the payment |
 | `currency` | `string` | No | Currency code (defaults to `"CLP"` or the config default) |
-| `customerEmail` | `string` | No | Customer email address |
+| `customerEmail` | `string` | Yes | Customer email address (required by Flow's API) |
 | `entityId` | `string` | No | Optional entity ID to link the payment to |
 
 **Returns:**
@@ -1214,7 +1214,7 @@ Checks the current status of a payment entity. If the payment has a Flow provide
 {
   "entityId": "ent_abc123",
   "status": "pending",
-  "flowStatus": "1",
+  "flowStatus": 1,
   "flowStatusMessage": "Pending payment",
   "paymentLinkUrl": "https://www.flow.cl/app/web/pay.php?token=xyz",
   "amount": 5000,

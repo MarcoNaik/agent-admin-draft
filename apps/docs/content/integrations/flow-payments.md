@@ -61,7 +61,7 @@ Creates a payment entity, calls the Flow API to generate a payment link, and ret
 | `amount` | `number` | Yes | Payment amount |
 | `description` | `string` | Yes | Description of the payment |
 | `currency` | `string` | No | Currency code (defaults to config default or `"CLP"`) |
-| `customerEmail` | `string` | No | Customer email address |
+| `customerEmail` | `string` | Yes | Customer email address (required by Flow's API) |
 | `entityId` | `string` | No | Optional entity ID to link the payment to via a `payment_for` relation |
 
 **Returns:**
@@ -90,7 +90,7 @@ Checks the current status of a payment. Queries the Flow API for live status if 
 {
   "entityId": "ent_abc123",
   "status": "pending",
-  "flowStatus": "1",
+  "flowStatus": 1,
   "flowStatusMessage": "Pending payment",
   "paymentLinkUrl": "https://www.flow.cl/app/web/pay.php?token=xyz",
   "amount": 5000,
@@ -100,18 +100,26 @@ Checks the current status of a payment. Queries the Flow API for live status if 
 
 ## Request Signing
 
-All requests to the Flow API are signed using HMAC-SHA256:
+All requests to the Flow API are signed using HMAC-SHA256 via the Web Crypto API (`crypto.subtle`):
 
 1. Sort the request parameters alphabetically by key
 2. Concatenate them as `key1value1key2value2` (key-value pairs with no separators)
-3. Compute the HMAC-SHA256 digest using the secret key
+3. Compute the HMAC-SHA256 digest using `crypto.subtle.sign()` with the secret key
 4. Append the hex-encoded signature as the `s` parameter
+
+### Flow API HTTP Methods
+
+| Endpoint | Method | Signature Delivery |
+|----------|--------|--------------------|
+| `payment/create` | POST | Form-encoded body |
+| `payment/getStatus` | GET | Query string |
+| `payment/getStatusByFlowOrder` | GET | Query string |
 
 ## Payment Status Webhook
 
 **Endpoint:** `POST /webhook/flow`
 
-Flow sends payment status updates as form-encoded POST data with a `token` parameter. The webhook tries both `production` and `development` environments to find the matching configuration.
+Flow sends payment status updates as form-encoded POST data with a `token` parameter. The webhook uses a fast-path lookup by `flowToken` stored on the payment entity for direct org/environment resolution, falling back to iterating all Flow configs for legacy payments.
 
 ### Processing Flow
 
@@ -122,7 +130,11 @@ Flow sends POST /webhook/flow with token
 Extract token from form data
     |
     v
-Query all active Flow configurations
+Fast-path: look up payment entity by flowToken
+  Found? -> resolve org/environment directly -> verify via Flow API
+    |
+    v (not found)
+Fallback: query all active Flow configurations
     |
     v
 For each config, try both environments:
@@ -160,6 +172,7 @@ Payments are stored as entities of type `payment`:
 | `status` | `string` | Payment status (`"draft"`, `"pending"`, `"paid"`, `"failed"`) |
 | `providerReference` | `string` | The Flow order ID |
 | `paymentLinkUrl` | `string` | The generated payment link URL |
+| `flowToken` | `string` | Flow token for direct webhook lookup |
 | `customerEmail` | `string` | Customer email address |
 | `paidAt` | `number?` | Timestamp when payment was confirmed |
 | `failureReason` | `string?` | Reason for payment failure |
