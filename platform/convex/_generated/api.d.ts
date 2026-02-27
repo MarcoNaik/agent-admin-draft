@@ -73,6 +73,7 @@ import type * as tools_calendar from "../tools/calendar.js";
 import type * as tools_email from "../tools/email.js";
 import type * as tools_entities from "../tools/entities.js";
 import type * as tools_events from "../tools/events.js";
+import type * as tools_flow from "../tools/flow.js";
 import type * as tools_helpers from "../tools/helpers.js";
 import type * as tools_index from "../tools/index.js";
 import type * as tools_whatsapp from "../tools/whatsapp.js";
@@ -153,6 +154,7 @@ declare const fullApi: ApiFromModules<{
   "tools/email": typeof tools_email;
   "tools/entities": typeof tools_entities;
   "tools/events": typeof tools_events;
+  "tools/flow": typeof tools_flow;
   "tools/helpers": typeof tools_helpers;
   "tools/index": typeof tools_index;
   "tools/whatsapp": typeof tools_whatsapp;
