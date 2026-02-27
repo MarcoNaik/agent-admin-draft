@@ -39,6 +39,8 @@ const BUILTIN_TOOLS = [
   'airtable.updateRecords',
   'airtable.deleteRecords',
   'email.send',
+  'payment.create',
+  'payment.getStatus',
 ]
 
 export interface SyncPayload {
@@ -373,6 +375,8 @@ function getBuiltinToolDescription(name: string): string {
     'airtable.updateRecords': 'Update up to 10 records in an Airtable table',
     'airtable.deleteRecords': 'Delete up to 10 records from an Airtable table',
     'email.send': 'Send an email via Resend',
+    'payment.create': 'Create a payment link via Flow.cl and return the URL',
+    'payment.getStatus': 'Check the current status of a payment',
   }
   return descriptions[name] || name
 }
@@ -681,6 +685,24 @@ function getBuiltinToolParameters(name: string): unknown {
         replyTo: { type: 'string', description: 'Reply-to email address' },
       },
       required: ['to', 'subject'],
+    },
+    'payment.create': {
+      type: 'object',
+      properties: {
+        amount: { type: 'number', description: 'Payment amount in the smallest currency unit' },
+        description: { type: 'string', description: 'Description of the payment' },
+        currency: { type: 'string', description: 'Currency code (defaults to CLP)' },
+        customerEmail: { type: 'string', description: 'Customer email address' },
+        entityId: { type: 'string', description: 'Optional entity ID to link the payment to' },
+      },
+      required: ['amount', 'description'],
+    },
+    'payment.getStatus': {
+      type: 'object',
+      properties: {
+        entityId: { type: 'string', description: 'Payment entity ID to check status for' },
+      },
+      required: ['entityId'],
     },
   }
   return schemas[name] || { type: 'object', properties: {} }
