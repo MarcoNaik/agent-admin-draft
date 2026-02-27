@@ -346,21 +346,28 @@ export const testConnection = action({
         }
 
         const { signFlowRequest } = await import("./lib/integrations/flow")
-        const testParams: Record<string, unknown> = { apiKey: flowConfig.apiKey }
-        const signature = signFlowRequest(testParams, flowConfig.secretKey)
+        const testParams: Record<string, unknown> = { apiKey: flowConfig.apiKey, flowOrder: "0" }
+        const signature = await signFlowRequest(testParams, flowConfig.secretKey)
 
-        const formData = new URLSearchParams()
-        formData.append("apiKey", flowConfig.apiKey)
-        formData.append("s", signature)
+        const params = new URLSearchParams()
+        params.append("apiKey", flowConfig.apiKey)
+        params.append("flowOrder", "0")
+        params.append("s", signature)
 
         try {
-          const response = await fetch(`${flowConfig.apiUrl}/payment/getStatusByFlowOrder`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: formData.toString(),
-          })
+          const response = await fetch(`${flowConfig.apiUrl}/payment/getStatusByFlowOrder?${params.toString()}`)
 
           if (response.status === 401 || response.status === 403) {
+            await ctx.runMutation(internal.integrations.patchConfigStatus, {
+              configId: config._id,
+              status: "error",
+            })
+            return { success: false, message: "Flow API credentials are invalid" }
+          }
+
+          const body = await response.json() as { status: number; message?: string; code?: string }
+
+          if (body.message?.toLowerCase().includes("invalid api key") || body.message?.toLowerCase().includes("unauthorized") || body.code === "auth_error") {
             await ctx.runMutation(internal.integrations.patchConfigStatus, {
               configId: config._id,
               status: "error",
