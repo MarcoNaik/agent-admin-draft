@@ -96,8 +96,23 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
     ? agent?.productionConfig
     : agent?.developmentConfig
 
-  const threadContextParams: Array<{ name: string; type: string; required?: boolean; description?: string }> =
+  const declaredParams: Array<{ name: string; type: string; required?: boolean; description?: string }> =
     config?.threadContextParams ?? []
+
+  const threadContextParams = (() => {
+    const declaredNames = new Set(declaredParams.map((p) => p.name))
+    const inferred: Array<{ name: string; type: string; required?: boolean; description?: string }> = []
+    if (config?.systemPrompt) {
+      const matches = config.systemPrompt.matchAll(/\{\{threadContext\.params\.(\w+)\}\}/g)
+      for (const match of matches) {
+        if (!declaredNames.has(match[1])) {
+          declaredNames.add(match[1])
+          inferred.push({ name: match[1], type: "string" })
+        }
+      }
+    }
+    return [...declaredParams, ...inferred]
+  })()
 
   const runCompile = useCallback(async () => {
     setIsCompiling(true)
@@ -441,30 +456,39 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
         <div className="border-b px-4 py-3">
           <div className="text-sm font-medium text-content-primary flex items-center gap-2">
             <Settings2 className="h-4 w-4 text-content-tertiary" />
-            Thread Context Parameters ({config.threadContextParams?.length || 0})
+            Thread Context Parameters ({threadContextParams.length})
           </div>
         </div>
-        {config.threadContextParams && config.threadContextParams.length > 0 ? (
+        {threadContextParams.length > 0 ? (
           <div className="divide-y">
-            {config.threadContextParams.map((param: { name: string; type: string; required?: boolean; description?: string }, i: number) => (
-              <div key={i} className="px-4 py-3 flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-content-primary">{param.name}</span>
-                    <Badge variant="outline" className="text-[10px] font-mono">{param.type}</Badge>
-                    {param.required && (
-                      <Badge variant="secondary" className="text-[10px]">required</Badge>
+            {threadContextParams.map((param, i) => {
+              const isDeclared = declaredParams.some((p) => p.name === param.name)
+              return (
+                <div key={i} className="px-4 py-3 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-content-primary">{param.name}</span>
+                      <Badge variant="outline" className="text-[10px] font-mono">{param.type}</Badge>
+                      {param.required && (
+                        <Badge variant="secondary" className="text-[10px]">required</Badge>
+                      )}
+                      {!isDeclared && (
+                        <Badge variant="outline" className="text-[10px] text-content-tertiary">inferred</Badge>
+                      )}
+                    </div>
+                    {param.description && (
+                      <p className="text-xs text-content-tertiary mt-0.5">{param.description}</p>
+                    )}
+                    {!isDeclared && (
+                      <p className="text-xs text-content-tertiary mt-0.5">Detected from system prompt template</p>
                     )}
                   </div>
-                  {param.description && (
-                    <p className="text-xs text-content-tertiary mt-0.5">{param.description}</p>
-                  )}
+                  <code className="text-[10px] font-mono text-content-tertiary bg-background-tertiary px-1.5 py-0.5 rounded shrink-0">
+                    {"{{threadContext.params." + param.name + "}}"}
+                  </code>
                 </div>
-                <code className="text-[10px] font-mono text-content-tertiary bg-background-tertiary px-1.5 py-0.5 rounded shrink-0">
-                  {"{{threadContext.params." + param.name + "}}"}
-                </code>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div className="p-8 text-center">

@@ -1349,6 +1349,25 @@ async function executeBuiltinTool(
         replyTo: args.replyTo as string | undefined,
       })
 
+    case "payment.create":
+      if (!args.amount) throw new Error("payment.create requires 'amount' parameter")
+      if (!args.description) throw new Error("payment.create requires 'description' parameter")
+      return await ctx.runAction(internal.tools.flow.paymentCreate, {
+        organizationId, actorId, actorType, environment,
+        amount: args.amount as number,
+        description: args.description as string,
+        currency: args.currency as string | undefined,
+        customerEmail: args.customerEmail as string | undefined,
+        entityId: args.entityId as string | undefined,
+      })
+
+    case "payment.getStatus":
+      if (!args.entityId) throw new Error("payment.getStatus requires 'entityId' parameter")
+      return await ctx.runAction(internal.tools.flow.paymentGetStatus, {
+        organizationId, actorId, actorType, environment,
+        entityId: args.entityId as string,
+      })
+
     default:
       throw new Error(`Unknown builtin tool: ${toolName}`)
   }

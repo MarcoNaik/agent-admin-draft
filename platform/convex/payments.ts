@@ -1,82 +1,99 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation, internalAction } from "./_generated/server"
+import { query, action, internalMutation, internalAction, internalQuery } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
-import { createPaymentLink as createFlowPaymentLink, checkFlowOrderStatus } from "./lib/integrations/flow"
+import {
+  FlowConfig,
+  createFlowPaymentLinkAction,
+  checkFlowOrderStatusAction,
+} from "./lib/integrations/flow"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 interface PaymentData {
   amount: number
   currency: string
   description: string
   status: string
-  sessionId?: string
-  guardianId?: string
   paymentLinkUrl?: string
   providerReference?: string
+  customerEmail?: string
   paidAt?: number
   failedAt?: number
   failureReason?: string
 }
 
-export const createPaymentLink = mutation({
+export const createPaymentLink = action({
   args: {
     paymentId: v.id("entities"),
-    returnUrl: v.string(),
+    returnUrl: v.optional(v.string()),
   },
   returns: v.object({
     paymentLinkUrl: v.string(),
     flowOrderId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    if (!auth) throw new Error("Not authenticated")
 
-    const payment = await ctx.db.get(args.paymentId)
-    if (!payment || payment.organizationId !== auth.organizationId) {
-      throw new Error("Payment not found")
-    }
+    const payment = await ctx.runQuery(internal.payments.getPaymentInternal, {
+      paymentId: args.paymentId,
+      organizationId: auth.organizationId,
+    })
+
+    if (!payment) throw new Error("Payment not found")
 
     const paymentData = payment.data as PaymentData
     if (paymentData.status !== "pending" && paymentData.status !== "draft") {
       throw new Error("Payment is not in a valid state to generate a link")
     }
 
-    let customerEmail = ""
-    if (paymentData.guardianId) {
-      const guardian = await ctx.db.get(paymentData.guardianId as Id<"entities">)
-      if (guardian && guardian.data) {
-        customerEmail = (guardian.data as { email?: string }).email || ""
-      }
-    }
-
-    const result = await createFlowPaymentLink(ctx, {
+    const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
       organizationId: auth.organizationId,
       environment: payment.environment,
-      paymentId: args.paymentId,
-      amount: paymentData.amount,
-      currency: paymentData.currency || "CLP",
-      description: paymentData.description || "Pago de clase",
-      customerEmail,
-      returnUrl: args.returnUrl,
+      provider: "flow",
     })
 
-    await ctx.db.insert("events", {
+    if (!config || config.status !== "active") {
+      throw new Error("Flow integration not configured or inactive")
+    }
+
+    const flowConfig = config.config as FlowConfig
+    const returnUrl = args.returnUrl || flowConfig.returnUrl || ""
+
+    const result = await createFlowPaymentLinkAction(flowConfig, {
+      paymentId: args.paymentId.toString(),
+      amount: paymentData.amount,
+      currency: paymentData.currency || flowConfig.defaultCurrency || "CLP",
+      description: paymentData.description || "Payment",
+      customerEmail: paymentData.customerEmail || "",
+      returnUrl,
+    })
+
+    await ctx.runMutation(internal.payments.storePaymentLink, {
+      paymentId: args.paymentId,
+      paymentLinkUrl: result.url,
+      providerReference: result.flowOrder,
+    })
+
+    await ctx.runMutation(internal.payments.emitPaymentEvent, {
       organizationId: auth.organizationId,
       environment: payment.environment,
       entityId: args.paymentId,
-      entityTypeSlug: "payment",
       eventType: "payment.link_created",
-      schemaVersion: 1,
       actorId: auth.userId as unknown as string,
       actorType: auth.actorType,
       payload: {
-        paymentLinkUrl: result.paymentLinkUrl,
-        flowOrderId: result.flowOrderId,
+        paymentLinkUrl: result.url,
+        flowOrderId: result.flowOrder,
       },
-      timestamp: Date.now(),
     })
 
-    return result
+    return {
+      paymentLinkUrl: result.url,
+      flowOrderId: result.flowOrder,
+    }
   },
 })
 
@@ -130,37 +147,6 @@ export const markAsPaid = internalMutation({
       },
       timestamp: now,
     })
-
-    if (paymentData.sessionId) {
-      const session = await ctx.db.get(paymentData.sessionId as Id<"entities">)
-      if (session && !session.deletedAt) {
-        const sessionData = session.data as { status: string }
-        if (sessionData.status === "pending_payment") {
-          await ctx.db.patch(paymentData.sessionId as Id<"entities">, {
-            data: {
-              ...session.data,
-              status: "scheduled",
-              paymentId: payment._id.toString(),
-            },
-            status: "scheduled",
-            updatedAt: now,
-          })
-
-          await ctx.db.insert("events", {
-            organizationId: payment.organizationId,
-            environment: payment.environment,
-            entityId: paymentData.sessionId as Id<"entities">,
-            entityTypeSlug: "session",
-            eventType: "session.confirmed",
-            schemaVersion: 1,
-            actorId: "system",
-            actorType: "webhook",
-            payload: { paymentId: payment._id },
-            timestamp: now,
-          })
-        }
-      }
-    }
 
     return null
   },
@@ -222,9 +208,158 @@ export const markAsFailed = internalMutation({
   },
 })
 
-export const reconcilePayments = internalMutation({
+export const storePaymentLink = internalMutation({
+  args: {
+    paymentId: v.id("entities"),
+    paymentLinkUrl: v.string(),
+    providerReference: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment) return null
+
+    const paymentData = payment.data as PaymentData
+    await ctx.db.patch(args.paymentId, {
+      data: {
+        ...paymentData,
+        paymentLinkUrl: args.paymentLinkUrl,
+        providerReference: args.providerReference,
+        status: "pending",
+      },
+      status: "pending",
+      providerReference: args.providerReference,
+      updatedAt: Date.now(),
+    })
+    return null
+  },
+})
+
+export const linkPaymentToEntity = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    paymentId: v.id("entities"),
+    entityId: v.id("entities"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("entityRelations", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      fromEntityId: args.paymentId,
+      toEntityId: args.entityId,
+      relationType: "payment_for",
+      createdAt: Date.now(),
+    })
+    return null
+  },
+})
+
+export const emitPaymentEvent = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    entityId: v.id("entities"),
+    eventType: v.string(),
+    actorId: v.string(),
+    actorType: v.string(),
+    payload: v.any(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("events", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      entityId: args.entityId,
+      entityTypeSlug: "payment",
+      eventType: args.eventType,
+      schemaVersion: 1,
+      actorId: args.actorId,
+      actorType: args.actorType,
+      payload: args.payload,
+      timestamp: Date.now(),
+    })
+    return null
+  },
+})
+
+export const getPaymentInternal = internalQuery({
+  args: {
+    paymentId: v.id("entities"),
+    organizationId: v.id("organizations"),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment || payment.organizationId !== args.organizationId) return null
+    return payment
+  },
+})
+
+export const getPaymentEntityType = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.union(
+    v.object({ _id: v.id("entityTypes"), slug: v.string() }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const entityType = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("slug", "payment")
+      )
+      .first()
+    if (!entityType) return null
+    return { _id: entityType._id, slug: entityType.slug }
+  },
+})
+
+export const createPaymentEntity = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+    entityTypeId: v.id("entityTypes"),
+    data: v.any(),
+    actorId: v.string(),
+    actorType: v.string(),
+  },
+  returns: v.id("entities"),
+  handler: async (ctx, args) => {
+    const now = Date.now()
+    const paymentId = await ctx.db.insert("entities", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      entityTypeId: args.entityTypeId,
+      status: "draft",
+      data: args.data,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    await ctx.db.insert("events", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      entityId: paymentId,
+      entityTypeSlug: "payment",
+      eventType: "payment.created",
+      schemaVersion: 1,
+      actorId: args.actorId,
+      actorType: args.actorType,
+      payload: args.data,
+      timestamp: now,
+    })
+
+    return paymentId
+  },
+})
+
+export const getPendingPayments = internalQuery({
   args: {},
-  returns: v.object({ reconciled: v.number() }),
+  returns: v.array(v.any()),
   handler: async (ctx) => {
     const oneHourAgo = Date.now() - 60 * 60 * 1000
 
@@ -233,17 +368,9 @@ export const reconcilePayments = internalMutation({
       .withIndex("by_slug", (q) => q.eq("slug", "payment"))
       .collect()
 
-    if (paymentTypes.length === 0) {
-      return { reconciled: 0 }
-    }
+    if (paymentTypes.length === 0) return []
 
-    const pendingPayments: Array<{
-      _id: Id<"entities">
-      organizationId: Id<"organizations">
-      environment: "development" | "production" | "eval"
-      data: PaymentData
-      createdAt: number
-    }> = []
+    const pendingPayments: Array<Record<string, unknown>> = []
 
     for (const paymentType of paymentTypes) {
       const payments = await ctx.db
@@ -271,56 +398,46 @@ export const reconcilePayments = internalMutation({
       }
     }
 
+    return pendingPayments
+  },
+})
+
+export const reconcilePayments = internalAction({
+  args: {},
+  returns: v.object({ reconciled: v.number() }),
+  handler: async (ctx) => {
+    const pendingPayments = await ctx.runQuery(internal.payments.getPendingPayments) as Array<{
+      _id: Id<"entities">
+      organizationId: Id<"organizations">
+      environment: "development" | "production" | "eval"
+      data: PaymentData
+    }>
+
     let reconciled = 0
 
     for (const payment of pendingPayments) {
       try {
-        const flowStatus = await checkFlowOrderStatus(
-          ctx,
-          payment.organizationId,
-          payment.environment,
-          payment.data.providerReference!
-        )
+        const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
+          organizationId: payment.organizationId,
+          environment: payment.environment,
+          provider: "flow" as const,
+        })
+
+        if (!config || config.status !== "active") continue
+
+        const flowConfig = config.config as FlowConfig
+        const flowStatus = await checkFlowOrderStatusAction(flowConfig, payment.data.providerReference!)
 
         if (flowStatus.status === "2") {
-          await ctx.db.patch(payment._id, {
-            data: {
-              ...payment.data,
-              status: "paid",
-              paidAt: Date.now(),
-            },
-            status: "paid",
-            updatedAt: Date.now(),
+          await ctx.runMutation(internal.payments.markAsPaid, {
+            providerReference: payment.data.providerReference!,
+            paidAt: Date.now(),
           })
-
-          if (payment.data.sessionId) {
-            const session = await ctx.db.get(payment.data.sessionId as Id<"entities">)
-            if (session && !session.deletedAt) {
-              const sessionData = session.data as { status: string }
-              if (sessionData.status === "pending_payment") {
-                await ctx.db.patch(payment.data.sessionId as Id<"entities">, {
-                  data: {
-                    ...session.data,
-                    status: "scheduled",
-                  },
-                  status: "scheduled",
-                  updatedAt: Date.now(),
-                })
-              }
-            }
-          }
-
           reconciled++
         } else if (flowStatus.status === "3" || flowStatus.status === "4") {
-          await ctx.db.patch(payment._id, {
-            data: {
-              ...payment.data,
-              status: "failed",
-              failedAt: Date.now(),
-              failureReason: flowStatus.statusMessage,
-            },
-            status: "failed",
-            updatedAt: Date.now(),
+          await ctx.runMutation(internal.payments.markAsFailed, {
+            providerReference: payment.data.providerReference!,
+            reason: flowStatus.statusMessage,
           })
         }
       } catch (error) {
@@ -329,6 +446,38 @@ export const reconcilePayments = internalMutation({
     }
 
     return { reconciled }
+  },
+})
+
+export const verifyPaymentFromWebhook = internalAction({
+  args: {
+    token: v.string(),
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.object({
+    flowOrder: v.number(),
+    status: v.string(),
+    statusMessage: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    payer: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      provider: "flow",
+    })
+
+    if (!config || config.status !== "active") {
+      throw new Error("Flow integration not configured")
+    }
+
+    const flowConfig = config.config as FlowConfig
+    const { verifyPaymentStatusAction } = await import("./lib/integrations/flow")
+
+    return await verifyPaymentStatusAction(flowConfig, args.token)
   },
 })
 
@@ -385,122 +534,39 @@ export const listPayments = query({
   },
 })
 
-export const createPayment = mutation({
+export const createPayment = action({
   args: {
     amount: v.number(),
     currency: v.string(),
     description: v.string(),
-    sessionId: v.optional(v.string()),
-    guardianId: v.optional(v.string()),
-    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+    environment: environmentValidator,
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    if (!auth) throw new Error("Not authenticated")
 
-    const paymentType = await ctx.db
-      .query("entityTypes")
-      .withIndex("by_org_slug", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("slug", "payment")
-      )
-      .first()
+    const paymentType = await ctx.runQuery(internal.payments.getPaymentEntityType, {
+      organizationId: auth.organizationId,
+      environment: args.environment,
+    })
 
     if (!paymentType) {
-      throw new Error("Payment entity type not found. Please install the tutoring pack first.")
+      throw new Error("Payment entity type not found")
     }
 
-    const now = Date.now()
-    const paymentData: PaymentData = {
-      amount: args.amount,
-      currency: args.currency,
-      description: args.description,
-      status: "draft",
-      sessionId: args.sessionId,
-      guardianId: args.guardianId,
-    }
-
-    const paymentId = await ctx.db.insert("entities", {
+    return await ctx.runMutation(internal.payments.createPaymentEntity, {
       organizationId: auth.organizationId,
       environment: args.environment,
       entityTypeId: paymentType._id,
-      status: "draft",
-      data: paymentData,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: auth.organizationId,
-      environment: args.environment,
-      entityId: paymentId,
-      entityTypeSlug: "payment",
-      eventType: "payment.created",
-      schemaVersion: 1,
+      data: {
+        amount: args.amount,
+        currency: args.currency,
+        description: args.description,
+        status: "draft",
+      },
       actorId: auth.userId as unknown as string,
       actorType: auth.actorType,
-      payload: paymentData,
-      timestamp: now,
     })
-
-    return paymentId
-  },
-})
-
-export const verifyPaymentFromWebhook = internalAction({
-  args: {
-    token: v.string(),
-    organizationId: v.id("organizations"),
-  },
-  returns: v.object({
-    flowOrder: v.number(),
-    status: v.string(),
-    statusMessage: v.string(),
-    amount: v.number(),
-    currency: v.string(),
-    payer: v.string(),
-  }),
-  handler: async (ctx, args) => {
-    const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
-      organizationId: args.organizationId,
-      environment: "production",
-      provider: "flow",
-    })
-
-    if (!config || config.status !== "active") {
-      throw new Error("Flow integration not configured")
-    }
-
-    const flowConfig = config.config as {
-      apiUrl: string
-      apiKey: string
-      secretKey: string
-    }
-
-    const { signFlowRequest } = await import("./lib/integrations/flow")
-
-    const params: Record<string, unknown> = {
-      apiKey: flowConfig.apiKey,
-      token: args.token,
-    }
-    const signature = signFlowRequest(params, flowConfig.secretKey)
-
-    const formData = new URLSearchParams()
-    formData.append("apiKey", flowConfig.apiKey)
-    formData.append("token", args.token)
-    formData.append("s", signature)
-
-    const response = await fetch(`${flowConfig.apiUrl}/payment/getStatus`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData.toString(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Flow API error: ${await response.text()}`)
-    }
-
-    return await response.json()
   },
 })

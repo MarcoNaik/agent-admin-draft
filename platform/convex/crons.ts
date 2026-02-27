@@ -9,4 +9,10 @@ crons.interval(
   internal.sandboxSessions.checkIdleSessions,
 )
 
+crons.interval(
+  "reconcile pending payments",
+  { minutes: 5 },
+  internal.payments.reconcilePayments,
+)
+
 export default crons

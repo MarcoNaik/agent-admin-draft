@@ -1,30 +1,16 @@
-import { ActionCtx, MutationCtx, QueryCtx } from "../../_generated/server"
+import { QueryCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
 
-interface FlowConfig {
+export interface FlowConfig {
   apiUrl: string
   apiKey: string
   secretKey: string
   webhookBaseUrl: string
+  defaultCurrency?: string
+  returnUrl?: string
 }
 
-interface CreatePaymentLinkParams {
-  organizationId: Id<"organizations">
-  environment: "development" | "production" | "eval"
-  paymentId: Id<"entities">
-  amount: number
-  currency: string
-  description: string
-  customerEmail: string
-  returnUrl: string
-}
-
-interface CreatePaymentLinkResult {
-  paymentLinkUrl: string
-  flowOrderId: string
-}
-
-interface FlowPaymentStatus {
+export interface FlowPaymentStatus {
   flowOrder: number
   status: string
   statusMessage: string
@@ -62,7 +48,7 @@ export function signFlowRequest(
   secretKey: string
 ): string {
   const sortedKeys = Object.keys(data).sort()
-  const signString = sortedKeys.map((k) => `${k}=${data[k]}`).join("&")
+  const signString = sortedKeys.map((k) => `${k}${data[k]}`).join("")
 
   const encoder = new TextEncoder()
   const keyData = encoder.encode(secretKey)
@@ -193,15 +179,20 @@ function padMessage(data: Uint8Array): Uint8Array {
   return padded
 }
 
-export async function createPaymentLink(
-  ctx: MutationCtx,
-  params: CreatePaymentLinkParams
-): Promise<CreatePaymentLinkResult> {
-  const config = await getFlowConfig(ctx, params.organizationId, params.environment)
-
+export async function createFlowPaymentLinkAction(
+  config: FlowConfig,
+  params: {
+    paymentId: string
+    amount: number
+    currency: string
+    description: string
+    customerEmail: string
+    returnUrl: string
+  }
+): Promise<{ url: string; token: string; flowOrder: string }> {
   const orderData: Record<string, unknown> = {
     apiKey: config.apiKey,
-    commerceOrder: params.paymentId.toString(),
+    commerceOrder: params.paymentId,
     subject: params.description,
     currency: params.currency,
     amount: params.amount,
@@ -220,9 +211,7 @@ export async function createPaymentLink(
 
   const response = await fetch(`${config.apiUrl}/payment/create`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData.toString(),
   })
 
@@ -233,74 +222,17 @@ export async function createPaymentLink(
 
   const result = await response.json() as { url: string; token: string; flowOrder: number }
 
-  const payment = await ctx.db.get(params.paymentId)
-  if (payment) {
-    await ctx.db.patch(params.paymentId, {
-      data: {
-        ...payment.data,
-        paymentLinkUrl: result.url + "?token=" + result.token,
-        providerReference: result.flowOrder.toString(),
-        status: "pending",
-      },
-      providerReference: result.flowOrder.toString(),
-      updatedAt: Date.now(),
-    })
-  }
-
   return {
-    paymentLinkUrl: result.url + "?token=" + result.token,
-    flowOrderId: result.flowOrder.toString(),
+    url: result.url + "?token=" + result.token,
+    token: result.token,
+    flowOrder: result.flowOrder.toString(),
   }
 }
 
-export async function verifyPaymentStatus(
-  ctx: ActionCtx,
-  organizationId: Id<"organizations">,
-  environment: "development" | "production" | "eval",
-  token: string
-): Promise<FlowPaymentStatus> {
-  const config = await ctx.runQuery(
-    (async (ctx: QueryCtx) => {
-      return getFlowConfig(ctx, organizationId, environment)
-    }) as never,
-    {} as never
-  ) as FlowConfig
-
-  const params: Record<string, unknown> = {
-    apiKey: config.apiKey,
-    token,
-  }
-  const signature = signFlowRequest(params, config.secretKey)
-
-  const formData = new URLSearchParams()
-  formData.append("apiKey", config.apiKey)
-  formData.append("token", token)
-  formData.append("s", signature)
-
-  const response = await fetch(`${config.apiUrl}/payment/getStatus`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: formData.toString(),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Flow API error: ${error}`)
-  }
-
-  return await response.json() as FlowPaymentStatus
-}
-
-export async function checkFlowOrderStatus(
-  ctx: MutationCtx,
-  organizationId: Id<"organizations">,
-  environment: "development" | "production" | "eval",
+export async function checkFlowOrderStatusAction(
+  config: FlowConfig,
   flowOrderId: string
 ): Promise<FlowPaymentStatus> {
-  const config = await getFlowConfig(ctx, organizationId, environment)
-
   const params: Record<string, unknown> = {
     apiKey: config.apiKey,
     flowOrder: flowOrderId,
@@ -314,9 +246,36 @@ export async function checkFlowOrderStatus(
 
   const response = await fetch(`${config.apiUrl}/payment/getStatusByFlowOrder`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formData.toString(),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Flow API error: ${error}`)
+  }
+
+  return await response.json() as FlowPaymentStatus
+}
+
+export async function verifyPaymentStatusAction(
+  config: FlowConfig,
+  token: string
+): Promise<FlowPaymentStatus> {
+  const params: Record<string, unknown> = {
+    apiKey: config.apiKey,
+    token,
+  }
+  const signature = signFlowRequest(params, config.secretKey)
+
+  const formData = new URLSearchParams()
+  formData.append("apiKey", config.apiKey)
+  formData.append("token", token)
+  formData.append("s", signature)
+
+  const response = await fetch(`${config.apiUrl}/payment/getStatus`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData.toString(),
   })
 

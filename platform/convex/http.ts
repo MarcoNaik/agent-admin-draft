@@ -547,27 +547,35 @@ http.route({
     }
 
     for (const config of configs) {
-      try {
-        const result = await ctx.runAction(internal.payments.verifyPaymentFromWebhook, {
-          token,
-          organizationId: config.organizationId,
-        }) as { flowOrder: number; status: string; statusMessage: string }
+      const environments = [config.environment as "production" | "development" | "eval"]
+      const otherEnv = config.environment === "production" ? "development" : "production"
+      environments.push(otherEnv as "production" | "development")
 
-        if (result.status === "2") {
-          await ctx.runMutation(internal.payments.markAsPaid, {
-            providerReference: result.flowOrder.toString(),
-            paidAt: Date.now(),
-          })
-          break
-        } else if (result.status === "3" || result.status === "4") {
-          await ctx.runMutation(internal.payments.markAsFailed, {
-            providerReference: result.flowOrder.toString(),
-            reason: result.statusMessage,
-          })
-          break
+      for (const env of environments) {
+        try {
+          const result = await ctx.runAction(internal.payments.verifyPaymentFromWebhook, {
+            token,
+            organizationId: config.organizationId,
+            environment: env,
+          }) as { flowOrder: number; status: string; statusMessage: string }
+
+          if (result.status === "2") {
+            await ctx.runMutation(internal.payments.markAsPaid, {
+              providerReference: result.flowOrder.toString(),
+              paidAt: Date.now(),
+            })
+            return new Response("OK", { status: 200 })
+          } else if (result.status === "3" || result.status === "4") {
+            await ctx.runMutation(internal.payments.markAsFailed, {
+              providerReference: result.flowOrder.toString(),
+              reason: result.statusMessage,
+            })
+            return new Response("OK", { status: 200 })
+          }
+        } catch (error) {
+          console.error("Flow webhook verification error:", config.organizationId, env, error)
+          continue
         }
-      } catch (error) {
-        continue
       }
     }
 

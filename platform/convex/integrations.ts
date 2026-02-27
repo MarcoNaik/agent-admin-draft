@@ -29,6 +29,8 @@ interface FlowConfig {
   apiKey: string
   secretKey: string
   webhookBaseUrl: string
+  defaultCurrency?: string
+  returnUrl?: string
 }
 
 interface GoogleConfig {
@@ -339,16 +341,47 @@ export const testConnection = action({
 
       if (args.provider === "flow") {
         const flowConfig = config.config as FlowConfig
-        if (!flowConfig.apiUrl || !flowConfig.apiKey) {
-          return { success: false, message: "Missing required Flow configuration" }
+        if (!flowConfig.apiUrl || !flowConfig.apiKey || !flowConfig.secretKey) {
+          return { success: false, message: "Missing required Flow configuration (apiUrl, apiKey, secretKey)" }
         }
 
-        await ctx.runMutation(internal.integrations.patchConfigStatus, {
-          configId: config._id,
-          status: "active",
-          lastVerifiedAt: now,
-        })
-        return { success: true, message: "Flow configuration saved" }
+        const { signFlowRequest } = await import("./lib/integrations/flow")
+        const testParams: Record<string, unknown> = { apiKey: flowConfig.apiKey }
+        const signature = signFlowRequest(testParams, flowConfig.secretKey)
+
+        const formData = new URLSearchParams()
+        formData.append("apiKey", flowConfig.apiKey)
+        formData.append("s", signature)
+
+        try {
+          const response = await fetch(`${flowConfig.apiUrl}/payment/getStatusByFlowOrder`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          })
+
+          if (response.status === 401 || response.status === 403) {
+            await ctx.runMutation(internal.integrations.patchConfigStatus, {
+              configId: config._id,
+              status: "error",
+            })
+            return { success: false, message: "Flow API credentials are invalid" }
+          }
+
+          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            configId: config._id,
+            status: "active",
+            lastVerifiedAt: now,
+          })
+          return { success: true, message: "Flow API connection verified" }
+        } catch (fetchError) {
+          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            configId: config._id,
+            status: "error",
+          })
+          const msg = fetchError instanceof Error ? fetchError.message : "Unknown error"
+          return { success: false, message: `Flow API unreachable: ${msg}` }
+        }
       }
 
       if (args.provider === "google") {
