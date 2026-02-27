@@ -14,6 +14,7 @@ import {
   FieldMaskResult,
   Environment,
 } from "../lib/permissions"
+import { getNestedValue } from "../lib/permissions/scope"
 import { checkAndScheduleTriggers } from "../lib/triggers"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
@@ -269,14 +270,15 @@ export const entityQuery = internalQuery({
               .eq("entityTypeId", typeId)
           )
 
-    const entities = await query.take(args.limit ?? 100)
+    const INTERNAL_FETCH_LIMIT = 1000
+    const entities = await query.take(INTERNAL_FETCH_LIMIT)
 
     let filtered = entities.filter((e) => !e.deletedAt)
 
     if (args.filters) {
       filtered = filtered.filter((e) => {
         for (const [key, value] of Object.entries(args.filters)) {
-          const fieldVal = e.data[key]
+          const fieldVal = getNestedValue(e.data as Record<string, unknown>, key)
           if (typeof value === "object" && value !== null && !Array.isArray(value)) {
             const ops = value as Record<string, unknown>
             for (const [op, opVal] of Object.entries(ops)) {
@@ -325,7 +327,9 @@ export const entityQuery = internalQuery({
       applyFieldMask(e, fieldMask)
     )
 
-    return maskedEntities.map((e) => ({
+    const limited = maskedEntities.slice(0, args.limit ?? 100)
+
+    return limited.map((e) => ({
       id: e._id,
       type: args.type,
       status: e.status,
