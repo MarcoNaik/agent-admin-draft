@@ -85,6 +85,14 @@ export const createPaymentLink = action({
     const flowConfig = config.config as FlowConfig
     const returnUrl = args.returnUrl || flowConfig.returnUrl || ""
 
+    if (!paymentData.customerEmail) {
+      throw new Error("payment.create requires 'customerEmail' parameter (required by Flow)")
+    }
+
+    if (!returnUrl) {
+      throw new Error("Flow configuration is missing returnUrl")
+    }
+
     const result = await createFlowPaymentLinkAction(flowConfig, {
       paymentId: args.paymentId.toString(),
       amount: paymentData.amount,
@@ -98,6 +106,7 @@ export const createPaymentLink = action({
       paymentId: args.paymentId,
       paymentLinkUrl: result.url,
       providerReference: result.flowOrder,
+      flowToken: result.token,
     })
 
     await (ctx as any).runMutation(internal.payments.emitPaymentEvent, {
@@ -236,6 +245,7 @@ export const storePaymentLink = internalMutation({
     paymentId: v.id("entities"),
     paymentLinkUrl: v.string(),
     providerReference: v.string(),
+    flowToken: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -252,6 +262,7 @@ export const storePaymentLink = internalMutation({
       },
       status: "pending",
       providerReference: args.providerReference,
+      flowToken: args.flowToken,
       updatedAt: Date.now(),
     })
     return null
@@ -317,6 +328,34 @@ export const getPaymentInternal = internalQuery({
     const payment = await ctx.db.get(args.paymentId)
     if (!payment || payment.organizationId !== args.organizationId) return null
     return payment
+  },
+})
+
+export const getPaymentByFlowToken = internalQuery({
+  args: {
+    flowToken: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      organizationId: v.id("organizations"),
+      environment: environmentValidator,
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const payment = await ctx.db
+      .query("entities")
+      .withIndex("by_flow_token", (q) =>
+        q.eq("flowToken", args.flowToken)
+      )
+      .first()
+
+    if (!payment) return null
+
+    return {
+      organizationId: payment.organizationId,
+      environment: payment.environment as "development" | "production" | "eval",
+    }
   },
 })
 
@@ -447,10 +486,10 @@ export const reconcilePayments = internalAction({
         const flowConfig = config.config as FlowConfig
         const flowStatus = await checkFlowOrderStatusAction(flowConfig, payment.data.providerReference!)
 
-        if (flowStatus.status === "2") {
+        if (flowStatus.status === 2) {
           await runMarkAsPaid(ctx, payment.data.providerReference!, Date.now())
           reconciled++
-        } else if (flowStatus.status === "3" || flowStatus.status === "4") {
+        } else if (flowStatus.status === 3 || flowStatus.status === 4) {
           await runMarkAsFailed(ctx, payment.data.providerReference!, flowStatus.statusMessage)
         }
       } catch (error) {
@@ -470,7 +509,7 @@ export const verifyPaymentFromWebhook = internalAction({
   },
   returns: v.object({
     flowOrder: v.number(),
-    status: v.string(),
+    status: v.number(),
     statusMessage: v.string(),
     amount: v.number(),
     currency: v.string(),
