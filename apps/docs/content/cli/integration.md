@@ -187,12 +187,21 @@ npx struere integration airtable --remove --yes
 |----------|----------------|----------------|
 | `airtable` | `--token` | `--base-id` |
 | `resend` | At least one of `--from-email`, `--from-name`, `--reply-to` | — |
+| `flow` | `--api-url`, `--api-key`, `--secret-key` | `--return-url` |
 
 ## Example Workflow
 
 ```bash
 # Set up Airtable with verification
 npx struere integration airtable --token patXXX.YYYY --test
+
+# Set up Flow.cl payments
+npx struere integration flow \
+  --api-url https://www.flow.cl/api \
+  --api-key YOUR_API_KEY \
+  --secret-key YOUR_SECRET_KEY \
+  --return-url https://yoursite.com/payment/complete \
+  --test
 
 # Confirm it shows up in the list
 npx struere integration
