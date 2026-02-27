@@ -195,6 +195,7 @@ Core backend with real-time subscriptions and scheduled functions.
 
 **Key Files**:
 - `schema.ts` - Database schema (33 tables)
+- `organizations.ts` - Organization CRUD, `remove` (admin-only, schedules cascading hard-delete), `deleteAllOrgData` (internal, deletes all ~27 dependent tables)
 - `agents.ts` - Agent CRUD, syncDevelopment, deploy
 - `agent.ts` - LLM execution action (chat) with actor context
 - `chat.ts` - Authenticated chat actions (send, sendBySlug)

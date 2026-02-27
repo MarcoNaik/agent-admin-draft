@@ -23,7 +23,7 @@ Receives user, organization, and membership events from Clerk to keep the Struer
 | `user.updated` | Updates the user's email and name |
 | `organization.created` | Creates the organization in Struere |
 | `organization.updated` | Updates the organization's name and slug |
-| `organization.deleted` | Marks the organization as deleted |
+| `organization.deleted` | Schedules cascading hard-delete of all organization data (agents, entities, threads, events, executions, API keys, integrations, credits, and the org record itself) |
 | `organizationMembership.created` | Links a user to an organization with their role |
 | `organizationMembership.updated` | Updates the user's role within the organization |
 | `organizationMembership.deleted` | Removes a user's membership from the organization |
