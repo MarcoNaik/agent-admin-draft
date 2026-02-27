@@ -30,13 +30,13 @@ export default function DangerZonePage() {
     setError(null)
     try {
       await removeOrg({ id: convexOrg._id })
-      await clerkOrg?.destroy()
       const otherOrg = userMemberships?.data?.find(
         (m) => m.organization.id !== clerkOrg?.id
       )
       if (otherOrg && setActive) {
         await setActive({ organization: otherOrg.organization.id })
       }
+      await clerkOrg?.destroy()
       window.location.href = "/"
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete organization")

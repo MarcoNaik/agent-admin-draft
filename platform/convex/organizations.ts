@@ -158,13 +158,9 @@ export const remove = mutation({
     if (auth.organizationId !== args.id) {
       throw new Error("Access denied")
     }
-    const membership = await ctx.db
-      .query("userOrganizations")
-      .withIndex("by_user_org", (q) =>
-        q.eq("userId", auth.userId).eq("organizationId", args.id)
-      )
-      .first()
-    if (!membership || membership.role !== "admin") {
+    const identity = await ctx.auth.getUserIdentity() as { org_role?: string } | null
+    const orgRole = identity?.org_role
+    if (orgRole !== "org:admin" && orgRole !== "org:owner") {
       throw new Error("Only admins can delete organizations")
     }
     await ctx.scheduler.runAfter(0, internal.organizations.deleteAllOrgData, {

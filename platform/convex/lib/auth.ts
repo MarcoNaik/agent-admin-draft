@@ -14,6 +14,7 @@ interface ClerkIdentity {
   name?: string
   nickname?: string
   org_id?: string
+  org_role?: string
 }
 
 export async function getAuthContext(
