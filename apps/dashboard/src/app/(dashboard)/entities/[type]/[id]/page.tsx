@@ -130,7 +130,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
     if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) {
       return
     }
-    await deleteEntity({ id: entity._id })
+    await deleteEntity({ id: entity._id, environment })
     router.push(`/entities/${type}`)
   }
 

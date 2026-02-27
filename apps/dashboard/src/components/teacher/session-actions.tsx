@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { useDeleteEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -31,6 +32,7 @@ export function SessionActions({ sessionId, sessionData, onReportClick }: Sessio
   const router = useRouter()
   const { role, userId } = useCurrentRole()
   const deleteEntity = useDeleteEntity()
+  const { environment } = useEnvironment()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -41,7 +43,7 @@ export function SessionActions({ sessionId, sessionData, onReportClick }: Sessio
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      await deleteEntity({ id: sessionId })
+      await deleteEntity({ id: sessionId, environment })
       setShowDeleteDialog(false)
       router.push("/teacher/sessions")
     } catch (err) {

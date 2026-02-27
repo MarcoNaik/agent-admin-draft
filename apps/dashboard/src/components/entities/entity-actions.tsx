@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Pencil, Trash2, MoreHorizontal, Eye } from "lucide-react"
 import { useRoleContext } from "@/contexts/role-context"
+import { useEnvironment } from "@/contexts/environment-context"
 import { useDeleteEntity } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +35,7 @@ interface EntityActionsProps {
 export function EntityActions({ entityId, entityType, ownerId, onView, onEdit }: EntityActionsProps) {
   const router = useRouter()
   const { userId, isAdmin } = useRoleContext()
+  const { environment } = useEnvironment()
   const deleteEntity = useDeleteEntity()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -62,7 +64,7 @@ export function EntityActions({ entityId, entityType, ownerId, onView, onEdit }:
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      await deleteEntity({ id: entityId })
+      await deleteEntity({ id: entityId, environment })
       setShowDeleteDialog(false)
     } catch (err) {
       console.error("Failed to delete entity:", err)

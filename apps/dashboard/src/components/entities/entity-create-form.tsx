@@ -45,6 +45,7 @@ export function EntityCreateForm({ entityTypeSlug, onSuccess }: EntityCreateForm
   const handleSubmit = async (data: Record<string, unknown>) => {
     const entityId = await createEntity({
       entityTypeSlug,
+      environment,
       data,
     })
     onSuccess(entityId)

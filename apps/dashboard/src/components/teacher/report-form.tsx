@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react"
 import { useUpdateEntity } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Id } from "@convex/_generated/dataModel"
@@ -16,6 +17,7 @@ export function ReportForm({ sessionId, onSuccess }: ReportFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const updateEntity = useUpdateEntity()
+  const { environment } = useEnvironment()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -25,6 +27,7 @@ export function ReportForm({ sessionId, onSuccess }: ReportFormProps) {
     try {
       await updateEntity({
         id: sessionId,
+        environment,
         data: {
           reportContent: content,
           reportSubmittedAt: Date.now(),

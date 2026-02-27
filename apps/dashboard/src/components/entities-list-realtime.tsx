@@ -43,6 +43,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
     try {
       await createEntity({
         entityTypeSlug,
+        environment,
         data: {},
         status: "active"
       })
@@ -53,7 +54,7 @@ export function EntitiesListRealtime({ entityTypeSlug }: EntitiesListRealtimePro
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this entity?")) return
-    await deleteEntity({ id: id as any })
+    await deleteEntity({ id: id as any, environment })
   }
 
   const getDisplayTitle = (entity: any) => {

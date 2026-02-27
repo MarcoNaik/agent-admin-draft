@@ -88,7 +88,7 @@ export default function EntityEditPage({ params }: EntityEditPageProps) {
   }
 
   const handleSubmit = async (data: Record<string, unknown>) => {
-    await updateEntity({ id: entity._id, data })
+    await updateEntity({ id: entity._id, environment, data })
     router.push(`/entities/${type}/${id}`)
   }
 
