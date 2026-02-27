@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { Id } from "./_generated/dataModel"
 
@@ -150,6 +151,156 @@ export const update = mutation({
   },
 })
 
+export const remove = mutation({
+  args: { id: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    if (auth.organizationId !== args.id) {
+      throw new Error("Access denied")
+    }
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", auth.userId).eq("organizationId", args.id)
+      )
+      .first()
+    if (!membership || membership.role !== "admin") {
+      throw new Error("Only admins can delete organizations")
+    }
+    await ctx.scheduler.runAfter(0, internal.organizations.deleteAllOrgData, {
+      organizationId: args.id,
+    })
+  },
+})
+
+export const deleteAllOrgData = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId)
+    if (!org) return
+
+    const orgId = args.organizationId
+
+    const agents = await ctx.db.query("agents").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    const threads = await ctx.db.query("threads").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    const roles = await ctx.db.query("roles").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    const policies = await ctx.db.query("policies").withIndex("by_org_resource", (q) => q.eq("organizationId", orgId)).collect()
+    const evalSuites = await ctx.db.query("evalSuites").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    const evalRuns = await ctx.db.query("evalRuns").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    const sandboxSessions = await ctx.db.query("sandboxSessions").withIndex("by_org_env_status", (q) => q.eq("organizationId", orgId)).collect()
+    const entities = await ctx.db.query("entities").withIndex("by_org_type", (q) => q.eq("organizationId", orgId)).collect()
+
+    for (const session of sandboxSessions) {
+      const events = await ctx.db.query("sandboxEvents").withIndex("by_session", (q) => q.eq("sessionId", session._id)).collect()
+      for (const event of events) await ctx.db.delete(event._id)
+    }
+
+    for (const thread of threads) {
+      const messages = await ctx.db.query("messages").withIndex("by_thread", (q) => q.eq("threadId", thread._id)).collect()
+      for (const msg of messages) await ctx.db.delete(msg._id)
+    }
+
+    for (const policy of policies) {
+      const scopeRules = await ctx.db.query("scopeRules").withIndex("by_policy", (q) => q.eq("policyId", policy._id)).collect()
+      for (const rule of scopeRules) await ctx.db.delete(rule._id)
+      const fieldMasks = await ctx.db.query("fieldMasks").withIndex("by_policy", (q) => q.eq("policyId", policy._id)).collect()
+      for (const mask of fieldMasks) await ctx.db.delete(mask._id)
+    }
+
+    for (const role of roles) {
+      const userRoles = await ctx.db.query("userRoles").withIndex("by_role", (q) => q.eq("roleId", role._id)).collect()
+      for (const ur of userRoles) await ctx.db.delete(ur._id)
+    }
+
+    for (const agent of agents) {
+      const toolPerms = await ctx.db.query("toolPermissions").withIndex("by_agent", (q) => q.eq("agentId", agent._id)).collect()
+      for (const perm of toolPerms) await ctx.db.delete(perm._id)
+      const configs = await ctx.db.query("agentConfigs").withIndex("by_agent", (q) => q.eq("agentId", agent._id)).collect()
+      for (const config of configs) await ctx.db.delete(config._id)
+    }
+
+    for (const run of evalRuns) {
+      const results = await ctx.db.query("evalResults").withIndex("by_run", (q) => q.eq("runId", run._id)).collect()
+      for (const result of results) await ctx.db.delete(result._id)
+    }
+
+    for (const suite of evalSuites) {
+      const cases = await ctx.db.query("evalCases").withIndex("by_suite", (q) => q.eq("suiteId", suite._id)).collect()
+      for (const c of cases) await ctx.db.delete(c._id)
+    }
+
+    for (const entity of entities) {
+      const fromRels = await ctx.db.query("entityRelations").withIndex("by_from", (q) => q.eq("fromEntityId", entity._id)).collect()
+      for (const rel of fromRels) await ctx.db.delete(rel._id)
+      const toRels = await ctx.db.query("entityRelations").withIndex("by_to", (q) => q.eq("toEntityId", entity._id)).collect()
+      for (const rel of toRels) await ctx.db.delete(rel._id)
+    }
+
+    for (const thread of threads) await ctx.db.delete(thread._id)
+    for (const entity of entities) await ctx.db.delete(entity._id)
+
+    const events = await ctx.db.query("events").withIndex("by_org_timestamp", (q) => q.eq("organizationId", orgId)).collect()
+    for (const event of events) await ctx.db.delete(event._id)
+
+    const executions = await ctx.db.query("executions").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const exec of executions) await ctx.db.delete(exec._id)
+
+    const triggers = await ctx.db.query("triggers").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    const triggerRuns = await ctx.db.query("triggerRuns").withIndex("by_org_env_status", (q) => q.eq("organizationId", orgId)).collect()
+    for (const tr of triggerRuns) await ctx.db.delete(tr._id)
+    for (const trigger of triggers) await ctx.db.delete(trigger._id)
+
+    for (const run of evalRuns) await ctx.db.delete(run._id)
+    for (const suite of evalSuites) await ctx.db.delete(suite._id)
+    for (const agent of agents) await ctx.db.delete(agent._id)
+    for (const policy of policies) await ctx.db.delete(policy._id)
+    for (const role of roles) await ctx.db.delete(role._id)
+
+    const entityTypes = await ctx.db.query("entityTypes").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const et of entityTypes) await ctx.db.delete(et._id)
+
+    const apiKeys = await ctx.db.query("apiKeys").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const key of apiKeys) await ctx.db.delete(key._id)
+
+    const integrationConfigs = await ctx.db.query("integrationConfigs").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    for (const ic of integrationConfigs) await ctx.db.delete(ic._id)
+
+    const providerConfigs = await ctx.db.query("providerConfigs").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const pc of providerConfigs) await ctx.db.delete(pc._id)
+
+    const calendarConnections = await ctx.db.query("calendarConnections").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    for (const cc of calendarConnections) await ctx.db.delete(cc._id)
+
+    const whatsappConnections = await ctx.db.query("whatsappConnections").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const wc of whatsappConnections) await ctx.db.delete(wc._id)
+
+    const whatsappMessages = await ctx.db.query("whatsappMessages").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const wm of whatsappMessages) await ctx.db.delete(wm._id)
+
+    const emailMessages = await ctx.db.query("emailMessages").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    for (const em of emailMessages) await ctx.db.delete(em._id)
+
+    const pendingRoleAssignments = await ctx.db.query("pendingRoleAssignments").withIndex("by_org_email", (q) => q.eq("organizationId", orgId)).collect()
+    for (const pra of pendingRoleAssignments) await ctx.db.delete(pra._id)
+
+    const creditBalances = await ctx.db.query("creditBalances").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const cb of creditBalances) await ctx.db.delete(cb._id)
+
+    const creditTransactions = await ctx.db.query("creditTransactions").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const ct of creditTransactions) await ctx.db.delete(ct._id)
+
+    for (const session of sandboxSessions) await ctx.db.delete(session._id)
+
+    const fixtures = await ctx.db.query("fixtures").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
+    for (const f of fixtures) await ctx.db.delete(f._id)
+
+    const memberships = await ctx.db.query("userOrganizations").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const m of memberships) await ctx.db.delete(m._id)
+
+    await ctx.db.delete(orgId)
+  },
+})
+
 export const getByClerkOrgId = internalQuery({
   args: { clerkOrgId: v.string() },
   handler: async (ctx, args) => {
@@ -213,14 +364,9 @@ export const markAsDeleted = internalMutation({
 
     if (!org) return
 
-    const memberships = await ctx.db
-      .query("userOrganizations")
-      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
-      .collect()
-
-    for (const membership of memberships) {
-      await ctx.db.delete(membership._id)
-    }
+    await ctx.scheduler.runAfter(0, internal.organizations.deleteAllOrgData, {
+      organizationId: org._id,
+    })
   },
 })
 
