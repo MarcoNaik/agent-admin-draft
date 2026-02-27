@@ -2,7 +2,7 @@ import { loadCredentials, getApiKey, saveCredentials } from './credentials'
 
 const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
 
-function getSiteUrl(): string {
+export function getSiteUrl(): string {
   return CONVEX_URL.replace('.cloud', '.site')
 }
 

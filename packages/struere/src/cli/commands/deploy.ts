@@ -4,7 +4,7 @@ import ora from 'ora'
 import { confirm } from '@inquirer/prompts'
 import { loadCredentials, getApiKey, clearCredentials } from '../utils/credentials'
 import { hasProject, loadProject } from '../utils/project'
-import { syncOrganization, type SyncResult } from '../utils/convex'
+import { syncOrganization, getSiteUrl, type SyncResult } from '../utils/convex'
 import { loadAllResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { performLogin } from './login'
@@ -262,7 +262,7 @@ export const deployCommand = new Command('deploy')
 
         console.log()
         console.log(chalk.gray('Test your agents:'))
-        console.log(chalk.gray('  $'), chalk.cyan(`curl -X POST https://<agent-slug>.struere.dev/chat -H "Authorization: Bearer YOUR_API_KEY" -d '{"message": "Hello"}'`))
+        console.log(chalk.gray('  $'), chalk.cyan(`curl -X POST ${getSiteUrl()}/v1/agents/<agent-slug>/chat -H "Authorization: Bearer YOUR_API_KEY" -d '{"message": "Hello"}'`))
         console.log()
       }
     } catch (error) {
