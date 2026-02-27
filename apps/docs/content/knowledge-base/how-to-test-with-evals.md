@@ -123,6 +123,25 @@ assertions:
 
 Higher weight assertions have more impact on the overall score.
 
+### 7. Test channel-specific behavior
+
+If your agent uses `{{threadContext.channel}}` or `{{threadContext.params.*}}` in its system prompt, set `channel` and `contextParams` on the case:
+
+```yaml
+cases:
+  - name: "WhatsApp greeting"
+    channel: whatsapp
+    contextParams:
+      guardianPhone: "+56912345678"
+    turns:
+      - user: "Hello"
+        assertions:
+          - type: llm_judge
+            criteria: "Response is appropriate for WhatsApp (concise, no markdown)"
+```
+
+Without these fields, template variables like `{{threadContext.channel}}` resolve empty during eval runs.
+
 ## Common Mistakes
 
 - **Vague judge criteria.** "Good response" is too vague. Use specific criteria like "Response mentions the order status and expected delivery date."

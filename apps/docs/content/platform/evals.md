@@ -133,6 +133,43 @@ cases:
 | `tags` | No | Tags for filtering |
 | `turns` | Yes | Ordered list of user messages and per-turn assertions |
 | `finalAssertions` | No | Assertions evaluated after all turns complete (evaluate overall conversation) |
+| `channel` | No | Thread channel: `widget`, `whatsapp`, `api`, or `dashboard` |
+| `contextParams` | No | Key-value pairs passed as thread context parameters |
+
+## Thread Context
+
+Agents that use `{{threadContext.channel}}` or `{{threadContext.params.*}}` in their system prompts need `channel` and `contextParams` set on the eval case. Without them, these template variables resolve empty during eval runs.
+
+Both fields are **case-level** (not per-turn), matching real usage where a conversation always happens on a single channel with fixed context parameters.
+
+```yaml
+cases:
+  - name: "WhatsApp booking flow"
+    channel: whatsapp
+    contextParams:
+      guardianPhone: "+56912345678"
+      studentName: "Mateo"
+    turns:
+      - user: "I want to book a session for tomorrow"
+        assertions:
+          - type: tool_called
+            value: "entity.query"
+
+  - name: "Widget general inquiry"
+    channel: widget
+    turns:
+      - user: "What services do you offer?"
+        assertions:
+          - type: llm_judge
+            criteria: "Response lists available services"
+```
+
+When a case has `channel` or `contextParams`:
+- The eval thread is created with the specified channel and params
+- The agent's system prompt resolves `{{threadContext.channel}}` and `{{threadContext.params.*}}` correctly
+- The judge also sees the resolved system prompt for accurate evaluation
+
+See [System Prompt Templates](/tools/system-prompt-templates) for the full list of template variables.
 
 ## Assertion Types
 
@@ -358,3 +395,4 @@ The `struere eval run` command syncs to the eval environment, executes the suite
 8. **Use `judgeContext` for fact-checking** — provide ground-truth data the judge can verify against
 9. **Keep cases focused.** Each case should test one specific behavior or flow
 10. **Tag your suites and cases** for easy filtering (`tags: ["regression", "safety", "tools"]`)
+11. **Set `channel` and `contextParams` when testing channel-specific behavior.** If your agent uses `{{threadContext.channel}}` or `{{threadContext.params.*}}`, these must be set on the case or the template variables resolve empty
