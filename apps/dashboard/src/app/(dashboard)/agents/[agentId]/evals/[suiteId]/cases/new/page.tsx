@@ -4,8 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Loader2, ArrowLeft, Plus, Trash2 } from "lucide-react"
-import { useCreateEvalCase } from "@/hooks/use-convex-data"
+import { useCreateEvalCase, useEvalSuite, useAgentWithConfig } from "@/hooks/use-convex-data"
 import { AssertionRow, type AssertionType, type AssertionForm } from "@/components/evals/assertion-row"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Id } from "@convex/_generated/dataModel"
 
 interface NewCasePageProps {
@@ -17,16 +18,25 @@ interface TurnForm {
   assertions: AssertionForm[]
 }
 
+const CHANNELS = ["widget", "whatsapp", "api", "dashboard"] as const
+
 export default function NewCasePage({ params }: NewCasePageProps) {
   const { agentId, suiteId } = params
   const router = useRouter()
   const createCase = useCreateEvalCase()
+  const suite = useEvalSuite(suiteId as Id<"evalSuites">)
+  const agentData = useAgentWithConfig(suite?.agentId ?? agentId as Id<"agents">)
+  const devConfig = agentData?.developmentConfig
+  const threadContextParams: Array<{ name: string; type: string; required?: boolean; description?: string }> =
+    devConfig?.threadContextParams ?? []
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [tags, setTags] = useState("")
   const [turns, setTurns] = useState<TurnForm[]>([{ userMessage: "", assertions: [] }])
   const [finalAssertions, setFinalAssertions] = useState<AssertionForm[]>([])
+  const [channel, setChannel] = useState<string>("")
+  const [contextParams, setContextParams] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -105,6 +115,26 @@ export default function NewCasePage({ params }: NewCasePageProps) {
           }))
         : undefined
 
+      const typedChannel = channel as "widget" | "whatsapp" | "api" | "dashboard" | undefined
+
+      let coercedParams: Record<string, unknown> | undefined
+      if (threadContextParams.length > 0) {
+        const entries = Object.entries(contextParams).filter(([, v]) => v !== "")
+        if (entries.length > 0) {
+          coercedParams = {}
+          for (const [key, raw] of entries) {
+            const paramDef = threadContextParams.find((p) => p.name === key)
+            if (paramDef?.type === "number") {
+              coercedParams[key] = Number(raw)
+            } else if (paramDef?.type === "boolean") {
+              coercedParams[key] = raw === "true"
+            } else {
+              coercedParams[key] = raw
+            }
+          }
+        }
+      }
+
       await createCase({
         suiteId: suiteId as Id<"evalSuites">,
         name: name.trim(),
@@ -112,6 +142,8 @@ export default function NewCasePage({ params }: NewCasePageProps) {
         tags: tags.trim() ? tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
         turns: formattedTurns,
         finalAssertions: formattedFinal,
+        channel: typedChannel || undefined,
+        contextParams: coercedParams,
       })
 
       router.push(`/agents/${agentId}/evals/${suiteId}`)
@@ -170,6 +202,61 @@ export default function NewCasePage({ params }: NewCasePageProps) {
             className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           />
         </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-content-primary">Channel</label>
+          <Select value={channel} onValueChange={setChannel}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="None (default)" />
+            </SelectTrigger>
+            <SelectContent>
+              {CHANNELS.map((ch) => (
+                <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-content-tertiary">Sets threadContext.channel for template resolution</p>
+        </div>
+
+        {threadContextParams.length > 0 && (
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-content-primary">Context Parameters</label>
+            <p className="text-xs text-content-tertiary">Sets threadContext.params for template resolution</p>
+            <div className="grid grid-cols-2 gap-3">
+              {threadContextParams.map((param) => (
+                <div key={param.name} className="space-y-1.5">
+                  <label className="text-xs text-content-tertiary">
+                    {param.name}
+                    {param.required && <span className="text-destructive ml-0.5">*</span>}
+                    <span className="ml-1 text-content-quaternary">({param.type})</span>
+                  </label>
+                  {param.type === "boolean" ? (
+                    <Select
+                      value={contextParams[param.name] ?? ""}
+                      onValueChange={(v) => setContextParams({ ...contextParams, [param.name]: v })}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Not set" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">true</SelectItem>
+                        <SelectItem value="false">false</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <input
+                      type={param.type === "number" ? "number" : "text"}
+                      value={contextParams[param.name] ?? ""}
+                      onChange={(e) => setContextParams({ ...contextParams, [param.name]: e.target.value })}
+                      placeholder={param.description || param.name}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
