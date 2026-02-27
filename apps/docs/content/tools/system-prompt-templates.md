@@ -202,7 +202,7 @@ A template function only works if the tool is registered in the agent's `tools` 
 `entity.query` supports `filters`, `status`, and `limit` parameters. Filters match against fields inside `data`:
 
 ```
-{{entity.query({"type": "order", "filters": {"data.status": "pending"}, "limit": 20})}}
+{{entity.query({"type": "order", "filters": {"status": "pending"}, "limit": 20})}}
 ```
 
 ### Filter operators
@@ -211,21 +211,21 @@ Use operator prefixes for advanced comparisons:
 
 | Operator | Syntax | Description |
 |----------|--------|-------------|
-| Equals (default) | `{"data.field": "value"}` | Exact match |
-| Not equal | `{"data.field": {"_op_ne": "value"}}` | Not equal to value |
-| In | `{"data.field": {"_op_in": ["a", "b"]}}` | Matches any value in array |
-| Not in | `{"data.field": {"_op_nin": ["a", "b"]}}` | Does not match any value |
-| Greater than | `{"data.field": {"_op_gt": 100}}` | Greater than |
-| Greater or equal | `{"data.field": {"_op_gte": 100}}` | Greater than or equal |
-| Less than | `{"data.field": {"_op_lt": 100}}` | Less than |
-| Less or equal | `{"data.field": {"_op_lte": 100}}` | Less than or equal |
+| Equals (default) | `{"field": "value"}` | Exact match |
+| Not equal | `{"field": {"_op_ne": "value"}}` | Not equal to value |
+| In | `{"field": {"_op_in": ["a", "b"]}}` | Matches any value in array |
+| Not in | `{"field": {"_op_nin": ["a", "b"]}}` | Does not match any value |
+| Greater than | `{"field": {"_op_gt": 100}}` | Greater than |
+| Greater or equal | `{"field": {"_op_gte": 100}}` | Greater than or equal |
+| Less than | `{"field": {"_op_lt": 100}}` | Less than |
+| Less or equal | `{"field": {"_op_lte": 100}}` | Less than or equal |
 
 ### Combining filters with nested templates
 
 Use `{{variable}}` inside filter values to create dynamic, context-aware queries:
 
 ```
-{{entity.query({"type": "prospect", "filters": {"data.prospectSlug": "{{threadContext.params.prospectSlug}}"}, "limit": 1})}}
+{{entity.query({"type": "prospect", "filters": {"prospectSlug": "{{threadContext.params.prospectSlug}}"}, "limit": 1})}}
 ```
 
 ## Examples
@@ -245,7 +245,7 @@ export default defineAgent({
 Current time: {{currentTime}}
 
 ## Prospect Profile
-{{entity.query({"type": "prospect", "filters": {"data.slug": "{{threadContext.params.prospectSlug}}"}, "limit": 1})}}
+{{entity.query({"type": "prospect", "filters": {"slug": "{{threadContext.params.prospectSlug}}"}, "limit": 1})}}
 
 ## Interaction History
 {{event.query({"eventType": "prospect.contacted", "entityTypeSlug": "prospect", "limit": 10})}}
@@ -278,7 +278,7 @@ Channel: {{threadContext.channel}}
 {{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
 
 ## Open Tickets
-{{entity.query({"type": "ticket", "filters": {"data.customerId": "{{threadContext.params.customerId}}", "data.status": {"_op_in": ["open", "pending"]}}, "limit": 5})}}
+{{entity.query({"type": "ticket", "filters": {"customerId": "{{threadContext.params.customerId}}", "status": {"_op_in": ["open", "pending"]}}, "limit": 5})}}
 
 Adapt your response style to the channel:
 - whatsapp: Keep replies short, use line breaks instead of markdown
@@ -320,7 +320,7 @@ Current time: {{currentTime}}
 {{entity.query({"type": "student", "status": "active"})}}
 
 ## Upcoming Sessions
-{{entity.query({"type": "session", "filters": {"data.status": {"_op_in": ["scheduled", "confirmed"]}}, "limit": 30})}}
+{{entity.query({"type": "session", "filters": {"status": {"_op_in": ["scheduled", "confirmed"]}}, "limit": 30})}}
 
 Before booking, use calendar.freeBusy to check the teacher's availability. Create sessions with entity.create and emit a session.created event.`,
   model: { provider: "xai", name: "grok-4-1-fast", temperature: 0.3 },
@@ -384,7 +384,7 @@ Current time: {{currentTime}}
 {{whatsapp.getStatus({})}}
 
 ## Contacts Pending Follow-up
-{{entity.query({"type": "contact", "filters": {"data.followUpStatus": "pending"}, "limit": 10})}}
+{{entity.query({"type": "contact", "filters": {"followUpStatus": "pending"}, "limit": 10})}}
 
 ## Recent Conversations
 {{event.query({"eventType": "whatsapp.sent", "limit": 20})}}
@@ -418,10 +418,10 @@ export default defineAgent({
 Current time: {{currentTime}}
 
 ## Unpaid Invoices
-{{entity.query({"type": "invoice", "filters": {"data.status": "unpaid", "data.amount": {"_op_gt": 0}}, "limit": 20})}}
+{{entity.query({"type": "invoice", "filters": {"status": "unpaid", "amount": {"_op_gt": 0}}, "limit": 20})}}
 
 ## Customer
-{{entity.query({"type": "customer", "filters": {"data.slug": "{{threadContext.params.customerSlug}}"}, "limit": 1})}}
+{{entity.query({"type": "customer", "filters": {"slug": "{{threadContext.params.customerSlug}}"}, "limit": 1})}}
 
 Generate payment links with payment.create for unpaid invoices. Send them via WhatsApp or email based on the channel. Update invoice status after successful payment.`,
   model: { provider: "xai", name: "grok-4-1-fast" },
@@ -490,10 +490,10 @@ export default defineAgent({
 Current time: {{currentTime}}
 
 ## Your Children
-{{entity.query({"type": "student", "filters": {"data.guardianId": "{{threadContext.params.guardianEntityId}}"}})}}
+{{entity.query({"type": "student", "filters": {"guardianId": "{{threadContext.params.guardianEntityId}}"}})}}
 
 ## Upcoming Sessions
-{{entity.query({"type": "session", "filters": {"data.guardianId": "{{threadContext.params.guardianEntityId}}", "data.status": "scheduled"}, "limit": 10})}}
+{{entity.query({"type": "session", "filters": {"guardianId": "{{threadContext.params.guardianEntityId}}", "status": "scheduled"}, "limit": 10})}}
 
 ## Recent Events
 {{event.query({"entityTypeSlug": "session", "limit": 10})}}

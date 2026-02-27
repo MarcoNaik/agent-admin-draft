@@ -59,7 +59,7 @@ systemPrompt: `You are a scheduling agent for {{organizationName}}.
 {{entity.query({"type": "teacher", "status": "active"})}}
 
 ## Today's Sessions
-{{entity.query({"type": "session", "filters": {"data.status": {"_op_in": ["scheduled", "confirmed"]}}, "limit": 20})}}
+{{entity.query({"type": "session", "filters": {"status": {"_op_in": ["scheduled", "confirmed"]}}, "limit": 20})}}
 
 Use the data above when answering questions.`
 ```
@@ -71,7 +71,7 @@ The query results are permission-filtered through the agent's scope rules and fi
 Use filter operators for advanced queries:
 
 ```
-{{entity.query({"type": "invoice", "filters": {"data.status": "unpaid", "data.amount": {"_op_gt": 0}}, "limit": 20})}}
+{{entity.query({"type": "invoice", "filters": {"status": "unpaid", "amount": {"_op_gt": 0}}, "limit": 20})}}
 ```
 
 Operators: `_op_ne`, `_op_in`, `_op_nin`, `_op_gt`, `_op_gte`, `_op_lt`, `_op_lte`.
@@ -87,7 +87,7 @@ systemPrompt: `You are helping a customer.
 {{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
 
 ## Their Open Tickets
-{{entity.query({"type": "ticket", "filters": {"data.customerId": "{{threadContext.params.customerId}}", "data.status": {"_op_in": ["open", "pending"]}}, "limit": 5})}}
+{{entity.query({"type": "ticket", "filters": {"customerId": "{{threadContext.params.customerId}}", "status": {"_op_in": ["open", "pending"]}}, "limit": 5})}}
 
 Greet them by name and help with their request.`
 ```
