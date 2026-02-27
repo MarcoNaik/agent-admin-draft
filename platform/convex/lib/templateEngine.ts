@@ -1,5 +1,3 @@
-import { ActionCtx } from "../_generated/server"
-import { internal } from "../_generated/api"
 import { Id } from "../_generated/dataModel"
 import { ActorContext, PermissionError } from "./permissions/types"
 import { isBuiltinTool } from "../tools/helpers"
@@ -160,48 +158,7 @@ function resolveNestedTemplates(text: string, context: TemplateContext): string 
   return result
 }
 
-async function resolveTemplateFunction(
-  runQuery: ActionCtx["runQuery"],
-  name: string,
-  args: Record<string, unknown>,
-  context: TemplateContext
-): Promise<unknown> {
-  try {
-    const actorPayload = {
-      organizationId: context.actor.organizationId,
-      actorType: context.actor.actorType,
-      actorId: context.actor.actorId,
-      roleIds: context.actor.roleIds,
-      isOrgAdmin: context.actor.isOrgAdmin,
-      environment: context.actor.environment,
-    } as const
-
-    if (name === "entity.query") {
-      const queryArgs = args as { type: string }
-      const queryPayload = { actor: actorPayload, entityTypeSlug: queryArgs.type }
-      // @ts-expect-error Convex type instantiation depth limit
-      const results = await runQuery(internal.permissions.queryEntitiesAsActorQuery, queryPayload)
-      return results
-    }
-
-    if (name === "entity.get") {
-      const getArgs = args as { type: string; id: string }
-      const getPayload = { actor: actorPayload, entityTypeSlug: getArgs.type, entityId: getArgs.id as Id<"entities"> }
-      const result = await runQuery(internal.permissions.getEntityAsActorQuery, getPayload)
-      return result
-    }
-
-    return null
-  } catch (error) {
-    if (error instanceof PermissionError) {
-      return []
-    }
-    throw error
-  }
-}
-
 async function executeTemplateFunction(
-  runQuery: ActionCtx["runQuery"] | undefined,
   name: string,
   argsRaw: string,
   context: TemplateContext,
@@ -215,240 +172,6 @@ async function executeTemplateFunction(
     args = resolvedArgsRaw.trim() ? JSON.parse(resolvedArgsRaw) : {}
   } catch {
     return `[TEMPLATE_ERROR: ${name} - invalid JSON arguments]`
-  }
-
-  if (runQuery && (name === "entity.query" || name === "entity.get")) {
-    try {
-      const result = await resolveTemplateFunction(runQuery, name, args, context)
-      const stringified = JSON.stringify(result)
-      if (stringified.length > MAX_RESULT_SIZE) {
-        return stringified.slice(0, MAX_RESULT_SIZE) + "...[truncated]"
-      }
-      return stringified
-    } catch (error) {
-      if (error instanceof PermissionError) {
-        return "[]"
-      }
-      const message = error instanceof Error ? error.message : "execution failed"
-      return `[TEMPLATE_ERROR: ${name} - ${message}]`
-    }
-  }
-
-  if (runQuery && name === "format_teacher_schedule") {
-    try {
-      const actorPayload = {
-        organizationId: context.actor.organizationId,
-        actorType: context.actor.actorType,
-        actorId: context.actor.actorId,
-        roleIds: context.actor.roleIds,
-        isOrgAdmin: context.actor.isOrgAdmin,
-        environment: context.actor.environment,
-      } as const
-      const teachers = await runQuery(
-        internal.permissions.queryEntitiesAsActorQuery,
-        { actor: actorPayload, entityTypeSlug: "teacher" }
-      ) as Array<{ _id?: string; data?: { name?: string; availability?: unknown; subjects?: string[] } }>
-
-      let filtered = teachers
-      const filterNames = (args as { names?: string[] }).names
-      if (filterNames && filterNames.length > 0) {
-        const lower = filterNames.map((n: string) => n.toLowerCase())
-        filtered = teachers.filter((t) => {
-          const tName = (t.data?.name ?? "").toLowerCase()
-          return lower.some((n) => tName.includes(n) || n.includes(tName))
-        })
-      }
-
-      const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-      const keyMap: Record<string, string> = {
-        monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
-        thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
-      }
-
-      const fmt = (h: number) => {
-        const hr = Math.floor(h)
-        const min = Math.round((h - hr) * 60)
-        const suffix = hr >= 12 ? "PM" : "AM"
-        const display = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr)
-        return `${display}:${String(min).padStart(2, "0")} ${suffix}`
-      }
-
-      const lines = filtered.map((teacher) => {
-        const tName = teacher.data?.name ?? "Unknown"
-        const tId = teacher._id ?? ""
-        const subjects = teacher.data?.subjects ?? []
-        const availability = teacher.data?.availability as unknown
-        const schedule: Record<string, string[]> = {}
-
-        if (availability && typeof availability === "object" && !Array.isArray(availability)) {
-          for (const [key, dayName] of Object.entries(keyMap)) {
-            const slots = (availability as Record<string, number[]>)[key]
-            if (slots && slots.length > 0) {
-              schedule[dayName] = slots.map((h: number) => fmt(h))
-            }
-          }
-        }
-
-        let text = `${tName} [id:${tId}] (${subjects.join(", ") || "no subjects"}):\n`
-        for (const day of dayOrder) {
-          if (schedule[day] && schedule[day].length > 0) {
-            text += `  ${day}: ${schedule[day].join(", ")}\n`
-          }
-        }
-        return text
-      })
-
-      return lines.join("\n")
-    } catch (error) {
-      if (error instanceof PermissionError) {
-        return "[No teacher data available]"
-      }
-      const message = error instanceof Error ? error.message : "execution failed"
-      return `[TEMPLATE_ERROR: ${name} - ${message}]`
-    }
-  }
-
-  if (runQuery && name === "format_student_list") {
-    try {
-      const actorPayload = {
-        organizationId: context.actor.organizationId,
-        actorType: context.actor.actorType,
-        actorId: context.actor.actorId,
-        roleIds: context.actor.roleIds,
-        isOrgAdmin: context.actor.isOrgAdmin,
-        environment: context.actor.environment,
-      } as const
-
-      const students = await runQuery(
-        internal.permissions.queryEntitiesAsActorQuery,
-        { actor: actorPayload, entityTypeSlug: "student" }
-      ) as Array<{ _id?: string; data?: Record<string, unknown> }>
-
-      if (students.length === 0) return "No hay estudiantes registrados."
-
-      const lines = students.map((s) => {
-        const name = (s.data?.name as string) ?? "Desconocido"
-        const id = s._id ?? ""
-        const grade = (s.data?.grade as string) ?? ""
-        const guardianName = (s.data?.guardianName as string) ?? ""
-        const guardianPhone = (s.data?.guardianPhone as string) ?? ""
-        const subjects = (s.data?.subjects as string[]) ?? []
-        const notes = (s.data?.notes as string) ?? ""
-
-        let line = `- ${name} [id:${id}]`
-        if (grade) line += ` — ${grade}`
-        if (guardianName) line += ` — Apoderado: ${guardianName}`
-        if (guardianPhone) line += ` (${guardianPhone})`
-        if (subjects.length > 0) line += ` — ${subjects.join(", ")}`
-        if (notes) line += ` — ${notes}`
-        return line
-      })
-
-      return lines.join("\n")
-    } catch (error) {
-      if (error instanceof PermissionError) {
-        return "[No student data available]"
-      }
-      const message = error instanceof Error ? error.message : "execution failed"
-      return `[TEMPLATE_ERROR: ${name} - ${message}]`
-    }
-  }
-
-  if (runQuery && name === "format_session_schedule") {
-    try {
-      const actorPayload = {
-        organizationId: context.actor.organizationId,
-        actorType: context.actor.actorType,
-        actorId: context.actor.actorId,
-        roleIds: context.actor.roleIds,
-        isOrgAdmin: context.actor.isOrgAdmin,
-        environment: context.actor.environment,
-      } as const
-
-      const [sessions, students, teachers] = await Promise.all([
-        runQuery(internal.permissions.queryEntitiesAsActorQuery, { actor: actorPayload, entityTypeSlug: "session" }),
-        runQuery(internal.permissions.queryEntitiesAsActorQuery, { actor: actorPayload, entityTypeSlug: "student" }),
-        runQuery(internal.permissions.queryEntitiesAsActorQuery, { actor: actorPayload, entityTypeSlug: "teacher" }),
-      ]) as [
-        Array<{ _id?: string; data?: Record<string, unknown> }>,
-        Array<{ _id?: string; data?: Record<string, unknown> }>,
-        Array<{ _id?: string; data?: Record<string, unknown> }>,
-      ]
-
-      const studentMap = new Map<string, string>()
-      for (const s of students) {
-        if (s._id && s.data?.name) studentMap.set(s._id, s.data.name as string)
-      }
-
-      const teacherMap = new Map<string, string>()
-      for (const t of teachers) {
-        if (t._id && t.data?.name) teacherMap.set(t._id, t.data.name as string)
-      }
-
-      const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
-
-      const parsed: Array<{
-        id: string
-        dateKey: string
-        sortKey: string
-        time: string
-        status: string
-        studentId: string
-        teacherId: string
-        subject: string
-        duration: number
-      }> = []
-
-      for (const s of sessions) {
-        const status = s.data?.status as string | undefined
-        if (status !== "scheduled" && status !== "completed") continue
-        const scheduledAt = s.data?.scheduledAt as string | undefined
-        if (!scheduledAt) continue
-        const m = scheduledAt.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
-        if (!m) continue
-        const [, yy, mm, dd, hh, min] = m
-        const dayOfWeek = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd)).getDay()
-        parsed.push({
-          id: s._id ?? "",
-          dateKey: `${dayNames[dayOfWeek]} ${dd}/${mm}/${yy}`,
-          sortKey: `${yy}-${mm}-${dd}T${hh}:${min}`,
-          time: `${hh}:${min}`,
-          status,
-          studentId: (s.data?.studentId as string) ?? "",
-          teacherId: (s.data?.teacherId as string) ?? "",
-          subject: (s.data?.subject as string) ?? "",
-          duration: (s.data?.duration as number) ?? 60,
-        })
-      }
-
-      parsed.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-
-      const grouped = new Map<string, typeof parsed>()
-      for (const p of parsed) {
-        if (!grouped.has(p.dateKey)) grouped.set(p.dateKey, [])
-        grouped.get(p.dateKey)!.push(p)
-      }
-
-      const lines: string[] = []
-      for (const [dateKey, daySessions] of grouped) {
-        lines.push(`${dateKey}:`)
-        for (const s of daySessions) {
-          const studentName = studentMap.get(s.studentId) ?? "Desconocido"
-          const teacherName = teacherMap.get(s.teacherId) ?? "Desconocido"
-          lines.push(`  ${s.time} — ${studentName} [student:${s.studentId}] (${s.subject}, ${s.duration} min) con ${teacherName} [id:${s.teacherId}] — ${s.status} [session:${s.id}]`)
-        }
-        lines.push("")
-      }
-
-      if (lines.length === 0) return "No hay sesiones agendadas."
-      return lines.join("\n")
-    } catch (error) {
-      if (error instanceof PermissionError) {
-        return "[No session data available]"
-      }
-      const message = error instanceof Error ? error.message : "execution failed"
-      return `[TEMPLATE_ERROR: ${name} - ${message}]`
-    }
   }
 
   const tool = tools.find((t) => t.name === name)
@@ -487,8 +210,7 @@ export async function processTemplates(
   systemPrompt: string,
   context: TemplateContext,
   tools: ToolConfig[],
-  executor: ToolExecutor,
-  runQuery?: ActionCtx["runQuery"]
+  executor: ToolExecutor
 ): Promise<string> {
   const templates = parseTemplates(systemPrompt)
 
@@ -530,7 +252,7 @@ export async function processTemplates(
 
   const functionResults = await Promise.all(
     functionTemplates.map((t) =>
-      executeTemplateFunction(runQuery, t.name, t.argsRaw ?? "", context, tools, executor)
+      executeTemplateFunction(t.name, t.argsRaw ?? "", context, tools, executor)
     )
   )
 

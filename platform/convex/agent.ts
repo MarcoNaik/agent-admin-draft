@@ -201,8 +201,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     config.systemPrompt,
     templateContext,
     config.tools,
-    toolExecutor,
-    ctx.runQuery
+    toolExecutor
   )
 
   const historyMessages: Message[] = existingMessages.map((m: { role: string; content: string; toolCalls?: unknown; toolCallId?: string }) => ({

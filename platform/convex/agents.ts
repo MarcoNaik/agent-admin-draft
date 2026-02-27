@@ -474,8 +474,7 @@ export const compileSystemPrompt = action({
       config.systemPrompt,
       templateContext,
       config.tools || [],
-      toolExecutor,
-      ctx.runQuery
+      toolExecutor
     )
 
     return {

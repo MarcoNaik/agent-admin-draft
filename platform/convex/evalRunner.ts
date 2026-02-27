@@ -720,7 +720,7 @@ async function resolveJudgeContext(
     executeBuiltin: async () => null,
     executeCustom: async () => null,
   }
-  return processTemplates(template, templateContext, [], dummyExecutor, ctx.runQuery)
+  return processTemplates(template, templateContext, [], dummyExecutor)
 }
 
 async function resolveAgentSystemPrompt(
@@ -769,7 +769,7 @@ async function resolveAgentSystemPrompt(
     executeCustom: async () => null,
   }
 
-  return processTemplates(config.systemPrompt, templateContext, config.tools ?? [], dummyExecutor, ctx.runQuery)
+  return processTemplates(config.systemPrompt, templateContext, config.tools ?? [], dummyExecutor)
 }
 
 function truncateTurnResults(turns: TurnResult[]): TurnResult[] {
