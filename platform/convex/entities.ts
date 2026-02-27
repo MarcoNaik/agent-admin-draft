@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
 import { query, mutation } from "./_generated/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContextForOrg } from "./lib/auth"
 import { buildSearchText } from "./lib/utils"
 import {
   buildActorContext,
@@ -51,16 +51,48 @@ function filterDataByMask(
   return data
 }
 
+export const resolvePartialId = query({
+  args: {
+    partialId: v.string(),
+    environment: v.optional(environmentValidator),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.union(v.id("entities"), v.null()),
+  handler: async (ctx, args) => {
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
+    const environment: Environment = args.environment ?? "development"
+
+    const normalized = ctx.db.normalizeId("entities", args.partialId)
+    if (normalized) {
+      const entity = await ctx.db.get(normalized)
+      if (entity && entity.organizationId === auth.organizationId && !entity.deletedAt) {
+        return normalized
+      }
+    }
+
+    const entities = await ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
+      .collect()
+
+    const match = entities.find((e) => String(e._id).endsWith(args.partialId) && !e.deletedAt)
+    return match?._id ?? null
+  },
+})
+
 export const list = query({
   args: {
     entityTypeSlug: v.string(),
     environment: v.optional(environmentValidator),
     status: v.optional(v.string()),
     limit: v.optional(v.number()),
+    organizationId: v.optional(v.string()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
@@ -87,6 +119,7 @@ export const listPaginated = query({
     environment: v.optional(environmentValidator),
     status: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,
+    organizationId: v.optional(v.string()),
   },
   returns: v.object({
     page: v.array(v.any()),
@@ -94,7 +127,7 @@ export const listPaginated = query({
     continueCursor: v.string(),
   }),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
@@ -117,10 +150,11 @@ export const get = query({
   args: {
     id: v.id("entities"),
     environment: v.optional(environmentValidator),
+    organizationId: v.optional(v.string()),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
@@ -152,10 +186,11 @@ export const getWithType = query({
   args: {
     id: v.id("entities"),
     environment: v.optional(environmentValidator),
+    organizationId: v.optional(v.string()),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
@@ -197,10 +232,11 @@ export const search = query({
     environment: v.optional(environmentValidator),
     query: v.string(),
     limit: v.optional(v.number()),
+    organizationId: v.optional(v.string()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
@@ -255,10 +291,11 @@ export const create = mutation({
     environment: v.optional(environmentValidator),
     data: v.any(),
     status: v.optional(v.string()),
+    organizationId: v.optional(v.string()),
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const actor = await buildActorContext(ctx, {
       organizationId: auth.organizationId,
@@ -326,10 +363,11 @@ export const update = mutation({
     environment: v.optional(environmentValidator),
     data: v.any(),
     status: v.optional(v.string()),
+    organizationId: v.optional(v.string()),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
@@ -418,10 +456,11 @@ export const remove = mutation({
   args: {
     id: v.id("entities"),
     environment: v.optional(environmentValidator),
+    organizationId: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.id)
 
@@ -498,10 +537,11 @@ export const link = mutation({
     environment: v.optional(environmentValidator),
     relationType: v.string(),
     metadata: v.optional(v.any()),
+    organizationId: v.optional(v.string()),
   },
   returns: v.id("entityRelations"),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
 
     const fromEntity = await ctx.db.get(args.fromId)
@@ -583,10 +623,11 @@ export const unlink = mutation({
     toId: v.id("entities"),
     environment: v.optional(environmentValidator),
     relationType: v.string(),
+    organizationId: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
 
     const fromEntity = await ctx.db.get(args.fromId)
@@ -660,10 +701,11 @@ export const getRelated = query({
     environment: v.optional(environmentValidator),
     relationType: v.optional(v.string()),
     direction: v.optional(v.union(v.literal("from"), v.literal("to"))),
+    organizationId: v.optional(v.string()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment: Environment = args.environment ?? "development"
     const entity = await ctx.db.get(args.entityId)
 

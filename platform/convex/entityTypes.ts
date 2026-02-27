@@ -1,16 +1,17 @@
 import { v } from "convex/values"
 import { query, mutation, internalQuery } from "./_generated/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContextForOrg, requireAuth } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
 import { buildActorContext, assertCanPerform } from "./lib/permissions"
 
 export const list = query({
   args: {
     environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
+    organizationId: v.optional(v.string()),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment = args.environment ?? "development"
 
     return await ctx.db
@@ -23,10 +24,13 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("entityTypes") },
+  args: {
+    id: v.id("entityTypes"),
+    organizationId: v.optional(v.string()),
+  },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const entityType = await ctx.db.get(args.id)
 
     if (!entityType || entityType.organizationId !== auth.organizationId) {
@@ -41,10 +45,11 @@ export const getBySlug = query({
   args: {
     slug: v.string(),
     environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
+    organizationId: v.optional(v.string()),
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment = args.environment ?? "development"
 
     return await ctx.db
