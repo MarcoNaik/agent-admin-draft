@@ -196,67 +196,103 @@ export const syncOrganization = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
+    const operation = args.environment === "production" ? "deploy" : "sync"
 
-    const entityTypeResult = await syncEntityTypes(
-      ctx,
-      auth.organizationId,
-      args.entityTypes,
-      args.environment
-    )
-
-    const roleResult = await syncRoles(
-      ctx,
-      auth.organizationId,
-      args.roles,
-      args.environment
-    )
-
-    const agentResult = await syncAgents(
-      ctx,
-      auth.organizationId,
-      args.agents,
-      args.environment,
-      auth.userId
-    )
-
-    let evalSuitesResult
-    if (args.evalSuites && args.evalSuites.length > 0) {
-      evalSuitesResult = await syncEvalSuites(
+    try {
+      const entityTypeResult = await syncEntityTypes(
         ctx,
         auth.organizationId,
-        args.evalSuites,
+        args.entityTypes,
         args.environment
       )
-    }
 
-    let triggersResult
-    if (args.triggers && args.triggers.length > 0) {
-      triggersResult = await syncTriggers(
+      const roleResult = await syncRoles(
         ctx,
         auth.organizationId,
-        args.triggers,
+        args.roles,
         args.environment
       )
-    }
 
-    let fixturesResult
-    if (args.fixtures && args.fixtures.length > 0) {
-      fixturesResult = await syncFixtures(
+      const agentResult = await syncAgents(
         ctx,
         auth.organizationId,
-        args.fixtures,
-        args.environment
+        args.agents,
+        args.environment,
+        auth.userId
       )
-    }
 
-    return {
-      success: true,
-      entityTypes: entityTypeResult,
-      roles: roleResult,
-      agents: agentResult,
-      evalSuites: evalSuitesResult,
-      triggers: triggersResult,
-      fixtures: fixturesResult,
+      let evalSuitesResult
+      if (args.evalSuites && args.evalSuites.length > 0) {
+        evalSuitesResult = await syncEvalSuites(
+          ctx,
+          auth.organizationId,
+          args.evalSuites,
+          args.environment
+        )
+      }
+
+      let triggersResult
+      if (args.triggers && args.triggers.length > 0) {
+        triggersResult = await syncTriggers(
+          ctx,
+          auth.organizationId,
+          args.triggers,
+          args.environment
+        )
+      }
+
+      let fixturesResult
+      if (args.fixtures && args.fixtures.length > 0) {
+        fixturesResult = await syncFixtures(
+          ctx,
+          auth.organizationId,
+          args.fixtures,
+          args.environment
+        )
+      }
+
+      await ctx.db.insert("events", {
+        organizationId: auth.organizationId,
+        environment: args.environment,
+        eventType: `${operation}.completed`,
+        actorType: "user",
+        actorId: auth.userId,
+        schemaVersion: 1,
+        timestamp: Date.now(),
+        payload: {
+          operation,
+          agents: agentResult,
+          entityTypes: entityTypeResult,
+          roles: roleResult,
+          ...(triggersResult ? { triggers: triggersResult } : {}),
+          ...(evalSuitesResult ? { evalSuites: evalSuitesResult } : {}),
+        },
+      })
+
+      return {
+        success: true,
+        entityTypes: entityTypeResult,
+        roles: roleResult,
+        agents: agentResult,
+        evalSuites: evalSuitesResult,
+        triggers: triggersResult,
+        fixtures: fixturesResult,
+      }
+    } catch (error) {
+      await ctx.db.insert("events", {
+        organizationId: auth.organizationId,
+        environment: args.environment,
+        eventType: `${operation}.failed`,
+        actorType: "user",
+        actorId: auth.userId,
+        schemaVersion: 1,
+        timestamp: Date.now(),
+        payload: {
+          operation,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      })
+      throw error
     }
   },
 })
@@ -531,66 +567,101 @@ export const internalSyncOrganization = internalMutation({
     fixtures: v.optional(v.array(fixtureValidator)),
   },
   handler: async (ctx, args) => {
-    const entityTypeResult = await syncEntityTypes(
-      ctx,
-      args.organizationId,
-      args.entityTypes,
-      args.environment
-    )
+    const operation = args.environment === "production" ? "deploy" : "sync"
 
-    const roleResult = await syncRoles(
-      ctx,
-      args.organizationId,
-      args.roles,
-      args.environment
-    )
-
-    const agentResult = await syncAgents(
-      ctx,
-      args.organizationId,
-      args.agents,
-      args.environment,
-      undefined
-    )
-
-    let evalSuitesResult
-    if (args.evalSuites && args.evalSuites.length > 0) {
-      evalSuitesResult = await syncEvalSuites(
+    try {
+      const entityTypeResult = await syncEntityTypes(
         ctx,
         args.organizationId,
-        args.evalSuites,
+        args.entityTypes,
         args.environment
       )
-    }
 
-    let triggersResult
-    if (args.triggers && args.triggers.length > 0) {
-      triggersResult = await syncTriggers(
+      const roleResult = await syncRoles(
         ctx,
         args.organizationId,
-        args.triggers,
+        args.roles,
         args.environment
       )
-    }
 
-    let fixturesResult
-    if (args.fixtures && args.fixtures.length > 0) {
-      fixturesResult = await syncFixtures(
+      const agentResult = await syncAgents(
         ctx,
         args.organizationId,
-        args.fixtures,
-        args.environment
+        args.agents,
+        args.environment,
+        undefined
       )
-    }
 
-    return {
-      success: true,
-      entityTypes: entityTypeResult,
-      roles: roleResult,
-      agents: agentResult,
-      evalSuites: evalSuitesResult,
-      triggers: triggersResult,
-      fixtures: fixturesResult,
+      let evalSuitesResult
+      if (args.evalSuites && args.evalSuites.length > 0) {
+        evalSuitesResult = await syncEvalSuites(
+          ctx,
+          args.organizationId,
+          args.evalSuites,
+          args.environment
+        )
+      }
+
+      let triggersResult
+      if (args.triggers && args.triggers.length > 0) {
+        triggersResult = await syncTriggers(
+          ctx,
+          args.organizationId,
+          args.triggers,
+          args.environment
+        )
+      }
+
+      let fixturesResult
+      if (args.fixtures && args.fixtures.length > 0) {
+        fixturesResult = await syncFixtures(
+          ctx,
+          args.organizationId,
+          args.fixtures,
+          args.environment
+        )
+      }
+
+      await ctx.db.insert("events", {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        eventType: `${operation}.completed`,
+        actorType: "system",
+        schemaVersion: 1,
+        timestamp: Date.now(),
+        payload: {
+          operation,
+          agents: agentResult,
+          entityTypes: entityTypeResult,
+          roles: roleResult,
+          ...(triggersResult ? { triggers: triggersResult } : {}),
+          ...(evalSuitesResult ? { evalSuites: evalSuitesResult } : {}),
+        },
+      })
+
+      return {
+        success: true,
+        entityTypes: entityTypeResult,
+        roles: roleResult,
+        agents: agentResult,
+        evalSuites: evalSuitesResult,
+        triggers: triggersResult,
+        fixtures: fixturesResult,
+      }
+    } catch (error) {
+      await ctx.db.insert("events", {
+        organizationId: args.organizationId,
+        environment: args.environment,
+        eventType: `${operation}.failed`,
+        actorType: "system",
+        schemaVersion: 1,
+        timestamp: Date.now(),
+        payload: {
+          operation,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      })
+      throw error
     }
   },
 })

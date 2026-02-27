@@ -3,6 +3,7 @@ import { DM_Sans, JetBrains_Mono, Fraunces, IBM_Plex_Mono } from "next/font/goog
 import { ClerkProvider } from "@clerk/nextjs"
 import { ConvexClientProvider } from "@/providers/convex-provider"
 import { ThemeProvider } from "@/providers/theme-provider"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const dmSans = DM_Sans({
@@ -49,6 +50,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <ConvexClientProvider>{children}</ConvexClientProvider>
+            <Toaster position="bottom-left" richColors visibleToasts={3} duration={5000} />
           </ThemeProvider>
           <svg className="hidden" aria-hidden="true">
             <filter id="liquid-noise">

@@ -27,6 +27,7 @@ import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { OrgSwitcher } from "@/components/org-switcher"
 import { AgentSwitcher } from "@/components/agent-switcher"
+import { NotificationBell } from "@/components/notification-bell"
 
 type NavItem = {
   name: string
@@ -202,6 +203,7 @@ export function Header() {
           </a>
           {isOrgAdmin && <StudioToggle />}
           {isOrgAdmin && <EnvironmentSelector />}
+          {isOrgAdmin && <NotificationBell />}
           <div className="flex items-center">
             <ThemeToggle />
           </div>

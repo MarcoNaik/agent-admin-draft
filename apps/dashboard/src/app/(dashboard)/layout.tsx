@@ -6,6 +6,7 @@ import { RoleProvider } from "@/contexts/role-context"
 import { StudioProvider } from "@/contexts/studio-context"
 import { StudioPanel } from "@/components/studio/studio-panel"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { SyncNotifications } from "@/components/sync-notifications"
 
 export const dynamic = "force-dynamic"
 
@@ -20,6 +21,7 @@ export default function DashboardLayout({
         <RoleProvider>
           <AgentProvider>
             <EnvironmentProvider>
+              <SyncNotifications />
               <StudioProvider>
                 <div className="flex h-screen flex-col">
                   <Header />

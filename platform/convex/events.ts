@@ -397,6 +397,38 @@ export const getRecent = query({
   },
 })
 
+const SYNC_EVENT_TYPES = new Set([
+  "sync.completed",
+  "sync.failed",
+  "deploy.completed",
+  "deploy.failed",
+])
+
+export const listSyncEvents = query({
+  args: {
+    environment: v.optional(environmentValidator),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment: Environment = args.environment ?? "development"
+    const limit = args.limit ?? 20
+
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_org_env_timestamp", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
+      .order("desc")
+      .take(limit * 5)
+
+    return events
+      .filter((e) => SYNC_EVENT_TYPES.has(e.eventType))
+      .slice(0, limit)
+  },
+})
+
 export const getEventTypes = query({
   args: {
     environment: v.optional(environmentValidator),

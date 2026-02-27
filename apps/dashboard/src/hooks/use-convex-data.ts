@@ -591,3 +591,7 @@ export function useCleanupSandboxSession() {
 export function useRecordSandboxActivity() {
   return useMutation(api.sandboxSessions.recordActivity)
 }
+
+export function useSyncEvents(environment: Environment, limit?: number) {
+  return useQuery(api.events.listSyncEvents, { environment, limit })
+}
