@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, ExternalLink, RefreshCw, Settings2 } from "lucide-react"
+import { Loader2, Code, Play, ChevronDown, ChevronRight, Database, Bell, ExternalLink, RefreshCw } from "lucide-react"
 import { useAgentWithConfig, useCompileSystemPrompt } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Badge } from "@/components/ui/badge"
@@ -308,6 +308,18 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
                   </pre>
                 )}
               </div>
+              {threadContextParams.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-content-tertiary">Context params:</span>
+                  {threadContextParams.map((param) => (
+                    <span key={param.name} className="inline-flex items-center gap-1.5 rounded-full bg-background-tertiary px-2.5 py-1 text-xs font-mono text-content-secondary">
+                      {param.name}
+                      <span className="text-[10px] text-content-tertiary">{param.type}</span>
+                      {param.required && <span className="text-red-400">*</span>}
+                    </span>
+                  ))}
+                </div>
+              )}
               {showCompiled && (
                 <div className="rounded-lg border border-dashed p-4 space-y-4">
                   <div className="text-xs font-medium text-content-secondary uppercase tracking-wider">Sample Context</div>
@@ -447,54 +459,6 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
             <p className="text-sm text-content-secondary">No suggestions configured</p>
             <p className="text-xs text-content-tertiary mt-1">
               Add <code className="font-mono bg-background-tertiary px-1 py-0.5 rounded">firstMessageSuggestions</code> to your agent config
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-4 py-3">
-          <div className="text-sm font-medium text-content-primary flex items-center gap-2">
-            <Settings2 className="h-4 w-4 text-content-tertiary" />
-            Thread Context Parameters ({threadContextParams.length})
-          </div>
-        </div>
-        {threadContextParams.length > 0 ? (
-          <div className="divide-y">
-            {threadContextParams.map((param, i) => {
-              const isDeclared = declaredParams.some((p) => p.name === param.name)
-              return (
-                <div key={i} className="px-4 py-3 flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-content-primary">{param.name}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono">{param.type}</Badge>
-                      {param.required && (
-                        <Badge variant="secondary" className="text-[10px]">required</Badge>
-                      )}
-                      {!isDeclared && (
-                        <Badge variant="outline" className="text-[10px] text-content-tertiary">inferred</Badge>
-                      )}
-                    </div>
-                    {param.description && (
-                      <p className="text-xs text-content-tertiary mt-0.5">{param.description}</p>
-                    )}
-                    {!isDeclared && (
-                      <p className="text-xs text-content-tertiary mt-0.5">Detected from system prompt template</p>
-                    )}
-                  </div>
-                  <code className="text-[10px] font-mono text-content-tertiary bg-background-tertiary px-1.5 py-0.5 rounded shrink-0">
-                    {"{{threadContext.params." + param.name + "}}"}
-                  </code>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="p-8 text-center">
-            <p className="text-sm text-content-secondary">No thread context parameters configured</p>
-            <p className="text-xs text-content-tertiary mt-1">
-              Add <code className="font-mono bg-background-tertiary px-1 py-0.5 rounded">threadContextParams</code> to your agent config
             </p>
           </div>
         )}
