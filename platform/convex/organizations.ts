@@ -564,3 +564,4 @@ export const getInternal = internalQuery({
     return await ctx.db.get(args.organizationId)
   },
 })
+
