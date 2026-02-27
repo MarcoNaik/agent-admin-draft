@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MessageSquare, Calendar, Database, Mail, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { MessageSquare, Calendar, Database, Mail, CreditCard, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useWhatsAppConnections, useCalendarConnection, useIntegrationConfig } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent } from "@/components/ui/card"
@@ -61,6 +61,7 @@ export default function IntegrationsPage() {
   const whatsappConfig = useIntegrationConfig("whatsapp", environment)
   const airtableConfig = useIntegrationConfig("airtable", environment)
   const resendConfig = useIntegrationConfig("resend", environment)
+  const flowConfig = useIntegrationConfig("flow", environment)
 
   const getWhatsAppStatus = (): "active" | "inactive" | null => {
     if (whatsappConfig === undefined || whatsappConnections === undefined) return null
@@ -84,6 +85,12 @@ export default function IntegrationsPage() {
   const getResendStatus = (): "active" | "inactive" | null => {
     if (resendConfig === undefined) return null
     if (resendConfig?.status === "active") return "active"
+    return "inactive"
+  }
+
+  const getFlowStatus = (): "active" | "inactive" | null => {
+    if (flowConfig === undefined) return null
+    if (flowConfig?.status === "active") return "active"
     return "inactive"
   }
 
@@ -145,6 +152,17 @@ export default function IntegrationsPage() {
           href="/settings/integrations/airtable"
           icon={<Database className="h-5 w-5 text-primary" />}
           status={getAirtableStatus()}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-secondary">Payments</h2>
+        <IntegrationCard
+          name="Flow.cl"
+          description="Create payment links for agents to collect payments"
+          href="/settings/integrations/flow"
+          icon={<CreditCard className="h-5 w-5 text-primary" />}
+          status={getFlowStatus()}
         />
       </div>
     </div>
