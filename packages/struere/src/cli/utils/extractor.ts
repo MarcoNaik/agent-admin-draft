@@ -129,6 +129,8 @@ export interface SyncPayload {
         value?: string
         weight?: number
       }>
+      channel?: 'widget' | 'whatsapp' | 'api' | 'dashboard'
+      contextParams?: Record<string, unknown>
     }>
   }>
   triggers?: Array<{
@@ -233,6 +235,8 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
             assertions: t.assertions,
           })),
           finalAssertions: c.finalAssertions,
+          channel: c.channel,
+          contextParams: c.contextParams,
         })),
       }))
     : undefined

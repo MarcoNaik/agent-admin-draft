@@ -76,6 +76,8 @@ export interface EvalCaseDefinition {
   tags?: string[]
   turns: EvalTurn[]
   finalAssertions?: EvalAssertion[]
+  channel?: 'widget' | 'whatsapp' | 'api' | 'dashboard'
+  contextParams?: Record<string, unknown>
 }
 
 export interface EvalSuiteDefinition {

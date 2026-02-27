@@ -207,6 +207,8 @@ export interface SyncPayload {
         value?: string
         weight?: number
       }>
+      channel?: 'widget' | 'whatsapp' | 'api' | 'dashboard'
+      contextParams?: Record<string, unknown>
     }>
   }>
   triggers?: Array<{
