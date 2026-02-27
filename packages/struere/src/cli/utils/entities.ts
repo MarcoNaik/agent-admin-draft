@@ -72,42 +72,53 @@ async function convexMutation(path: string, args: Record<string, unknown>): Prom
   return { error: `Unexpected response: ${text}` }
 }
 
-export async function queryEntityTypes(env: Environment) {
-  return convexQuery('entityTypes:list', { environment: env })
+export async function queryEntityTypes(env: Environment, organizationId?: string) {
+  return convexQuery('entityTypes:list', { environment: env, ...(organizationId && { organizationId }) })
 }
 
-export async function queryEntityTypeBySlug(slug: string, env: Environment) {
-  return convexQuery('entityTypes:getBySlug', { slug, environment: env })
+export async function queryEntityTypeBySlug(slug: string, env: Environment, organizationId?: string) {
+  return convexQuery('entityTypes:getBySlug', { slug, environment: env, ...(organizationId && { organizationId }) })
 }
 
 export async function queryEntities(
   slug: string,
   env: Environment,
-  opts?: { status?: string; limit?: number }
+  opts?: { status?: string; limit?: number },
+  organizationId?: string
 ) {
   return convexQuery('entities:list', {
     entityTypeSlug: slug,
     environment: env,
     ...(opts?.status && { status: opts.status }),
     ...(opts?.limit && { limit: opts.limit }),
+    ...(organizationId && { organizationId }),
   })
 }
 
-export async function queryEntity(id: string, env: Environment) {
-  return convexQuery('entities:getWithType', { id, environment: env })
+export async function resolveEntityId(partialId: string, env: Environment, organizationId?: string): Promise<{ data?: string; error?: string }> {
+  const result = await convexQuery('entities:resolvePartialId', { partialId, environment: env, ...(organizationId && { organizationId }) })
+  if (result.error) return { error: result.error }
+  if (!result.data) return { error: `No entity found matching ID "${partialId}"` }
+  return { data: result.data as string }
+}
+
+export async function queryEntity(id: string, env: Environment, organizationId?: string) {
+  return convexQuery('entities:getWithType', { id, environment: env, ...(organizationId && { organizationId }) })
 }
 
 export async function searchEntities(
   slug: string,
   query: string,
   env: Environment,
-  limit?: number
+  limit?: number,
+  organizationId?: string
 ) {
   return convexQuery('entities:search', {
     entityTypeSlug: slug,
     environment: env,
     query,
     ...(limit && { limit }),
+    ...(organizationId && { organizationId }),
   })
 }
 
@@ -115,13 +126,15 @@ export async function createEntity(
   slug: string,
   data: Record<string, unknown>,
   env: Environment,
-  status?: string
+  status?: string,
+  organizationId?: string
 ) {
   return convexMutation('entities:create', {
     entityTypeSlug: slug,
     environment: env,
     data,
     ...(status && { status }),
+    ...(organizationId && { organizationId }),
   })
 }
 
@@ -129,16 +142,18 @@ export async function updateEntity(
   id: string,
   data: Record<string, unknown>,
   env: Environment,
-  status?: string
+  status?: string,
+  organizationId?: string
 ) {
   return convexMutation('entities:update', {
     id,
     environment: env,
     data,
     ...(status && { status }),
+    ...(organizationId && { organizationId }),
   })
 }
 
-export async function removeEntity(id: string, env: Environment) {
-  return convexMutation('entities:remove', { id, environment: env })
+export async function removeEntity(id: string, env: Environment, organizationId?: string) {
+  return convexMutation('entities:remove', { id, environment: env, ...(organizationId && { organizationId }) })
 }

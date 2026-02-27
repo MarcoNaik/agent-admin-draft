@@ -16,10 +16,16 @@ import {
   createEntity,
   updateEntity,
   removeEntity,
+  resolveEntityId,
 } from '../utils/entities'
 import { renderTable, deriveColumnsFromSchema } from '../utils/table'
 
 type Environment = 'development' | 'production'
+
+function getOrgId(): string | undefined {
+  const project = loadProject(process.cwd())
+  return project?.organization.id
+}
 
 async function ensureAuth(): Promise<boolean> {
   const cwd = process.cwd()
@@ -81,9 +87,10 @@ entitiesCommand
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
 
     spinner.start('Fetching entity types')
-    const { data, error } = await queryEntityTypes(env)
+    const { data, error } = await queryEntityTypes(env, orgId)
 
     if (error || !data) {
       spinner.fail('Failed to fetch entity types')
@@ -132,6 +139,7 @@ entitiesCommand
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
 
     spinner.start(`Fetching ${type} entities`)
 
@@ -139,8 +147,8 @@ entitiesCommand
       queryEntities(type, env, {
         status: opts.status,
         limit: parseInt(opts.limit, 10),
-      }),
-      queryEntityTypeBySlug(type, env),
+      }, orgId),
+      queryEntityTypeBySlug(type, env, orgId),
     ])
 
     if (entitiesResult.error || !entitiesResult.data) {
@@ -173,13 +181,23 @@ entitiesCommand
   .description('Get entity details')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--json', 'Output raw JSON')
-  .action(async (id, opts) => {
+  .action(async (rawId, opts) => {
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
 
-    spinner.start('Fetching entity')
-    const { data, error } = await queryEntity(id, env)
+    spinner.start('Resolving entity ID')
+    const resolved = await resolveEntityId(rawId, env, orgId)
+    if (resolved.error || !resolved.data) {
+      spinner.fail('Entity not found')
+      console.log(chalk.red('Error:'), resolved.error || `No entity matched "${rawId}"`)
+      process.exit(1)
+    }
+    const id = resolved.data
+
+    spinner.text = 'Fetching entity'
+    const { data, error } = await queryEntity(id, env, orgId)
 
     if (error || !data) {
       spinner.fail('Failed to fetch entity')
@@ -232,6 +250,7 @@ entitiesCommand
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
 
     let data: Record<string, unknown>
 
@@ -247,7 +266,7 @@ entitiesCommand
       process.exit(1)
     } else {
       spinner.start(`Fetching ${type} schema`)
-      const { data: typeData, error } = await queryEntityTypeBySlug(type, env)
+      const { data: typeData, error } = await queryEntityTypeBySlug(type, env, orgId)
 
       if (error || !typeData) {
         spinner.fail(`Entity type not found: ${type}`)
@@ -297,7 +316,7 @@ entitiesCommand
     }
 
     spinner.start(`Creating ${type} entity`)
-    const { data: result, error } = await createEntity(type, data, env, opts.status)
+    const { data: result, error } = await createEntity(type, data, env, opts.status, orgId)
 
     if (error) {
       spinner.fail('Failed to create entity')
@@ -323,10 +342,11 @@ entitiesCommand
   .option('--data <json>', 'Update data as JSON')
   .option('--status <status>', 'New status')
   .option('--json', 'Output raw JSON')
-  .action(async (id, opts) => {
+  .action(async (rawId, opts) => {
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
 
     if (!opts.data && !opts.status) {
       console.log(chalk.red('Provide --data and/or --status'))
@@ -343,8 +363,17 @@ entitiesCommand
       }
     }
 
-    spinner.start('Updating entity')
-    const { data: result, error } = await updateEntity(id, data, env, opts.status)
+    spinner.start('Resolving entity ID')
+    const resolved = await resolveEntityId(rawId, env, orgId)
+    if (resolved.error || !resolved.data) {
+      spinner.fail('Entity not found')
+      console.log(chalk.red('Error:'), resolved.error || `No entity matched "${rawId}"`)
+      process.exit(1)
+    }
+    const id = resolved.data
+
+    spinner.text = 'Updating entity'
+    const { data: result, error } = await updateEntity(id, data, env, opts.status, orgId)
 
     if (error) {
       spinner.fail('Failed to update entity')
@@ -369,14 +398,28 @@ entitiesCommand
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--yes', 'Skip confirmation')
   .option('--json', 'Output raw JSON')
-  .action(async (id, opts) => {
+  .action(async (rawId, opts) => {
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
     const jsonMode = !!opts.json
 
-    if (!jsonMode) spinner.start('Fetching entity')
-    const { data, error: fetchError } = await queryEntity(id, env)
+    if (!jsonMode) spinner.start('Resolving entity ID')
+    const resolved = await resolveEntityId(rawId, env, orgId)
+    if (resolved.error || !resolved.data) {
+      if (jsonMode) {
+        console.log(JSON.stringify({ success: false, error: resolved.error || `No entity matched "${rawId}"` }))
+      } else {
+        spinner.fail('Entity not found')
+        console.log(chalk.red('Error:'), resolved.error || `No entity matched "${rawId}"`)
+      }
+      process.exit(1)
+    }
+    const id = resolved.data
+
+    if (!jsonMode) spinner.text = 'Fetching entity'
+    const { data, error: fetchError } = await queryEntity(id, env, orgId)
 
     if (fetchError || !data) {
       if (jsonMode) {
@@ -421,7 +464,7 @@ entitiesCommand
     }
 
     if (!jsonMode) spinner.start('Deleting entity')
-    const { error } = await removeEntity(id, env)
+    const { error } = await removeEntity(id, env, orgId)
 
     if (error) {
       if (jsonMode) {
@@ -451,12 +494,13 @@ entitiesCommand
     await ensureAuth()
     const spinner = ora()
     const env = opts.env as Environment
+    const orgId = getOrgId()
 
     spinner.start(`Searching ${type} for "${query}"`)
 
     const [searchResult, typeResult] = await Promise.all([
-      searchEntities(type, query, env, parseInt(opts.limit, 10)),
-      queryEntityTypeBySlug(type, env),
+      searchEntities(type, query, env, parseInt(opts.limit, 10), orgId),
+      queryEntityTypeBySlug(type, env, orgId),
     ])
 
     if (searchResult.error || !searchResult.data) {

@@ -111,8 +111,8 @@ export const statusCommand = new Command('status')
     if (!jsonMode) spinner.start('Fetching remote state')
 
     const [devResult, prodResult] = await Promise.all([
-      getSyncState(undefined, 'development'),
-      getSyncState(undefined, 'production'),
+      getSyncState(project.organization.id, 'development'),
+      getSyncState(project.organization.id, 'production'),
     ])
 
     if (devResult.error || !devResult.state) {
