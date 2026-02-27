@@ -228,7 +228,7 @@ function ToolDataView({ data: rawData, label }: { data: unknown; label: string }
   return null
 }
 
-function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }: { result: any; caseName: string; onRerun?: () => void; isRerunning?: boolean; rerunDisabled?: boolean }) {
+function CaseResultRow({ result, caseName, evalCase, onRerun, isRerunning, rerunDisabled }: { result: any; caseName: string; evalCase?: any; onRerun?: () => void; isRerunning?: boolean; rerunDisabled?: boolean }) {
   const [expanded, setExpanded] = useState(result.status !== "passed")
 
   const statusIcon = {
@@ -282,6 +282,19 @@ function CaseResultRow({ result, caseName, onRerun, isRerunning, rerunDisabled }
 
       {expanded && (
         <div className="border-t px-4 py-4 space-y-4">
+          {(evalCase?.channel || (evalCase?.contextParams && Object.keys(evalCase.contextParams).length > 0)) && (
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-content-tertiary">Context</div>
+              <div className="flex items-start gap-3 flex-wrap">
+                {evalCase.channel && (
+                  <Badge variant="outline" className="text-xs">{evalCase.channel}</Badge>
+                )}
+                {evalCase.contextParams && Object.keys(evalCase.contextParams).length > 0 && (
+                  <ObjectCard data={evalCase.contextParams as Record<string, unknown>} />
+                )}
+              </div>
+            </div>
+          )}
           {result.errorMessage && (
             <div className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive font-input">
               {result.errorMessage}
@@ -402,6 +415,12 @@ function generateRunMarkdown(run: any, results: any[], caseMap: Map<string, any>
 
     lines.push(`### ${statusEmoji} ${caseName}`)
     lines.push("")
+    if (evalCase?.channel) {
+      lines.push(`- **Channel:** ${evalCase.channel}`)
+    }
+    if (evalCase?.contextParams && Object.keys(evalCase.contextParams).length > 0) {
+      lines.push(`- **Context Params:** ${JSON.stringify(evalCase.contextParams)}`)
+    }
     lines.push(`- **Status:** ${result.status}`)
     lines.push(`- **Passed:** ${result.overallPassed ? "Yes" : "No"}`)
     if (result.overallScore !== undefined) {
@@ -747,6 +766,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
               key={result._id}
               result={result}
               caseName={result.caseName || evalCase?.name || "Unknown Case"}
+              evalCase={evalCase}
               onRerun={() => handleRerunCase(result.caseId)}
               isRerunning={startingCaseId === result.caseId}
               rerunDisabled={isRunning}

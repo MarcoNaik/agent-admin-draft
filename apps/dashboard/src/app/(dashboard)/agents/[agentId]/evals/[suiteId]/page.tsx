@@ -291,6 +291,14 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                           ))}
                         </div>
                       )}
+                      {c.channel && (
+                        <Badge variant="outline" className="text-xs ml-2">{c.channel}</Badge>
+                      )}
+                      {c.contextParams && Object.keys(c.contextParams).length > 0 && (
+                        <span className="text-xs text-content-tertiary ml-2">
+                          {Object.keys(c.contextParams).length} param{Object.keys(c.contextParams).length !== 1 ? "s" : ""}
+                        </span>
+                      )}
                     </Link>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
