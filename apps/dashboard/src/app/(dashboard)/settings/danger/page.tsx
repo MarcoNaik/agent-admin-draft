@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation } from "convex/react"
-import { useOrganization } from "@clerk/nextjs"
+import { useOrganization, useOrganizationList } from "@clerk/nextjs"
 import { AlertTriangle, Trash2, Loader2 } from "lucide-react"
 import { api } from "@convex/_generated/api"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label"
 export default function DangerZonePage() {
   const convexOrg = useCurrentOrganization()
   const { organization: clerkOrg } = useOrganization()
+  const { userMemberships, setActive } = useOrganizationList({
+    userMemberships: { infinite: true },
+  })
   const removeOrg = useMutation(api.organizations.remove)
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
@@ -28,7 +31,13 @@ export default function DangerZonePage() {
     try {
       await removeOrg({ id: convexOrg._id })
       await clerkOrg?.destroy()
-      window.location.href = "/create-organization"
+      const otherOrg = userMemberships?.data?.find(
+        (m) => m.organization.id !== clerkOrg?.id
+      )
+      if (otherOrg && setActive) {
+        await setActive({ organization: otherOrg.organization.id })
+      }
+      window.location.href = "/"
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete organization")
       setIsDeleting(false)
