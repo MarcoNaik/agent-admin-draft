@@ -37,10 +37,13 @@ export const migrateCreditTransactions = internalMutation({
     let count = 0
 
     for (const record of records) {
-      await ctx.db.patch(record._id, {
+      const patch: any = {
         amount: record.amount * MULTIPLIER,
-        balanceAfter: record.balanceAfter * MULTIPLIER,
-      })
+      }
+      if (record.balanceAfter !== undefined) {
+        patch.balanceAfter = record.balanceAfter * MULTIPLIER
+      }
+      await ctx.db.patch(record._id, patch)
       count++
     }
 

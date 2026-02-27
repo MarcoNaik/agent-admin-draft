@@ -278,7 +278,7 @@ export default function BillingPage() {
                         <FormattedCredits microdollars={tx.amount} prefix={tx.type === "deduction" ? "-" : "+"} />
                       </td>
                       <td className="text-right py-2 px-4 text-content-primary">
-                        <FormattedCredits microdollars={tx.balanceAfter} />
+                        {tx.balanceAfter !== undefined ? <FormattedCredits microdollars={tx.balanceAfter} /> : "—"}
                       </td>
                       <td className="py-2 pl-4 text-content-secondary truncate max-w-[200px]">
                         {tx.description}

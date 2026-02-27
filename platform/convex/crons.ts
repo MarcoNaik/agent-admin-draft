@@ -15,4 +15,10 @@ crons.interval(
   internal.payments.reconcilePayments,
 )
 
+crons.interval(
+  "reconcile credit balances",
+  { seconds: 5 },
+  internal.billing.reconcileBalances,
+)
+
 export default crons

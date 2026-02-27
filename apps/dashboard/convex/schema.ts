@@ -587,7 +587,7 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment"), v.literal("purchase")),
     amount: v.number(),
-    balanceAfter: v.number(),
+    balanceAfter: v.optional(v.number()),
     description: v.string(),
     executionId: v.optional(v.id("executions")),
     createdBy: v.optional(v.id("users")),

@@ -55,8 +55,20 @@ export const getBalance = query({
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
       .first()
 
+    const cachedBalance = balance?.balance ?? 0
+
+    const pendingTxs = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .order("desc")
+      .collect()
+
+    const pendingDeductions = pendingTxs
+      .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
+      .reduce((sum, tx) => sum + tx.amount, 0)
+
     return {
-      balance: balance?.balance ?? 0,
+      balance: cachedBalance - pendingDeductions,
       updatedAt: balance?.updatedAt ?? Date.now(),
     }
   },
@@ -87,7 +99,19 @@ export const getBalanceInternal = internalQuery({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first()
 
-    return balance?.balance ?? 0
+    const cachedBalance = balance?.balance ?? 0
+
+    const pendingTxs = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .order("desc")
+      .collect()
+
+    const pendingDeductions = pendingTxs
+      .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
+      .reduce((sum, tx) => sum + tx.amount, 0)
+
+    return cachedBalance - pendingDeductions
   },
 })
 
@@ -100,26 +124,66 @@ export const deductCredits = internalMutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
-    const newBalance = balanceDoc.balance - args.amount
-
-    await ctx.db.patch(balanceDoc._id, {
-      balance: newBalance,
-      updatedAt: Date.now(),
-    })
-
     await ctx.db.insert("creditTransactions", {
       organizationId: args.organizationId,
       type: "deduction",
       amount: args.amount,
-      balanceAfter: newBalance,
       description: args.description,
       executionId: args.executionId,
       metadata: args.metadata,
       createdAt: Date.now(),
     })
+  },
+})
 
-    return newBalance
+export const reconcileBalances = internalMutation({
+  handler: async (ctx) => {
+    const pendingTxs = await ctx.db
+      .query("creditTransactions")
+      .order("asc")
+      .collect()
+
+    const unprocessed = pendingTxs.filter((tx) => tx.balanceAfter === undefined)
+    const batch = unprocessed.slice(0, 200)
+    if (batch.length === 0) return
+
+    const byOrg = new Map<string, typeof batch>()
+    for (const tx of batch) {
+      const orgId = tx.organizationId as string
+      if (!byOrg.has(orgId)) byOrg.set(orgId, [])
+      byOrg.get(orgId)!.push(tx)
+    }
+
+    for (const [orgId, txs] of byOrg) {
+      const balanceDoc = await ctx.db
+        .query("creditBalances")
+        .withIndex("by_org", (q) => q.eq("organizationId", orgId as Id<"organizations">))
+        .first()
+
+      let currentBalance = balanceDoc?.balance ?? 0
+
+      for (const tx of txs) {
+        if (tx.type === "deduction") {
+          currentBalance -= tx.amount
+        } else {
+          currentBalance += tx.amount
+        }
+        await ctx.db.patch(tx._id, { balanceAfter: currentBalance })
+      }
+
+      if (balanceDoc) {
+        await ctx.db.patch(balanceDoc._id, {
+          balance: currentBalance,
+          updatedAt: Date.now(),
+        })
+      } else {
+        await ctx.db.insert("creditBalances", {
+          organizationId: orgId as Id<"organizations">,
+          balance: currentBalance,
+          updatedAt: Date.now(),
+        })
+      }
+    }
   },
 })
 
