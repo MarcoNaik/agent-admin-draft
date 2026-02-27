@@ -63,7 +63,7 @@ async function createPaymentEntityMutation(
 
 async function storePaymentLinkMutation(
   ctx: any,
-  args: { paymentId: Id<"entities">; paymentLinkUrl: string; providerReference: string }
+  args: { paymentId: Id<"entities">; paymentLinkUrl: string; providerReference: string; flowToken?: string }
 ): Promise<void> {
   await ctx.runMutation(internal.payments.storePaymentLink, args)
 }
@@ -108,6 +108,14 @@ export const paymentCreate = internalAction({
     const currency = args.currency || config.defaultCurrency || "CLP"
     const returnUrl = config.returnUrl || config.webhookBaseUrl || ""
 
+    if (!args.customerEmail) {
+      throw new Error("payment.create requires 'customerEmail' parameter (required by Flow)")
+    }
+
+    if (!returnUrl) {
+      throw new Error("Flow configuration is missing returnUrl")
+    }
+
     const paymentType = await queryPaymentEntityType(ctx, args.organizationId, args.environment as Environment)
 
     const paymentId = await createPaymentEntityMutation(ctx, {
@@ -138,6 +146,7 @@ export const paymentCreate = internalAction({
       paymentId,
       paymentLinkUrl: result.url,
       providerReference: result.flowOrder,
+      flowToken: result.token,
     })
 
     if (args.entityId) {
@@ -194,7 +203,6 @@ export const paymentGetStatus = internalAction({
           currency: data.currency,
         }
       } catch {
-        // Fall through to return local status
       }
     }
 
