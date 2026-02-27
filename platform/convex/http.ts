@@ -539,10 +539,44 @@ http.route({
       return new Response("Missing token", { status: 400 })
     }
 
+    const handleFlowResult = async (result: { flowOrder: number; status: number; statusMessage: string }) => {
+      if (result.status === 2) {
+        await ctx.runMutation(internal.payments.markAsPaid, {
+          providerReference: result.flowOrder.toString(),
+          paidAt: Date.now(),
+        })
+        return true
+      } else if (result.status === 3 || result.status === 4) {
+        await ctx.runMutation(internal.payments.markAsFailed, {
+          providerReference: result.flowOrder.toString(),
+          reason: result.statusMessage,
+        })
+        return true
+      }
+      return false
+    }
+
+    const paymentLookup = await ctx.runQuery(internal.payments.getPaymentByFlowToken, {
+      flowToken: token,
+    })
+
+    if (paymentLookup) {
+      try {
+        const result = await ctx.runAction(internal.payments.verifyPaymentFromWebhook, {
+          token,
+          organizationId: paymentLookup.organizationId,
+          environment: paymentLookup.environment,
+        })
+        await handleFlowResult(result)
+        return new Response("OK", { status: 200 })
+      } catch (error) {
+        console.error("Flow webhook verification error (token lookup):", error)
+      }
+    }
+
     const configs = await ctx.runQuery(internal.integrations.listFlowConfigs)
 
     if (configs.length === 0) {
-      console.warn("No Flow configurations found")
       return new Response("OK", { status: 200 })
     }
 
@@ -557,19 +591,9 @@ http.route({
             token,
             organizationId: config.organizationId,
             environment: env,
-          }) as { flowOrder: number; status: string; statusMessage: string }
+          })
 
-          if (result.status === "2") {
-            await ctx.runMutation(internal.payments.markAsPaid, {
-              providerReference: result.flowOrder.toString(),
-              paidAt: Date.now(),
-            })
-            return new Response("OK", { status: 200 })
-          } else if (result.status === "3" || result.status === "4") {
-            await ctx.runMutation(internal.payments.markAsFailed, {
-              providerReference: result.flowOrder.toString(),
-              reason: result.statusMessage,
-            })
+          if (await handleFlowResult(result)) {
             return new Response("OK", { status: 200 })
           }
         } catch (error) {
