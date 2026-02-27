@@ -308,6 +308,52 @@ async function executeTemplateFunction(
     }
   }
 
+  if (runQuery && name === "format_student_list") {
+    try {
+      const actorPayload = {
+        organizationId: context.actor.organizationId,
+        actorType: context.actor.actorType,
+        actorId: context.actor.actorId,
+        roleIds: context.actor.roleIds,
+        isOrgAdmin: context.actor.isOrgAdmin,
+        environment: context.actor.environment,
+      } as const
+
+      const students = await runQuery(
+        internal.permissions.queryEntitiesAsActorQuery,
+        { actor: actorPayload, entityTypeSlug: "student" }
+      ) as Array<{ _id?: string; data?: Record<string, unknown> }>
+
+      if (students.length === 0) return "No hay estudiantes registrados."
+
+      const lines = students.map((s) => {
+        const name = (s.data?.name as string) ?? "Desconocido"
+        const id = s._id ?? ""
+        const grade = (s.data?.grade as string) ?? ""
+        const guardianName = (s.data?.guardianName as string) ?? ""
+        const guardianPhone = (s.data?.guardianPhone as string) ?? ""
+        const subjects = (s.data?.subjects as string[]) ?? []
+        const notes = (s.data?.notes as string) ?? ""
+
+        let line = `- ${name} [id:${id}]`
+        if (grade) line += ` — ${grade}`
+        if (guardianName) line += ` — Apoderado: ${guardianName}`
+        if (guardianPhone) line += ` (${guardianPhone})`
+        if (subjects.length > 0) line += ` — ${subjects.join(", ")}`
+        if (notes) line += ` — ${notes}`
+        return line
+      })
+
+      return lines.join("\n")
+    } catch (error) {
+      if (error instanceof PermissionError) {
+        return "[No student data available]"
+      }
+      const message = error instanceof Error ? error.message : "execution failed"
+      return `[TEMPLATE_ERROR: ${name} - ${message}]`
+    }
+  }
+
   if (runQuery && name === "format_session_schedule") {
     try {
       const actorPayload = {

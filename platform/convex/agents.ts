@@ -399,6 +399,7 @@ export const compileSystemPrompt = action({
     environment: environmentValidator,
     sampleContext: v.optional(v.object({
       message: v.optional(v.string()),
+      channel: v.optional(v.string()),
       threadMetadata: v.optional(v.any()),
     })),
   },
@@ -455,7 +456,7 @@ export const compileSystemPrompt = action({
       actor,
       agent: { name: agent.name, slug: agent.slug },
       agentName: agent.name,
-      threadContext: { channel: undefined, params: sampleContext.threadMetadata || {} },
+      threadContext: { channel: sampleContext.channel, params: sampleContext.threadMetadata || {} },
       message: sampleContext.message || "Hello, this is a sample message.",
       timestamp: now,
       datetime: currentTimeStr,
