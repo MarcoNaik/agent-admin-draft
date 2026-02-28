@@ -498,6 +498,151 @@ export interface PullState {
   triggers: PullStateTrigger[]
 }
 
+export interface CompilePromptOptions {
+  slug: string
+  environment: 'development' | 'production' | 'eval'
+  message?: string
+  channel?: string
+  threadMetadata?: Record<string, unknown>
+}
+
+export interface CompilePromptResult {
+  raw: string
+  compiled: string
+  context: Record<string, unknown>
+}
+
+export async function compilePrompt(options: CompilePromptOptions): Promise<{ result?: CompilePromptResult; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+
+  if (apiKey && !credentials?.token) {
+    const siteUrl = getSiteUrl()
+    try {
+      const response = await fetch(`${siteUrl}/v1/compile-prompt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          slug: options.slug,
+          message: options.message,
+          channel: options.channel,
+          threadMetadata: options.threadMetadata,
+        }),
+        signal: AbortSignal.timeout(30000),
+      })
+
+      const text = await response.text()
+
+      let json: Record<string, unknown>
+      try {
+        json = JSON.parse(text)
+      } catch {
+        return { error: text || `HTTP ${response.status}` }
+      }
+
+      if (!response.ok) {
+        return { error: (json.error as string) || text }
+      }
+
+      return { result: json as unknown as CompilePromptResult }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'TimeoutError') {
+        return { error: 'Request timed out after 30s' }
+      }
+      return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
+  if (credentials?.sessionId) {
+    await refreshToken()
+  }
+
+  const freshCredentials = loadCredentials()
+  const token = apiKey || freshCredentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const agentResponse = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'agents:getBySlug',
+      args: { slug: options.slug },
+    }),
+  })
+
+  if (!agentResponse.ok) {
+    return { error: await agentResponse.text() }
+  }
+
+  const agentResult = await agentResponse.json() as { status: string; value?: { _id: string } | null; errorMessage?: string }
+
+  if (agentResult.status === 'error') {
+    return { error: agentResult.errorMessage || 'Failed to look up agent' }
+  }
+
+  if (!agentResult.value) {
+    return { error: `Agent not found: ${options.slug}` }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/action`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'agents:compileSystemPrompt',
+      args: {
+        agentId: agentResult.value._id,
+        environment: options.environment,
+        sampleContext: {
+          message: options.message,
+          channel: options.channel,
+          threadMetadata: options.threadMetadata,
+        },
+      },
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  const text = await response.text()
+
+  let json: { status?: string; value?: CompilePromptResult | null; errorMessage?: string; errorData?: { message?: string } }
+  try {
+    json = JSON.parse(text)
+  } catch {
+    return { error: text || `HTTP ${response.status}` }
+  }
+
+  if (!response.ok) {
+    const msg = json.errorData?.message || json.errorMessage || text
+    return { error: msg }
+  }
+
+  if (json.status === 'success' && json.value) {
+    return { result: json.value }
+  }
+
+  if (json.status === 'success' && json.value === null) {
+    return { error: `Agent not found or no config for environment: ${options.environment}` }
+  }
+
+  if (json.status === 'error') {
+    return { error: json.errorData?.message || json.errorMessage || 'Unknown error from Convex' }
+  }
+
+  return { error: `Unexpected response: ${text}` }
+}
+
 export async function getPullState(
   organizationId?: string,
   environment: 'development' | 'production' | 'eval' = 'development'

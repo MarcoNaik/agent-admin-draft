@@ -1,11 +1,12 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery, action, QueryCtx, MutationCtx } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { query, mutation, internalQuery, internalAction, action, QueryCtx, MutationCtx } from "./_generated/server"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { getAuthContext, requireAuth } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext } from "./lib/permissions/types"
+import { serializeActor, executeBuiltinTool } from "./lib/toolExecution"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -330,6 +331,7 @@ export const getCompileData = internalQuery({
     agentId: v.id("agents"),
     environment: environmentValidator,
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const agent = await ctx.db.get(args.agentId)
@@ -412,10 +414,11 @@ export const compileSystemPrompt = action({
     v.null()
   ),
   handler: async (ctx, args): Promise<{ raw: string; compiled: string; context: TemplateContext } | null> => {
-    const data: CompileData | null = await ctx.runQuery(internal.agents.getCompileData, {
+    const getCompileDataRef = makeFunctionReference<"query">("agents:getCompileData")
+    const data = await ctx.runQuery(getCompileDataRef, {
       agentId: args.agentId,
       environment: args.environment,
-    })
+    }) as CompileData | null
 
     if (!data) {
       return null
@@ -440,7 +443,8 @@ export const compileSystemPrompt = action({
       description: r.description,
     }))
 
-    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+    const buildActorRef = makeFunctionReference<"query">("agent:buildActorContextForAgent")
+    const actor: ActorContext = await ctx.runQuery(buildActorRef, {
       organizationId,
       actorType: "user",
       actorId: userId as unknown as string,
@@ -465,9 +469,231 @@ export const compileSystemPrompt = action({
       roles,
     }
 
+    const getToolIdentityRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery")
+    const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
+
     const toolExecutor: ToolExecutor = {
-      executeBuiltin: async () => ({ error: "Preview mode - tool execution disabled" }),
-      executeCustom: async () => ({ error: "Preview mode - tool execution disabled" }),
+      executeBuiltin: async (name, toolArgs) => {
+        const toolIdentity = await ctx.runQuery(
+          getToolIdentityRef,
+          { actor: serializeActor(actor), agentId: args.agentId, toolName: name }
+        )
+        return executeBuiltinTool(ctx, {
+          organizationId: toolIdentity.organizationId,
+          actorId: toolIdentity.actorId,
+          actorType: toolIdentity.actorType,
+          isOrgAdmin: toolIdentity.isOrgAdmin,
+          environment: args.environment,
+          toolName: name,
+          args: toolArgs,
+        })
+      },
+      executeCustom: (toolName, toolArgs) =>
+        ctx.runAction(executeCustomToolRef, {
+          toolName,
+          args: toolArgs,
+          context: {
+            organizationId: actor.organizationId,
+            actorId: actor.actorId,
+            actorType: actor.actorType,
+          },
+        }),
+    }
+
+    const compiled = await processTemplates(
+      config.systemPrompt,
+      templateContext,
+      config.tools || [],
+      toolExecutor
+    )
+
+    return {
+      raw: config.systemPrompt,
+      compiled,
+      context: templateContext,
+    }
+  },
+})
+
+export const getCompileDataBySlug = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    slug: v.string(),
+    environment: environmentValidator,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_org_slug", (q) =>
+        q.eq("organizationId", args.organizationId).eq("slug", args.slug)
+      )
+      .first()
+
+    if (!agent) {
+      return null
+    }
+
+    const config = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", args.environment))
+      .first()
+
+    if (!config) {
+      return null
+    }
+
+    const organization = await ctx.db.get(args.organizationId)
+
+    const entityTypesRaw = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", args.organizationId).eq("environment", args.environment))
+      .collect()
+
+    const rolesRaw = await ctx.db
+      .query("roles")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", args.organizationId).eq("environment", args.environment))
+      .collect()
+
+    return {
+      agentId: agent._id,
+      agent: { name: agent.name, slug: agent.slug },
+      config: {
+        systemPrompt: config.systemPrompt,
+        tools: config.tools,
+      },
+      organization: organization ? { name: organization.name } : null,
+      entityTypesRaw: entityTypesRaw.map((et) => ({
+        name: et.name,
+        slug: et.slug,
+        description: (et as { description?: string }).description,
+        schema: et.schema,
+        searchFields: et.searchFields,
+      })),
+      rolesRaw: rolesRaw.map((r) => ({
+        name: r.name,
+        description: r.description,
+      })),
+      organizationId: args.organizationId,
+    }
+  },
+})
+
+interface CompileDataBySlug {
+  agentId: Id<"agents">
+  agent: { name: string; slug: string }
+  config: { systemPrompt: string; tools: Array<{ name: string; handlerCode?: string }> }
+  organization: { name: string } | null
+  entityTypesRaw: Array<{ name: string; slug: string; description?: string; schema: unknown; searchFields?: string[] }>
+  rolesRaw: Array<{ name: string; description?: string }>
+  organizationId: Id<"organizations">
+}
+
+export const compileSystemPromptBySlug = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    slug: v.string(),
+    environment: environmentValidator,
+    sampleContext: v.optional(v.object({
+      message: v.optional(v.string()),
+      channel: v.optional(v.string()),
+      threadMetadata: v.optional(v.any()),
+    })),
+  },
+  returns: v.union(
+    v.object({
+      raw: v.string(),
+      compiled: v.string(),
+      context: v.any(),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args): Promise<{ raw: string; compiled: string; context: TemplateContext } | null> => {
+    const getCompileDataBySlugRef = makeFunctionReference<"query">("agents:getCompileDataBySlug")
+    const data = await ctx.runQuery(getCompileDataBySlugRef, {
+      organizationId: args.organizationId,
+      slug: args.slug,
+      environment: args.environment,
+    }) as CompileDataBySlug | null
+
+    if (!data) {
+      return null
+    }
+
+    const { agentId, agent, config, organization, entityTypesRaw, rolesRaw, organizationId } = data
+
+    const sampleContext = args.sampleContext || {}
+    const now = Date.now()
+    const currentTimeStr = new Date(now).toISOString()
+
+    const entityTypes: EntityTypeContext[] = entityTypesRaw.map((et) => ({
+      name: et.name,
+      slug: et.slug,
+      description: et.description,
+      schema: et.schema as Record<string, unknown>,
+      searchFields: et.searchFields,
+    }))
+
+    const roles = rolesRaw.map((r) => ({
+      name: r.name,
+      description: r.description,
+    }))
+
+    const buildActorRef = makeFunctionReference<"query">("agent:buildActorContextForAgent")
+    const actor: ActorContext = await ctx.runQuery(buildActorRef, {
+      organizationId,
+      actorType: "system",
+      actorId: "system",
+      environment: args.environment,
+    })
+
+    const templateContext: TemplateContext = {
+      organizationId,
+      organizationName: organization?.name ?? "Unknown Organization",
+      userId: "system" as unknown as Id<"users">,
+      threadId: "sample-thread-id" as Id<"threads">,
+      agentId,
+      actor,
+      agent: { name: agent.name, slug: agent.slug },
+      agentName: agent.name,
+      threadContext: { channel: sampleContext.channel, params: sampleContext.threadMetadata || {} },
+      message: sampleContext.message || "Hello, this is a sample message.",
+      timestamp: now,
+      datetime: currentTimeStr,
+      currentTime: currentTimeStr,
+      entityTypes,
+      roles,
+    }
+
+    const getToolIdentityRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery")
+    const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
+
+    const toolExecutor: ToolExecutor = {
+      executeBuiltin: async (name, toolArgs) => {
+        const toolIdentity = await ctx.runQuery(
+          getToolIdentityRef,
+          { actor: serializeActor(actor), agentId, toolName: name }
+        )
+        return executeBuiltinTool(ctx, {
+          organizationId: toolIdentity.organizationId,
+          actorId: toolIdentity.actorId,
+          actorType: toolIdentity.actorType,
+          isOrgAdmin: toolIdentity.isOrgAdmin,
+          environment: args.environment,
+          toolName: name,
+          args: toolArgs,
+        })
+      },
+      executeCustom: (toolName, toolArgs) =>
+        ctx.runAction(executeCustomToolRef, {
+          toolName,
+          args: toolArgs,
+          context: {
+            organizationId: actor.organizationId,
+            actorId: actor.actorId,
+            actorType: actor.actorType,
+          },
+        }),
     }
 
     const compiled = await processTemplates(

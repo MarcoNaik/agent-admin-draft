@@ -1050,4 +1050,58 @@ http.route({
   }),
 })
 
+http.route({
+  path: "/v1/compile-prompt",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json() as {
+        slug: string
+        message?: string
+        channel?: string
+        threadMetadata?: Record<string, unknown>
+      }
+
+      if (!body.slug) {
+        return new Response(JSON.stringify({ error: "slug is required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+
+      const result = await ctx.runAction(internal.agents.compileSystemPromptBySlug, {
+        organizationId: authResult.organizationId,
+        slug: body.slug,
+        environment: authResult.environment,
+        sampleContext: {
+          message: body.message,
+          channel: body.channel,
+          threadMetadata: body.threadMetadata,
+        },
+      })
+
+      if (!result) {
+        return new Response(JSON.stringify({ error: "Agent not found or no config for this environment" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
 export default http

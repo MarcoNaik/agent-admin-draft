@@ -48,6 +48,7 @@ import type * as lib_sync_index from "../lib/sync/index.js";
 import type * as lib_sync_roles from "../lib/sync/roles.js";
 import type * as lib_sync_triggers from "../lib/sync/triggers.js";
 import type * as lib_templateEngine from "../lib/templateEngine.js";
+import type * as lib_toolExecution from "../lib/toolExecution.js";
 import type * as lib_triggers from "../lib/triggers.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as lib_whatsappPricing from "../lib/whatsappPricing.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   "lib/sync/roles": typeof lib_sync_roles;
   "lib/sync/triggers": typeof lib_sync_triggers;
   "lib/templateEngine": typeof lib_templateEngine;
+  "lib/toolExecution": typeof lib_toolExecution;
   "lib/triggers": typeof lib_triggers;
   "lib/utils": typeof lib_utils;
   "lib/whatsappPricing": typeof lib_whatsappPricing;
