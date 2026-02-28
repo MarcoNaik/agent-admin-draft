@@ -1,9 +1,12 @@
 import { v } from "convex/values"
 import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import { QueryCtx, MutationCtx } from "./_generated/server"
+
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
 
 function formatMicrodollars(microdollars: number): string {
   const dollars = microdollars / 1_000_000
@@ -260,12 +263,12 @@ export const createCheckoutSession = action({
   },
   handler: async (ctx, args): Promise<{ checkoutUrl: string }> => {
     const auth: { userId: Id<"users">; organizationId: Id<"organizations"> } | null =
-      await ctx.runQuery(internal.chat.getAuthInfo)
+      await ctx.runQuery(getAuthInfoRef)
     if (!auth) {
       throw new Error("Not authenticated")
     }
 
-    const isAdmin: boolean = await ctx.runQuery(internal.integrations.isOrgAdminInternal, {
+    const isAdmin: boolean = await ctx.runQuery(isOrgAdminInternalRef, {
       userId: auth.userId,
       organizationId: auth.organizationId,
     })
