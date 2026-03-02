@@ -16,8 +16,8 @@ The Struere CLI is your primary interface for defining, syncing, and deploying a
 | `struere init` | Initialize an organization-centric project, scaffold directories |
 | `struere dev` | Watch all files, sync everything to Convex on change |
 | `struere deploy` | Deploy all agents to production |
-| `struere add <type> <name>` | Scaffold a new agent, entity-type, role, automation, eval, or fixture |
-| `struere entities` | Browse and manage entities interactively |
+| `struere add <type> <name>` | Scaffold a new agent, data-type, role, automation, eval, or fixture |
+| `struere data` | Browse and manage data records |
 | `struere status` | Compare local file definitions vs remote state |
 | `struere pull` | Pull remote resources to local files |
 | `struere eval run <suite>` | Run an eval suite and generate Markdown reports |
@@ -25,6 +25,8 @@ The Struere CLI is your primary interface for defining, syncing, and deploying a
 | `struere templates create <name>` | Create a new message template |
 | `struere templates delete <name>` | Delete a message template |
 | `struere templates status <name>` | Check template approval status |
+| `struere org list` | List your organizations |
+| `struere org create [name]` | Create a new organization |
 | `struere login` | Browser-based OAuth authentication |
 | `struere logout` | Clear stored credentials |
 | `struere whoami` | Display the current logged-in user and organization |
@@ -91,6 +93,7 @@ src/cli/
 │   ├── pull.ts           # Pull remote to local
 │   ├── eval.ts           # Eval suite runner
 │   ├── templates.ts      # WhatsApp template management
+│   ├── org.ts            # Organization management
 │   ├── login.ts          # Browser-based OAuth
 │   ├── logout.ts         # Clear credentials
 │   └── whoami.ts         # Current user info
@@ -115,8 +118,8 @@ The CLI syncs your local definitions to the Convex backend. The sync flow is:
 
 1. **Load** — Read all files from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/` directories
 2. **Extract** — Build a sync payload using `extractSyncPayload()`
-3. **Sync to development** — Send agents, entity types, roles, and triggers to `syncOrganization`
-4. **Sync to eval** — Send agents, entity types, roles, eval suites, and fixtures to `syncOrganization` (triggers excluded)
+3. **Sync to development** — Send agents, data types, roles, and triggers to `syncOrganization`
+4. **Sync to eval** — Send agents, data types, roles, eval suites, and fixtures to `syncOrganization` (triggers excluded)
 5. **Watch** (dev mode) — Monitor files with chokidar and re-sync on any change
 
 Resources are upserted by slug or name, meaning the CLI handles both creation and updates transparently. Fixture sync resets the eval environment on every sync (deletes all entities/relations, then recreates from YAML).
