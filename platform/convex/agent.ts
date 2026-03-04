@@ -1,8 +1,32 @@
 import { v } from "convex/values"
 import { internalAction, internalQuery } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
+
+const getThreadMessagesRef = makeFunctionReference<"query">("agent:getThreadMessages")
+const getOrgInternalRef = makeFunctionReference<"query">("organizations:getInternal")
+const listEntityTypesInternalRef = makeFunctionReference<"query">("entityTypes:listInternal")
+const listRolesInternalRef = makeFunctionReference<"query">("roles:listInternal")
+const getToolIdentityQueryRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery")
+const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
+const canUseToolQueryRef = makeFunctionReference<"query">("permissions:canUseToolQuery")
+const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
+const reserveCreditsRef = makeFunctionReference<"mutation">("billing:reserveCredits")
+const consumeReservationRef = makeFunctionReference<"mutation">("billing:consumeReservation")
+const releaseReservationRef = makeFunctionReference<"mutation">("billing:releaseReservation")
+const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
+const recordExecutionRef = makeFunctionReference<"mutation">("executions:record")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
+const validateApiKeyRef = makeFunctionReference<"query">("agent:validateApiKey")
+const getAgentInternalRef = makeFunctionReference<"query">("agent:getAgentInternal")
+const getActiveConfigRef = makeFunctionReference<"query">("agents:getActiveConfig")
+const getOrCreateThreadRef = makeFunctionReference<"mutation">("threads:getOrCreate")
+const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadInternal")
+const buildActorContextForAgentRef = makeFunctionReference<"query">("agent:buildActorContextForAgent")
+const getAgentBySlugInternalRef = makeFunctionReference<"query">("agent:getAgentBySlugInternal")
+const chatActionRef = makeFunctionReference<"action">("agent:chat")
 import { hashApiKey, generateId } from "./lib/utils"
+import { isOrgAdmin as checkIsOrgAdmin } from "./lib/auth"
 import { calculateCost } from "./lib/creditPricing"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
@@ -10,6 +34,7 @@ import { serializeActor, executeBuiltinTool, sanitizeFilters } from "./lib/toolE
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
 import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps, cleanToolCallText } from "./lib/llm"
 import { isBuiltinTool } from "./tools/helpers"
+import { log } from "./lib/logger"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -48,12 +73,40 @@ interface ToolConfig {
   description: string
   parameters: unknown
   handlerCode?: string
+  isBuiltin?: boolean
 }
 
 interface ThreadContextParamSchema {
   name: string
   type: "string" | "number" | "boolean"
   required?: boolean
+  description?: string
+}
+
+interface AgentConfigDocument {
+  _id: string
+  agentId: string
+  version: string
+  environment: string
+  name: string
+  systemPrompt: string
+  model: {
+    provider: string
+    name: string
+    temperature?: number
+    maxTokens?: number
+  }
+  tools: ToolConfig[]
+  firstMessageSuggestions?: string[]
+  threadContextParams?: ThreadContextParamSchema[]
+  createdAt: number
+  deployedBy?: string
+}
+
+interface ThreadDocument {
+  _id: string
+  channel?: string
+  channelParams?: Record<string, unknown>
 }
 
 function validateThreadContextParams(
@@ -100,8 +153,8 @@ interface ExecuteChatParams {
   environment: Environment
   actor: ActorContext
   agent: { name: string; slug: string }
-  config: any
-  thread: any
+  config: AgentConfigDocument
+  thread: ThreadDocument | null
   userId?: Id<"users">
   conversationId?: string
   depth?: number
@@ -114,12 +167,12 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   const depth = params.depth ?? 0
   const startTime = Date.now()
 
-  const existingMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
+  const existingMessages = await ctx.runQuery(getThreadMessagesRef, { threadId })
 
   const [organization, entityTypesRaw, rolesRaw] = await Promise.all([
-    ctx.runQuery(internal.organizations.getInternal, { organizationId }),
-    ctx.runQuery(internal.entityTypes.listInternal, { organizationId, environment }),
-    ctx.runQuery(internal.roles.listInternal, { organizationId, environment }),
+    ctx.runQuery(getOrgInternalRef, { organizationId }),
+    ctx.runQuery(listEntityTypesInternalRef, { organizationId, environment }),
+    ctx.runQuery(listRolesInternalRef, { organizationId, environment }),
   ])
 
   const now = Date.now()
@@ -162,7 +215,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   const toolExecutor: ToolExecutor = {
     executeBuiltin: async (name, toolArgs) => {
       const toolIdentity = await ctx.runQuery(
-        internal.permissions.getToolIdentityQuery,
+        getToolIdentityQueryRef,
         { actor: serializeActor(actor), agentId, toolName: name }
       )
       return executeBuiltinTool(ctx, {
@@ -173,10 +226,11 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         environment,
         toolName: name,
         args: toolArgs,
+        agentId: agentId as unknown as string,
       })
     },
     executeCustom: (toolName, toolArgs) =>
-      ctx.runAction(internal.agent.executeCustomTool, {
+      ctx.runAction(executeCustomToolRef, {
         toolName,
         args: toolArgs,
         context: {
@@ -212,17 +266,26 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         const toolConfig = config.tools.find((tc: ToolConfig) => tc.name === originalName)
 
         const permissionResult = await ctx.runQuery(
-          internal.permissions.canUseToolQuery,
+          canUseToolQueryRef,
           { actor: serializeActor(actor), agentId, toolName: originalName }
         )
 
         if (!permissionResult.allowed) {
+          log.warn(`Tool permission denied: ${originalName}`, {
+            ...log.withOrg(organizationId as string),
+            ...log.withAgent(agentId as string),
+            toolName: originalName,
+            reason: permissionResult.reason,
+            actorId: actor.actorId,
+            actorType: actor.actorType,
+            environment,
+          })
           return { error: `Permission denied: ${permissionResult.reason}` }
         }
 
         try {
           const toolIdentity = await ctx.runQuery(
-            internal.permissions.getToolIdentityQuery,
+            getToolIdentityQueryRef,
             { actor: serializeActor(actor), agentId, toolName: originalName }
           )
 
@@ -238,9 +301,10 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
               conversationId,
               depth,
               callerAgentSlug: agent.slug,
+              agentId: agentId as unknown as string,
             })
           } else if (toolConfig?.handlerCode) {
-            return await ctx.runAction(internal.agent.executeCustomTool, {
+            return await ctx.runAction(executeCustomToolRef, {
               toolName: originalName,
               args,
               context: {
@@ -253,132 +317,187 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
           return { error: "Tool has no handler" }
         } catch (error) {
+          log.error(`Tool execution failed: ${originalName}`, {
+            ...log.withOrg(organizationId as string),
+            ...log.withAgent(agentId as string),
+            toolName: originalName,
+            toolArgs: args,
+            environment,
+            error: error instanceof Error ? error : new Error(String(error)),
+          })
           return { error: error instanceof Error ? error.message : "Tool execution failed" }
         }
       },
     })
   }
 
-  const providerKey = await ctx.runQuery(internal.providers.resolveApiKey, {
+  const providerKey = await ctx.runQuery(resolveApiKeyRef, {
     organizationId,
     provider: config.model.provider,
   })
 
   const usedPlatformKey = providerKey === null
+  let reservedAmount = 0
   if (usedPlatformKey) {
-    const balance = await ctx.runQuery(internal.billing.getBalanceInternal, { organizationId })
-    if (balance <= 0) {
-      throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
+    try {
+      reservedAmount = await ctx.runMutation(reserveCreditsRef, {
+        organizationId,
+        model: config.model.name,
+      })
+    } catch (error) {
+      log.error("Credit reservation failed before LLM execution", {
+        ...log.withOrg(organizationId as string),
+        ...log.withAgent(agentId as string),
+        model: config.model.name,
+        environment,
+        error: error instanceof Error ? error : new Error(String(error)),
+      })
+      throw error
     }
   }
 
-  await ctx.runMutation(internal.threads.appendMessages, {
+  await ctx.runMutation(appendMessagesRef, {
     threadId,
     messages: [{ role: "user", content: message }],
   })
 
-  const result = await generateText({
-    model: createModel(config.model, providerKey?.apiKey),
-    system: processedSystemPrompt,
-    messages: toAIMessages([
-      ...historyMessages,
-      { role: "user", content: message },
-    ]),
-    tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
-    stopWhen: stepCountIs(10),
-    maxRetries: 2,
-    temperature: config.model.temperature ?? 0.7,
-    maxOutputTokens: config.model.maxTokens ?? 4096,
-    onStepFinish: async ({ text, toolCalls, toolResults }) => {
-      const stepMsgs = fromSteps([{ text, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
-      if (stepMsgs.length > 0) {
-        await ctx.runMutation(internal.threads.appendMessages, {
-          threadId,
-          messages: stepMsgs,
-        })
-      }
-    },
-  })
-
-  const stepsMessages = fromSteps(result.steps as any)
-
-  const lastTextOnlyMessage = [...stepsMessages]
-    .reverse()
-    .find(m => m.role === "assistant" && !m.toolCalls?.length && m.content)
-
-  const responseText = cleanToolCallText(lastTextOnlyMessage?.content ?? "")
-  const lastMsg = stepsMessages[stepsMessages.length - 1]
-  const lastIsTextOnly = lastMsg?.role === "assistant" && !lastMsg.toolCalls?.length
-
-  if (!lastIsTextOnly && responseText) {
-    await ctx.runMutation(internal.threads.appendMessages, {
-      threadId,
-      messages: [{ role: "assistant", content: responseText }],
-    })
-  }
-
-  const durationMs = Date.now() - startTime
-  const totalInputTokens = result.totalUsage.inputTokens ?? 0
-  const totalOutputTokens = result.totalUsage.outputTokens ?? 0
-
-  const executedToolCalls = stepsMessages
-    .filter(m => m.role === "tool")
-    .map(m => {
-      const assistantMsg = stepsMessages.find(
-        am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
-      )
-      const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
-      return toolCall ? {
-        name: toolCall.name,
-        arguments: toolCall.arguments,
-        result: JSON.parse(m.content),
-      } : null
-    })
-    .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
-
-  const creditsConsumed = usedPlatformKey ? calculateCost(config.model.name, totalInputTokens, totalOutputTokens) : 0
-
-  const executionId = await ctx.runMutation(internal.executions.record, {
-    organizationId,
-    agentId,
-    threadId,
-    environment,
-    conversationId,
-    inputMessage: message,
-    outputMessage: responseText,
-    toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
-    inputTokens: totalInputTokens,
-    outputTokens: totalOutputTokens,
-    durationMs,
-    model: config.model.name,
-    status: "success",
-    usedPlatformKey,
-    creditsConsumed,
-    evalRunId: params.evalRunId,
-  })
-
-  if (usedPlatformKey && creditsConsumed > 0) {
-    await ctx.runMutation(internal.billing.deductCredits, {
-      organizationId,
-      amount: creditsConsumed,
-      description: `${config.model.name} — ${totalInputTokens} in / ${totalOutputTokens} out`,
-      executionId,
-      metadata: {
+  let llmSucceeded = false
+  try {
+    let result
+    try {
+      result = await generateText({
+        model: createModel(config.model, providerKey?.apiKey),
+        system: processedSystemPrompt,
+        messages: toAIMessages([
+          ...historyMessages,
+          { role: "user", content: message },
+        ]),
+        tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
+        stopWhen: stepCountIs(10),
+        maxRetries: 2,
+        temperature: config.model.temperature ?? 0.7,
+        maxOutputTokens: config.model.maxTokens ?? 4096,
+        onStepFinish: async ({ text, toolCalls, toolResults }) => {
+          const stepMsgs = fromSteps([{ text, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
+          if (stepMsgs.length > 0) {
+            await ctx.runMutation(appendMessagesRef, {
+              threadId,
+              messages: stepMsgs,
+            })
+          }
+        },
+      })
+    } catch (error) {
+      log.error("LLM execution failed", {
+        ...log.withOrg(organizationId as string),
+        ...log.withAgent(agentId as string),
         model: config.model.name,
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-      },
-    })
-  }
+        provider: config.model.provider,
+        environment,
+        threadId,
+        agentSlug: agent.slug,
+        error: error instanceof Error ? error : new Error(String(error)),
+      })
+      throw error
+    }
 
-  return {
-    threadId,
-    message: responseText,
-    usage: {
+    const stepsMessages = fromSteps(result.steps as any)
+
+    const lastTextOnlyMessage = [...stepsMessages]
+      .reverse()
+      .find(m => m.role === "assistant" && !m.toolCalls?.length && m.content)
+
+    const responseText = cleanToolCallText(lastTextOnlyMessage?.content ?? "")
+    const lastMsg = stepsMessages[stepsMessages.length - 1]
+    const lastIsTextOnly = lastMsg?.role === "assistant" && !lastMsg.toolCalls?.length
+
+    if (!lastIsTextOnly && responseText) {
+      await ctx.runMutation(appendMessagesRef, {
+        threadId,
+        messages: [{ role: "assistant", content: responseText }],
+      })
+    }
+
+    const durationMs = Date.now() - startTime
+    const totalInputTokens = result.totalUsage.inputTokens ?? 0
+    const totalOutputTokens = result.totalUsage.outputTokens ?? 0
+
+    const executedToolCalls = stepsMessages
+      .filter(m => m.role === "tool")
+      .map(m => {
+        const assistantMsg = stepsMessages.find(
+          am => am.role === "assistant" && am.toolCalls?.some(tc => tc.id === m.toolCallId)
+        )
+        const toolCall = assistantMsg?.toolCalls?.find(tc => tc.id === m.toolCallId)
+        return toolCall ? {
+          name: toolCall.name,
+          arguments: toolCall.arguments,
+          result: JSON.parse(m.content),
+        } : null
+      })
+      .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
+
+    const creditsConsumed = usedPlatformKey ? calculateCost(config.model.name, totalInputTokens, totalOutputTokens) : 0
+
+    const executionId = await ctx.runMutation(recordExecutionRef, {
+      organizationId,
+      agentId,
+      threadId,
+      environment,
+      conversationId,
+      inputMessage: message,
+      outputMessage: responseText,
+      toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
-      totalTokens: totalInputTokens + totalOutputTokens,
-    },
+      durationMs,
+      model: config.model.name,
+      status: "success",
+      usedPlatformKey,
+      creditsConsumed,
+      evalRunId: params.evalRunId,
+    })
+
+    if (usedPlatformKey && creditsConsumed > 0) {
+      await ctx.runMutation(deductCreditsRef, {
+        organizationId,
+        amount: creditsConsumed,
+        description: `${config.model.name} — ${totalInputTokens} in / ${totalOutputTokens} out`,
+        executionId,
+        metadata: {
+          model: config.model.name,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+        },
+      })
+    }
+
+    llmSucceeded = true
+
+    if (usedPlatformKey && reservedAmount > 0) {
+      await ctx.runMutation(consumeReservationRef, {
+        organizationId,
+        reservedAmount,
+        actualCost: creditsConsumed,
+      })
+    }
+
+    return {
+      threadId,
+      message: responseText,
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens,
+      },
+    }
+  } finally {
+    if (!llmSucceeded && usedPlatformKey && reservedAmount > 0) {
+      await ctx.runMutation(releaseReservationRef, {
+        organizationId,
+        reservedAmount,
+      })
+    }
   }
 }
 
@@ -423,8 +542,8 @@ export const executeChatAction = internalAction({
       environment: args.environment,
       actor: args.actor as ActorContext,
       agent: args.agent,
-      config: args.config,
-      thread: args.thread,
+      config: args.config as AgentConfigDocument,
+      thread: args.thread as ThreadDocument | null,
       userId: args.userId,
       conversationId: args.conversationId,
       depth: args.depth,
@@ -453,7 +572,7 @@ export const chat = internalAction({
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
     const keyHash = await hashApiKey(args.apiKey)
-    const auth: ApiKeyAuth | null = await ctx.runQuery(internal.agent.validateApiKey, { keyHash })
+    const auth: ApiKeyAuth | null = await ctx.runQuery(validateApiKeyRef, { keyHash })
 
     if (!auth) {
       throw new Error("Invalid API key")
@@ -461,7 +580,7 @@ export const chat = internalAction({
 
     const environment = auth.environment
 
-    const agent = await ctx.runQuery(internal.agent.getAgentInternal, {
+    const agent = await ctx.runQuery(getAgentInternalRef, {
       agentId: args.agentId,
       organizationId: auth.organizationId,
     })
@@ -470,7 +589,7 @@ export const chat = internalAction({
       throw new Error("Agent not found")
     }
 
-    const config = await ctx.runQuery(internal.agents.getActiveConfig, {
+    const config = await ctx.runQuery(getActiveConfigRef, {
       agentId: args.agentId,
       environment,
     })
@@ -480,7 +599,7 @@ export const chat = internalAction({
       validatedParams = validateThreadContextParams(validatedParams, config.threadContextParams)
     }
 
-    const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
+    const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(getOrCreateThreadRef, {
       organizationId: auth.organizationId,
       agentId: args.agentId,
       externalId: args.externalThreadId,
@@ -489,9 +608,9 @@ export const chat = internalAction({
       environment,
     })
 
-    const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
+    const thread = await ctx.runQuery(getThreadInternalRef, { threadId })
 
-    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+    const actor: ActorContext = await ctx.runQuery(buildActorContextForAgentRef, {
       organizationId: auth.organizationId,
       actorType: "agent",
       actorId: `apikey:${auth.keyPrefix}`,
@@ -507,8 +626,8 @@ export const chat = internalAction({
       environment,
       actor,
       agent: { name: agent.name, slug: agent.slug },
-      config,
-      thread,
+      config: config as AgentConfigDocument,
+      thread: thread as ThreadDocument | null,
     })
   },
 })
@@ -534,13 +653,13 @@ export const chatBySlug = internalAction({
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
     const keyHash = await hashApiKey(args.apiKey)
-    const auth: ApiKeyAuth | null = await ctx.runQuery(internal.agent.validateApiKey, { keyHash })
+    const auth: ApiKeyAuth | null = await ctx.runQuery(validateApiKeyRef, { keyHash })
 
     if (!auth) {
       throw new Error("Invalid API key")
     }
 
-    const agent = await ctx.runQuery(internal.agent.getAgentBySlugInternal, {
+    const agent = await ctx.runQuery(getAgentBySlugInternalRef, {
       slug: args.slug,
       organizationId: auth.organizationId,
     }) as { _id: Id<"agents"> } | null
@@ -549,7 +668,7 @@ export const chatBySlug = internalAction({
       throw new Error("Agent not found")
     }
 
-    return await ctx.runAction(internal.agent.chat, {
+    return await ctx.runAction(chatActionRef, {
       apiKey: args.apiKey,
       agentId: agent._id,
       message: args.message,
@@ -585,7 +704,7 @@ export const chatAuthenticated = internalAction({
   handler: async (ctx, args): Promise<ChatResponse> => {
     const environment: Environment = args.environment ?? "development"
 
-    const agent = await ctx.runQuery(internal.agent.getAgentInternal, {
+    const agent = await ctx.runQuery(getAgentInternalRef, {
       agentId: args.agentId,
       organizationId: args.organizationId,
     })
@@ -594,7 +713,7 @@ export const chatAuthenticated = internalAction({
       throw new Error("Agent not found")
     }
 
-    const config = await ctx.runQuery(internal.agents.getActiveConfig, {
+    const config = await ctx.runQuery(getActiveConfigRef, {
       agentId: args.agentId,
       environment,
     })
@@ -604,7 +723,7 @@ export const chatAuthenticated = internalAction({
       validatedParams = validateThreadContextParams(validatedParams, config.threadContextParams)
     }
 
-    const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(internal.threads.getOrCreate, {
+    const threadId: Id<"threads"> = args.threadId ?? await ctx.runMutation(getOrCreateThreadRef, {
       organizationId: args.organizationId,
       agentId: args.agentId,
       userId: args.userId,
@@ -613,12 +732,12 @@ export const chatAuthenticated = internalAction({
       environment,
     })
 
-    const thread = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
+    const thread = await ctx.runQuery(getThreadInternalRef, { threadId })
 
     const actorType = args.userId ? "user" : "system"
     const actorId = args.userId ? (args.userId as unknown as string) : `agent:${args.agentId}`
 
-    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+    const actor: ActorContext = await ctx.runQuery(buildActorContextForAgentRef, {
       organizationId: args.organizationId,
       actorType,
       actorId,
@@ -634,8 +753,8 @@ export const chatAuthenticated = internalAction({
       environment,
       actor,
       agent: { name: agent.name, slug: agent.slug },
-      config,
-      thread,
+      config: config as AgentConfigDocument,
+      thread: thread as ThreadDocument | null,
       userId: args.userId,
       evalRunId: args.evalRunId,
     })
@@ -666,19 +785,13 @@ export const buildActorContextForAgent = internalQuery({
     const { organizationId, actorType, actorId, environment } = args
 
     let roleIds: Id<"roles">[] = []
-    let isOrgAdmin = false
+    let isAdmin = false
 
     if (actorType === "user") {
-      const membership = await ctx.db
-        .query("userOrganizations")
-        .withIndex("by_user_org", (q) =>
-          q.eq("userId", actorId as Id<"users">).eq("organizationId", organizationId)
-        )
-        .first()
-
-      if (membership && membership.role === "admin") {
-        isOrgAdmin = true
-      }
+      isAdmin = await checkIsOrgAdmin(ctx, {
+        userId: actorId as Id<"users">,
+        organizationId,
+      })
 
       const userRoles = await ctx.db
         .query("userRoles")
@@ -700,14 +813,13 @@ export const buildActorContextForAgent = internalQuery({
       }
       roleIds = validRoleIds
     } else if (actorType === "system") {
-      isOrgAdmin = true
-      const systemRoles = await ctx.db
+      isAdmin = true
+      const systemRole = await ctx.db
         .query("roles")
         .withIndex("by_org_isSystem", (q) =>
-          q.eq("organizationId", organizationId).eq("isSystem", true)
+          q.eq("organizationId", organizationId).eq("isSystem", true).eq("environment", environment)
         )
-        .collect()
-      const systemRole = systemRoles.find((r) => r.environment === environment)
+        .first()
 
       if (systemRole) {
         roleIds = [systemRole._id]
@@ -730,7 +842,7 @@ export const buildActorContextForAgent = internalQuery({
       actorType: actorType as ActorType,
       actorId,
       roleIds,
-      isOrgAdmin,
+      isOrgAdmin: isAdmin,
       environment,
     }
   },
@@ -906,7 +1018,7 @@ const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: 
         text: `[${args.type.toUpperCase()}] ${args.message}`,
         attachments: [{
           fields: [
-            { title: "Guardian", value: args.guardianPhone || "N/A", short: true },
+            { title: "Contact", value: args.contact || "N/A", short: true },
             { title: "Context", value: args.context || "N/A", short: false },
             { title: "Org", value: context.organizationId, short: true },
           ],
@@ -927,59 +1039,5 @@ const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: 
     }
   },
 
-  format_teacher_schedule: async (args, context, fetch) => {
-    if (!args.teachers || !Array.isArray(args.teachers) || args.teachers.length === 0) {
-      return { error: "REQUIRED: Pass the full teachers array from entity.query({type: 'teacher'}). Example: format_teacher_schedule({teachers: <array>, names: [\"Carolina\"]})", markdown: "", teachers: [] }
-    }
-    const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-    const fmt = (h: number) => {
-      const hr = Math.floor(h)
-      const min = Math.round((h - hr) * 60)
-      const suffix = hr >= 12 ? "PM" : "AM"
-      const display = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr)
-      return `${display}:${String(min).padStart(2, "0")} ${suffix}`
-    }
-
-    let filtered = args.teachers
-    if (args.names && args.names.length > 0) {
-      const lowerNames = args.names.map((n: string) => n.toLowerCase())
-      filtered = args.teachers.filter((t: any) => {
-        const tName = (t.name || (t.data && t.data.name) || "").toLowerCase()
-        return lowerNames.some((n: string) => tName.includes(n) || n.includes(tName))
-      })
-    }
-
-    const results = filtered.map((teacher: any) => {
-      const name = teacher.name || (teacher.data && teacher.data.name) || "Unknown"
-      const availability = teacher.availability || (teacher.data && teacher.data.availability)
-      const id = teacher._id || teacher.id || ""
-      const schedule: Record<string, string[]> = {}
-
-      if (availability && typeof availability === "object" && !Array.isArray(availability)) {
-        const keyMap: Record<string, string> = {
-          monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
-          thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
-        }
-        for (const [key, dayName] of Object.entries(keyMap)) {
-          if (availability[key] && availability[key].length > 0) {
-            schedule[dayName] = availability[key].map((h: number) => fmt(h))
-          }
-        }
-      }
-
-      let text = ""
-      for (const day of dayOrder) {
-        if (schedule[day] && schedule[day].length > 0) {
-          text += `  ${day}: ${schedule[day].join(", ")}\n`
-        }
-      }
-
-      return { name, id, formattedSchedule: text || "  No availability\n", slotsByDay: schedule }
-    })
-
-    const markdown = results.map((r: any) => `**${r.name}**\n${r.formattedSchedule}`).join("\n")
-    return { markdown, teachers: results }
-  },
 }
 
