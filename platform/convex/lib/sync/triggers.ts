@@ -7,7 +7,7 @@ export interface TriggerInput {
   description?: string
   entityType: string
   action: string
-  condition?: Record<string, unknown>
+  condition?: { field: string; operator: string; value: unknown }
   actions: Array<{
     tool: string
     args: Record<string, unknown>
