@@ -1,9 +1,9 @@
 import { v } from "convex/values"
-import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
+import { query, mutation, action, internalQuery, internalMutation, MutationCtx } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
-import { requireAuth } from "./lib/auth"
-import { QueryCtx, MutationCtx } from "./_generated/server"
+import { requireAuth, requireOrgAdmin } from "./lib/auth"
+import { estimateMaxCost } from "./lib/creditPricing"
 
 const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
 const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
@@ -13,22 +13,6 @@ function formatMicrodollars(microdollars: number): string {
   if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
   if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
   return `$${dollars.toFixed(6)}`
-}
-
-async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  const membership = await ctx.db
-    .query("userOrganizations")
-    .withIndex("by_user_org", (q) =>
-      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
-    )
-    .first()
-  return membership?.role === "admin"
-}
-
-async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  if (!(await isOrgAdmin(ctx, auth))) {
-    throw new Error("Admin access required")
-  }
 }
 
 async function getOrCreateBalance(ctx: MutationCtx, organizationId: Id<"organizations">) {
@@ -59,6 +43,7 @@ export const getBalance = query({
       .first()
 
     const cachedBalance = balance?.balance ?? 0
+    const reserved = balance?.reservedCredits ?? 0
 
     const pendingTxs = await ctx.db
       .query("creditTransactions")
@@ -71,7 +56,7 @@ export const getBalance = query({
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     return {
-      balance: cachedBalance - pendingDeductions,
+      balance: cachedBalance - pendingDeductions - reserved,
       updatedAt: balance?.updatedAt ?? Date.now(),
     }
   },
@@ -103,6 +88,7 @@ export const getBalanceInternal = internalQuery({
       .first()
 
     const cachedBalance = balance?.balance ?? 0
+    const reserved = balance?.reservedCredits ?? 0
 
     const pendingTxs = await ctx.db
       .query("creditTransactions")
@@ -114,7 +100,82 @@ export const getBalanceInternal = internalQuery({
       .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
       .reduce((sum, tx) => sum + tx.amount, 0)
 
-    return cachedBalance - pendingDeductions
+    return cachedBalance - pendingDeductions - reserved
+  },
+})
+
+export const reserveCredits = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    model: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const balanceDoc = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .first()
+
+    const estimatedCost = estimateMaxCost(args.model)
+
+    if (!balanceDoc) {
+      await ctx.db.insert("creditBalances", {
+        organizationId: args.organizationId,
+        balance: 0,
+        reservedCredits: estimatedCost,
+        updatedAt: Date.now(),
+      })
+      throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
+    }
+
+    const effectiveBalance = balanceDoc.balance - (balanceDoc.reservedCredits ?? 0)
+
+    if (effectiveBalance < estimatedCost) {
+      throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
+    }
+
+    await ctx.db.patch(balanceDoc._id, {
+      reservedCredits: (balanceDoc.reservedCredits ?? 0) + estimatedCost,
+      updatedAt: Date.now(),
+    })
+
+    return estimatedCost
+  },
+})
+
+export const consumeReservation = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    reservedAmount: v.number(),
+    actualCost: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const balanceDoc = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .first()
+    if (!balanceDoc) return
+    await ctx.db.patch(balanceDoc._id, {
+      reservedCredits: Math.max(0, (balanceDoc.reservedCredits ?? 0) - args.reservedAmount),
+      updatedAt: Date.now(),
+    })
+  },
+})
+
+export const releaseReservation = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    reservedAmount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const balanceDoc = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .first()
+    if (!balanceDoc) return
+    await ctx.db.patch(balanceDoc._id, {
+      reservedCredits: Math.max(0, (balanceDoc.reservedCredits ?? 0) - args.reservedAmount),
+      updatedAt: Date.now(),
+    })
   },
 })
 
