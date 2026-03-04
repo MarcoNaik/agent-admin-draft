@@ -84,6 +84,7 @@ apps/                        packages/                   platform/
 | **Auth** | Clerk with Convex integration |
 | **Package Manager** | Bun (not npm) |
 | **Default Model** | `grok-4-1-fast` (provider: `xai`) |
+| **Credit Billing** | Reservation pattern: `reserveCredits` → execute → `consumeCredits`/`releaseCredits` (atomic, no over-spend) |
 
 ### HTTP Endpoints (Convex)
 
@@ -110,7 +111,7 @@ apps/                        packages/                   platform/
 | **Triggers** | triggers, triggerRuns (env-scoped, with schedule/retry) |
 | **RBAC** | roles (env-scoped), policies, scopeRules, fieldMasks, toolPermissions |
 | **Integrations** | integrationConfigs, whatsappConnections, whatsappMessages, providerConfigs, calendarConnections |
-| **Billing** | creditBalances, creditTransactions |
+| **Billing** | creditBalances (`reservedCredits` field for atomic reservation), creditTransactions |
 | **Evals** | evalSuites, evalCases, evalRuns (env-scoped), evalResults |
 
 ### Environment-Aware Indexes
@@ -216,6 +217,7 @@ Core backend with real-time subscriptions and scheduled functions.
 - `lib/integrations/` - Kapso (WhatsApp), Flow integrations
 - `lib/templateEngine.ts` - System prompt template processing
 - `lib/sync/` - CLI sync helpers (entityTypes, roles, agents, triggers)
+- `crons.ts` - Cleanup crons: messages (90 days), executions (90 days), events (180 days)
 
 ### Tool Executor (platform/tool-executor)
 
@@ -251,7 +253,7 @@ LLM-first documentation site at `docs.struere.dev`.
 - **Next.js 14.1.0** with React 18.2, Convex React, Clerk Auth
 - Real-time data via Convex hooks, dark theme, role-based navigation
 - `convex.json` points to `../../platform/convex`
-- `src/hooks/use-convex-data.ts` - All typed Convex hooks (62+)
+- `src/hooks/` - Typed Convex hooks split into 15 domain modules (agents, entities, evals, etc.) with barrel re-export via `index.ts`
 - Context providers: AgentContext, EnvironmentContext, RoleContext
 - Modules: Admin (default), Teacher (`/teacher/*`), Guardian (`/guardian/*`)
 
@@ -261,7 +263,7 @@ Unified SDK and CLI for building AI agents. Organization-centric architecture.
 
 ### SDK Exports
 ```typescript
-import { defineAgent, defineTools, defineConfig, defineEntityType, defineRole, defineTrigger } from 'struere'
+import { defineAgent, defineTools, defineData, defineRole, defineTrigger } from 'struere'
 ```
 
 ### Key Types
@@ -408,6 +410,10 @@ cd apps/docs && bun run dev
 2. **Relation environment filtering** - `entityRelations` indexes lack environment; filtered post-index
 3. **System role index** - `by_org_isSystem` lacks environment field; uses collect + find
 4. **Event payload masking** - Event payloads may contain unmasked historical data
+
+## Schema Typing
+
+- `messages.toolCalls` and `triggers.condition` are fully typed validators (not `v.any()`)
 
 ## Server Management
 
