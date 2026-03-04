@@ -1,6 +1,7 @@
 import { QueryCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
 import { ActorContext, Action, PermissionResult, PermissionError } from "./types"
+import { log } from "../logger"
 
 function logPermissionDenied(
   actor: ActorContext,
@@ -8,15 +9,15 @@ function logPermissionDenied(
   resource: string,
   reason?: string
 ): void {
-  console.warn("Permission denied", {
-    organizationId: actor.organizationId,
+  log.warn(`Permission denied: ${action} on ${resource}`, {
+    ...log.withOrg(actor.organizationId),
     actorId: actor.actorId,
     actorType: actor.actorType,
+    environment: actor.environment,
     roleIds: actor.roleIds,
     action,
     resource,
     reason,
-    timestamp: new Date().toISOString(),
   })
 }
 
