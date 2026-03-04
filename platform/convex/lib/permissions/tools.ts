@@ -103,13 +103,12 @@ async function getSystemRoleIds(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<Id<"roles">[]> {
-  const systemRoles = await ctx.db
+  const systemRole = await ctx.db
     .query("roles")
     .withIndex("by_org_isSystem", (q) =>
-      q.eq("organizationId", organizationId).eq("isSystem", true)
+      q.eq("organizationId", organizationId).eq("isSystem", true).eq("environment", environment)
     )
-    .collect()
-  const systemRole = systemRoles.find((r) => r.environment === environment)
+    .first()
 
   return systemRole ? [systemRole._id] : []
 }
