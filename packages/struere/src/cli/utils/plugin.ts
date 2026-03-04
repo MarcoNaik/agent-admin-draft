@@ -48,11 +48,11 @@ function validateObjectProperties(schema, path) {
   }
 }
 
-function defineEntityType(config) {
-  if (!config.name) throw new Error('Entity type name is required')
-  if (!config.slug) throw new Error('Entity type slug is required')
-  if (!config.schema) throw new Error('Entity type schema is required')
-  if (config.schema.type !== 'object') throw new Error('Entity type schema must be an object type')
+function defineData(config) {
+  if (!config.name) throw new Error('Data type name is required')
+  if (!config.slug) throw new Error('Data type slug is required')
+  if (!config.schema) throw new Error('Data type schema is required')
+  if (config.schema.type !== 'object') throw new Error('Data type schema must be an object type')
   if (config.schema.properties) {
     for (const [key, value] of Object.entries(config.schema.properties)) {
       validateObjectProperties(value, key)
@@ -79,6 +79,15 @@ function defineTrigger(config) {
   for (const action of config.actions) {
     if (!action.tool) throw new Error('Trigger action tool is required')
     if (!action.args || typeof action.args !== 'object') throw new Error('Trigger action args must be an object')
+  }
+  if (config.schedule) {
+    if (config.schedule.delay !== undefined && config.schedule.at !== undefined) throw new Error('Trigger schedule cannot have both "delay" and "at"')
+    if (config.schedule.delay !== undefined && typeof config.schedule.delay !== 'number') throw new Error('Trigger schedule.delay must be a number')
+    if (config.schedule.at !== undefined && typeof config.schedule.at !== 'string') throw new Error('Trigger schedule.at must be a string')
+  }
+  if (config.retry) {
+    if (config.retry.maxAttempts !== undefined && (typeof config.retry.maxAttempts !== 'number' || config.retry.maxAttempts < 1)) throw new Error('Trigger retry.maxAttempts must be a positive number')
+    if (config.retry.backoffMs !== undefined && (typeof config.retry.backoffMs !== 'number' || config.retry.backoffMs < 0)) throw new Error('Trigger retry.backoffMs must be a non-negative number')
   }
   return config
 }
@@ -110,24 +119,7 @@ function defineTools(tools) {
   })
 }
 
-function defineConfig(config) {
-  const defaultConfig = {
-    port: 3000,
-    host: 'localhost',
-    cors: { origins: ['http://localhost:3000'], credentials: true },
-    logging: { level: 'info', format: 'pretty' },
-    auth: { type: 'none' },
-  }
-  return {
-    ...defaultConfig,
-    ...config,
-    cors: config.cors ? { ...defaultConfig.cors, ...config.cors } : defaultConfig.cors,
-    logging: config.logging ? { ...defaultConfig.logging, ...config.logging } : defaultConfig.logging,
-    auth: config.auth ? { ...defaultConfig.auth, ...config.auth } : defaultConfig.auth,
-  }
-}
-
-export { defineAgent, defineRole, defineEntityType, defineTrigger, defineTools, defineConfig }
+export { defineAgent, defineRole, defineData, defineTrigger, defineTools }
 `
 
 export function registerStruerePlugin(): void {
@@ -176,11 +168,6 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
   export interface ToolContext {
     conversationId: string
     userId?: string
-    state: {
-      get<T>(key: string): Promise<T | undefined>
-      set<T>(key: string, value: T): Promise<void>
-      delete(key: string): Promise<void>
-    }
   }
 
   export type ToolHandler = (params: Record<string, unknown>, context: ToolContext) => Promise<unknown>
@@ -209,6 +196,12 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
     model?: ModelConfig
     tools?: string[]
     firstMessageSuggestions?: string[]
+    threadContextParams?: Array<{
+      name: string
+      type: 'string' | 'number' | 'boolean'
+      required?: boolean
+      description?: string
+    }>
   }
 
   export interface JSONSchemaProperty {
@@ -245,13 +238,12 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
     resource: string
     actions: string[]
     effect: 'allow' | 'deny'
-    priority?: number
   }
 
   export interface ScopeRuleConfig {
     entityType: string
     field: string
-    operator: 'eq' | 'ne' | 'in' | 'contains'
+    operator: 'eq' | 'neq' | 'in' | 'contains'
     value: string
   }
 
@@ -286,31 +278,23 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
       condition?: Record<string, unknown>
     }
     actions: TriggerAction[]
-  }
-
-  export interface FrameworkConfig {
-    port?: number
-    host?: string
-    cors?: {
-      origins: string[]
-      credentials?: boolean
+    schedule?: {
+      delay?: number
+      at?: string
+      offset?: number
+      cancelPrevious?: boolean
     }
-    logging?: {
-      level: 'debug' | 'info' | 'warn' | 'error'
-      format?: 'json' | 'pretty'
-    }
-    auth?: {
-      type: 'none' | 'api-key' | 'jwt' | 'custom'
-      validate?: (token: string) => Promise<boolean>
+    retry?: {
+      maxAttempts?: number
+      backoffMs?: number
     }
   }
 
   export function defineAgent(config: AgentConfig): AgentConfig
   export function defineRole(config: RoleConfig): RoleConfig
-  export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig
+  export function defineData(config: EntityTypeConfig): EntityTypeConfig
   export function defineTrigger(config: TriggerConfig): TriggerConfig
   export function defineTools(tools: ToolDefinition[]): ToolReference[]
-  export function defineConfig(config?: Partial<FrameworkConfig>): FrameworkConfig
 }
 `
 
