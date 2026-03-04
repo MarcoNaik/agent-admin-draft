@@ -142,6 +142,28 @@ export async function requireOrgAccess(
   return auth
 }
 
+export async function isOrgAdmin(
+  ctx: QueryCtx | MutationCtx,
+  auth: { userId: Id<"users">; organizationId: Id<"organizations"> }
+): Promise<boolean> {
+  const membership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user_org", (q) =>
+      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
+    )
+    .first()
+  return membership?.role === "admin"
+}
+
+export async function requireOrgAdmin(
+  ctx: QueryCtx | MutationCtx,
+  auth: { userId: Id<"users">; organizationId: Id<"organizations"> }
+): Promise<void> {
+  if (!(await isOrgAdmin(ctx, auth))) {
+    throw new Error("Admin access required")
+  }
+}
+
 export async function getAuthContextForOrg(
   ctx: QueryCtx | MutationCtx,
   requestedOrgId?: string
