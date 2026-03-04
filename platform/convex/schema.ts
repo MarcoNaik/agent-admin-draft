@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
+import { rateLimitTables } from "convex-helpers/server/rateLimit"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -101,7 +102,11 @@ export default defineSchema({
       v.literal("tool")
     ),
     content: v.string(),
-    toolCalls: v.optional(v.array(v.any())),
+    toolCalls: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      arguments: v.any(),
+    }))),
     toolCallId: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_thread", ["threadId"]),
@@ -156,8 +161,8 @@ export default defineSchema({
     metadata: v.optional(v.any()),
     createdAt: v.number(),
   })
-    .index("by_from", ["fromEntityId", "relationType"])
-    .index("by_to", ["toEntityId", "relationType"]),
+    .index("by_from", ["fromEntityId", "relationType", "environment"])
+    .index("by_to", ["toEntityId", "relationType", "environment"]),
 
   events: defineTable({
     organizationId: v.id("organizations"),
@@ -225,7 +230,7 @@ export default defineSchema({
     .index("by_org_name", ["organizationId", "name"])
     .index("by_org_env", ["organizationId", "environment"])
     .index("by_org_env_name", ["organizationId", "environment", "name"])
-    .index("by_org_isSystem", ["organizationId", "isSystem"]),
+    .index("by_org_isSystem", ["organizationId", "isSystem", "environment"]),
 
   policies: defineTable({
     organizationId: v.id("organizations"),
@@ -441,7 +446,11 @@ export default defineSchema({
     description: v.optional(v.string()),
     entityType: v.string(),
     action: v.string(),
-    condition: v.optional(v.any()),
+    condition: v.optional(v.object({
+      field: v.string(),
+      operator: v.string(),
+      value: v.any(),
+    })),
     actions: v.array(v.object({
       tool: v.string(),
       args: v.any(),
@@ -605,6 +614,7 @@ export default defineSchema({
   creditBalances: defineTable({
     organizationId: v.id("organizations"),
     balance: v.number(),
+    reservedCredits: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"]),
@@ -739,4 +749,6 @@ export default defineSchema({
   })
     .index("by_run", ["runId"])
     .index("by_run_case", ["runId", "caseId"]),
+
+  ...rateLimitTables,
 })
