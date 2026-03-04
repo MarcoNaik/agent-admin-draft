@@ -67,23 +67,23 @@ export const getStats = query({
     const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
 
+    const since = args.since ?? (Date.now() - 30 * 24 * 60 * 60 * 1000)
+
     let executions
 
     if (args.agentId) {
       executions = await ctx.db
         .query("executions")
         .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
-        .collect()
+        .take(5000)
     } else {
       executions = await ctx.db
         .query("executions")
         .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
-        .collect()
+        .take(5000)
     }
 
-    if (args.since) {
-      executions = executions.filter((e) => e.createdAt >= args.since!)
-    }
+    executions = executions.filter((e) => e.createdAt >= since)
 
     const total = executions.length
     const successful = executions.filter((e) => e.status === "success").length
@@ -124,14 +124,14 @@ export const getUsageByAgent = query({
     const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
 
+    const since = args.since ?? (Date.now() - 30 * 24 * 60 * 60 * 1000)
+
     let executions = await ctx.db
       .query("executions")
       .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
-      .collect()
+      .take(5000)
 
-    if (args.since) {
-      executions = executions.filter((e) => e.createdAt >= args.since!)
-    }
+    executions = executions.filter((e) => e.createdAt >= since)
 
     const byAgent = new Map<
       string,
@@ -181,14 +181,14 @@ export const getUsageByModel = query({
     const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
 
+    const since = args.since ?? (Date.now() - 30 * 24 * 60 * 60 * 1000)
+
     let executions = await ctx.db
       .query("executions")
       .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
-      .collect()
+      .take(5000)
 
-    if (args.since) {
-      executions = executions.filter((e) => e.createdAt >= args.since!)
-    }
+    executions = executions.filter((e) => e.createdAt >= since)
 
     const byModel = new Map<
       string,
