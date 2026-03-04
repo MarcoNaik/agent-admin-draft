@@ -52,9 +52,8 @@ async function resolveRelatedEntityIds(
   const relations = await ctx.db
     .query("entityRelations")
     .withIndex("by_from", (q) =>
-      q.eq("fromEntityId", actorEntityId).eq("relationType", relationType)
+      q.eq("fromEntityId", actorEntityId).eq("relationType", relationType).eq("environment", actor.environment)
     )
-    .filter((q) => q.eq(q.field("environment"), actor.environment))
     .collect()
 
   return relations.map((r) => r.toEntityId)
