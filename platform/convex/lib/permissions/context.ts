@@ -1,6 +1,7 @@
 import { QueryCtx, MutationCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
 import { ActorContext, ActorType, Environment } from "./types"
+import { isOrgAdmin as checkIsOrgAdmin } from "../auth"
 
 export async function buildActorContext(
   ctx: QueryCtx | MutationCtx,
@@ -14,19 +15,13 @@ export async function buildActorContext(
   const { organizationId, actorType, actorId, environment } = options
 
   let roleIds: Id<"roles">[] = []
-  let isOrgAdmin = false
+  let adminFlag = false
 
   if (actorType === "user") {
-    const membership = await ctx.db
-      .query("userOrganizations")
-      .withIndex("by_user_org", (q) =>
-        q.eq("userId", actorId as Id<"users">).eq("organizationId", organizationId)
-      )
-      .first()
-
-    if (membership && membership.role === "admin") {
-      isOrgAdmin = true
-    }
+    adminFlag = await checkIsOrgAdmin(ctx, {
+      userId: actorId as Id<"users">,
+      organizationId,
+    })
 
     const userRoles = await ctx.db
       .query("userRoles")
@@ -48,14 +43,13 @@ export async function buildActorContext(
     }
     roleIds = validRoleIds
   } else if (actorType === "system") {
-    isOrgAdmin = true
-    const systemRoles = await ctx.db
+    adminFlag = true
+    const systemRole = await ctx.db
       .query("roles")
       .withIndex("by_org_isSystem", (q) =>
-        q.eq("organizationId", organizationId).eq("isSystem", true)
+        q.eq("organizationId", organizationId).eq("isSystem", true).eq("environment", environment)
       )
-      .collect()
-    const systemRole = systemRoles.find((r) => r.environment === environment)
+      .first()
 
     if (systemRole) {
       roleIds = [systemRole._id]
@@ -67,7 +61,7 @@ export async function buildActorContext(
     actorType,
     actorId,
     roleIds,
-    isOrgAdmin,
+    isOrgAdmin: adminFlag,
     environment,
   }
 }
