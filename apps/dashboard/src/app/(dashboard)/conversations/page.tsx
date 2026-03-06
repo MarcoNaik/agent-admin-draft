@@ -44,6 +44,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { EmptyState } from "@/components/empty-state"
+import { useRouter } from "next/navigation"
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
 
@@ -1128,6 +1130,7 @@ function ThreadView({
 }
 
 export default function ChatPage() {
+  const router = useRouter()
   const [agentFilter, setAgentFilter] = useState<string>("all")
   const [connectionFilter, setConnectionFilter] = useState<string>("all")
   const [showEvals, setShowEvals] = useState(false)
@@ -1215,9 +1218,16 @@ export default function ChatPage() {
 
         <div className="flex-1 overflow-y-auto">
           {visibleThreads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <MessageSquare className="h-10 w-10 text-content-tertiary mb-3" />
-              <p className="text-sm text-content-secondary">No conversations found</p>
+            <div className="flex items-center justify-center h-full p-4">
+              <EmptyState
+                icon={MessageSquare}
+                title="No conversations yet"
+                description="Start a conversation by chatting with one of your agents."
+                action={{
+                  label: "Chat with an agent",
+                  onClick: () => router.push("/"),
+                }}
+              />
             </div>
           ) : (
             <ul>
