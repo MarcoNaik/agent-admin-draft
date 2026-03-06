@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import {
   Bot,
   MessageSquare,
@@ -11,17 +11,16 @@ import {
   Zap,
   Loader2,
   ChevronRight,
+  Calendar,
+  Sparkles,
 } from "lucide-react"
+import { toast } from "sonner"
 import { useAgents, useEntityTypes, useRoles, useThreads, useTriggers } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
-import { useCurrentRole } from "@/hooks/use-current-role"
+import { useStudio } from "@/contexts/studio-context"
+import { AGENT_TEMPLATES } from "@/lib/agent-templates"
 import { Doc } from "@convex/_generated/dataModel"
-
-const roleDefaultRoutes: Record<string, string> = {
-  teacher: "/teacher/sessions",
-  guardian: "/guardian/sessions",
-  member: "/conversations",
-}
+import { OnboardingChecklist } from "@/components/onboarding-checklist"
 
 function StatCard({
   label,
@@ -76,11 +75,23 @@ function AgentRow({ agent }: { agent: Doc<"agents"> }) {
 
 function HomeContent() {
   const { environment } = useEnvironment()
+  const { openStudio } = useStudio()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const agents = useAgents()
   const entityTypes = useEntityTypes(environment)
   const roles = useRoles(environment)
   const threads = useThreads(undefined, environment)
   const triggers = useTriggers(environment)
+
+  useEffect(() => {
+    if (searchParams.get("onboarding") === "true") {
+      toast.success("Welcome! Free credits added to get you started — try building an agent with Studio")
+      const url = new URL(window.location.href)
+      url.searchParams.delete("onboarding")
+      router.replace(url.pathname + url.search, { scroll: false })
+    }
+  }, [searchParams, router])
 
   if (agents === undefined) {
     return (
@@ -92,13 +103,46 @@ function HomeContent() {
 
   return (
     <div className="mx-auto w-full max-w-2xl p-6 space-y-8">
+      <OnboardingChecklist />
       <section className="space-y-2">
         <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Agents</h2>
         <div className="space-y-1.5">
           {agents.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border/30 py-8 text-center">
-              <Bot className="h-5 w-5 mx-auto text-content-tertiary mb-2" />
-              <p className="text-sm text-content-tertiary">No agents yet</p>
+            <div className="space-y-4">
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-medium text-content-primary">Build your first agent</h3>
+                <p className="text-sm text-content-secondary">Choose a template to get started, or describe what you want to build.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {AGENT_TEMPLATES.map((template) => {
+                  const IconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+                    MessageSquare,
+                    Calendar,
+                    Zap,
+                    Sparkles,
+                  }
+                  const Icon = IconMap[template.icon] || Bot
+                  return (
+                    <button
+                      key={template.id}
+                      onClick={() => {
+                        if (template.prompt) {
+                          router.push(`/?studio=${encodeURIComponent(template.prompt)}`)
+                        } else {
+                          openStudio()
+                        }
+                      }}
+                      className="flex flex-col items-start gap-2 rounded-lg border border-border/30 bg-background-secondary/50 p-4 text-left hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
+                    >
+                      <Icon className="h-5 w-5 text-content-tertiary" />
+                      <div>
+                        <p className="text-sm font-medium text-content-primary">{template.title}</p>
+                        <p className="text-xs text-content-tertiary mt-0.5">{template.description}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           ) : (
             agents.map((agent: Doc<"agents">) => (
@@ -122,24 +166,5 @@ function HomeContent() {
 }
 
 export default function DashboardHomePage() {
-  const router = useRouter()
-  const { role, isLoading } = useCurrentRole()
-
-  useEffect(() => {
-    if (isLoading) return
-    const redirect = roleDefaultRoutes[role]
-    if (redirect) {
-      router.replace(redirect)
-    }
-  }, [role, isLoading, router])
-
-  if (isLoading || roleDefaultRoutes[role]) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
-      </div>
-    )
-  }
-
   return <HomeContent />
 }
