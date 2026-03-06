@@ -6,6 +6,7 @@ import { useOrganizationList, useUser } from "@clerk/nextjs"
 import { Loader2, MessageSquare, Zap, Database, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useEnsureOrganization } from "@/hooks/use-organizations"
 
 const categories = [
   {
@@ -46,6 +47,7 @@ export default function CreateOrganizationPage() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useUser()
   const { createOrganization, setActive } = useOrganizationList()
+  const ensureOrganization = useEnsureOrganization()
 
   const handleContinue = () => {
     if (!name.trim()) return
@@ -74,6 +76,11 @@ export default function CreateOrganizationPage() {
         }
       } catch {}
       await setActive?.({ organization: org.id })
+      await ensureOrganization({
+        clerkOrgId: org.id,
+        name: org.name,
+        slug: org.slug ?? name.trim().toLowerCase().replace(/\s+/g, "-"),
+      })
       window.location.href = `/?studio=${encodeURIComponent(description)}&onboarding=true`
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create organization")
