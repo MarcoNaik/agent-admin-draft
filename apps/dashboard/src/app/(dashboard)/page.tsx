@@ -86,6 +86,7 @@ function HomeContent() {
 
   useEffect(() => {
     if (searchParams.get("onboarding") === "true") {
+      localStorage.removeItem("struere:checklist-dismissed")
       toast.success("Welcome! Free credits added to get you started — try building an agent with Studio")
       const url = new URL(window.location.href)
       url.searchParams.delete("onboarding")
