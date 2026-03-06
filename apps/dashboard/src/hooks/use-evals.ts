@@ -8,8 +8,8 @@ export function useEvalStats() {
   return useQuery(api.evals.getEvalStats, { environment: "eval" })
 }
 
-export function useEvalSuites(agentId: Id<"agents">) {
-  return useQuery(api.evals.listSuites, { agentId, environment: "eval" })
+export function useEvalSuites(agentId: Id<"agents"> | undefined) {
+  return useQuery(api.evals.listSuites, agentId ? { agentId, environment: "eval" } : "skip")
 }
 
 export function useEvalSuite(id: Id<"evalSuites"> | undefined) {
