@@ -422,3 +422,35 @@ export const addCreditsFromPolar = internalMutation({
     }
   },
 })
+
+export const seedWelcomeCredits = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .filter((q) => q.eq(q.field("description"), "Welcome credits"))
+      .first()
+
+    if (existing) return
+
+    const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
+    const newBalance = balanceDoc.balance + 250_000
+
+    await ctx.db.patch(balanceDoc._id, {
+      balance: newBalance,
+      updatedAt: Date.now(),
+    })
+
+    await ctx.db.insert("creditTransactions", {
+      organizationId: args.organizationId,
+      type: "addition",
+      amount: 250_000,
+      balanceAfter: newBalance,
+      description: "Welcome credits",
+      createdAt: Date.now(),
+    })
+  },
+})
