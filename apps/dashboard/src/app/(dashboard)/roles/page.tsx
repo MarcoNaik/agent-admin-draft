@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Doc, Id } from "@convex/_generated/dataModel"
+import { EmptyState } from "@/components/empty-state"
 
 type ScopeRule = Doc<"scopeRules">
 type FieldMask = Doc<"fieldMasks">
@@ -1080,17 +1081,15 @@ function RolesPageContent() {
       )}
 
       {roles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/30 py-20">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-background-secondary mb-4">
-            <Shield className="h-6 w-6 text-content-tertiary" />
-          </div>
-          <p className="text-sm font-medium text-content-secondary">
-            No roles defined
-          </p>
-          <p className="text-xs text-content-tertiary mt-1.5 max-w-[240px] text-center">
-            Define roles in your project using the CLI to manage access control
-          </p>
-        </div>
+        <EmptyState
+          icon={Shield}
+          title="No roles defined"
+          description="Define roles in your project using the CLI to manage access control."
+          action={{
+            label: "Read the docs",
+            onClick: () => window.open("https://docs.struere.dev/roles", "_blank"),
+          }}
+        />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-sm text-content-tertiary">

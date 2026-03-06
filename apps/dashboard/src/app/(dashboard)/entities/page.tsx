@@ -3,12 +3,29 @@
 import { Database, ArrowRight } from "lucide-react"
 import { useEntityTypes } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
-import { Doc } from "@convex/_generated/dataModel"
+import { EmptyState } from "@/components/empty-state"
 
 export default function EntitiesPage() {
   const { environment } = useEnvironment()
   const entityTypes = useEntityTypes(environment)
-  const totalTypes = entityTypes?.length ?? 0
+
+  if (entityTypes === undefined) return null
+
+  if (entityTypes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <EmptyState
+          icon={Database}
+          title="No data types yet"
+          description="Define data types in your project to store and manage structured data."
+          action={{
+            label: "Read the docs",
+            onClick: () => window.open("https://docs.struere.dev/data-types", "_blank"),
+          }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
@@ -19,16 +36,12 @@ export default function EntitiesPage() {
         Data Browser
       </h2>
       <p className="text-content-secondary max-w-md mb-6">
-        {totalTypes > 0
-          ? `Select a data type from the sidebar to view and manage its instances. You have ${totalTypes} data type${totalTypes !== 1 ? "s" : ""} configured.`
-          : "No data types configured yet. Install a pack or create custom data types to get started."}
+        {`Select a data type from the sidebar to view and manage its instances. You have ${entityTypes.length} data type${entityTypes.length !== 1 ? "s" : ""} configured.`}
       </p>
-      {totalTypes > 0 && (
-        <div className="flex items-center gap-1 text-sm text-primary">
-          <ArrowRight className="h-4 w-4" />
-          <span>Select a data type from the sidebar</span>
-        </div>
-      )}
+      <div className="flex items-center gap-1 text-sm text-primary">
+        <ArrowRight className="h-4 w-4" />
+        <span>Select a data type from the sidebar</span>
+      </div>
     </div>
   )
 }

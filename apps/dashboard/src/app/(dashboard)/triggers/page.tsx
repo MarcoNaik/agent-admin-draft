@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select"
 import { cn, formatDate } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"
+import { EmptyState } from "@/components/empty-state"
 
 type Trigger = {
   _id: Id<"triggers">
@@ -961,17 +962,15 @@ function TriggersListContent({
       )}
 
       {triggers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/30 py-20">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-background-secondary mb-4">
-            <Zap className="h-6 w-6 text-content-tertiary" />
-          </div>
-          <p className="text-sm font-medium text-content-secondary">
-            No automations defined
-          </p>
-          <p className="text-xs text-content-tertiary mt-1.5 max-w-[280px] text-center">
-            Define automations in your project using the CLI to run actions when data changes
-          </p>
-        </div>
+        <EmptyState
+          icon={Zap}
+          title="No automations defined"
+          description="Define automations in your project using the CLI to run actions when data changes."
+          action={{
+            label: "Read the docs",
+            onClick: () => window.open("https://docs.struere.dev/triggers", "_blank"),
+          }}
+        />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-sm text-content-tertiary">
