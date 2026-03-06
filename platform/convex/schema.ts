@@ -446,11 +446,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     entityType: v.string(),
     action: v.string(),
-    condition: v.optional(v.object({
-      field: v.string(),
-      operator: v.string(),
-      value: v.any(),
-    })),
+    condition: v.optional(v.any()),
     actions: v.array(v.object({
       tool: v.string(),
       args: v.any(),
