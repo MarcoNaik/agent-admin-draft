@@ -209,11 +209,11 @@ export default function AgentConfigPage({ params }: AgentConfigPageProps) {
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-content-secondary">Provider</span>
-              <span className="font-mono text-content-primary">{config.model?.provider || "anthropic"}</span>
+              <span className="font-mono text-content-primary">{config.model?.provider || "xai"}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-content-secondary">Model</span>
-              <span className="font-mono text-content-primary">{config.model?.name || "claude-sonnet-4-20250514"}</span>
+              <span className="font-mono text-content-primary">{config.model?.name || "grok-4-1-fast"}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-content-secondary">Temperature</span>

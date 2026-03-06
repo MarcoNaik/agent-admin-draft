@@ -53,14 +53,13 @@ The `struere.json` file stores organization metadata:
 
 ## SDK Exports
 
-The SDK exports six definition functions, each responsible for a specific resource type:
+The SDK exports five definition functions, each responsible for a specific resource type:
 
 ```typescript
 import {
   defineAgent,
   defineTools,
-  defineConfig,
-  defineEntityType,
+  defineData,
   defineRole,
   defineTrigger
 } from 'struere'
@@ -69,11 +68,10 @@ import {
 | Function | Purpose | File Location |
 |----------|---------|---------------|
 | `defineAgent` | Create and configure AI agent definitions | `agents/*.ts` |
-| `defineEntityType` | Define data type schemas | `entity-types/*.ts` |
+| `defineData` | Define data type schemas | `entity-types/*.ts` |
 | `defineRole` | Create roles with policies, scope rules, and field masks | `roles/*.ts` |
 | `defineTrigger` | Define automation rules | `triggers/*.ts` |
 | `defineTools` | Create custom tool handlers | `tools/index.ts` |
-| `defineConfig` | Create framework configuration with defaults | Project root |
 
 Each definition file exports a default using its corresponding function:
 
@@ -111,7 +109,6 @@ import type {
   ParameterDefinition,
   ToolHandler,
   ToolContext,
-  FrameworkConfig,
   StruereProject,
   SyncPayload,
   SyncState,
@@ -122,7 +119,7 @@ import type {
 
 Struere uses a single-project approach where one repository defines the entire organization's AI infrastructure:
 
-- **Agents** share entity types, roles, and tools across the organization
+- **Agents** share data types, roles, and tools across the organization
 - **Data types** define the domain schema once and are available to all agents
 - **Roles** enforce access control consistently across all agents and API access
 - **Automations** automate workflows that fire from any mutation source (dashboard, agents, or API)
@@ -143,4 +140,4 @@ During development, all resources are synced as a single payload:
 }
 ```
 
-Resources are upserted by their `slug` (agents, entity types, triggers) or `name` (roles), so renaming a slug creates a new resource rather than updating the existing one.
+Resources are upserted by their `slug` (agents, data types, triggers) or `name` (roles), so renaming a slug creates a new resource rather than updating the existing one.

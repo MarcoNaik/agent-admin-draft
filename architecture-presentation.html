@@ -475,7 +475,7 @@
         <div class="grid-4 mt-4 reveal">
             <div><span class="mono muted small">STACK</span><br><strong>Convex + Next.js</strong></div>
             <div><span class="mono muted small">AUTH</span><br><strong>Clerk RBAC</strong></div>
-            <div><span class="mono muted small">RUNTIME</span><br><strong>CF Workers</strong></div>
+            <div><span class="mono muted small">RUNTIME</span><br><strong>Hono/Fly.io</strong></div>
             <div><span class="mono muted small">ENVS</span><br><strong>Dev / Prod</strong></div>
         </div>
     </div>
@@ -538,7 +538,7 @@
                 <div class="card-title">Backend Services</div>
                 <ul class="list-clean mt-1">
                     <li><strong>convex</strong> &mdash; Backend functions</li>
-                    <li><strong>tool-executor</strong> &mdash; CF Worker</li>
+                    <li><strong>tool-executor</strong> &mdash; Hono/Fly.io</li>
                 </ul>
             </div>
         </div>
@@ -562,7 +562,7 @@
                     <tr><td>Backend</td><td>Convex</td><td>Real-time subscriptions, scheduled functions, built-in DB</td></tr>
                     <tr><td>Frontend</td><td>Next.js 14</td><td>App Router, React Server Components, TypeScript</td></tr>
                     <tr><td>Auth</td><td>Clerk</td><td>Org management, JWT integration with Convex</td></tr>
-                    <tr><td>Sandboxed Exec</td><td>Cloudflare Workers</td><td>Isolated custom tool execution with domain allowlist</td></tr>
+                    <tr><td>Sandboxed Exec</td><td>Hono Node.js on Fly.io</td><td>Isolated custom tool execution with domain allowlist</td></tr>
                     <tr><td>LLM</td><td>Anthropic API</td><td>Direct API calls from Convex actions</td></tr>
                     <tr><td>Package Manager</td><td>Bun</td><td>Speed, workspace support</td></tr>
                 </tbody>
@@ -822,7 +822,7 @@
             </div>
         </div>
         <div class="card mt-3 reveal">
-            <div class="card-desc">The LLM loop runs up to <strong>10 iterations</strong>. Each tool call is permission-checked. Built-in tools run as Convex mutations. Custom tools execute on the Cloudflare Worker with sandboxed fetch.</div>
+            <div class="card-desc">The LLM loop runs up to <strong>10 iterations</strong>. Each tool call is permission-checked. Built-in tools run as Convex mutations. Custom tools execute on the Hono server (Fly.io) with sandboxed fetch.</div>
         </div>
     </div>
 </section>
@@ -1105,7 +1105,7 @@
                     <tr><td>Field Masks</td><td>Allowlist strategy (fail-safe, new fields hidden)</td></tr>
                     <tr><td>Policy Eval</td><td>Deny overrides allow (deny-safe model)</td></tr>
                     <tr><td>Tool Identity</td><td>Configurable: inherit, system, configured</td></tr>
-                    <tr><td>Custom Tools</td><td>Handler code in Convex, executed on CF Worker</td></tr>
+                    <tr><td>Custom Tools</td><td>Handler code in Convex, executed on Fly.io</td></tr>
                     <tr><td>Real-time</td><td>Native Convex subscriptions (no polling)</td></tr>
                     <tr><td>CLI Sync</td><td>struere dev watches files, syncs to Convex</td></tr>
                 </tbody>

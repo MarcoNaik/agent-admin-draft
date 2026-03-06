@@ -29,7 +29,7 @@ const cards = [
   {
     title: "Platform Concepts",
     description: "Data, agents, automations, events, permissions, and evals.",
-    href: "/platform/entities",
+    href: "/platform/data",
     icon: BookOpen,
   },
   {

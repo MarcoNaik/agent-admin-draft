@@ -1,7 +1,10 @@
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "../_generated/dataModel"
+
+const resolveTargetUserRef = makeFunctionReference<"query">("calendar:resolveTargetUser")
+const updateLastUsedRef = makeFunctionReference<"mutation">("calendar:updateLastUsed")
 import {
   getGoogleAccessToken,
   listCalendarEvents,
@@ -25,7 +28,7 @@ export const calendarList = internalAction({
     maxResults: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const target = await ctx.runQuery(internal.calendar.resolveTargetUser, {
+    const target = await ctx.runQuery(resolveTargetUserRef, {
       userId: args.userId,
       organizationId: args.organizationId,
       environment: args.environment,
@@ -40,7 +43,7 @@ export const calendarList = internalAction({
       args.maxResults
     )
 
-    await ctx.runMutation(internal.calendar.updateLastUsed, {
+    await ctx.runMutation(updateLastUsedRef, {
       connectionId: target.connectionId,
     })
 
@@ -84,7 +87,7 @@ export const calendarCreate = internalAction({
       throw new Error("Either endTime or durationMinutes is required")
     }
 
-    const target = await ctx.runQuery(internal.calendar.resolveTargetUser, {
+    const target = await ctx.runQuery(resolveTargetUserRef, {
       userId: args.userId,
       organizationId: args.organizationId,
       environment: args.environment,
@@ -102,7 +105,7 @@ export const calendarCreate = internalAction({
 
     const result = await createCalendarEvent(token, target.calendarId, event)
 
-    await ctx.runMutation(internal.calendar.updateLastUsed, {
+    await ctx.runMutation(updateLastUsedRef, {
       connectionId: target.connectionId,
     })
 
@@ -132,7 +135,7 @@ export const calendarUpdate = internalAction({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const target = await ctx.runQuery(internal.calendar.resolveTargetUser, {
+    const target = await ctx.runQuery(resolveTargetUserRef, {
       userId: args.userId,
       organizationId: args.organizationId,
       environment: args.environment,
@@ -150,7 +153,7 @@ export const calendarUpdate = internalAction({
 
     const result = await updateCalendarEvent(token, target.calendarId, args.eventId, updates as any)
 
-    await ctx.runMutation(internal.calendar.updateLastUsed, {
+    await ctx.runMutation(updateLastUsedRef, {
       connectionId: target.connectionId,
     })
 
@@ -175,7 +178,7 @@ export const calendarDelete = internalAction({
     eventId: v.string(),
   },
   handler: async (ctx, args) => {
-    const target = await ctx.runQuery(internal.calendar.resolveTargetUser, {
+    const target = await ctx.runQuery(resolveTargetUserRef, {
       userId: args.userId,
       organizationId: args.organizationId,
       environment: args.environment,
@@ -184,7 +187,7 @@ export const calendarDelete = internalAction({
     const token = await getGoogleAccessToken(target.clerkUserId)
     await deleteCalendarEvent(token, target.calendarId, args.eventId)
 
-    await ctx.runMutation(internal.calendar.updateLastUsed, {
+    await ctx.runMutation(updateLastUsedRef, {
       connectionId: target.connectionId,
     })
 
@@ -203,7 +206,7 @@ export const calendarFreeBusy = internalAction({
     timeMax: v.string(),
   },
   handler: async (ctx, args) => {
-    const target = await ctx.runQuery(internal.calendar.resolveTargetUser, {
+    const target = await ctx.runQuery(resolveTargetUserRef, {
       userId: args.userId,
       organizationId: args.organizationId,
       environment: args.environment,
@@ -212,7 +215,7 @@ export const calendarFreeBusy = internalAction({
     const token = await getGoogleAccessToken(target.clerkUserId)
     const result = await getFreeBusy(token, target.calendarId, args.timeMin, args.timeMax)
 
-    await ctx.runMutation(internal.calendar.updateLastUsed, {
+    await ctx.runMutation(updateLastUsedRef, {
       connectionId: target.connectionId,
     })
 

@@ -579,11 +579,9 @@ export const entityLink = internalMutation({
         q
           .eq("fromEntityId", args.fromId as Id<"entities">)
           .eq("relationType", args.relationType)
+          .eq("environment", args.environment)
       )
-      .filter((q) => q.and(
-        q.eq(q.field("toEntityId"), args.toId),
-        q.eq(q.field("environment"), args.environment)
-      ))
+      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
       .first()
 
     if (existing) {
@@ -671,11 +669,9 @@ export const entityUnlink = internalMutation({
         q
           .eq("fromEntityId", args.fromId as Id<"entities">)
           .eq("relationType", args.relationType)
+          .eq("environment", args.environment)
       )
-      .filter((q) => q.and(
-        q.eq(q.field("toEntityId"), args.toId),
-        q.eq(q.field("environment"), args.environment)
-      ))
+      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
       .first()
 
     if (!relation || relation.organizationId !== args.organizationId) {

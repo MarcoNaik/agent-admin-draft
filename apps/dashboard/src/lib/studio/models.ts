@@ -53,4 +53,4 @@ export const STUDIO_PROVIDERS: Record<StudioProvider, StudioProviderConfig> = {
 }
 
 export const DEFAULT_PROVIDER: StudioProvider = "xai"
-export const DEFAULT_MODEL = "grok-code-fast-1"
+export const DEFAULT_MODEL = "grok-4-1-fast"

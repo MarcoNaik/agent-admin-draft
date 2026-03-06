@@ -1,6 +1,5 @@
 import { loadCredentials, getApiKey } from './credentials'
-
-const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
+import { CONVEX_URL } from './config'
 
 type Environment = 'development' | 'production'
 

@@ -63,7 +63,7 @@ This document captures the current state of the Struere platform after implement
 │                                        │                                    │
 │                                        ▼                                    │
 │                         ┌─────────────────────────────────────────────────┐ │
-│                         │           CLOUDFLARE WORKER                      │ │
+│                         │           HONO NODE.JS SERVER                    │ │
 │                         │           (tool-executor)                        │ │
 │                         │  • Custom tool execution                         │ │
 │                         │  • Sandboxed fetch                               │ │

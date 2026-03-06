@@ -135,27 +135,9 @@ declare module 'struere' {
     actions: TriggerAction[]
   }
 
-  export interface FrameworkConfig {
-    port?: number
-    host?: string
-    cors?: {
-      origins: string[]
-      credentials?: boolean
-    }
-    logging?: {
-      level: 'debug' | 'info' | 'warn' | 'error'
-      format?: 'json' | 'pretty'
-    }
-    auth?: {
-      type: 'none' | 'api-key' | 'jwt' | 'custom'
-      validate?: (token: string) => Promise<boolean>
-    }
-  }
-
   export function defineAgent(config: AgentConfig): AgentConfig
   export function defineRole(config: RoleConfig): RoleConfig
-  export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig
+  export function defineData(config: EntityTypeConfig): EntityTypeConfig
   export function defineTrigger(config: TriggerConfig): TriggerConfig
   export function defineTools(tools: ToolDefinition[]): ToolReference[]
-  export function defineConfig(config?: Partial<FrameworkConfig>): FrameworkConfig
 }

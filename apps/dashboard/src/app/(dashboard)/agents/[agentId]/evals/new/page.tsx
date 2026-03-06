@@ -23,6 +23,13 @@ interface NewSuitePageProps {
 }
 
 const modelOptions: Record<string, { label: string; models: { value: string; label: string }[] }> = {
+  xai: {
+    label: "xAI",
+    models: [
+      { value: "grok-4-1-fast", label: "grok-4-1-fast" },
+      { value: "grok-4-1-fast-reasoning", label: "grok-4-1-fast-reasoning" },
+    ],
+  },
   anthropic: {
     label: "Anthropic",
     models: [
@@ -57,8 +64,8 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
   const [slugManual, setSlugManual] = useState(false)
   const [description, setDescription] = useState("")
   const [tags, setTags] = useState("")
-  const [judgeProvider, setJudgeProvider] = useState("anthropic")
-  const [judgeModel, setJudgeModel] = useState("claude-haiku-4-5-20251001")
+  const [judgeProvider, setJudgeProvider] = useState("xai")
+  const [judgeModel, setJudgeModel] = useState("grok-4-1-fast")
   const [customModel, setCustomModel] = useState(false)
   const [judgeContext, setJudgeContext] = useState("")
   const [judgePrompt, setJudgePrompt] = useState("")
@@ -233,12 +240,12 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
           <textarea
             value={judgeContext}
             onChange={(e) => setJudgeContext(e.target.value)}
-            placeholder={"{{format_teacher_schedule({})}}\n{{entity.query({\"type\": \"student\"})}}"}
+            placeholder={"{{entity.query({\"type\": \"example\"})}}"}
             rows={5}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
           <p className="text-xs text-content-tertiary">
-            Reference data for the judge. Supports template variables: {"{{entity.query(...)}}"}, {"{{format_teacher_schedule({})}}"}, {"{{entityTypes}}"}, etc.
+            Reference data for the judge. Supports template variables: {"{{entity.query(...)}}"}, {"{{entityTypes}}"}, etc.
           </p>
         </div>
 

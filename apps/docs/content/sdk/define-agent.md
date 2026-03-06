@@ -18,8 +18,8 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You are a scheduling assistant for {{organizationName}}.",
   model: {
-    provider: "anthropic",
-    name: "claude-sonnet-4",
+    provider: "xai",
+    name: "grok-4-1-fast",
   },
   tools: [
     "entity.create",
@@ -51,11 +51,11 @@ export default defineAgent({
 
 ## Model Configuration
 
-The `model` field configures which LLM provider and model the agent uses. If omitted, defaults to `anthropic/claude-sonnet-4` with temperature `0.7` and maxTokens `4096`.
+The `model` field configures which LLM provider and model the agent uses. If omitted, defaults to `xai/grok-4-1-fast` with temperature `0.7` and maxTokens `4096`.
 
 ```typescript
 interface ModelConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'custom'
+  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
   name: string
   temperature?: number
   maxTokens?: number
@@ -70,8 +70,8 @@ export default defineAgent({
   version: "1.0.0",
   systemPrompt: "You are a precise data analyst.",
   model: {
-    provider: "anthropic",
-    name: "claude-sonnet-4",
+    provider: "xai",
+    name: "grok-4-1-fast",
     temperature: 0.3,
     maxTokens: 8192,
   },
@@ -165,7 +165,7 @@ System prompts support `{{variable}}` syntax for dynamic context injection at ru
 systemPrompt: `You are {{agentName}}, a coordinator for {{organizationName}}.
 Current time: {{currentTime}}
 
-Available entity types: {{entityTypes}}`
+Available data types: {{entityTypes}}`
 ```
 
 For the full variable reference and embedded query syntax, see [System Prompt Templates](../tools/system-prompt-templates).

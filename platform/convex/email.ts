@@ -1,6 +1,8 @@
 import { v } from "convex/values"
 import { internalMutation } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
+
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -33,12 +35,12 @@ export const storeOutboundEmail = internalMutation({
       createdAt: Date.now(),
     })
 
-    await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+    await ctx.scheduler.runAfter(0, deductCreditsRef, {
       organizationId: args.organizationId,
       amount: cost,
       description: `Email to ${args.to}`,
       metadata: { emailMessageId: id },
-    })
+    } as any)
 
     return id
   },

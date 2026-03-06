@@ -23,7 +23,7 @@ export function Integrations() {
   const int = useFadeSlideUp()
 
   return (
-    <section id="integraciones" className="bg-stone-deep py-20 md:py-28">
+    <section id="integrations" className="bg-stone-deep py-20 md:py-28">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
         <div ref={headingRef} className="text-center mb-12">
           <motion.h2

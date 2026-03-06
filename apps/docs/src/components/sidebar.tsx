@@ -4,15 +4,19 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FileText } from "lucide-react"
 import type { NavSection } from "@/lib/navigation"
+import { SearchTrigger } from "./search"
 
 export function Sidebar({ navigation }: { navigation?: NavSection[] }) {
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r border-border bg-background">
       <div className="flex-1 flex flex-col overflow-y-auto px-4 py-6">
-        <Link href="/" className="flex items-center gap-2 mb-8 px-2">
+        <Link href="/" className="flex items-center gap-2 mb-4 px-2">
           <span className="text-lg font-bold tracking-tight text-charcoal-heading font-display">struere</span>
           <span className="text-xs text-content-tertiary bg-background-secondary px-1.5 py-0.5 rounded">docs</span>
         </Link>
+        <div className="mb-4">
+          <SearchTrigger />
+        </div>
         <SidebarContent navigation={navigation} />
         <div className="mt-auto pt-6 border-t border-border">
           <Link

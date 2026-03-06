@@ -1,7 +1,10 @@
 import { v } from "convex/values"
 import { query, action, internalQuery } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
+
+const resolvePublicAgentRef = makeFunctionReference<"query">("publicChat:resolvePublicAgent")
+const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenticated")
 
 export const getPublicAgent = query({
   args: {
@@ -51,6 +54,11 @@ export const getPublicThreadMessages = query({
   args: { threadId: v.id("threads") },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
+    const thread = await ctx.db.get(args.threadId)
+    if (!thread) return []
+    if (thread.channel !== "widget" && thread.channel !== "whatsapp") return []
+    if (thread.userId) return []
+
     return await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
@@ -127,16 +135,16 @@ export const sendPublicChat = action({
     threadId: Id<"threads">
     usage: { inputTokens: number; outputTokens: number; totalTokens: number }
   }> => {
-    const resolved = await ctx.runQuery(internal.publicChat.resolvePublicAgent, {
+    const resolved = await ctx.runQuery(resolvePublicAgentRef, {
       orgSlug: args.orgSlug,
       agentSlug: args.agentSlug,
-    })
+    } as any)
 
     if (!resolved) {
       throw new Error("Agent not found or not available")
     }
 
-    return await ctx.runAction(internal.agent.chatAuthenticated, {
+    return await ctx.runAction(chatAuthenticatedRef, {
       organizationId: resolved.organizationId,
       userId: undefined,
       agentId: resolved.agentId,

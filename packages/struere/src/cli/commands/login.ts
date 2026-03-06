@@ -50,6 +50,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
   const authPromise = new Promise<{ token: string; sessionId: string }>((resolve, reject) => {
     const server = Bun.serve({
       port: AUTH_CALLBACK_PORT,
+      hostname: '127.0.0.1',
       async fetch(req) {
         const url = new URL(req.url)
 
@@ -140,7 +141,7 @@ async function browserLoginInternal(spinner: ReturnType<typeof ora>): Promise<Cr
     if (organizations.length > 0) {
       console.log(chalk.gray('Organizations:'), organizations.map(o => o.name).join(', '))
     } else {
-      console.log(chalk.yellow('No organizations found. Create one in the dashboard first.'))
+      console.log(chalk.yellow('No organizations found. Run'), chalk.cyan('struere org create'), chalk.yellow('to create one.'))
     }
     console.log()
 

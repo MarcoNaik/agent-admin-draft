@@ -62,7 +62,7 @@ interface PolicyConfig {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `resource` | `string` | Entity type slug the policy applies to |
+| `resource` | `string` | Data type slug the policy applies to |
 | `actions` | `string[]` | Allowed values: `"create"`, `"read"`, `"update"`, `"delete"`, `"list"`, or `"*"` for all |
 | `effect` | `'allow' \| 'deny'` | Whether to allow or deny the specified actions |
 
@@ -117,7 +117,7 @@ interface ScopeRuleConfig {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `entityType` | `string` | Entity type slug to filter |
+| `entityType` | `string` | Data type slug to filter |
 | `field` | `string` | Dot-notation path to the entity field (e.g., `"data.teacherId"`) |
 | `operator` | `string` | Comparison operator |
 | `value` | `string` | Value to compare against; supports `"actor.userId"` for dynamic resolution |
@@ -187,7 +187,7 @@ interface FieldMaskConfig {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `entityType` | `string` | Entity type slug to mask |
+| `entityType` | `string` | Data type slug to mask |
 | `fieldPath` | `string` | Dot-notation path to the field (e.g., `"data.paymentId"`) |
 | `maskType` | `'hide' \| 'redact'` | `hide` removes the field entirely; `redact` replaces the value |
 | `maskConfig` | `object` | Additional configuration for redaction behavior |
@@ -208,7 +208,7 @@ interface FieldMaskConfig {
 
 ### Allowlist Strategy
 
-Field masks use an **allowlist strategy**, which means new fields added to an entity type are hidden by default until explicitly allowed. This is a fail-safe approach that prevents accidental data exposure.
+Field masks use an **allowlist strategy**, which means new fields added to a data type are hidden by default until explicitly allowed. This is a fail-safe approach that prevents accidental data exposure.
 
 ## Full Examples
 

@@ -23,7 +23,7 @@ evals/*.eval.yaml          struere dev           Dashboard / CLI
 ```
 
 1. You define eval suites as YAML files in `evals/`
-2. `struere dev` syncs them to Convex (like agents and entity types)
+2. `struere dev` syncs them to Convex (like agents and data types)
 3. Trigger runs from the dashboard or CLI (`struere eval run <suite-slug>`)
 4. Each case plays out a multi-turn conversation, then assertions evaluate the agent's responses
 5. Results are persisted with full conversation history, tool calls, and scores
@@ -84,7 +84,7 @@ cases:
 | `agent` | Yes | Agent slug to test (must exist in `agents/`) |
 | `description` | No | What this suite tests |
 | `tags` | No | Tags for filtering and organization |
-| `judgeModel` | No | LLM model for `llm_judge` assertions (default: `claude-haiku-4-5-20251001`) |
+| `judgeModel` | No | LLM model for `llm_judge` assertions (default: `grok-4-1-fast`) |
 | `judgePrompt` | No | Custom instructions for the judge LLM (e.g., strictness level, focus areas) |
 | `judgeContext` | No | Reference data or ground-truth information provided to the judge |
 
@@ -326,8 +326,8 @@ relations:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `ref` | Yes | Local identifier used to resolve relations (not stored in DB) |
-| `type` | Yes | Entity type slug (must match an existing entity type) |
-| `data` | Yes | Free-form data matching the entity type schema |
+| `type` | Yes | Data type slug (must match an existing data type) |
+| `data` | Yes | Free-form data matching the data type schema |
 | `status` | No | Entity status (defaults to `"active"`) |
 
 **Relation fields:**
@@ -344,7 +344,7 @@ relations:
 When `struere dev` runs, it makes two sync calls:
 
 1. **Development** — agents, data types, roles, automations (your normal dev workflow)
-2. **Eval** — agents, entity types, roles, eval suites, and fixtures
+2. **Eval** — agents, data types, roles, eval suites, and fixtures
 
 The eval environment mirrors your dev schema (types, roles, agent configs) but also receives fixture data and eval suites. Automations are **not** synced to eval to prevent side effects during test runs.
 

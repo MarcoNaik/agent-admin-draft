@@ -1,8 +1,17 @@
 import { v } from "convex/values"
 import { action, query, internalQuery } from "./_generated/server"
-import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+import { makeFunctionReference } from "convex/server"
 import { parseWhatsAppExternalId } from "./whatsapp"
+
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenticated")
+const getAgentBySlugInternalRef = makeFunctionReference<"query">("agent:getAgentBySlugInternal")
+const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadInternal")
+const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
+const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
+const sendTextToPhoneRef = makeFunctionReference<"action">("whatsappActions:sendTextToPhone")
+const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
 
 interface AuthInfo {
   userId: Id<"users">
@@ -31,13 +40,13 @@ export const send = action({
     threadId: Id<"threads">
     usage: { inputTokens: number; outputTokens: number; totalTokens: number }
   }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as AuthInfo | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as AuthInfo | null
 
     if (!auth) {
       throw new Error("Not authenticated")
     }
 
-    return await ctx.runAction(internal.agent.chatAuthenticated, {
+    return await ctx.runAction(chatAuthenticatedRef, {
       organizationId: auth.organizationId,
       userId: auth.userId,
       agentId: args.agentId,
@@ -71,13 +80,13 @@ export const sendBySlug = action({
     threadId: Id<"threads">
     usage: { inputTokens: number; outputTokens: number; totalTokens: number }
   }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as AuthInfo | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as AuthInfo | null
 
     if (!auth) {
       throw new Error("Not authenticated")
     }
 
-    const agent = await ctx.runQuery(internal.agent.getAgentBySlugInternal, {
+    const agent = await ctx.runQuery(getAgentBySlugInternalRef, {
       slug: args.slug,
       organizationId: auth.organizationId,
     }) as { _id: Id<"agents"> } | null
@@ -86,7 +95,7 @@ export const sendBySlug = action({
       throw new Error(`No agent with slug "${args.slug}" exists`)
     }
 
-    return await ctx.runAction(internal.agent.chatAuthenticated, {
+    return await ctx.runAction(chatAuthenticatedRef, {
       organizationId: auth.organizationId,
       userId: auth.userId,
       agentId: agent._id,
@@ -111,12 +120,12 @@ export const replyToThread = action({
     success: boolean
     whatsappStatus: "sent" | "failed" | "skipped"
   }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as AuthInfo | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as AuthInfo | null
     if (!auth) {
       throw new Error("Not authenticated")
     }
 
-    const thread = await ctx.runQuery(internal.threads.getThreadInternal, {
+    const thread = await ctx.runQuery(getThreadInternalRef, {
       threadId: args.threadId,
     }) as { _id: Id<"threads">; organizationId: Id<"organizations">; externalId?: string } | null
 
@@ -124,7 +133,7 @@ export const replyToThread = action({
       throw new Error("Thread not found")
     }
 
-    await ctx.runMutation(internal.threads.appendMessages, {
+    await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
       messages: [{ role: "assistant", content: args.message }],
     })
@@ -137,7 +146,7 @@ export const replyToThread = action({
 
       const { connectionId, customerPhone } = parsed
 
-      const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
         connectionId: connectionId as Id<"whatsappConnections">,
       }) as { kapsoPhoneNumberId?: string; status: string } | null
 
@@ -146,7 +155,7 @@ export const replyToThread = action({
 
       if (connection?.kapsoPhoneNumberId && connection.status === "connected") {
         try {
-          const result = await ctx.runAction(internal.whatsappActions.sendTextToPhone, {
+          const result = await ctx.runAction(sendTextToPhoneRef, {
             kapsoPhoneNumberId: connection.kapsoPhoneNumberId,
             to: customerPhone,
             text: args.message,
@@ -159,7 +168,7 @@ export const replyToThread = action({
         status = "failed"
       }
 
-      await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+      await ctx.runMutation(storeOutboundMessageRef, {
         organizationId: auth.organizationId,
         connectionId: connectionId as Id<"whatsappConnections">,
         phoneNumber: customerPhone,

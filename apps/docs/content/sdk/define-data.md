@@ -1,18 +1,18 @@
 ---
-title: "defineEntityType"
+title: "defineData"
 description: "Define data type schemas for your domain"
 section: "SDK"
 order: 2
 ---
 
-# defineEntityType
+# defineData
 
-The `defineEntityType` function creates and validates data type schema definitions. Each data type is defined in its own file under the `entity-types/` directory.
+The `defineData` function creates and validates data type schema definitions. Each data type is defined in its own file under the `entity-types/` directory.
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Teacher",
   slug: "teacher",
   schema: {
@@ -51,7 +51,7 @@ export default defineEntityType({
 
 ### Validation
 
-`defineEntityType` throws errors if:
+`defineData` throws errors if:
 
 - `name`, `slug`, or `schema` is missing
 - `schema.type` is not `"object"`
@@ -180,7 +180,7 @@ When an agent uses `entity.query` with a search term, only these fields are matc
 The `boundToRole` and `userIdField` fields create an automatic link between a data type and a user role. When a user with the bound role logs in, they are associated with the matching record:
 
 ```typescript
-export default defineEntityType({
+export default defineData({
   name: "Teacher",
   slug: "teacher",
   schema: {
@@ -204,9 +204,9 @@ When `boundToRole` is set and `userIdField` is omitted, it defaults to `"userId"
 ### Student Data Type
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Student",
   slug: "student",
   schema: {
@@ -235,9 +235,9 @@ export default defineEntityType({
 ### Session Data Type
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Session",
   slug: "session",
   schema: {
@@ -276,9 +276,9 @@ export default defineEntityType({
 ### Entitlement Data Type (Credits System)
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Entitlement",
   slug: "entitlement",
   schema: {

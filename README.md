@@ -49,7 +49,7 @@ Struere provides:
 │                                                                          │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐      │
 │  │   Dashboard     │    │     Convex      │    │  Tool Executor  │      │
-│  │   (Next.js)     │◄──►│   (Backend)     │◄──►│  (CF Worker)    │      │
+│  │   (Next.js)     │◄──►│   (Backend)     │◄──►│  (Hono/Fly.io)  │      │
 │  │                 │    │                 │    │                 │      │
 │  │  • Monitor      │    │  • Real-time    │    │  • Sandboxed    │      │
 │  │  • Configure    │    │  • LLM calls    │    │  • Custom tools │      │
@@ -72,7 +72,7 @@ agent-admin-draft/
 │
 ├── platform/
 │   ├── convex/             # Backend (Convex functions)
-│   └── tool-executor/      # Custom tool runtime (Cloudflare Worker)
+│   └── tool-executor/      # Custom tool runtime (Hono/Fly.io)
 │
 ├── package.json            # Monorepo config (Bun workspaces)
 └── turbo.json              # Turborepo pipeline config
@@ -85,8 +85,8 @@ agent-admin-draft/
 | **Frontend** | Next.js 14, React 18, TypeScript, Tailwind CSS |
 | **Backend** | Convex (real-time database + serverless functions) |
 | **Auth** | Clerk |
-| **Tool Runtime** | Cloudflare Workers |
-| **LLM** | Anthropic Claude (default) |
+| **Tool Runtime** | Hono Node.js on Fly.io |
+| **LLM** | xAI Grok (default) |
 | **Package Manager** | Bun |
 | **Monorepo** | Turborepo |
 
@@ -148,8 +148,8 @@ export default defineAgent({
     Use the available tools to create, update, and query entities.
   `,
   model: {
-    provider: 'anthropic',
-    name: 'claude-sonnet-4-20250514',
+    provider: 'xai',
+    name: 'grok-4-1-fast',
     temperature: 0.7,
   },
   tools,

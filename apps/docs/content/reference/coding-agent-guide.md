@@ -41,7 +41,7 @@ This project uses the Struere AI agent platform.
 
 Key patterns:
 - Chat API: POST /v1/agents/:slug/chat with Bearer token (sk_dev_ or sk_prod_)
-- SDK exports: defineAgent, defineEntityType, defineRole, defineTrigger
+- SDK exports: defineAgent, defineData, defineRole, defineTrigger
 - Default model: grok-4-1-fast (provider: xai)
 - Package manager: bun
 - CLI: struere dev (sync), struere deploy (production)
@@ -62,7 +62,7 @@ Documentation:
 
 When working with Struere:
 - Chat API: POST /v1/agents/:slug/chat with Bearer token (sk_dev_ or sk_prod_)
-- Use defineAgent, defineEntityType, defineRole, defineTrigger from 'struere'
+- Use defineAgent, defineData, defineRole, defineTrigger from 'struere'
 - Default model is grok-4-1-fast (provider: xai)
 - Use bun as the package manager
 - Scope rule operators: eq, neq, in, contains (NOT ne)

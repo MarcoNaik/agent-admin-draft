@@ -49,7 +49,7 @@ my-project/
 | Directory | Purpose |
 |-----------|---------|
 | `agents/` | Agent definitions using `defineAgent()` |
-| `entity-types/` | Data type schemas using `defineEntityType()` |
+| `entity-types/` | Data type schemas using `defineData()` |
 | `roles/` | Role definitions with policies, scope rules, and field masks using `defineRole()` |
 | `triggers/` | Automations using `defineTrigger()` |
 | `tools/` | Custom tool definitions using `defineTools()` |
@@ -85,7 +85,7 @@ Struere projects are organized around a single organization. All resources you d
 This means:
 
 - One project per organization
-- All agents share the same entity types and roles
+- All agents share the same data types and roles
 - Custom tools defined in `tools/index.ts` are available to any agent in the organization
 - The CLI syncs the entire project state on every change
 

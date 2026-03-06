@@ -6,7 +6,7 @@ import { runInit } from './init'
 
 export const addCommand = new Command('add')
   .description('Scaffold a new resource')
-  .argument('<type>', 'Resource type: agent, entity-type, role, eval, trigger, or fixture')
+  .argument('<type>', 'Resource type: agent, data-type, role, eval, trigger, or fixture')
   .argument('<name>', 'Resource name')
   .action(async (type: string, name: string) => {
     const cwd = process.cwd()
@@ -44,17 +44,19 @@ export const addCommand = new Command('add')
         }
         break
 
+      case 'data-type':
+      case 'datatype':
       case 'entity-type':
       case 'entitytype':
       case 'type':
         result = scaffoldEntityType(cwd, displayName, slug)
         if (result.createdFiles.length > 0) {
-          console.log(chalk.green('✓'), `Created entity type "${displayName}"`)
+          console.log(chalk.green('✓'), `Created data type "${displayName}"`)
           for (const file of result.createdFiles) {
             console.log(chalk.gray('  →'), file)
           }
         } else {
-          console.log(chalk.yellow('Entity type already exists:'), `entity-types/${slug}.ts`)
+          console.log(chalk.yellow('Data type already exists:'), `entity-types/${slug}.ts`)
         }
         break
 
@@ -116,10 +118,10 @@ export const addCommand = new Command('add')
         console.log()
         console.log('Available types:')
         console.log(chalk.gray('  -'), chalk.cyan('agent'), '- Create an AI agent')
-        console.log(chalk.gray('  -'), chalk.cyan('entity-type'), '- Create an entity type schema')
+        console.log(chalk.gray('  -'), chalk.cyan('data-type'), '- Create a data type schema')
         console.log(chalk.gray('  -'), chalk.cyan('role'), '- Create a role with permissions')
         console.log(chalk.gray('  -'), chalk.cyan('eval'), '- Create an eval suite (YAML)')
-        console.log(chalk.gray('  -'), chalk.cyan('trigger'), '- Create an entity trigger')
+        console.log(chalk.gray('  -'), chalk.cyan('trigger'), '- Create a data trigger')
         console.log(chalk.gray('  -'), chalk.cyan('fixture'), '- Create a test data fixture (YAML)')
         console.log()
         process.exit(1)

@@ -4,10 +4,10 @@ import { motion } from "motion/react"
 import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
 
 const metrics = [
-  { value: "2,000+", label: "negocios" },
-  { value: "15", label: "paises" },
-  { value: "50,000+", label: "agentes creados" },
-  { value: "4.8\u2605", label: "satisfaccion" },
+  { value: "2,000+", label: "businesses" },
+  { value: "15", label: "countries" },
+  { value: "50,000+", label: "agents created" },
+  { value: "4.8\u2605", label: "satisfaction" },
 ]
 
 export function SocialProofBar() {

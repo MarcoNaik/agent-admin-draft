@@ -1,6 +1,9 @@
 import { MutationCtx } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "../_generated/dataModel"
+
+const executeRef = makeFunctionReference<"action">("triggers:execute")
+const executeScheduledRef = makeFunctionReference<"action">("triggers:executeScheduled")
 import { Environment } from "./permissions/types"
 
 interface TriggerParams {
@@ -50,7 +53,7 @@ export async function checkAndScheduleTriggers(
     if (trigger.schedule) {
       await scheduleTrigerRun(ctx, trigger, params)
     } else {
-      await ctx.scheduler.runAfter(0, internal.triggers.execute, {
+      await ctx.scheduler.runAfter(0, executeRef, {
         triggerId: trigger._id,
         entityId: params.entityId,
         entityTypeSlug: params.entityTypeSlug,
@@ -59,7 +62,7 @@ export async function checkAndScheduleTriggers(
         previousData: params.previousData,
         organizationId: params.organizationId,
         environment: params.environment,
-      })
+      } as any)
     }
   }
 }
@@ -119,7 +122,7 @@ async function scheduleTrigerRun(
   })
 
   const delay = Math.max(0, scheduledFor - now)
-  await ctx.scheduler.runAfter(delay, internal.triggers.executeScheduled, { runId })
+  await ctx.scheduler.runAfter(delay, executeScheduledRef, { runId } as any)
 }
 
 export function resolveScheduledTime(

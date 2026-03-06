@@ -75,12 +75,12 @@ function flattenEntityForTable(entity: Record<string, unknown>): Record<string, 
   }
 }
 
-export const entitiesCommand = new Command('entities')
-  .description('Manage entity data')
+export const entitiesCommand = new Command('data')
+  .description('Manage data records')
 
 entitiesCommand
   .command('types')
-  .description('List available entity types')
+  .description('List available data types')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--json', 'Output raw JSON')
   .action(async (opts) => {
@@ -89,16 +89,16 @@ entitiesCommand
     const env = opts.env as Environment
     const orgId = getOrgId()
 
-    spinner.start('Fetching entity types')
+    spinner.start('Fetching data types')
     const { data, error } = await queryEntityTypes(env, orgId)
 
     if (error || !data) {
-      spinner.fail('Failed to fetch entity types')
+      spinner.fail('Failed to fetch data types')
       console.log(chalk.red('Error:'), error)
       process.exit(1)
     }
 
-    spinner.succeed('Entity types loaded')
+    spinner.succeed('Data types loaded')
 
     const types = data as Array<Record<string, unknown>>
 
@@ -130,7 +130,7 @@ entitiesCommand
 
 entitiesCommand
   .command('list <type>')
-  .description('List entities of a type')
+  .description('List records of a type')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--status <status>', 'Filter by status')
   .option('--limit <n>', 'Maximum results', '50')
@@ -141,7 +141,7 @@ entitiesCommand
     const env = opts.env as Environment
     const orgId = getOrgId()
 
-    spinner.start(`Fetching ${type} entities`)
+    spinner.start(`Fetching ${type} records`)
 
     const [entitiesResult, typeResult] = await Promise.all([
       queryEntities(type, env, {
@@ -152,13 +152,13 @@ entitiesCommand
     ])
 
     if (entitiesResult.error || !entitiesResult.data) {
-      spinner.fail(`Failed to fetch ${type} entities`)
+      spinner.fail(`Failed to fetch ${type} records`)
       console.log(chalk.red('Error:'), entitiesResult.error)
       process.exit(1)
     }
 
     const entities = entitiesResult.data as Array<Record<string, unknown>>
-    spinner.succeed(`Found ${entities.length} ${type} entities`)
+    spinner.succeed(`Found ${entities.length} ${type} records`)
 
     if (opts.json) {
       console.log(JSON.stringify(entities, null, 2))
@@ -178,7 +178,7 @@ entitiesCommand
 
 entitiesCommand
   .command('get <id>')
-  .description('Get entity details')
+  .description('Get record details')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--json', 'Output raw JSON')
   .action(async (rawId, opts) => {
@@ -187,25 +187,25 @@ entitiesCommand
     const env = opts.env as Environment
     const orgId = getOrgId()
 
-    spinner.start('Resolving entity ID')
+    spinner.start('Resolving record ID')
     const resolved = await resolveEntityId(rawId, env, orgId)
     if (resolved.error || !resolved.data) {
-      spinner.fail('Entity not found')
-      console.log(chalk.red('Error:'), resolved.error || `No entity matched "${rawId}"`)
+      spinner.fail('Record not found')
+      console.log(chalk.red('Error:'), resolved.error || `No record matched "${rawId}"`)
       process.exit(1)
     }
     const id = resolved.data
 
-    spinner.text = 'Fetching entity'
+    spinner.text = 'Fetching record'
     const { data, error } = await queryEntity(id, env, orgId)
 
     if (error || !data) {
-      spinner.fail('Failed to fetch entity')
-      console.log(chalk.red('Error:'), error || 'Entity not found')
+      spinner.fail('Failed to fetch record')
+      console.log(chalk.red('Error:'), error || 'Record not found')
       process.exit(1)
     }
 
-    spinner.succeed('Entity loaded')
+    spinner.succeed('Record loaded')
 
     const result = data as { entity: Record<string, unknown>; entityType: Record<string, unknown> }
 
@@ -241,9 +241,9 @@ entitiesCommand
 
 entitiesCommand
   .command('create <type>')
-  .description('Create a new entity')
+  .description('Create a new record')
   .option('--env <environment>', 'Environment (development|production)', 'development')
-  .option('--data <json>', 'Entity data as JSON')
+  .option('--data <json>', 'Record data as JSON')
   .option('--status <status>', 'Initial status')
   .option('--json', 'Output raw JSON')
   .action(async (type, opts) => {
@@ -269,7 +269,7 @@ entitiesCommand
       const { data: typeData, error } = await queryEntityTypeBySlug(type, env, orgId)
 
       if (error || !typeData) {
-        spinner.fail(`Entity type not found: ${type}`)
+        spinner.fail(`Data type not found: ${type}`)
         console.log(chalk.red('Error:'), error || 'Not found')
         process.exit(1)
       }
@@ -281,7 +281,7 @@ entitiesCommand
       const schema = entityType.schema as { properties?: Record<string, SchemaProperty>; required?: string[] } | undefined
 
       if (!schema?.properties) {
-        console.log(chalk.red('Entity type has no schema properties defined'))
+        console.log(chalk.red('Data type has no schema properties defined'))
         process.exit(1)
       }
 
@@ -315,16 +315,16 @@ entitiesCommand
       console.log()
     }
 
-    spinner.start(`Creating ${type} entity`)
+    spinner.start(`Creating ${type} record`)
     const { data: result, error } = await createEntity(type, data, env, opts.status, orgId)
 
     if (error) {
-      spinner.fail('Failed to create entity')
+      spinner.fail('Failed to create record')
       console.log(chalk.red('Error:'), error)
       process.exit(1)
     }
 
-    spinner.succeed(`Entity created`)
+    spinner.succeed(`Record created`)
 
     if (opts.json) {
       console.log(JSON.stringify({ id: result }, null, 2))
@@ -337,7 +337,7 @@ entitiesCommand
 
 entitiesCommand
   .command('update <id>')
-  .description('Update an entity')
+  .description('Update a record')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--data <json>', 'Update data as JSON')
   .option('--status <status>', 'New status')
@@ -363,38 +363,38 @@ entitiesCommand
       }
     }
 
-    spinner.start('Resolving entity ID')
+    spinner.start('Resolving record ID')
     const resolved = await resolveEntityId(rawId, env, orgId)
     if (resolved.error || !resolved.data) {
-      spinner.fail('Entity not found')
-      console.log(chalk.red('Error:'), resolved.error || `No entity matched "${rawId}"`)
+      spinner.fail('Record not found')
+      console.log(chalk.red('Error:'), resolved.error || `No record matched "${rawId}"`)
       process.exit(1)
     }
     const id = resolved.data
 
-    spinner.text = 'Updating entity'
+    spinner.text = 'Updating record'
     const { data: result, error } = await updateEntity(id, data, env, opts.status, orgId)
 
     if (error) {
-      spinner.fail('Failed to update entity')
+      spinner.fail('Failed to update record')
       console.log(chalk.red('Error:'), error)
       process.exit(1)
     }
 
-    spinner.succeed('Entity updated')
+    spinner.succeed('Record updated')
 
     if (opts.json) {
       console.log(JSON.stringify(result, null, 2))
     } else {
       console.log()
-      console.log(chalk.green('  Entity updated successfully'))
+      console.log(chalk.green('  Record updated successfully'))
       console.log()
     }
   })
 
 entitiesCommand
   .command('delete <id>')
-  .description('Delete an entity')
+  .description('Delete a record')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--yes', 'Skip confirmation')
   .option('--json', 'Output raw JSON')
@@ -405,33 +405,33 @@ entitiesCommand
     const orgId = getOrgId()
     const jsonMode = !!opts.json
 
-    if (!jsonMode) spinner.start('Resolving entity ID')
+    if (!jsonMode) spinner.start('Resolving record ID')
     const resolved = await resolveEntityId(rawId, env, orgId)
     if (resolved.error || !resolved.data) {
       if (jsonMode) {
-        console.log(JSON.stringify({ success: false, error: resolved.error || `No entity matched "${rawId}"` }))
+        console.log(JSON.stringify({ success: false, error: resolved.error || `No record matched "${rawId}"` }))
       } else {
-        spinner.fail('Entity not found')
-        console.log(chalk.red('Error:'), resolved.error || `No entity matched "${rawId}"`)
+        spinner.fail('Record not found')
+        console.log(chalk.red('Error:'), resolved.error || `No record matched "${rawId}"`)
       }
       process.exit(1)
     }
     const id = resolved.data
 
-    if (!jsonMode) spinner.text = 'Fetching entity'
+    if (!jsonMode) spinner.text = 'Fetching record'
     const { data, error: fetchError } = await queryEntity(id, env, orgId)
 
     if (fetchError || !data) {
       if (jsonMode) {
-        console.log(JSON.stringify({ success: false, error: fetchError || 'Entity not found' }))
+        console.log(JSON.stringify({ success: false, error: fetchError || 'Record not found' }))
       } else {
-        spinner.fail('Failed to fetch entity')
-        console.log(chalk.red('Error:'), fetchError || 'Entity not found')
+        spinner.fail('Failed to fetch record')
+        console.log(chalk.red('Error:'), fetchError || 'Record not found')
       }
       process.exit(1)
     }
 
-    if (!jsonMode) spinner.succeed('Entity loaded')
+    if (!jsonMode) spinner.succeed('Record loaded')
 
     const result = data as { entity: Record<string, unknown>; entityType: Record<string, unknown> }
     const entity = result.entity
@@ -453,7 +453,7 @@ entitiesCommand
 
     if (!opts.yes && !jsonMode && isInteractive()) {
       const confirmed = await confirm({
-        message: 'Are you sure you want to delete this entity?',
+        message: 'Are you sure you want to delete this record?',
         default: false,
       })
 
@@ -463,14 +463,14 @@ entitiesCommand
       }
     }
 
-    if (!jsonMode) spinner.start('Deleting entity')
+    if (!jsonMode) spinner.start('Deleting record')
     const { error } = await removeEntity(id, env, orgId)
 
     if (error) {
       if (jsonMode) {
         console.log(JSON.stringify({ success: false, error }))
       } else {
-        spinner.fail('Failed to delete entity')
+        spinner.fail('Failed to delete record')
         console.log(chalk.red('Error:'), error)
       }
       process.exit(1)
@@ -479,14 +479,14 @@ entitiesCommand
     if (jsonMode) {
       console.log(JSON.stringify({ success: true, id }))
     } else {
-      spinner.succeed('Entity deleted')
+      spinner.succeed('Record deleted')
       console.log()
     }
   })
 
 entitiesCommand
   .command('search <type> <query>')
-  .description('Search entities')
+  .description('Search records')
   .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--limit <n>', 'Maximum results', '25')
   .option('--json', 'Output raw JSON')

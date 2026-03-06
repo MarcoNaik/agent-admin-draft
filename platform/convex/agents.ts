@@ -1,30 +1,14 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery, internalAction, action, QueryCtx, MutationCtx } from "./_generated/server"
+import { query, mutation, internalQuery, internalAction, action } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, requireAuth, isOrgAdmin, requireOrgAdmin } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
 import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext } from "./lib/permissions/types"
 import { serializeActor, executeBuiltinTool } from "./lib/toolExecution"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
-
-async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  const membership = await ctx.db
-    .query("userOrganizations")
-    .withIndex("by_user_org", (q) =>
-      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
-    )
-    .first()
-  return membership?.role === "admin"
-}
-
-async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  if (!(await isOrgAdmin(ctx, auth))) {
-    throw new Error("Admin access required")
-  }
-}
 
 export const list = query({
   args: {
@@ -486,6 +470,7 @@ export const compileSystemPrompt = action({
           environment: args.environment,
           toolName: name,
           args: toolArgs,
+          agentId: args.agentId as unknown as string,
         })
       },
       executeCustom: (toolName, toolArgs) =>
@@ -682,6 +667,7 @@ export const compileSystemPromptBySlug = internalAction({
           environment: args.environment,
           toolName: name,
           args: toolArgs,
+          agentId: agentId as unknown as string,
         })
       },
       executeCustom: (toolName, toolArgs) =>

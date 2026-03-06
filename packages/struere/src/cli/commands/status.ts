@@ -85,7 +85,7 @@ export const statusCommand = new Command('status')
     try {
       localResources = await loadAllResources(cwd)
       if (!jsonMode) {
-        spinner.succeed(`Loaded ${localResources.agents.length} agents, ${localResources.entityTypes.length} entity types, ${localResources.roles.length} roles, ${localResources.customTools.length} custom tools, ${localResources.evalSuites.length} eval suites`)
+        spinner.succeed(`Loaded ${localResources.agents.length} agents, ${localResources.entityTypes.length} data types, ${localResources.roles.length} roles, ${localResources.customTools.length} custom tools, ${localResources.evalSuites.length} eval suites`)
 
         for (const err of localResources.errors) {
           console.log(chalk.red('  ✖'), err)
@@ -186,11 +186,11 @@ export const statusCommand = new Command('status')
     }
 
     console.log()
-    console.log(chalk.bold('Entity Types'))
+    console.log(chalk.bold('Data Types'))
     console.log(chalk.gray('─'.repeat(60)))
 
     if (localResources.entityTypes.length === 0 && devState.entityTypes.length === 0) {
-      console.log(chalk.gray('  No entity types'))
+      console.log(chalk.gray('  No data types'))
     } else {
       for (const et of localResources.entityTypes) {
         const remote = devState.entityTypes.find((r) => r.slug === et.slug)

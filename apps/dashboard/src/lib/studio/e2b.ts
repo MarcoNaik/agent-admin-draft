@@ -3,6 +3,7 @@ import type { StudioProvider } from "./models"
 
 const SANDBOX_AGENT_PORT = 3000
 const SANDBOX_AGENT_VERSION = "0.2.x"
+const SANDBOX_TIMEOUT_MS = 1_800_000
 
 export interface SandboxConfig {
   envVars: Record<string, string>
@@ -148,7 +149,7 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
 
 export async function createSandbox(config: SandboxConfig): Promise<SandboxResult> {
   const sandbox = await Sandbox.create({
-    timeoutMs: 300_000,
+    timeoutMs: SANDBOX_TIMEOUT_MS,
     envs: config.envVars,
     allowInternetAccess: true,
   })
@@ -174,7 +175,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       timeoutMs: 30_000,
     })
 
-    await runCmd(sandbox, "install-struere", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && sudo npm install -g struere@latest', {
+    await runCmd(sandbox, "install-struere", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && sudo npm install -g struere@0.9.7', {
       timeoutMs: 60_000,
     })
 
@@ -214,6 +215,10 @@ async function waitForServer(sandbox: Sandbox, port: number, maxAttempts = 20) {
     await new Promise((r) => setTimeout(r, 500))
   }
   throw new Error("Sandbox agent server failed to start")
+}
+
+export async function extendSandboxTimeout(sandboxId: string) {
+  await Sandbox.setTimeout(sandboxId, SANDBOX_TIMEOUT_MS)
 }
 
 export async function destroySandbox(sandboxId: string) {

@@ -137,6 +137,7 @@ export async function GET(request: NextRequest) {
   xBtn.onclick=function(e){e.stopPropagation();closeWidget();};
 
   window.addEventListener("message",function(e){
+    if(e.origin!=="${origin}")return;
     if(e.data&&e.data.type==="struere:message"){
       var evt=new CustomEvent("struere:message",{detail:e.data});
       window.dispatchEvent(evt);

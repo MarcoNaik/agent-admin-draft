@@ -295,7 +295,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
             <h1 className="font-semibold text-content-primary">{agent.name}</h1>
             <p className="text-xs text-content-secondary">
               {orgName && <>{orgName} · </>}
-              {agent.model?.name || "claude-sonnet-4-20250514"}
+              {agent.model?.name || "grok-4-1-fast"}
               {environmentLabel && ` · ${environmentLabel}`}
             </p>
           </div>

@@ -115,9 +115,9 @@ function generateEntityTypeFile(et: PullStateEntityType): string {
   if (et.boundToRole) parts.push(`  boundToRole: ${JSON.stringify(et.boundToRole)}`)
   if (et.userIdField) parts.push(`  userIdField: ${JSON.stringify(et.userIdField)}`)
 
-  return `import { defineEntityType } from 'struere'
+  return `import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
 ${parts.join(",\n")},
 })
 `

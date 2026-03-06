@@ -26,7 +26,7 @@ Struere is an AI agent platform that allows developers to:
 **Current tech stack:**
 - Next.js 14 (Dashboard)
 - Convex (Backend: real-time DB, functions, scheduler)
-- Cloudflare Workers (Tool executor sandbox)
+- Hono Node.js on Fly.io (Tool executor sandbox)
 - Clerk (Authentication)
 - TypeScript throughout
 

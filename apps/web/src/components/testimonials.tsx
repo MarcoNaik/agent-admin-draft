@@ -6,23 +6,23 @@ import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
 const testimonials = [
   {
     quote:
-      "Antes tardabamos 4 horas en responder a cada cliente. Ahora nuestro agente responde en 2 minutos, 24/7. Las ventas por WhatsApp subieron 35%.",
+      "We used to take 4 hours to reply to each customer. Now our agent responds in 2 minutes, 24/7. WhatsApp sales went up 35%.",
     name: "Maria Gonzalez",
-    role: "Fundadora, Tienda online de ropa",
+    role: "Founder, Online clothing store",
     flag: "\uD83C\uDDF2\uD83C\uDDFD",
   },
   {
     quote:
-      "Configure un sistema de agendamiento en 15 minutos. Mis pacientes reservan solos y yo deje de perder citas.",
+      "I set up a scheduling system in 15 minutes. My patients book on their own and I stopped losing appointments.",
     name: "Dr. Carlos Reyes",
-    role: "Odontologo",
+    role: "Dentist",
     flag: "\uD83C\uDDE8\uD83C\uDDF1",
   },
   {
     quote:
-      "Struere nos permitio automatizar la cobranza sin contratar a nadie mas. Recuperamos $12,000 USD en cuentas vencidas el primer mes.",
+      "Struere let us automate collections without hiring anyone else. We recovered $12,000 USD in overdue accounts in the first month.",
     name: "Ana Lucia Fernandez",
-    role: "CFO, Distribuidora LATAM",
+    role: "CFO, LATAM Distributor",
     flag: "\uD83C\uDDE8\uD83C\uDDF4",
   },
 ]
@@ -71,7 +71,7 @@ export function Testimonials() {
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
             style={{ y, willChange: "transform" }}
           >
-            Lo que dicen nuestros usuarios
+            What our users say
           </motion.h2>
         </div>
 

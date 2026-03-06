@@ -30,7 +30,7 @@ export function HowItWorks() {
   const { ref, y } = useParallaxY(200)
 
   return (
-    <section id="como-funciona" className="bg-stone-base py-20 md:py-28">
+    <section id="how-it-works" className="bg-stone-base py-20 md:py-28">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
         <div ref={ref} className="text-center mb-8">
           <motion.h2

@@ -7,4 +7,3 @@ dist/
 .vercel
 .env*.local
 .turbo/
-platform/tool-executor/.wrangler/

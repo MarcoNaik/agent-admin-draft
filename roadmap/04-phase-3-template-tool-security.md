@@ -633,7 +633,7 @@ async function executeJobHandler(
 
 ### Step 4: Pass Actor Context to Custom Tools
 
-Custom tools execute on the Cloudflare Worker (tool-executor). They need to know who is executing them.
+Custom tools execute on the Hono server on Fly.io (tool-executor). They need to know who is executing them.
 
 #### 4.1 Update Tool Executor Request
 

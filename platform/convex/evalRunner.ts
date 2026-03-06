@@ -1,12 +1,29 @@
 import { v } from "convex/values"
-import { ActionCtx, internalAction, internalMutation } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { internalAction, internalMutation } from "./_generated/server"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { generateText } from "ai"
 import { createModel } from "./lib/llm"
 import { calculateCost } from "./lib/creditPricing"
 import { processTemplates, TemplateContext } from "./lib/templateEngine"
 import { buildSystemActorContext } from "./lib/permissions/context"
+
+const executeCaseActionRef = makeFunctionReference<"action">("evalRunner:executeCase")
+const scheduleCaseTurnRef = makeFunctionReference<"mutation">("evalRunner:scheduleCaseTurn")
+const getRunInternalRef = makeFunctionReference<"query">("evals:getRunInternal")
+const getSuiteInternalRef = makeFunctionReference<"query">("evals:getSuiteInternal")
+const getCaseInternalRef = makeFunctionReference<"query">("evals:getCaseInternal")
+const getOrCreateThreadRef = makeFunctionReference<"mutation">("threads:getOrCreate")
+const getThreadMessagesRef = makeFunctionReference<"query">("agent:getThreadMessages")
+const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenticated")
+const getAgentConfigRef = makeFunctionReference<"query">("evals:getAgentConfig")
+const recordResultRef = makeFunctionReference<"mutation">("evals:recordResult")
+const caseCompletedRef = makeFunctionReference<"mutation">("evals:caseCompleted")
+const checkCreditsPreExecutionRef = makeFunctionReference<"mutation">("billing:checkCreditsPreExecution")
+const getOrgNameRef = makeFunctionReference<"query">("evals:getOrgName")
+const getAgentInternalRef = makeFunctionReference<"query">("evals:getAgentInternal")
+const getEntityTypesRef = makeFunctionReference<"query">("evals:getEntityTypes")
+const getRolesRef = makeFunctionReference<"query">("evals:getRoles")
 
 interface AssertionDef {
   type: "llm_judge" | "contains" | "matches" | "tool_called" | "tool_not_called"
@@ -68,14 +85,14 @@ export const scheduleCaseTurn = internalMutation({
     retryCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.scheduler.runAfter(args.delayMs, internal.evalRunner.executeCase, {
+    await ctx.scheduler.runAfter(args.delayMs, executeCaseActionRef, {
       runId: args.runId,
       caseId: args.caseId,
       turnIndex: args.turnIndex,
       threadId: args.threadId,
       state: args.state,
       retryCount: args.retryCount,
-    })
+    } as any)
   },
 })
 
@@ -92,14 +109,14 @@ export const executeCase = internalAction({
     const turnIndex = args.turnIndex ?? 0
     const retryCount = args.retryCount ?? 0
 
-    const run = await ctx.runQuery(internal.evals.getRunInternal, { runId: args.runId })
+    const run = await ctx.runQuery(getRunInternalRef, { runId: args.runId })
     if (!run) throw new Error("Run not found")
     if (run.status === "cancelled") return
 
-    const suite = await ctx.runQuery(internal.evals.getSuiteInternal, { suiteId: run.suiteId })
+    const suite = await ctx.runQuery(getSuiteInternalRef, { suiteId: run.suiteId })
     if (!suite) throw new Error("Suite not found")
 
-    const evalCase = await ctx.runQuery(internal.evals.getCaseInternal, { caseId: args.caseId })
+    const evalCase = await ctx.runQuery(getCaseInternalRef, { caseId: args.caseId })
     if (!evalCase) throw new Error("Case not found")
 
     const state: CaseState = args.state ?? {
@@ -149,7 +166,7 @@ export const executeCase = internalAction({
     try {
       if (!threadId) {
         const externalId = `eval:${args.runId}:${args.caseId}`
-        threadId = await ctx.runMutation(internal.threads.getOrCreate, {
+        threadId = await ctx.runMutation(getOrCreateThreadRef, {
           organizationId: run.organizationId,
           agentId: run.agentId,
           externalId,
@@ -161,7 +178,7 @@ export const executeCase = internalAction({
 
       const turn = evalCase.turns[turnIndex]
 
-      const existingThreadMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
+      const existingThreadMessages = await ctx.runQuery(getThreadMessagesRef, { threadId })
 
       if (state.messageCountBeforeTurn === undefined) {
         state.messageCountBeforeTurn = existingThreadMessages.length
@@ -173,7 +190,7 @@ export const executeCase = internalAction({
       let turnAgentTokens: { input: number; output: number } | undefined
       let turnDurationMs: number
 
-      if (state.chatCompletedForCurrentTurn && existingThreadMessages.length > messageCountBefore) {
+      if (state.chatCompletedForCurrentTurn && messageCountBefore !== undefined && existingThreadMessages.length > messageCountBefore) {
         const newMessages = existingThreadMessages.slice(messageCountBefore)
 
         chatResultMessage = ""
@@ -192,7 +209,7 @@ export const executeCase = internalAction({
       } else {
         const turnStartTime = Date.now()
 
-        const chatResult: ChatResponse = await ctx.runAction(internal.agent.chatAuthenticated, {
+        const chatResult: ChatResponse = await ctx.runAction(chatAuthenticatedRef, {
           organizationId: run.organizationId,
           agentId: run.agentId,
           message: turn.userMessage,
@@ -208,8 +225,8 @@ export const executeCase = internalAction({
         state.totalAgentTokens += chatResult.usage.totalTokens
         turnAgentTokens = { input: chatResult.usage.inputTokens, output: chatResult.usage.outputTokens }
 
-        const agentConfig = await ctx.runQuery(internal.evals.getAgentConfig, { agentId: run.agentId, environment: run.environment })
-        const agentModelName = agentConfig?.model?.name ?? "claude-sonnet-4"
+        const agentConfig = await ctx.runQuery(getAgentConfigRef, { agentId: run.agentId, environment: run.environment })
+        const agentModelName = agentConfig?.model?.name ?? "grok-4-1-fast"
         state.agentCost += calculateCost(agentModelName, chatResult.usage.inputTokens, chatResult.usage.outputTokens)
 
         state.chatCompletedForCurrentTurn = true
@@ -219,7 +236,7 @@ export const executeCase = internalAction({
           durationMs: turnDurationMs,
         }
 
-        const updatedThreadMessages = await ctx.runQuery(internal.agent.getThreadMessages, { threadId })
+        const updatedThreadMessages = await ctx.runQuery(getThreadMessagesRef, { threadId })
         const newMessages = updatedThreadMessages.slice(messageCountBefore)
         turnToolCalls = extractToolCalls(newMessages)
       }
@@ -227,6 +244,8 @@ export const executeCase = internalAction({
       let assertionResults: AssertionResult[] = []
       if (turn.assertions && turn.assertions.length > 0) {
         assertionResults = await evaluateAssertions(
+          ctx,
+          run.organizationId,
           turn.assertions,
           chatResultMessage,
           turnToolCalls,
@@ -268,7 +287,7 @@ export const executeCase = internalAction({
       state.pendingTurnUsage = undefined
 
       if (turnIndex < evalCase.turns.length - 1) {
-        await ctx.runMutation(internal.evalRunner.scheduleCaseTurn, {
+        await ctx.runMutation(scheduleCaseTurnRef, {
           delayMs: 0,
           runId: args.runId,
           caseId: args.caseId,
@@ -288,6 +307,8 @@ export const executeCase = internalAction({
         const allToolCalls = state.turnResults.flatMap((t) => t.toolCalls || [])
 
         finalAssertionResults = await evaluateAssertions(
+          ctx,
+          run.organizationId,
           evalCase.finalAssertions,
           lastResponse,
           allToolCalls,
@@ -314,7 +335,7 @@ export const executeCase = internalAction({
         }
       }
 
-      const allTurnAssertionDefs = evalCase.turns.flatMap((t) => t.assertions || [])
+      const allTurnAssertionDefs = evalCase.turns.flatMap((t: any) => t.assertions || [])
       const allAssertionDefs = [...allTurnAssertionDefs, ...(evalCase.finalAssertions || [])]
       const allResults = [
         ...state.turnResults.flatMap((t) => t.assertionResults || []),
@@ -342,7 +363,7 @@ export const executeCase = internalAction({
         ? { input: state.judgeInputTokens, output: state.judgeOutputTokens }
         : undefined
 
-      await ctx.runMutation(internal.evals.recordResult, {
+      await ctx.runMutation(recordResultRef, {
         runId: args.runId,
         caseId: args.caseId,
         status: casePassed ? "passed" : "failed",
@@ -357,7 +378,7 @@ export const executeCase = internalAction({
         agentCost: state.agentCost > 0 ? state.agentCost : undefined,
       })
 
-      await ctx.runMutation(internal.evals.caseCompleted, {
+      await ctx.runMutation(caseCompletedRef, {
         runId: args.runId,
         passed: casePassed,
         overallScore,
@@ -371,7 +392,7 @@ export const executeCase = internalAction({
       const isRateLimit = errorMessage.includes("429") || errorMessage.includes("rate") || errorMessage.includes("Too Many")
 
       if (isRateLimit && retryCount < MAX_TURN_RETRIES) {
-        await ctx.runMutation(internal.evalRunner.scheduleCaseTurn, {
+        await ctx.runMutation(scheduleCaseTurnRef, {
           delayMs: 30000,
           runId: args.runId,
           caseId: args.caseId,
@@ -383,7 +404,7 @@ export const executeCase = internalAction({
         return
       }
 
-      await ctx.runMutation(internal.evals.recordResult, {
+      await ctx.runMutation(recordResultRef, {
         runId: args.runId,
         caseId: args.caseId,
         status: "error",
@@ -392,7 +413,7 @@ export const executeCase = internalAction({
         totalDurationMs: Date.now() - state.caseStartTime,
       })
 
-      await ctx.runMutation(internal.evals.caseCompleted, {
+      await ctx.runMutation(caseCompletedRef, {
         runId: args.runId,
         passed: false,
         agentTokens: state.totalAgentTokens,
@@ -429,6 +450,8 @@ function extractToolCalls(
 }
 
 async function evaluateAssertions(
+  ctx: any,
+  organizationId: Id<"organizations">,
   assertions: AssertionDef[],
   response: string,
   toolCalls: Array<{ name: string; arguments: unknown; result?: unknown }>,
@@ -510,7 +533,7 @@ async function evaluateAssertions(
       }
 
       case "llm_judge": {
-        const judgeResult = await judgeResponse({
+        const judgeResult = await judgeResponse(ctx, organizationId, {
           response,
           toolCalls,
           criteria: assertion.criteria || "Evaluate the quality of the response",
@@ -538,7 +561,7 @@ async function evaluateAssertions(
   return results
 }
 
-async function judgeResponse(args: {
+async function judgeResponse(ctx: any, organizationId: Id<"organizations">, args: {
   response: string
   toolCalls: Array<{ name: string; arguments: unknown; result?: unknown }>
   criteria: string
@@ -570,7 +593,7 @@ async function judgeResponse(args: {
 Context tags:
 - <assistant_response>: The current turn response being evaluated.
 - <conversation_history>: Prior turns — earlier responses, tool calls, and results are REAL and already executed.
-- <agent_system_prompt>: The agent's system prompt. ALL data in it (teacher names, schedules, IDs, etc.) is legitimately available to the agent. Using this data is NOT hallucination. Short names like "Carolina" or "Kathy" referencing teachers in the system prompt are valid.
+- <agent_system_prompt>: The agent's system prompt. ALL data in it (entity names, IDs, configuration, etc.) is legitimately available to the agent. Using this data is NOT hallucination. Short names or references to entities in the system prompt are valid.
 - <reference_data>: Ground-truth data to verify factual accuracy.
 
 Rules:
@@ -616,10 +639,17 @@ ${args.criteria}
 
 Evaluate the assistant's current turn response against the criteria. Respond with JSON only.`
 
+  const modelName = args.model?.name || "grok-4-1-fast"
+
+  await ctx.runMutation(checkCreditsPreExecutionRef, {
+    organizationId,
+    model: modelName,
+  })
+
   const result = await generateText({
     model: createModel({
       provider: args.model?.provider || "xai",
-      name: args.model?.name || "grok-4-1-fast",
+      name: modelName,
     }),
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -631,7 +661,6 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const inputTokens = result.usage.inputTokens ?? 0
   const outputTokens = result.usage.outputTokens ?? 0
   const textContent = result.text
-  const modelName = args.model?.name || "grok-4-1-fast"
   const cost = calculateCost(modelName, inputTokens, outputTokens)
 
   try {
@@ -690,7 +719,7 @@ function truncateString(str: string, maxLen: number): string {
 }
 
 async function resolveJudgeContext(
-  ctx: ActionCtx,
+  ctx: any,
   template: string,
   organizationId: Id<"organizations">,
   agentId: Id<"agents">,
@@ -699,7 +728,7 @@ async function resolveJudgeContext(
   contextParams?: Record<string, unknown>
 ): Promise<string> {
   const actor = buildSystemActorContext(organizationId, environment)
-  const org = await ctx.runQuery(internal.evals.getOrgName, { organizationId })
+  const org = await ctx.runQuery(getOrgNameRef, { organizationId })
   const templateContext: TemplateContext = {
     organizationId,
     organizationName: org ?? "",
@@ -724,25 +753,25 @@ async function resolveJudgeContext(
 }
 
 async function resolveAgentSystemPrompt(
-  ctx: ActionCtx,
+  ctx: any,
   organizationId: Id<"organizations">,
   agentId: Id<"agents">,
   environment: "development" | "production" | "eval",
   channel?: "widget" | "whatsapp" | "api" | "dashboard",
   contextParams?: Record<string, unknown>
 ): Promise<string> {
-  const config = await ctx.runQuery(internal.evals.getAgentConfig, { agentId, environment })
+  const config = await ctx.runQuery(getAgentConfigRef, { agentId, environment })
   if (!config?.systemPrompt) return ""
 
   const actor = buildSystemActorContext(organizationId, environment)
-  const org = await ctx.runQuery(internal.evals.getOrgName, { organizationId })
-  const agent = await ctx.runQuery(internal.evals.getAgentInternal, { agentId })
+  const org = await ctx.runQuery(getOrgNameRef, { organizationId })
+  const agent = await ctx.runQuery(getAgentInternalRef, { agentId })
 
-  const entityTypes = await ctx.runQuery(internal.evals.getEntityTypes, {
+  const entityTypes = await ctx.runQuery(getEntityTypesRef, {
     organizationId,
     environment,
   })
-  const roles = await ctx.runQuery(internal.evals.getRoles, {
+  const roles = await ctx.runQuery(getRolesRef, {
     organizationId,
     environment,
   })

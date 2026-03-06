@@ -26,7 +26,7 @@ Struere enforces full environment isolation between development and production:
 | Aspect | `struere dev` | `struere deploy` |
 |--------|---------------|------------------|
 | Target environment | `development` | `production` |
-| Data isolation | Development entities, threads, events | Production entities, threads, events |
+| Data isolation | Development data, threads, events | Production data, threads, events |
 | API keys | Development keys only | Production keys only |
 | Agent configs | Stored as development configs | Promoted to production configs |
 | Role resolution | Development roles | Production roles |

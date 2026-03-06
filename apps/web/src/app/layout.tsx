@@ -27,23 +27,23 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://struere.dev"),
-  title: "Struere — Piensa. Escribe. Construye.",
+  title: "Struere — Think. Write. Build.",
   description:
-    "Describe lo que necesita tu negocio y Struere construye agentes de IA que trabajan por ti — sin código, sin complicaciones.",
+    "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "Struere — Piensa. Escribe. Construye.",
+    title: "Struere — Think. Write. Build.",
     description:
-      "Describe lo que necesita tu negocio y Struere construye agentes de IA que trabajan por ti — sin código, sin complicaciones.",
+      "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
     url: "https://struere.dev",
     siteName: "Struere",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Struere — Piensa. Escribe. Construye.",
+    title: "Struere — Think. Write. Build.",
     description:
-      "Describe lo que necesita tu negocio y Struere construye agentes de IA que trabajan por ti — sin código, sin complicaciones.",
+      "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
   },
 }
 
@@ -53,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="en">
       <body
         className={`${dmSans.variable} ${fraunces.variable} ${jetbrains.variable} ${ibmPlexMono.variable}`}
       >

@@ -1,10 +1,7 @@
 import { loadCredentials, getApiKey, saveCredentials } from './credentials'
+import { CONVEX_URL, getSiteUrl } from './config'
 
-const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
-
-export function getSiteUrl(): string {
-  return CONVEX_URL.replace('.cloud', '.site')
-}
+export { getSiteUrl }
 
 export async function refreshToken(): Promise<string | null> {
   const credentials = loadCredentials()
@@ -46,6 +43,45 @@ export interface OrgInfo {
   name: string
   slug: string
   role: string
+}
+
+export async function createOrganization(token: string, name: string, slug: string): Promise<{ organization?: OrgInfo; error?: string }> {
+  const response = await fetch(`${CONVEX_URL}/api/action`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'organizations:createFromCli',
+      args: { name, slug },
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  const text = await response.text()
+
+  let json: { status?: string; value?: OrgInfo; errorMessage?: string; errorData?: { message?: string } }
+  try {
+    json = JSON.parse(text)
+  } catch {
+    return { error: text || `HTTP ${response.status}` }
+  }
+
+  if (!response.ok) {
+    const msg = json.errorData?.message || json.errorMessage || text
+    return { error: msg }
+  }
+
+  if (json.status === 'success' && json.value) {
+    return { organization: json.value }
+  }
+
+  if (json.status === 'error') {
+    return { error: json.errorData?.message || json.errorMessage || 'Unknown error' }
+  }
+
+  return { error: `Unexpected response: ${text}` }
 }
 
 export async function listMyOrganizations(token: string): Promise<{ organizations: OrgInfo[]; error?: string }> {

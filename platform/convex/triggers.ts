@@ -1,9 +1,40 @@
 import { v } from "convex/values"
 import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { resolveTemplateVars } from "./lib/triggers"
 import { getAuthContext, requireAuth } from "./lib/auth"
+
+const getTriggerRef = makeFunctionReference<"query">("triggers:get")
+const emitTriggerEventRef = makeFunctionReference<"mutation">("triggers:emitTriggerEvent")
+const claimRunRef = makeFunctionReference<"mutation">("triggers:claimRun")
+const getRunRef = makeFunctionReference<"query">("triggers:getRun")
+const completeRunRef = makeFunctionReference<"mutation">("triggers:completeRun")
+const failRunRef = makeFunctionReference<"mutation">("triggers:failRun")
+const executeScheduledRef = makeFunctionReference<"action">("triggers:executeScheduled")
+const entityCreateRef = makeFunctionReference<"mutation">("tools/entities:entityCreate")
+const entityGetRef = makeFunctionReference<"query">("tools/entities:entityGet")
+const entityQueryRef = makeFunctionReference<"query">("tools/entities:entityQuery")
+const entityUpdateRef = makeFunctionReference<"mutation">("tools/entities:entityUpdate")
+const entityDeleteRef = makeFunctionReference<"mutation">("tools/entities:entityDelete")
+const entityLinkRef = makeFunctionReference<"mutation">("tools/entities:entityLink")
+const entityUnlinkRef = makeFunctionReference<"mutation">("tools/entities:entityUnlink")
+const eventEmitRef = makeFunctionReference<"mutation">("tools/events:eventEmit")
+const eventQueryRef = makeFunctionReference<"query">("tools/events:eventQuery")
+const calendarListRef = makeFunctionReference<"action">("tools/calendar:calendarList")
+const calendarCreateRef = makeFunctionReference<"action">("tools/calendar:calendarCreate")
+const calendarUpdateRef = makeFunctionReference<"action">("tools/calendar:calendarUpdate")
+const calendarDeleteRef = makeFunctionReference<"action">("tools/calendar:calendarDelete")
+const calendarFreeBusyRef = makeFunctionReference<"action">("tools/calendar:calendarFreeBusy")
+const whatsappSendRef = makeFunctionReference<"action">("tools/whatsapp:whatsappSend")
+const whatsappSendTemplateRef = makeFunctionReference<"action">("tools/whatsapp:whatsappSendTemplate")
+const whatsappSendInteractiveRef = makeFunctionReference<"action">("tools/whatsapp:whatsappSendInteractive")
+const whatsappSendMediaRef = makeFunctionReference<"action">("tools/whatsapp:whatsappSendMedia")
+const whatsappListTemplatesRef = makeFunctionReference<"action">("tools/whatsapp:whatsappListTemplates")
+const whatsappGetConversationRef = makeFunctionReference<"action">("tools/whatsapp:whatsappGetConversation")
+const whatsappGetStatusRef = makeFunctionReference<"action">("tools/whatsapp:whatsappGetStatus")
+const agentChatRef = makeFunctionReference<"action">("tools/agents:agentChat")
+const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -121,7 +152,7 @@ export const execute = internalAction({
     environment: environmentValidator,
   },
   handler: async (ctx, args) => {
-    const trigger = await ctx.runQuery(internal.triggers.get, {
+    const trigger = await ctx.runQuery(getTriggerRef, {
       triggerId: args.triggerId,
     })
 
@@ -141,7 +172,7 @@ export const execute = internalAction({
     })
 
     if (result.success) {
-      await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+      await ctx.runMutation(emitTriggerEventRef, {
         organizationId: args.organizationId,
         environment: args.environment,
         entityId: args.entityId,
@@ -155,7 +186,7 @@ export const execute = internalAction({
       })
     } else {
       const lastLog = result.executionLog[result.executionLog.length - 1]
-      await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+      await ctx.runMutation(emitTriggerEventRef, {
         organizationId: args.organizationId,
         environment: args.environment,
         entityId: args.entityId,
@@ -181,7 +212,7 @@ export const executeScheduled = internalAction({
     runId: v.id("triggerRuns"),
   },
   handler: async (ctx, args) => {
-    const claimed = await ctx.runMutation(internal.triggers.claimRun, {
+    const claimed = await ctx.runMutation(claimRunRef, {
       runId: args.runId,
     })
 
@@ -189,15 +220,15 @@ export const executeScheduled = internalAction({
       return
     }
 
-    const run = await ctx.runQuery(internal.triggers.getRun, { runId: args.runId })
+    const run = await ctx.runQuery(getRunRef, { runId: args.runId })
     if (!run) return
 
-    const trigger = await ctx.runQuery(internal.triggers.get, {
+    const trigger = await ctx.runQuery(getTriggerRef, {
       triggerId: run.triggerId,
     })
 
     if (!trigger || !trigger.enabled) {
-      await ctx.runMutation(internal.triggers.completeRun, {
+      await ctx.runMutation(completeRunRef, {
         runId: args.runId,
         result: { skipped: true, reason: "Trigger disabled or deleted" },
       })
@@ -219,12 +250,12 @@ export const executeScheduled = internalAction({
       })
 
       if (result.success) {
-        await ctx.runMutation(internal.triggers.completeRun, {
+        await ctx.runMutation(completeRunRef, {
           runId: args.runId,
           result: { executionLog: result.executionLog },
         })
 
-        await ctx.runMutation(internal.triggers.emitTriggerEvent, {
+        await ctx.runMutation(emitTriggerEventRef, {
           organizationId: run.organizationId,
           environment: run.environment,
           entityId: run.entityId,
@@ -239,14 +270,14 @@ export const executeScheduled = internalAction({
         })
       } else {
         const lastLog = result.executionLog[result.executionLog.length - 1]
-        await ctx.runMutation(internal.triggers.failRun, {
+        await ctx.runMutation(failRunRef, {
           runId: args.runId,
           errorMessage: (lastLog?.error as string) ?? "Action pipeline failed",
         })
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      await ctx.runMutation(internal.triggers.failRun, {
+      await ctx.runMutation(failRunRef, {
         runId: args.runId,
         errorMessage,
       })
@@ -310,9 +341,9 @@ export const failRun = internalMutation({
         errorMessage: args.errorMessage,
       })
 
-      await ctx.scheduler.runAfter(backoffMs, internal.triggers.executeScheduled, {
+      await ctx.scheduler.runAfter(backoffMs, executeScheduledRef, {
         runId: args.runId,
-      })
+      } as any)
     } else {
       await ctx.db.patch(args.runId, {
         status: "dead",
@@ -392,9 +423,9 @@ export const retryRun = mutation({
       scheduledFor: Date.now(),
     })
 
-    await ctx.scheduler.runAfter(0, internal.triggers.executeScheduled, {
+    await ctx.scheduler.runAfter(0, executeScheduledRef, {
       runId: args.runId,
-    })
+    } as any)
 
     return { success: true }
   },
@@ -486,7 +517,7 @@ async function executeToolAction(
 
   switch (tool) {
     case "entity.create":
-      return await ctx.runMutation(internal.tools.entities.entityCreate, {
+      return await ctx.runMutation(entityCreateRef, {
         organizationId, actorId, actorType, environment,
         type: args.type as string,
         data: args.data,
@@ -494,13 +525,13 @@ async function executeToolAction(
       })
 
     case "entity.get":
-      return await ctx.runQuery(internal.tools.entities.entityGet, {
+      return await ctx.runQuery(entityGetRef, {
         organizationId, actorId, actorType, environment,
         id: args.id as string,
       })
 
     case "entity.query":
-      return await ctx.runQuery(internal.tools.entities.entityQuery, {
+      return await ctx.runQuery(entityQueryRef, {
         organizationId, actorId, actorType, environment,
         type: args.type as string,
         filters: args.filters,
@@ -509,7 +540,7 @@ async function executeToolAction(
       })
 
     case "entity.update":
-      return await ctx.runMutation(internal.tools.entities.entityUpdate, {
+      return await ctx.runMutation(entityUpdateRef, {
         organizationId, actorId, actorType, environment,
         id: args.id as string,
         data: args.data,
@@ -517,13 +548,13 @@ async function executeToolAction(
       })
 
     case "entity.delete":
-      return await ctx.runMutation(internal.tools.entities.entityDelete, {
+      return await ctx.runMutation(entityDeleteRef, {
         organizationId, actorId, actorType, environment,
         id: args.id as string,
       })
 
     case "entity.link":
-      return await ctx.runMutation(internal.tools.entities.entityLink, {
+      return await ctx.runMutation(entityLinkRef, {
         organizationId, actorId, actorType, environment,
         fromId: args.fromId as string,
         toId: args.toId as string,
@@ -532,7 +563,7 @@ async function executeToolAction(
       })
 
     case "entity.unlink":
-      return await ctx.runMutation(internal.tools.entities.entityUnlink, {
+      return await ctx.runMutation(entityUnlinkRef, {
         organizationId, actorId, actorType, environment,
         fromId: args.fromId as string,
         toId: args.toId as string,
@@ -540,7 +571,7 @@ async function executeToolAction(
       })
 
     case "event.emit":
-      return await ctx.runMutation(internal.tools.events.eventEmit, {
+      return await ctx.runMutation(eventEmitRef, {
         organizationId, actorId, actorType, environment,
         entityId: args.entityId as string | undefined,
         entityTypeSlug: args.entityTypeSlug as string | undefined,
@@ -549,7 +580,7 @@ async function executeToolAction(
       })
 
     case "event.query":
-      return await ctx.runQuery(internal.tools.events.eventQuery, {
+      return await ctx.runQuery(eventQueryRef, {
         organizationId, environment,
         entityId: args.entityId as string | undefined,
         eventType: args.eventType as string | undefined,
@@ -558,7 +589,7 @@ async function executeToolAction(
       })
 
     case "calendar.list":
-      return await ctx.runAction(internal.tools.calendar.calendarList, {
+      return await ctx.runAction(calendarListRef, {
         organizationId, actorId, actorType, environment,
         userId: args.userId as string,
         timeMin: args.timeMin as string,
@@ -567,7 +598,7 @@ async function executeToolAction(
       })
 
     case "calendar.create":
-      return await ctx.runAction(internal.tools.calendar.calendarCreate, {
+      return await ctx.runAction(calendarCreateRef, {
         organizationId, actorId, actorType, environment,
         userId: args.userId as string,
         summary: args.summary as string,
@@ -580,7 +611,7 @@ async function executeToolAction(
       })
 
     case "calendar.update":
-      return await ctx.runAction(internal.tools.calendar.calendarUpdate, {
+      return await ctx.runAction(calendarUpdateRef, {
         organizationId, actorId, actorType, environment,
         userId: args.userId as string,
         eventId: args.eventId as string,
@@ -593,14 +624,14 @@ async function executeToolAction(
       })
 
     case "calendar.delete":
-      return await ctx.runAction(internal.tools.calendar.calendarDelete, {
+      return await ctx.runAction(calendarDeleteRef, {
         organizationId, actorId, actorType, environment,
         userId: args.userId as string,
         eventId: args.eventId as string,
       })
 
     case "calendar.freeBusy":
-      return await ctx.runAction(internal.tools.calendar.calendarFreeBusy, {
+      return await ctx.runAction(calendarFreeBusyRef, {
         organizationId, actorId, actorType, environment,
         userId: args.userId as string,
         timeMin: args.timeMin as string,
@@ -608,14 +639,14 @@ async function executeToolAction(
       })
 
     case "whatsapp.send":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappSend, {
+      return await ctx.runAction(whatsappSendRef, {
         organizationId, actorId, actorType, environment,
         to: args.to as string,
         text: args.text as string,
       })
 
     case "whatsapp.sendTemplate":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappSendTemplate, {
+      return await ctx.runAction(whatsappSendTemplateRef, {
         organizationId, actorId, actorType, environment,
         to: args.to as string,
         templateName: args.templateName as string,
@@ -624,7 +655,7 @@ async function executeToolAction(
       })
 
     case "whatsapp.sendInteractive":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappSendInteractive, {
+      return await ctx.runAction(whatsappSendInteractiveRef, {
         organizationId, actorId, actorType, environment,
         to: args.to as string,
         bodyText: args.bodyText as string,
@@ -633,7 +664,7 @@ async function executeToolAction(
       })
 
     case "whatsapp.sendMedia":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappSendMedia, {
+      return await ctx.runAction(whatsappSendMediaRef, {
         organizationId, actorId, actorType, environment,
         to: args.to as string,
         mediaUrl: args.mediaUrl as string,
@@ -642,24 +673,24 @@ async function executeToolAction(
       })
 
     case "whatsapp.listTemplates":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappListTemplates, {
+      return await ctx.runAction(whatsappListTemplatesRef, {
         organizationId, actorId, actorType, environment,
       })
 
     case "whatsapp.getConversation":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappGetConversation, {
+      return await ctx.runAction(whatsappGetConversationRef, {
         organizationId, actorId, actorType, environment,
         phoneNumber: args.phoneNumber as string,
         limit: args.limit as number | undefined,
       })
 
     case "whatsapp.getStatus":
-      return await ctx.runAction(internal.tools.whatsapp.whatsappGetStatus, {
+      return await ctx.runAction(whatsappGetStatusRef, {
         organizationId, actorId, actorType, environment,
       })
 
     case "agent.chat":
-      return await ctx.runAction(internal.tools.agents.agentChat, {
+      return await ctx.runAction(agentChatRef, {
         organizationId, actorId, actorType, environment,
         agentSlug: args.agent as string,
         message: args.message as string,
@@ -670,7 +701,7 @@ async function executeToolAction(
       })
 
     default:
-      return await ctx.runAction(internal.agent.executeCustomTool, {
+      return await ctx.runAction(executeCustomToolRef, {
         toolName: tool,
         args,
         context: { organizationId, actorId: "system", actorType: "system" },

@@ -1,7 +1,41 @@
-import { httpRouter } from "convex/server"
+import { httpRouter, makeFunctionReference } from "convex/server"
 import { httpAction } from "./_generated/server"
-import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+import { log } from "./lib/logger"
+
+const validateApiKeyRef = makeFunctionReference<"query">("agent:validateApiKey")
+const checkChatRateLimitRef = makeFunctionReference<"mutation">("rateLimits:checkChatRateLimit")
+const chatRef = makeFunctionReference<"action">("agent:chat")
+const chatBySlugRef = makeFunctionReference<"action">("agent:chatBySlug")
+const getOrCreateFromClerkUserRef = makeFunctionReference<"mutation">("users:getOrCreateFromClerkNoOrg")
+const getOrCreateFromClerkOrgRef = makeFunctionReference<"mutation">("organizations:getOrCreateFromClerk")
+const markAsDeletedRef = makeFunctionReference<"mutation">("organizations:markAsDeleted")
+const syncMembershipRef = makeFunctionReference<"mutation">("organizations:syncMembership")
+const removeMembershipRef = makeFunctionReference<"mutation">("organizations:removeMembership")
+const handlePhoneConnectedRef = makeFunctionReference<"mutation">("whatsapp:handlePhoneConnected")
+const handlePhoneDeletedRef = makeFunctionReference<"mutation">("whatsapp:handlePhoneDeleted")
+const getConnectionByKapsoPhoneRef = makeFunctionReference<"query">("whatsapp:getConnectionByKapsoPhone")
+const processInboundMessageRef = makeFunctionReference<"mutation">("whatsapp:processInboundMessage")
+const scheduleMediaDownloadRef = makeFunctionReference<"mutation">("whatsapp:scheduleMediaDownload")
+const scheduleAgentRoutingRef = makeFunctionReference<"mutation">("whatsapp:scheduleAgentRouting")
+const updateMessageStatusRef = makeFunctionReference<"mutation">("whatsapp:updateMessageStatus")
+const markAsPaidRef = makeFunctionReference<"mutation">("payments:markAsPaid")
+const markAsFailedRef = makeFunctionReference<"mutation">("payments:markAsFailed")
+const getPaymentByFlowTokenRef = makeFunctionReference<"query">("payments:getPaymentByFlowToken")
+const verifyPaymentFromWebhookRef = makeFunctionReference<"action">("payments:verifyPaymentFromWebhook")
+const listFlowConfigsRef = makeFunctionReference<"query">("integrations:listFlowConfigs")
+const addCreditsFromPolarRef = makeFunctionReference<"mutation">("billing:addCreditsFromPolar")
+const updateEmailStatusRef = makeFunctionReference<"mutation">("email:updateEmailStatus")
+const checkAuthRefreshLimitRef = makeFunctionReference<"mutation">("rateLimits:checkAuthRefreshLimit")
+const internalSyncOrganizationRef = makeFunctionReference<"mutation">("sync:internalSyncOrganization")
+const internalGetSyncStateRef = makeFunctionReference<"query">("sync:internalGetSyncState")
+const internalGetPullStateRef = makeFunctionReference<"query">("sync:internalGetPullState")
+const listConnectionsInternalRef = makeFunctionReference<"query">("whatsapp:listConnectionsInternal")
+const internalListTemplatesRef = makeFunctionReference<"action">("whatsappActions:internalListTemplates")
+const internalCreateTemplateRef = makeFunctionReference<"action">("whatsappActions:internalCreateTemplate")
+const internalDeleteTemplateRef = makeFunctionReference<"action">("whatsappActions:internalDeleteTemplate")
+const internalGetTemplateStatusRef = makeFunctionReference<"action">("whatsappActions:internalGetTemplateStatus")
+const compileSystemPromptBySlugRef = makeFunctionReference<"action">("agents:compileSystemPromptBySlug")
 
 async function hashApiKey(key: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -21,7 +55,7 @@ async function authenticateApiKey(ctx: any, request: Request): Promise<{ organiz
   }
 
   const keyHash = await hashApiKey(apiKey)
-  const auth = await ctx.runQuery(internal.agent.validateApiKey, { keyHash })
+  const auth = await ctx.runQuery(validateApiKeyRef, { keyHash })
 
   if (!auth) {
     return new Response(JSON.stringify({ error: "Invalid API key" }), {
@@ -66,6 +100,27 @@ http.route({
       })
     }
 
+    const keyHash = await hashApiKey(apiKey)
+    const auth = await ctx.runQuery(validateApiKeyRef, { keyHash })
+    if (!auth) {
+      return new Response(JSON.stringify({ error: "Invalid API key" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const rateLimitResult = await ctx.runMutation(checkChatRateLimitRef, {
+      key: keyHash,
+      organizationId: auth.organizationId,
+    })
+    if (!rateLimitResult.ok) {
+      const retryAfter = Math.ceil((rateLimitResult.retryAt! - Date.now()) / 1000)
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAt: rateLimitResult.retryAt }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": String(Math.max(1, retryAfter)) },
+      })
+    }
+
     const body = await request.json()
     const { agentId, message, threadId, externalThreadId, threadContext } = body as {
       agentId: string
@@ -86,7 +141,7 @@ http.route({
     }
 
     try {
-      const result = await ctx.runAction(internal.agent.chat, {
+      const result = await ctx.runAction(chatRef, {
         apiKey,
         agentId: agentId as Id<"agents">,
         message,
@@ -101,6 +156,12 @@ http.route({
         headers: { "Content-Type": "application/json" },
       })
     } catch (error) {
+      log.error("Chat API request failed", {
+        ...log.withOrg(auth.organizationId as string),
+        endpoint: "/v1/chat",
+        agentId,
+        error: error instanceof Error ? error : new Error(String(error)),
+      })
       const message = error instanceof Error ? error.message : "Unknown error"
       return new Response(JSON.stringify({ error: message }), {
         status: 500,
@@ -119,6 +180,27 @@ http.route({
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const keyHash = await hashApiKey(apiKey)
+    const auth = await ctx.runQuery(validateApiKeyRef, { keyHash })
+    if (!auth) {
+      return new Response(JSON.stringify({ error: "Invalid API key" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const rateLimitResult = await ctx.runMutation(checkChatRateLimitRef, {
+      key: keyHash,
+      organizationId: auth.organizationId,
+    })
+    if (!rateLimitResult.ok) {
+      const retryAfter = Math.ceil((rateLimitResult.retryAt! - Date.now()) / 1000)
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAt: rateLimitResult.retryAt }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": String(Math.max(1, retryAfter)) },
       })
     }
 
@@ -142,7 +224,7 @@ http.route({
     }
 
     try {
-      const result = await ctx.runAction(internal.agent.chatBySlug, {
+      const result = await ctx.runAction(chatBySlugRef, {
         apiKey,
         slug,
         message,
@@ -157,6 +239,12 @@ http.route({
         headers: { "Content-Type": "application/json" },
       })
     } catch (error) {
+      log.error("Chat by slug API request failed", {
+        ...log.withOrg(auth.organizationId as string),
+        endpoint: `/v1/agents/${slug}/chat`,
+        agentSlug: slug,
+        error: error instanceof Error ? error : new Error(String(error)),
+      })
       const message = error instanceof Error ? error.message : "Unknown error"
       return new Response(JSON.stringify({ error: message }), {
         status: 500,
@@ -170,8 +258,51 @@ http.route({
   path: "/webhook/clerk",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = await request.json()
-    const { type, data } = body as { type: string; data: unknown }
+    const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
+    if (!webhookSecret) {
+      return new Response("Webhook secret not configured", { status: 500 })
+    }
+
+    const svixId = request.headers.get("svix-id")
+    const svixTimestamp = request.headers.get("svix-timestamp")
+    const svixSignature = request.headers.get("svix-signature")
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      return new Response("Missing webhook headers", { status: 401 })
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const ts = parseInt(svixTimestamp)
+    if (Math.abs(now - ts) > 300) {
+      return new Response("Timestamp too old", { status: 401 })
+    }
+
+    const body = await request.text()
+
+    const rawSecret = webhookSecret.startsWith("whsec_") ? webhookSecret.slice(6) : webhookSecret
+    const secretBytes = Uint8Array.from(atob(rawSecret), (c) => c.charCodeAt(0))
+    const key = await crypto.subtle.importKey(
+      "raw",
+      secretBytes.buffer as ArrayBuffer,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    )
+    const toSign = new TextEncoder().encode(`${svixId}.${svixTimestamp}.${body}`)
+    const signatureBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, toSign.buffer as ArrayBuffer))
+    const expectedSig = base64Encode(signatureBytes)
+
+    const signatures = svixSignature.split(" ")
+    const verified = signatures.some((sig) => {
+      const parts = sig.split(",")
+      return parts[1] === expectedSig
+    })
+
+    if (!verified) {
+      return new Response("Invalid signature", { status: 401 })
+    }
+
+    const { type, data } = JSON.parse(body) as { type: string; data: unknown }
 
     try {
       switch (type) {
@@ -191,7 +322,7 @@ http.route({
 
           if (!email) break
 
-          await ctx.runMutation(internal.users.getOrCreateFromClerkNoOrg, {
+          await ctx.runMutation(getOrCreateFromClerkUserRef, {
             clerkUserId: userData.id,
             email,
             name: name || undefined,
@@ -207,7 +338,7 @@ http.route({
             slug: string
           }
 
-          await ctx.runMutation(internal.organizations.getOrCreateFromClerk, {
+          await ctx.runMutation(getOrCreateFromClerkOrgRef, {
             clerkOrgId: orgData.id,
             name: orgData.name,
             slug: orgData.slug,
@@ -217,7 +348,7 @@ http.route({
 
         case "organization.deleted": {
           const orgData = data as { id: string }
-          await ctx.runMutation(internal.organizations.markAsDeleted, {
+          await ctx.runMutation(markAsDeletedRef, {
             clerkOrgId: orgData.id,
           })
           break
@@ -237,7 +368,7 @@ http.route({
             role: string
           }
 
-          await ctx.runMutation(internal.organizations.getOrCreateFromClerk, {
+          await ctx.runMutation(getOrCreateFromClerkOrgRef, {
             clerkOrgId: membershipData.organization.id,
             name: membershipData.organization.name,
             slug: membershipData.organization.slug,
@@ -252,7 +383,7 @@ http.route({
             membershipData.public_user_data.last_name,
           ].filter(Boolean).join(" ") || undefined
 
-          await ctx.runMutation(internal.organizations.syncMembership, {
+          await ctx.runMutation(syncMembershipRef, {
             clerkOrgId: membershipData.organization.id,
             clerkUserId: membershipData.public_user_data.user_id,
             clerkMembershipId: membershipData.id,
@@ -269,7 +400,7 @@ http.route({
             public_user_data: { user_id: string }
           }
 
-          await ctx.runMutation(internal.organizations.removeMembership, {
+          await ctx.runMutation(removeMembershipRef, {
             clerkOrgId: membershipData.organization.id,
             clerkUserId: membershipData.public_user_data.user_id,
           })
@@ -282,7 +413,10 @@ http.route({
         headers: { "Content-Type": "application/json" },
       })
     } catch (error) {
-      console.error("Webhook error:", error)
+      log.error("Clerk webhook processing failed", {
+        webhookType: type,
+        error: error instanceof Error ? error : new Error(String(error)),
+      })
       return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
@@ -332,7 +466,7 @@ http.route({
       const kapsoCustomerId = parsed.customer?.id
 
       if (phoneNumberId && kapsoCustomerId) {
-        await ctx.runMutation(internal.whatsapp.handlePhoneConnected, {
+        await ctx.runMutation(handlePhoneConnectedRef, {
           kapsoCustomerId,
           kapsoPhoneNumberId: phoneNumberId,
         })
@@ -342,7 +476,7 @@ http.route({
     if (eventType === "whatsapp.phone_number.deleted") {
       const phoneNumberId = parsed.phone_number_id
       if (phoneNumberId) {
-        await ctx.runMutation(internal.whatsapp.handlePhoneDeleted, {
+        await ctx.runMutation(handlePhoneDeletedRef, {
           kapsoPhoneNumberId: phoneNumberId,
         })
       }
@@ -406,7 +540,7 @@ http.route({
         return new Response("Missing phone_number_id", { status: 400 })
       }
 
-      const connection = await ctx.runQuery(internal.whatsapp.getConnectionByKapsoPhone, {
+      const connection = await ctx.runQuery(getConnectionByKapsoPhoneRef, {
         kapsoPhoneNumberId: phoneNumberId,
       }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | null
 
@@ -448,7 +582,7 @@ http.route({
         }
       }
 
-      const msgId = await ctx.runMutation(internal.whatsapp.processInboundMessage, {
+      const msgId = await ctx.runMutation(processInboundMessageRef, {
         organizationId: connection.organizationId,
         connectionId: connection._id,
         from,
@@ -463,7 +597,7 @@ http.route({
       })
 
       if (msgId && mediaId) {
-        await ctx.runMutation(internal.whatsapp.scheduleMediaDownload, {
+        await ctx.runMutation(scheduleMediaDownloadRef, {
           whatsappMessageId: msgId,
           mediaId,
           kapsoPhoneNumberId: phoneNumberId,
@@ -472,7 +606,7 @@ http.route({
       }
 
       if (msgId && text) {
-        await ctx.runMutation(internal.whatsapp.scheduleAgentRouting, {
+        await ctx.runMutation(scheduleAgentRoutingRef, {
           organizationId: connection.organizationId,
           environment: connection.environment,
           connectionId: connection._id,
@@ -520,7 +654,7 @@ http.route({
           }
         }
 
-        await ctx.runMutation(internal.whatsapp.updateMessageStatus, updateArgs)
+        await ctx.runMutation(updateMessageStatusRef, updateArgs)
       }
     }
 
@@ -541,13 +675,13 @@ http.route({
 
     const handleFlowResult = async (result: { flowOrder: number; status: number; statusMessage: string }) => {
       if (result.status === 2) {
-        await ctx.runMutation(internal.payments.markAsPaid, {
+        await ctx.runMutation(markAsPaidRef, {
           providerReference: result.flowOrder.toString(),
           paidAt: Date.now(),
         })
         return true
       } else if (result.status === 3 || result.status === 4) {
-        await ctx.runMutation(internal.payments.markAsFailed, {
+        await ctx.runMutation(markAsFailedRef, {
           providerReference: result.flowOrder.toString(),
           reason: result.statusMessage,
         })
@@ -556,13 +690,13 @@ http.route({
       return false
     }
 
-    const paymentLookup = await ctx.runQuery(internal.payments.getPaymentByFlowToken, {
+    const paymentLookup = await ctx.runQuery(getPaymentByFlowTokenRef, {
       flowToken: token,
     })
 
     if (paymentLookup) {
       try {
-        const result = await ctx.runAction(internal.payments.verifyPaymentFromWebhook, {
+        const result = await ctx.runAction(verifyPaymentFromWebhookRef, {
           token,
           organizationId: paymentLookup.organizationId,
           environment: paymentLookup.environment,
@@ -570,11 +704,15 @@ http.route({
         await handleFlowResult(result)
         return new Response("OK", { status: 200 })
       } catch (error) {
-        console.error("Flow webhook verification error (token lookup):", error)
+        log.error("Flow webhook verification failed during token lookup", {
+          ...log.withOrg(paymentLookup.organizationId),
+          environment: paymentLookup.environment,
+          error: error instanceof Error ? error : new Error(String(error)),
+        })
       }
     }
 
-    const configs = await ctx.runQuery(internal.integrations.listFlowConfigs)
+    const configs = await ctx.runQuery(listFlowConfigsRef)
 
     if (configs.length === 0) {
       return new Response("OK", { status: 200 })
@@ -587,7 +725,7 @@ http.route({
 
       for (const env of environments) {
         try {
-          const result = await ctx.runAction(internal.payments.verifyPaymentFromWebhook, {
+          const result = await ctx.runAction(verifyPaymentFromWebhookRef, {
             token,
             organizationId: config.organizationId,
             environment: env,
@@ -597,7 +735,11 @@ http.route({
             return new Response("OK", { status: 200 })
           }
         } catch (error) {
-          console.error("Flow webhook verification error:", config.organizationId, env, error)
+          log.error("Flow webhook verification failed during config iteration", {
+            ...log.withOrg(config.organizationId as string),
+            environment: env,
+            error: error instanceof Error ? error : new Error(String(error)),
+          })
           continue
         }
       }
@@ -671,7 +813,7 @@ http.route({
       if (!organizationId) {
         return new Response("Missing organizationId", { status: 400 })
       }
-      await ctx.runMutation(internal.billing.addCreditsFromPolar, {
+      await ctx.runMutation(addCreditsFromPolarRef, {
         organizationId,
         amount: order.subtotal_amount,
         polarOrderId: order.id,
@@ -745,7 +887,7 @@ http.route({
 
     const mappedStatus = statusMap[event.type]
     if (mappedStatus && event.data?.email_id) {
-      await ctx.runMutation(internal.email.updateEmailStatus, {
+      await ctx.runMutation(updateEmailStatusRef, {
         resendId: event.data.email_id,
         status: mappedStatus as "sent" | "delivered" | "bounced" | "complained",
       })
@@ -758,7 +900,7 @@ http.route({
 http.route({
   path: "/v1/auth/refresh",
   method: "POST",
-  handler: httpAction(async (_ctx, request) => {
+  handler: httpAction(async (ctx, request) => {
     const body = await request.json() as { sessionId: string }
     const { sessionId } = body
 
@@ -766,6 +908,17 @@ http.route({
       return new Response(JSON.stringify({ error: "sessionId is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const rateLimitResult = await ctx.runMutation(checkAuthRefreshLimitRef, {
+      key: sessionId,
+    })
+    if (!rateLimitResult.ok) {
+      const retryAfter = Math.ceil((rateLimitResult.retryAt! - Date.now()) / 1000)
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAt: rateLimitResult.retryAt }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": String(Math.max(1, retryAfter)) },
       })
     }
 
@@ -814,7 +967,7 @@ http.route({
 
     try {
       const body = await request.json()
-      const result = await ctx.runMutation(internal.sync.internalSyncOrganization, {
+      const result = await ctx.runMutation(internalSyncOrganizationRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
         agents: body.agents ?? [],
@@ -847,7 +1000,7 @@ http.route({
     if (authResult instanceof Response) return authResult
 
     try {
-      const result = await ctx.runQuery(internal.sync.internalGetSyncState, {
+      const result = await ctx.runQuery(internalGetSyncStateRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
       })
@@ -874,7 +1027,7 @@ http.route({
     if (authResult instanceof Response) return authResult
 
     try {
-      const result = await ctx.runQuery(internal.sync.internalGetPullState, {
+      const result = await ctx.runQuery(internalGetPullStateRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
       })
@@ -901,7 +1054,7 @@ http.route({
     if (authResult instanceof Response) return authResult
 
     try {
-      const result = await ctx.runQuery(internal.whatsapp.listConnectionsInternal, {
+      const result = await ctx.runQuery(listConnectionsInternalRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
       })
@@ -929,7 +1082,7 @@ http.route({
 
     try {
       const body = await request.json() as { connectionId: string }
-      const result = await ctx.runAction(internal.whatsappActions.internalListTemplates, {
+      const result = await ctx.runAction(internalListTemplatesRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
@@ -965,7 +1118,7 @@ http.route({
         components: Array<Record<string, unknown>>
         allowCategoryChange?: boolean
       }
-      const result = await ctx.runAction(internal.whatsappActions.internalCreateTemplate, {
+      const result = await ctx.runAction(internalCreateTemplateRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
@@ -999,7 +1152,7 @@ http.route({
 
     try {
       const body = await request.json() as { connectionId: string; name: string }
-      const result = await ctx.runAction(internal.whatsappActions.internalDeleteTemplate, {
+      const result = await ctx.runAction(internalDeleteTemplateRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
@@ -1029,7 +1182,7 @@ http.route({
 
     try {
       const body = await request.json() as { connectionId: string; name: string }
-      const result = await ctx.runAction(internal.whatsappActions.internalGetTemplateStatus, {
+      const result = await ctx.runAction(internalGetTemplateStatusRef, {
         organizationId: authResult.organizationId,
         environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
@@ -1072,7 +1225,7 @@ http.route({
         })
       }
 
-      const result = await ctx.runAction(internal.agents.compileSystemPromptBySlug, {
+      const result = await ctx.runAction(compileSystemPromptBySlugRef, {
         organizationId: authResult.organizationId,
         slug: body.slug,
         environment: authResult.environment,

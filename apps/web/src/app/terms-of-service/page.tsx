@@ -166,7 +166,7 @@ export default function TermsOfService() {
             <p>
               The Service integrates with third-party providers including
               Anthropic (AI models), Clerk (authentication), Convex (database),
-              Cloudflare (tool execution), and Flow (payments). Your use of
+              Fly.io (tool execution), and Flow (payments). Your use of
               these services through our platform is subject to their respective
               terms. We are not liable for outages or changes in third-party
               services.
@@ -176,7 +176,7 @@ export default function TermsOfService() {
           <Section title="8. Custom Tools">
             <p>
               Custom tool handler code you provide is executed in sandboxed
-              Cloudflare Workers with restricted network access. You are
+              sandboxed environments on Fly.io with restricted network access. You are
               responsible for the code you submit and must ensure it does not
               contain malicious logic, credentials harvesting, or attempts to
               bypass sandbox restrictions. We reserve the right to disable tools

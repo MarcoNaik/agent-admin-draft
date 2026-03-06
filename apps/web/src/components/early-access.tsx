@@ -10,7 +10,7 @@ export function EarlyAccess() {
   const { ref, scale, opacity, y } = useScaleIn()
 
   return (
-    <section id="precios" className="bg-stone-deep py-20 md:py-28">
+    <section id="pricing" className="bg-stone-deep py-20 md:py-28">
       <div className="mx-auto max-w-2xl px-6 md:px-12">
         <div ref={headingRef} className="text-center mb-12">
           <motion.h2

@@ -71,7 +71,7 @@ export function generateLlmsTxt(): string {
   lines.push("## Quick reference")
   lines.push("")
   lines.push("- Chat endpoint: `POST /v1/agents/:slug/chat` with Bearer token")
-  lines.push("- SDK exports: `defineAgent`, `defineTools`, `defineConfig`, `defineEntityType`, `defineRole`, `defineTrigger`")
+  lines.push("- SDK exports: `defineAgent`, `defineTools`, `defineData`, `defineRole`, `defineTrigger`")
   lines.push("- Default model: `grok-4-1-fast` (provider: `xai`)")
   lines.push("- Environments: `development`, `production`, `eval`")
   lines.push("- Auth: API keys prefixed `sk_dev_` / `sk_prod_`")

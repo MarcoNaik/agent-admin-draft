@@ -168,7 +168,7 @@ export function ChatSidebar({ agent, open, onClose }: ChatSidebarProps) {
   }
 
   const config = environment === "production" ? agent.productionConfig : agent.developmentConfig
-  const modelName = config?.model?.name || "claude-sonnet-4-20250514"
+  const modelName = config?.model?.name || "grok-4-1-fast"
 
   if (!open) return null
 

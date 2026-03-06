@@ -91,7 +91,7 @@ export const devCommand = new Command('dev')
 
     try {
       loadedResources = await loadAllResources(cwd)
-      spinner.succeed(`Loaded ${loadedResources.agents.length} agents, ${loadedResources.entityTypes.length} entity types, ${loadedResources.roles.length} roles, ${loadedResources.customTools.length} custom tools, ${loadedResources.evalSuites.length} eval suites, ${loadedResources.triggers.length} triggers, ${loadedResources.fixtures.length} fixtures`)
+      spinner.succeed(`Loaded ${loadedResources.agents.length} agents, ${loadedResources.entityTypes.length} data types, ${loadedResources.roles.length} roles, ${loadedResources.customTools.length} custom tools, ${loadedResources.evalSuites.length} eval suites, ${loadedResources.triggers.length} triggers, ${loadedResources.fixtures.length} fixtures`)
 
       for (const err of loadedResources.errors) {
         console.log(chalk.red('  ✖'), err)
@@ -206,9 +206,17 @@ export const devCommand = new Command('dev')
       usePolling: false,
     })
 
-    const handleFileChange = async (path: string, action: string) => {
-      const relativePath = path.replace(cwd, '.')
-      console.log(chalk.gray(`${action}: ${relativePath}`))
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    let pendingChanges: Array<{ path: string; action: string }> = []
+
+    const triggerSync = async () => {
+      const changes = [...pendingChanges]
+      pendingChanges = []
+
+      for (const { path, action } of changes) {
+        const relativePath = path.replace(cwd, '.')
+        console.log(chalk.gray(`${action}: ${relativePath}`))
+      }
 
       const syncSpinner = ora('Syncing...').start()
       try {
@@ -236,6 +244,15 @@ export const devCommand = new Command('dev')
           console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
         }
       }
+    }
+
+    const handleFileChange = (path: string, action: string) => {
+      pendingChanges.push({ path, action })
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null
+        triggerSync()
+      }, 300)
     }
 
     watcher.on('change', (path) => handleFileChange(path, 'Changed'))

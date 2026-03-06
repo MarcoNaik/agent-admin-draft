@@ -271,7 +271,7 @@ Accessibility is not a layer added on top. It's inherent to the design philosoph
 - **Color contrast meets WCAG AA** — charcoal on stone, white on hero image
 - **Semantic HTML** — proper heading hierarchy, form labels, landmark regions
 - **Focus visible** — prismatic border glow on keyboard navigation (not hidden for aesthetic reasons)
-- **Language support** — ES/EN i18n with proper switching
+- **Language support** — English-only, proper lang attribute
 
 ---
 

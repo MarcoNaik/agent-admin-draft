@@ -1,7 +1,11 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { getAuthContext, requireAuth } from "./lib/auth"
+import { estimateMinimumCost } from "./lib/creditPricing"
+
+const executeCaseRef = makeFunctionReference<"action">("evalRunner:executeCase")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -415,6 +419,31 @@ export const startRun = mutation({
       throw new Error("Suite has no cases")
     }
 
+    const creditBalance = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .first()
+
+    const cachedBalance = creditBalance?.balance ?? 0
+
+    const pendingTxs = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .order("desc")
+      .collect()
+
+    const pendingDeductions = pendingTxs
+      .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
+      .reduce((sum, tx) => sum + tx.amount, 0)
+
+    const effectiveBalance = cachedBalance - pendingDeductions
+    const judgeModelName = suite.judgeModel?.name ?? "grok-4-1-fast"
+    const minimumRequired = estimateMinimumCost(judgeModelName)
+
+    if (effectiveBalance < minimumRequired) {
+      throw new Error("Insufficient credits. Please add credits to your account before running evals.")
+    }
+
     const agentConfig = await ctx.db
       .query("agentConfigs")
       .withIndex("by_agent_env", (q) => q.eq("agentId", suite.agentId).eq("environment", suite.environment))
@@ -457,10 +486,10 @@ export const startRun = mutation({
     }
 
     for (const c of cases) {
-      await ctx.scheduler.runAfter(0, internal.evalRunner.executeCase, {
+      await ctx.scheduler.runAfter(0, executeCaseRef, {
         runId,
         caseId: c._id,
-      })
+      } as any)
     }
 
     return runId
@@ -604,12 +633,12 @@ export const caseCompleted = internalMutation({
     }
 
     if (args.judgeCost && args.judgeCost > 0) {
-      await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+      await ctx.scheduler.runAfter(0, deductCreditsRef, {
         organizationId: run.organizationId,
         amount: args.judgeCost,
         description: `Eval judge — run ${args.runId}`,
         metadata: { evalRunId: args.runId, type: "eval_judge" },
-      })
+      } as any)
     }
 
     if (completedCases === run.totalCases) {

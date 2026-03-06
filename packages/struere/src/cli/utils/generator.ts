@@ -93,9 +93,9 @@ export function generateEntityTypeFile(entityType: PullStateEntityType): string 
     parts.push(`  displayConfig: ${stringifyValue(entityType.displayConfig, 2)}`)
   }
 
-  return `import { defineEntityType } from 'struere'
+  return `import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
 ${parts.join(',\n')},
 })
 `

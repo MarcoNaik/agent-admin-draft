@@ -13,20 +13,18 @@ Struere supports multiple LLM providers for agent execution. Each agent can be c
 
 | Provider | Notes |
 |----------|-------|
-| `anthropic` | Default provider |
+| `xai` | Default provider |
+| `anthropic` | Configure in Settings > Providers |
 | `openai` | Configure in Settings > Providers |
 | `google` | Configure in Settings > Providers |
-| `xai` | Configure in Settings > Providers |
 | `custom` | Requires `apiKey` in model config. Use for self-hosted or alternative providers. |
 
 ## Anthropic Models
 
-Anthropic is the default provider.
-
 | Model | Input (per MTok) | Output (per MTok) | Best For |
 |-------|-------------------|--------------------|----------|
 | `claude-haiku-4-5` | $1 | $5 | High-volume, cost-sensitive tasks |
-| `claude-sonnet-4` | $3 | $15 | **Default** — Balanced reasoning and cost |
+| `claude-sonnet-4` | $3 | $15 | Balanced reasoning and cost |
 | `claude-sonnet-4-5` | $3 | $15 | Improved coding and reasoning over Sonnet 4 |
 | `claude-opus-4-5` | $15 | $75 | Deep analysis and research-grade tasks |
 | `claude-sonnet-4-6` | $3 | $15 | Latest Sonnet — strongest reasoning |
@@ -68,6 +66,7 @@ Anthropic is the default provider.
 
 | Model | Input (per MTok) | Output (per MTok) | Context | Best For |
 |-------|-------------------|--------------------|---------|----------|
+| `grok-4-1-fast` | $0.20 | $0.50 | 2M | **Default** — Fast agentic tool calling |
 | `grok-4-1-fast-reasoning` | $0.20 | $0.50 | 2M | Frontier agentic tool calling with reasoning |
 | `grok-4-1-fast-non-reasoning` | $0.20 | $0.50 | 2M | Fast responses without reasoning overhead |
 | `grok-4-0709` | $3 | $15 | 256K | Most capable Grok — deep reasoning |
@@ -77,11 +76,12 @@ Anthropic is the default provider.
 
 ## Choosing a Model
 
-- **claude-sonnet-4** — The default model. Strong reasoning with balanced cost, suitable for most agent tasks including multi-step planning and nuanced decision-making.
+- **grok-4-1-fast** — The default model. Fast agentic tool calling with 2M context window at low cost.
+- **grok-4-1-fast-reasoning** — Same as default but with explicit reasoning. Best for complex multi-step workflows.
+- **claude-sonnet-4** — Strong reasoning with balanced cost, suitable for nuanced decision-making.
 - **claude-haiku-4-5** — Use for high-volume, cost-sensitive agents. Fast and capable enough for data management, scheduling, and standard workflows.
 - **claude-opus-4-6** — Use for agents that require the highest possible capability, such as complex analysis or research tasks.
 - **gpt-4o-mini** / **gemini-2.5-flash** — Good alternatives for cost-sensitive, high-throughput workloads.
-- **grok-4-1-fast-reasoning** — Best xAI option for agentic workflows with tool calling. 2M context window at low cost.
 - **grok-3-mini** — Budget-friendly xAI option with reasoning capabilities.
 
 ## Configuration Options
@@ -90,8 +90,8 @@ The `model` field in an agent definition accepts the following options:
 
 ```typescript
 model: {
-  provider: "anthropic",
-  name: "claude-sonnet-4",
+  provider: "xai",
+  name: "grok-4-1-fast",
   temperature?: 0.7,
   maxTokens?: 4096,
   apiKey?: "sk-...",
@@ -100,8 +100,8 @@ model: {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `provider` | `string` | `"anthropic"` | The LLM provider (`"anthropic"`, `"openai"`, `"google"`, `"xai"`, or `"custom"`) |
-| `name` | `string` | `"claude-sonnet-4"` (full ID: `claude-sonnet-4-20250514`) | The model name |
+| `provider` | `string` | `"xai"` | The LLM provider (`"anthropic"`, `"openai"`, `"google"`, `"xai"`, or `"custom"`) |
+| `name` | `string` | `"grok-4-1-fast"` | The model name |
 | `temperature` | `number` | `0.7` | Controls randomness. Lower values (0.0-0.3) produce more deterministic output. Higher values (0.7-1.0) produce more creative output. |
 | `maxTokens` | `number` | `4096` | Maximum number of tokens in the model's response |
 | `apiKey` | `string` | — | API key override. Required for `custom` provider. For standard providers, configure keys in the dashboard under Settings > Providers. |
@@ -112,8 +112,8 @@ If no model is specified in the agent definition, the default configuration is u
 
 ```typescript
 {
-  provider: "anthropic",
-  name: "claude-sonnet-4",
+  provider: "xai",
+  name: "grok-4-1-fast",
   temperature: 0.7,
   maxTokens: 4096,
 }

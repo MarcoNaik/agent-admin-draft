@@ -20,7 +20,7 @@ apps/                        packages/                   platform/
 ```
 
 - **Dashboard** — A Next.js 14 application for managing agents, data, and integrations in real-time.
-- **SDK + CLI** — The `struere` package gives you `defineAgent`, `defineEntityType`, `defineRole`, `defineTrigger`, and other helpers to define your platform configuration as code. The CLI syncs these definitions to your backend.
+- **SDK + CLI** — The `struere` package gives you `defineAgent`, `defineData`, `defineRole`, `defineTrigger`, and other helpers to define your platform configuration as code. The CLI syncs these definitions to your backend.
 - **Convex Backend** — The core backend powering real-time data, agent execution, and tool orchestration.
 - **Tool Executor** — A sandboxed server that runs custom tool handlers with a restricted fetch allowlist.
 
@@ -31,9 +31,9 @@ apps/                        packages/                   platform/
 Define structured data types with JSON schemas. Agents get full CRUD operations — `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete` — plus relationships via `entity.link`/`entity.unlink`, full-text search, and audit trails.
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Customer",
   slug: "customer",
   schema: {
@@ -60,7 +60,7 @@ export default defineAgent({
   systemPrompt: `You are {{agentName}} for {{organizationName}}.
 Current time: {{currentTime}}
 
-Available entity types: {{entityTypes}}
+Available data types: {{entityTypes}}
 
 Recent tickets: {{entity.query({"type": "ticket", "limit": 10})}}`,
   tools: ["entity.query", "entity.update", "event.emit"],

@@ -5,9 +5,6 @@ import { usePathname } from "next/navigation"
 import { UserButton } from "@clerk/nextjs"
 import {
   ChevronsUpDown,
-  Calendar,
-  CreditCard,
-  GraduationCap,
   Globe,
   Code,
   User,
@@ -23,7 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useStudio } from "@/contexts/studio-context"
-import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
+import { useCurrentRole } from "@/hooks/use-current-role"
+import { useAgents } from "@/hooks/use-agents"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { OrgSwitcher } from "@/components/org-switcher"
 import { AgentSwitcher } from "@/components/agent-switcher"
@@ -44,37 +42,15 @@ const adminNavigation: NavItem[] = [
   { name: "Settings", href: "/settings" },
 ]
 
-const teacherNavigation: NavItem[] = [
-  { name: "My Sessions", href: "/teacher/sessions", icon: Calendar },
-  { name: "My Students", href: "/teacher/students", icon: GraduationCap },
-  { name: "My Profile", href: "/teacher/profile", icon: User },
-]
-
-const guardianNavigation: NavItem[] = [
-  { name: "Sessions", href: "/guardian/sessions", icon: Calendar },
-  { name: "My Children", href: "/guardian/students", icon: GraduationCap },
-  { name: "Payments", href: "/guardian/payments", icon: CreditCard },
-  { name: "My Profile", href: "/guardian/profile", icon: User },
-]
-
 const memberNavigation: NavItem[] = [
   { name: "Data", href: "/entities" },
   { name: "Conversations", href: "/conversations" },
   { name: "Profile", href: "/profile", icon: User },
 ]
 
-function getNavigationForRole(role: UserRole): NavItem[] {
-  switch (role) {
-    case "teacher":
-      return teacherNavigation
-    case "guardian":
-      return guardianNavigation
-    case "member":
-      return memberNavigation
-    case "admin":
-    default:
-      return adminNavigation
-  }
+function getNavigationForRole(role: string): NavItem[] {
+  if (role === "admin") return adminNavigation
+  return memberNavigation
 }
 
 function EnvironmentSelector() {
@@ -128,6 +104,8 @@ const EXACT_MATCH_TABS = new Set(["/settings"])
 
 function StudioToggle() {
   const { isOpen, toggleStudio, hasActiveSession } = useStudio()
+  const agents = useAgents()
+  const shouldPulse = !isOpen && (agents?.length ?? 0) === 0
 
   return (
     <button
@@ -135,7 +113,8 @@ function StudioToggle() {
       onClick={toggleStudio}
       className={cn(
         "studio-btn relative flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-transparent",
-        isOpen ? "studio-active font-medium" : "text-content-secondary"
+        isOpen ? "studio-active font-medium" : "text-content-secondary",
+        shouldPulse && "animate-pulse"
       )}
     >
       <span className="relative z-10 flex items-center gap-1.5">

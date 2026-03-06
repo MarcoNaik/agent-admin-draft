@@ -1,28 +1,17 @@
 import { v } from "convex/values"
-import { query, mutation, action, internalQuery, internalMutation, QueryCtx, MutationCtx } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
-import { requireAuth } from "./lib/auth"
+import { requireAuth, isOrgAdmin, requireOrgAdmin } from "./lib/auth"
+
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
+const getConfigForTestRef = makeFunctionReference<"query">("integrations:getConfigForTest")
+const patchConfigStatusRef = makeFunctionReference<"mutation">("integrations:patchConfigStatus")
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const providerValidator = v.union(v.literal("whatsapp"), v.literal("flow"), v.literal("google"), v.literal("zoom"), v.literal("airtable"), v.literal("resend"))
-
-async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  const membership = await ctx.db
-    .query("userOrganizations")
-    .withIndex("by_user_org", (q) =>
-      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
-    )
-    .first()
-  return membership?.role === "admin"
-}
-
-async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  if (!(await isOrgAdmin(ctx, auth))) {
-    throw new Error("Admin access required")
-  }
-}
 
 interface FlowConfig {
   apiUrl: string
@@ -267,13 +256,7 @@ export const isOrgAdminInternal = internalQuery({
   args: { userId: v.id("users"), organizationId: v.id("organizations") },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const membership = await ctx.db
-      .query("userOrganizations")
-      .withIndex("by_user_org", (q) =>
-        q.eq("userId", args.userId).eq("organizationId", args.organizationId)
-      )
-      .first()
-    return membership?.role === "admin"
+    return isOrgAdmin(ctx, { userId: args.userId, organizationId: args.organizationId })
   },
 })
 
@@ -287,12 +270,12 @@ export const testConnection = action({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    const auth = await ctx.runQuery(getAuthInfoRef)
     if (!auth) {
       throw new Error("Not authenticated")
     }
 
-    const isAdmin = await ctx.runQuery(internal.integrations.isOrgAdminInternal, {
+    const isAdmin = await ctx.runQuery(isOrgAdminInternalRef, {
       userId: auth.userId,
       organizationId: auth.organizationId,
     })
@@ -300,7 +283,7 @@ export const testConnection = action({
       throw new Error("Admin access required")
     }
 
-    const config = await ctx.runQuery(internal.integrations.getConfigForTest, {
+    const config = await ctx.runQuery(getConfigForTestRef, {
       organizationId: auth.organizationId,
       environment: args.environment,
       provider: args.provider,
@@ -324,14 +307,14 @@ export const testConnection = action({
         })
 
         if (!response.ok) {
-          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          await ctx.runMutation(patchConfigStatusRef, {
             configId: config._id,
             status: "error",
           })
           return { success: false, message: "Kapso API key is invalid or unreachable" }
         }
 
-        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+        await ctx.runMutation(patchConfigStatusRef, {
           configId: config._id,
           status: "active",
           lastVerifiedAt: now,
@@ -358,7 +341,7 @@ export const testConnection = action({
           const response = await fetch(`${flowConfig.apiUrl}/payment/getStatusByFlowOrder?${params.toString()}`)
 
           if (response.status === 401 || response.status === 403) {
-            await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            await ctx.runMutation(patchConfigStatusRef, {
               configId: config._id,
               status: "error",
             })
@@ -368,21 +351,21 @@ export const testConnection = action({
           const body = await response.json() as { status: number; message?: string; code?: string }
 
           if (body.message?.toLowerCase().includes("invalid api key") || body.message?.toLowerCase().includes("unauthorized") || body.code === "auth_error") {
-            await ctx.runMutation(internal.integrations.patchConfigStatus, {
+            await ctx.runMutation(patchConfigStatusRef, {
               configId: config._id,
               status: "error",
             })
             return { success: false, message: "Flow API credentials are invalid" }
           }
 
-          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          await ctx.runMutation(patchConfigStatusRef, {
             configId: config._id,
             status: "active",
             lastVerifiedAt: now,
           })
           return { success: true, message: "Flow API connection verified" }
         } catch (fetchError) {
-          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          await ctx.runMutation(patchConfigStatusRef, {
             configId: config._id,
             status: "error",
           })
@@ -397,7 +380,7 @@ export const testConnection = action({
           return { success: false, message: "CLERK_SECRET_KEY not configured in Convex environment" }
         }
 
-        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+        await ctx.runMutation(patchConfigStatusRef, {
           configId: config._id,
           status: "active",
           lastVerifiedAt: now,
@@ -411,7 +394,7 @@ export const testConnection = action({
           return { success: false, message: "Missing required Zoom configuration" }
         }
 
-        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+        await ctx.runMutation(patchConfigStatusRef, {
           configId: config._id,
           status: "active",
           lastVerifiedAt: now,
@@ -430,14 +413,14 @@ export const testConnection = action({
         })
 
         if (!response.ok) {
-          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          await ctx.runMutation(patchConfigStatusRef, {
             configId: config._id,
             status: "error",
           })
           return { success: false, message: "Airtable Personal Access Token is invalid or unreachable" }
         }
 
-        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+        await ctx.runMutation(patchConfigStatusRef, {
           configId: config._id,
           status: "active",
           lastVerifiedAt: now,
@@ -456,14 +439,14 @@ export const testConnection = action({
         })
 
         if (!response.ok) {
-          await ctx.runMutation(internal.integrations.patchConfigStatus, {
+          await ctx.runMutation(patchConfigStatusRef, {
             configId: config._id,
             status: "error",
           })
           return { success: false, message: "Resend API key is invalid or unreachable" }
         }
 
-        await ctx.runMutation(internal.integrations.patchConfigStatus, {
+        await ctx.runMutation(patchConfigStatusRef, {
           configId: config._id,
           status: "active",
           lastVerifiedAt: now,
@@ -474,7 +457,7 @@ export const testConnection = action({
       return { success: false, message: "Unknown provider" }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
-      await ctx.runMutation(internal.integrations.patchConfigStatus, {
+      await ctx.runMutation(patchConfigStatusRef, {
         configId: config._id,
         status: "error",
       })

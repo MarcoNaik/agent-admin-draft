@@ -39,6 +39,7 @@ export async function executeBuiltinTool(
     conversationId?: string
     depth?: number
     callerAgentSlug?: string
+    agentId?: string
   }
 ): Promise<unknown> {
   const { organizationId, actorId, actorType, isOrgAdmin, environment, toolName, args } = params
@@ -223,6 +224,7 @@ export async function executeBuiltinTool(
       if (!args.text) throw new Error("whatsapp.send requires 'text' parameter")
       return await ctx.runAction(ref("tools/whatsapp:whatsappSend"), {
         organizationId, actorId, actorType, environment,
+        agentId: params.agentId as Id<"agents"> | undefined,
         to: args.to as string,
         text: args.text as string,
       })
@@ -233,6 +235,7 @@ export async function executeBuiltinTool(
       if (!args.language) throw new Error("whatsapp.sendTemplate requires 'language' parameter")
       return await ctx.runAction(ref("tools/whatsapp:whatsappSendTemplate"), {
         organizationId, actorId, actorType, environment,
+        agentId: params.agentId as Id<"agents"> | undefined,
         to: args.to as string,
         templateName: args.templateName as string,
         language: args.language as string,
@@ -245,6 +248,7 @@ export async function executeBuiltinTool(
       if (!args.buttons) throw new Error("whatsapp.sendInteractive requires 'buttons' parameter")
       return await ctx.runAction(ref("tools/whatsapp:whatsappSendInteractive"), {
         organizationId, actorId, actorType, environment,
+        agentId: params.agentId as Id<"agents"> | undefined,
         to: args.to as string,
         bodyText: args.bodyText as string,
         buttons: args.buttons as any,
@@ -257,6 +261,7 @@ export async function executeBuiltinTool(
       if (!args.mediaType) throw new Error("whatsapp.sendMedia requires 'mediaType' parameter")
       return await ctx.runAction(ref("tools/whatsapp:whatsappSendMedia"), {
         organizationId, actorId, actorType, environment,
+        agentId: params.agentId as Id<"agents"> | undefined,
         to: args.to as string,
         mediaUrl: args.mediaUrl as string,
         mediaType: args.mediaType as "image" | "audio",
@@ -266,12 +271,14 @@ export async function executeBuiltinTool(
     case "whatsapp.listTemplates":
       return await ctx.runAction(ref("tools/whatsapp:whatsappListTemplates"), {
         organizationId, actorId, actorType, environment,
+        agentId: params.agentId as Id<"agents"> | undefined,
       })
 
     case "whatsapp.getConversation":
       if (!args.phoneNumber) throw new Error("whatsapp.getConversation requires 'phoneNumber' parameter")
       return await ctx.runAction(ref("tools/whatsapp:whatsappGetConversation"), {
         organizationId, actorId, actorType, environment,
+        agentId: params.agentId as Id<"agents"> | undefined,
         phoneNumber: args.phoneNumber as string,
         limit: args.limit as number | undefined,
       })

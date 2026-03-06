@@ -1,7 +1,10 @@
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "../_generated/dataModel"
+
+const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
+const storeOutboundEmailRef = makeFunctionReference<"mutation">("email:storeOutboundEmail")
 import { sendEmail } from "../lib/integrations/resend"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
@@ -16,7 +19,7 @@ async function resolveFromConfig(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<{ fromEmail: string; fromName?: string; replyTo?: string }> {
-  const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
+  const config = await ctx.runQuery(getIntegrationConfigInternalRef, {
     organizationId,
     environment,
     provider: "resend" as const,
@@ -69,7 +72,7 @@ export const emailSend = internalAction({
       replyTo,
     })
 
-    await ctx.runMutation(internal.email.storeOutboundEmail, {
+    await ctx.runMutation(storeOutboundEmailRef, {
       organizationId: args.organizationId,
       environment: args.environment,
       to: args.to,

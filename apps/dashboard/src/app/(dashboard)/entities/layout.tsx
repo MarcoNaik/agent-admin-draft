@@ -7,13 +7,7 @@ import {
   Database,
   Search,
   Layers,
-  Calendar,
-  GraduationCap,
-  UserCheck,
-  CreditCard,
   Shield,
-  Users,
-  ChevronRight,
   Loader2,
   LucideIcon,
 } from "lucide-react"
@@ -23,17 +17,8 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Doc } from "@convex/_generated/dataModel"
 
-const entityTypeIcons: Record<string, LucideIcon> = {
-  student: GraduationCap,
-  teacher: UserCheck,
-  guardian: Users,
-  session: Calendar,
-  payment: CreditCard,
-  entitlement: Shield,
-}
-
-function getEntityTypeIcon(slug: string): LucideIcon {
-  return entityTypeIcons[slug] || Layers
+function getEntityTypeIcon(_slug: string): LucideIcon {
+  return Layers
 }
 
 export default function EntitiesLayout({

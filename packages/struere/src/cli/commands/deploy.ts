@@ -91,7 +91,7 @@ export const deployCommand = new Command('deploy')
     let resources
     try {
       resources = await loadAllResources(cwd)
-      if (!jsonMode) spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites`)
+      if (!jsonMode) spinner.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} data types, ${resources.roles.length} roles, ${resources.customTools.length} custom tools, ${resources.evalSuites.length} eval suites`)
 
       for (const err of resources.errors) {
         if (!jsonMode) console.log(chalk.red('  ✖'), err)
@@ -157,7 +157,7 @@ export const deployCommand = new Command('deploy')
         console.log(chalk.gray('  -'), `${chalk.cyan(agent.name)} (${agent.slug}) v${agent.version}`)
       }
       console.log()
-      console.log('Entity types:')
+      console.log('Data types:')
       for (const et of resources.entityTypes) {
         console.log(chalk.gray('  -'), chalk.cyan(et.name), `(${et.slug})`)
       }

@@ -20,7 +20,7 @@ npx struere add <type> <name>
 | Type | Directory | Definition Function |
 |------|-----------|-------------------|
 | `agent` | `agents/` | `defineAgent()` |
-| `entity-type` | `entity-types/` | `defineEntityType()` |
+| `data-type` | `entity-types/` | `defineData()` |
 | `role` | `roles/` | `defineRole()` |
 | `trigger` | `triggers/` | `defineTrigger()` |
 | `eval` / `suite` | `evals/` | `defineEvalSuite()` |
@@ -45,8 +45,8 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You are a scheduling assistant...",
   model: {
-    provider: "anthropic",
-    name: "claude-sonnet-4",
+    provider: "xai",
+    name: "grok-4-1-fast",
   },
   tools: ["entity.query", "event.emit"],
 })
@@ -55,15 +55,15 @@ export default defineAgent({
 ### Scaffold a Data Type
 
 ```bash
-npx struere add entity-type customer
+npx struere add data-type customer
 ```
 
 Creates `entity-types/customer.ts`:
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Customer",
   slug: "customer",
   schema: {

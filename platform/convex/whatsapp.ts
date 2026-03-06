@@ -1,29 +1,18 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery, QueryCtx, MutationCtx } from "./_generated/server"
-import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
-import { requireAuth } from "./lib/auth"
+import { makeFunctionReference } from "convex/server"
+import { requireAuth, requireOrgAdmin } from "./lib/auth"
 import { calculateWhatsAppCost } from "./lib/whatsappPricing"
 
+const createKapsoSetupRef = makeFunctionReference<"action">("whatsappActions:createKapsoSetup")
+const registerNumberWebhookRef = makeFunctionReference<"action">("whatsappActions:registerNumberWebhook")
+const disconnectFromKapsoRef = makeFunctionReference<"action">("whatsappActions:disconnectFromKapso")
+const downloadAndStoreMediaRef = makeFunctionReference<"action">("whatsappActions:downloadAndStoreMedia")
+const routeInboundToAgentRef = makeFunctionReference<"action">("whatsappActions:routeInboundToAgent")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
+
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
-
-
-
-async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  const membership = await ctx.db
-    .query("userOrganizations")
-    .withIndex("by_user_org", (q) =>
-      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
-    )
-    .first()
-  return membership?.role === "admin"
-}
-
-async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  if (!(await isOrgAdmin(ctx, auth))) {
-    throw new Error("Admin access required")
-  }
-}
 
 async function requireWhatsAppEnabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, environment: "development" | "production" | "eval") {
   const integrationConfig = await ctx.db
@@ -69,12 +58,12 @@ export const addPhoneNumber = mutation({
     const config = (integrationConfig.config ?? {}) as Record<string, unknown>
     const existingKapsoCustomerId = config.kapsoCustomerId as string | undefined
 
-    await ctx.scheduler.runAfter(0, internal.whatsappActions.createKapsoSetup, {
+    await ctx.scheduler.runAfter(0, createKapsoSetupRef, {
       organizationId: auth.organizationId,
       environment: args.environment,
       label: args.label,
       existingKapsoCustomerId,
-    })
+    } as any)
     return null
   },
 })
@@ -112,9 +101,9 @@ export const handlePhoneConnected = internalMutation({
       updatedAt: now,
     })
 
-    await ctx.scheduler.runAfter(0, internal.whatsappActions.registerNumberWebhook, {
+    await ctx.scheduler.runAfter(0, registerNumberWebhookRef, {
       kapsoPhoneNumberId: args.kapsoPhoneNumberId,
-    })
+    } as any)
 
     return null
   },
@@ -135,9 +124,9 @@ export const disconnectPhoneNumber = mutation({
     }
 
     if (connection.kapsoPhoneNumberId) {
-      await ctx.scheduler.runAfter(0, internal.whatsappActions.disconnectFromKapso, {
+      await ctx.scheduler.runAfter(0, disconnectFromKapsoRef, {
         kapsoPhoneNumberId: connection.kapsoPhoneNumberId,
-      })
+      } as any)
     }
 
     await ctx.db.patch(args.connectionId, {
@@ -168,9 +157,9 @@ export const removeConnection = mutation({
     }
 
     if (connection.kapsoPhoneNumberId) {
-      await ctx.scheduler.runAfter(0, internal.whatsappActions.disconnectFromKapso, {
+      await ctx.scheduler.runAfter(0, disconnectFromKapsoRef, {
         kapsoPhoneNumberId: connection.kapsoPhoneNumberId,
-      })
+      } as any)
     }
 
     await ctx.db.delete(args.connectionId)
@@ -510,12 +499,12 @@ export const updateMessageStatus = internalMutation({
           patch.creditsConsumed = cost
 
           if (cost > 0) {
-            await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+            await ctx.scheduler.runAfter(0, deductCreditsRef, {
               organizationId: msg.organizationId,
               amount: cost,
               description: `WhatsApp ${args.pricingCategory} to +${msg.phoneNumber}`,
               metadata: { whatsappMessageId: msg._id, category: args.pricingCategory },
-            })
+            } as any)
           }
         }
 
@@ -536,12 +525,12 @@ export const scheduleMediaDownload = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.scheduler.runAfter(0, internal.whatsappActions.downloadAndStoreMedia, {
+    await ctx.scheduler.runAfter(0, downloadAndStoreMediaRef, {
       whatsappMessageId: args.whatsappMessageId,
       mediaId: args.mediaId,
       kapsoPhoneNumberId: args.kapsoPhoneNumberId,
       mediaUrl: args.mediaUrl,
-    })
+    } as any)
     return null
   },
 })
@@ -650,14 +639,14 @@ export const scheduleAgentRouting = internalMutation({
     const connection = await ctx.db.get(args.connectionId)
 
     if (connection?.agentId && connection.status === "connected") {
-      await ctx.scheduler.runAfter(0, internal.whatsappActions.routeInboundToAgent, {
+      await ctx.scheduler.runAfter(0, routeInboundToAgentRef, {
         organizationId: args.organizationId,
         phoneNumber: args.phoneNumber,
         text: args.text,
         environment: args.environment,
         agentId: connection.agentId,
         connectionId: args.connectionId,
-      })
+      } as any)
     }
 
     return null

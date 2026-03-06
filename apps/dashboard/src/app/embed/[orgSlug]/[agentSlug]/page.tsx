@@ -42,7 +42,7 @@ export default function EmbedChatPage() {
         type: "struere:message",
         threadId: result.threadId,
         message: result.message,
-      }, "*")
+      }, window.location.origin)
     }
 
     return result

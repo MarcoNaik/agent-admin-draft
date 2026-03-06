@@ -1,7 +1,6 @@
 export { defineAgent } from './define/agent'
 export { defineTools } from './define/tools'
-export { defineConfig } from './define/config'
-export { defineEntityType } from './define/entityType'
+export { defineData } from './define/entityType'
 export { defineRole } from './define/role'
 export { defineTrigger } from './define/trigger'
 
@@ -13,11 +12,7 @@ export type {
   ParameterDefinition,
   ToolHandler,
   ToolContext,
-  FrameworkConfig,
-  CorsConfig,
-  LoggingConfig,
-  AuthConfig,
-  EntityTypeConfig,
+  EntityTypeConfig as DataTypeConfig,
   JSONSchema,
   JSONSchemaProperty,
   RoleConfig,

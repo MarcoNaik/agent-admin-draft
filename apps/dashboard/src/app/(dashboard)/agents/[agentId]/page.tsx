@@ -139,7 +139,7 @@ export default function AgentOverviewPage({ params }: AgentOverviewPageProps) {
           {config && (
             <div className="flex items-center gap-4 text-xs text-content-secondary pt-2 border-t">
               <span>Version: <span className="font-mono text-content-primary">{config.version}</span></span>
-              <span>Model: <span className="font-mono text-content-primary">{config.model?.name || "claude-sonnet-4-20250514"}</span></span>
+              <span>Model: <span className="font-mono text-content-primary">{config.model?.name || "grok-4-1-fast"}</span></span>
               <span>Tools: <span className="text-content-primary">{config.tools?.length || 0}</span></span>
             </div>
           )}

@@ -89,15 +89,15 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You are a helpful assistant for {{organizationName}}. Current time: {{currentTime}}.",
   model: {
-    provider: "anthropic",
-    name: "claude-sonnet-4",
+    provider: "xai",
+    name: "grok-4-1-fast",
   },
   tools: ["entity.query", "event.emit"],
 })
 ```
 
 This defines an agent that:
-- Uses Claude Sonnet 4 as its LLM
+- Uses Grok 4.1 Fast as its LLM
 - Has access to query entities and emit events
 - Receives the organization name and current time in its system prompt via template variables
 
@@ -106,9 +106,9 @@ This defines an agent that:
 Create a file at `entity-types/customer.ts`:
 
 ```typescript
-import { defineEntityType } from 'struere'
+import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "Customer",
   slug: "customer",
   schema: {
@@ -221,6 +221,6 @@ This promotes all agent configurations to the production environment where they 
 - [Chat API](./api/chat) — Full API reference for sending messages to agents
 - [CLI Overview](./cli/overview) — Learn all available CLI commands
 - [Agent Configuration](./sdk/define-agent) — Configure models, tools, and system prompts
-- [Data Types](./sdk/define-entity-type) — Define structured data schemas
+- [Data Types](./sdk/define-data) — Define structured data schemas
 - [Built-in Tools](./tools/built-in-tools) — All available agent tools
 - [Automations](./sdk/define-trigger) — Build event-driven automations

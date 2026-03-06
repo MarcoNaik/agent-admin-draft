@@ -7,7 +7,7 @@ order: 8
 
 # Studio
 
-Studio is a browser-based coding environment that runs an AI agent inside a sandboxed E2B cloud environment. It connects to your Struere project — pulling your agents, entity types, roles, and triggers — so you can build and iterate without leaving the dashboard.
+Studio is a browser-based coding environment that runs an AI agent inside a sandboxed E2B cloud environment. It connects to your Struere project — pulling your agents, data types, roles, and triggers — so you can build and iterate without leaving the dashboard.
 
 ## How It Works
 
@@ -49,7 +49,7 @@ Studio supports four LLM providers. Each provider offers models grouped by tier:
 | **OpenAI** | GPT-4.1 Mini, o4 Mini | GPT-4.1, GPT-5 | o3 |
 | **Google** | Gemini 2.5 Flash | Gemini 2.5 Pro | Gemini 3 Pro |
 
-The default is **xAI / Grok Code Fast** (`grok-code-fast-1`).
+The default is **xAI / Grok 4.1 Fast** (`grok-4-1-fast`).
 
 ## API Key Sources
 
@@ -113,10 +113,10 @@ Studio generates a provider-specific `opencode.json` in the sandbox workspace. T
   "provider": {
     "openai": {
       "options": { "baseURL": "https://api.x.ai/v1" },
-      "models": { "grok-code-fast-1": { "name": "grok-code-fast-1" } }
+      "models": { "grok-4-1-fast": { "name": "grok-4-1-fast" } }
     }
   },
-  "model": "openai/grok-code-fast-1"
+  "model": "openai/grok-4-1-fast"
 }
 ```
 
@@ -203,7 +203,7 @@ Studio sessions are stored in the `sandboxSessions` table:
 | `status` | string | Session lifecycle status |
 | `sandboxProvider` | `"e2b"` | Always E2B |
 | `agentType` | `"opencode"` | Always OpenCode |
-| `model` | string (optional) | Selected model ID (e.g. `"claude-sonnet-4"`) |
+| `model` | string (optional) | Selected model ID (e.g. `"grok-4-1-fast"`) |
 | `provider` | string (optional) | Selected provider (`"xai"`, `"anthropic"`, `"openai"`, `"google"`) |
 | `keySource` | string (optional) | Key source (`"platform"`, `"custom"`) |
 | `totalInputTokens` | number | Cumulative input tokens |

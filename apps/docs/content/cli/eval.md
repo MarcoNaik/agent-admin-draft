@@ -32,7 +32,7 @@ npx struere eval run <suite-slug> --tag "regression"
 ## What It Does
 
 1. **Auto-init** and **auto-login** if needed (same as `struere dev`)
-2. **Syncs** all local resources (agents, entity types, roles, eval suites, fixtures) to the **eval** environment
+2. **Syncs** all local resources (agents, data types, roles, eval suites, fixtures) to the **eval** environment
 3. **Resolves** the suite by slug — errors with a list of available slugs if not found
 4. **Filters** cases by `--case` name or `--tag` if provided
 5. **Starts** the eval run on the backend
@@ -183,7 +183,7 @@ If no cases match the tag, the command exits with a list of available tags.
 
 ## Sync Behavior
 
-Before running, the command syncs your local resources to the **eval** environment. This ensures the backend has your latest agent configuration, entity types, roles, eval suites, and fixtures. The sync is identical to the eval-environment sync performed by `struere dev`.
+Before running, the command syncs your local resources to the **eval** environment. This ensures the backend has your latest agent configuration, data types, roles, eval suites, and fixtures. The sync is identical to the eval-environment sync performed by `struere dev`.
 
 ## Example Workflow
 

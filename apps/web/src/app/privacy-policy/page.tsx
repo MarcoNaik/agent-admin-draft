@@ -122,8 +122,8 @@ export default function PrivacyPolicy() {
                 agent conversations
               </li>
               <li>
-                <strong>Cloudflare</strong> — Custom tool execution in sandboxed
-                workers
+                <strong>Fly.io</strong> — Custom tool execution in sandboxed
+                environments
               </li>
               <li>
                 <strong>Vercel</strong> — Website and application hosting
@@ -145,7 +145,7 @@ export default function PrivacyPolicy() {
               row-level security via scope rules, column-level security via field
               masks, API key authentication with SHA-256 hashing, and a
               deny-overrides-allow permission model. Custom tool execution occurs
-              in sandboxed Cloudflare Workers with restricted network access.
+              in sandboxed environments on Fly.io with restricted network access.
             </p>
           </Section>
 

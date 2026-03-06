@@ -26,7 +26,7 @@ Current time: {{currentTime}}
 Available data types: {{entityTypes}}
 
 Use entity.query to search for records by type.`,
-  model: { provider: "anthropic", name: "claude-sonnet-4" },
+  model: { provider: "xai", name: "grok-4-1-fast" },
   tools: ["entity.query", "entity.get", "event.emit"],
 })
 ```
@@ -285,7 +285,7 @@ Adapt your response style to the channel:
 - widget: Use markdown formatting, include links when helpful
 - api: Return structured responses
 - dashboard: Be detailed, the user is an internal team member`,
-  model: { provider: "anthropic", name: "claude-sonnet-4" },
+  model: { provider: "xai", name: "grok-4-1-fast" },
   tools: ["entity.query", "entity.get", "entity.update", "event.emit"],
   threadContextParams: [
     { name: "customerId", type: "string", required: true, description: "Customer entity ID" },

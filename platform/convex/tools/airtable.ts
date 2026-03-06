@@ -1,7 +1,9 @@
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "../_generated/dataModel"
+
+const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
 import {
   listBases,
   listTables,
@@ -21,7 +23,7 @@ async function resolveToken(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<string> {
-  const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
+  const config = await ctx.runQuery(getIntegrationConfigInternalRef, {
     organizationId,
     environment,
     provider: "airtable" as const,

@@ -29,8 +29,8 @@ The dev command follows this flow:
 2. **Auto-login** — If not authenticated, opens a browser for OAuth
 3. **Load resources** — Reads all files from `agents/`, `entity-types/`, `roles/`, `triggers/`, `tools/`, `evals/`, and `fixtures/` directories
 4. **Build sync payload** — Assembles all resources into a single payload via `extractSyncPayload()`
-5. **Sync to development** — Sends agents, entity types, roles, and triggers to the `syncOrganization` mutation with `environment: "development"`
-6. **Sync to eval** — Sends agents, entity types, roles, eval suites, and fixtures to `syncOrganization` with `environment: "eval"` (triggers excluded to prevent side effects)
+5. **Sync to development** — Sends agents, data types, roles, and triggers to the `syncOrganization` mutation with `environment: "development"`
+6. **Sync to eval** — Sends agents, data types, roles, eval suites, and fixtures to `syncOrganization` with `environment: "eval"` (triggers excluded to prevent side effects)
 7. **Watch for changes** — Uses chokidar to monitor all resource directories
 8. **Re-sync on change** — When any file is added, modified, or deleted, reloads and re-syncs both environments
 
@@ -109,7 +109,7 @@ The backend processes the sync payload through these functions:
 
 | Function | Purpose |
 |----------|---------|
-| `syncOrganization` | Bulk upsert all resources (agents, entity types, roles, triggers, eval suites, fixtures) |
+| `syncOrganization` | Bulk upsert all resources (agents, data types, roles, triggers, eval suites, fixtures) |
 | `getSyncState` | Return current remote state for comparison |
 
 The sync helpers upsert resources by slug, creating new records or updating existing ones as needed.
@@ -118,6 +118,6 @@ The sync helpers upsert resources by slug, creating new records or updating exis
 
 If the sync fails, the CLI will display the error message from Convex. Common issues include:
 
-- **Invalid schema** — Entity type schemas must be valid JSON Schema objects
+- **Invalid schema** — Data type schemas must be valid JSON Schema objects
 - **Duplicate slugs** — Each resource type must have unique slugs within an organization
 - **Authentication expired** — Re-run `struere login` to refresh your token

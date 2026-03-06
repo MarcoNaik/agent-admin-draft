@@ -22,18 +22,18 @@ function validateObjectProperties(
   }
 }
 
-export function defineEntityType(config: EntityTypeConfig): EntityTypeConfig {
+export function defineData(config: EntityTypeConfig): EntityTypeConfig {
   if (!config.name) {
-    throw new Error('Entity type name is required')
+    throw new Error('Data type name is required')
   }
   if (!config.slug) {
-    throw new Error('Entity type slug is required')
+    throw new Error('Data type slug is required')
   }
   if (!config.schema) {
-    throw new Error('Entity type schema is required')
+    throw new Error('Data type schema is required')
   }
   if (config.schema.type !== 'object') {
-    throw new Error('Entity type schema must be an object type')
+    throw new Error('Data type schema must be an object type')
   }
 
   if (config.schema.properties) {

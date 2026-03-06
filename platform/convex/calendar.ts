@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
-import { internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+import { makeFunctionReference } from "convex/server"
 import { requireAuth } from "./lib/auth"
 import {
   getGoogleAccessToken,
@@ -9,6 +9,9 @@ import {
 } from "./lib/integrations/googleCalendar"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
+
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const getUserByIdInternalRef = makeFunctionReference<"query", { userId: Id<"users"> }>("calendar:getUserByIdInternal")
 
 export const getConnection = query({
   args: {
@@ -248,10 +251,10 @@ export const listUserCalendars = action({
     environment: v.optional(environmentValidator),
   },
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const user = await ctx.runQuery(internal.calendar.getUserByIdInternal, {
+    const user = await ctx.runQuery(getUserByIdInternalRef, {
       userId: auth.userId,
     })
 
@@ -274,10 +277,10 @@ export const verifyConnection = action({
     environment: v.optional(environmentValidator),
   },
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const user = await ctx.runQuery(internal.calendar.getUserByIdInternal, {
+    const user = await ctx.runQuery(getUserByIdInternalRef, {
       userId: auth.userId,
     })
 

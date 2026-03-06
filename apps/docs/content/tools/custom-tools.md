@@ -186,7 +186,7 @@ export default defineAgent({
   slug: "notifications",
   version: "0.1.0",
   systemPrompt: "You send notifications to users via email and Slack.",
-  model: { provider: "anthropic", name: "claude-sonnet-4" },
+  model: { provider: "xai", name: "grok-4-1-fast" },
   tools: [
     "entity.query",
     "event.emit",

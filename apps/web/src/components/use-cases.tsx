@@ -41,7 +41,7 @@ export function UseCases() {
   const { ref, y } = useParallaxY()
 
   return (
-    <section id="agentes" className="bg-stone-deep py-20 md:py-28">
+    <section id="use-cases" className="bg-stone-deep py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-6 md:px-12">
         <div ref={ref} className="text-center mb-16">
           <motion.h2

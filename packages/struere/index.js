@@ -43,11 +43,11 @@ function validateObjectProperties(schema, path) {
   }
 }
 
-function defineEntityType(config) {
-  if (!config.name) throw new Error('Entity type name is required')
-  if (!config.slug) throw new Error('Entity type slug is required')
-  if (!config.schema) throw new Error('Entity type schema is required')
-  if (config.schema.type !== 'object') throw new Error('Entity type schema must be an object type')
+function defineData(config) {
+  if (!config.name) throw new Error('Data type name is required')
+  if (!config.slug) throw new Error('Data type slug is required')
+  if (!config.schema) throw new Error('Data type schema is required')
+  if (config.schema.type !== 'object') throw new Error('Data type schema must be an object type')
   if (config.schema.properties) {
     for (const [key, value] of Object.entries(config.schema.properties)) {
       validateObjectProperties(value, key)
@@ -105,21 +105,4 @@ function defineTools(tools) {
   })
 }
 
-function defineConfig(config) {
-  const defaultConfig = {
-    port: 3000,
-    host: 'localhost',
-    cors: { origins: ['http://localhost:3000'], credentials: true },
-    logging: { level: 'info', format: 'pretty' },
-    auth: { type: 'none' },
-  }
-  return {
-    ...defaultConfig,
-    ...config,
-    cors: config.cors ? { ...defaultConfig.cors, ...config.cors } : defaultConfig.cors,
-    logging: config.logging ? { ...defaultConfig.logging, ...config.logging } : defaultConfig.logging,
-    auth: config.auth ? { ...defaultConfig.auth, ...config.auth } : defaultConfig.auth,
-  }
-}
-
-export { defineAgent, defineRole, defineEntityType, defineTrigger, defineTools, defineConfig }
+export { defineAgent, defineRole, defineData, defineTrigger, defineTools }

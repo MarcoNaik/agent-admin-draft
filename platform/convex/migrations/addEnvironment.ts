@@ -1,5 +1,16 @@
 import { internalMutation } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
+
+const backfillEntityTypesRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillEntityTypes")
+const backfillRolesRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillRoles")
+const backfillEntitiesRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillEntities")
+const backfillEntityRelationsRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillEntityRelations")
+const backfillEventsRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillEvents")
+const backfillThreadsRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillThreads")
+const backfillExecutionsRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillExecutions")
+const backfillApiKeysRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillApiKeys")
+const backfillIntegrationConfigsRef = makeFunctionReference<"mutation">("migrations/addEnvironment:backfillIntegrationConfigs")
+const removeAgentConfigFKsRef = makeFunctionReference<"mutation">("migrations/addEnvironment:removeAgentConfigFKs")
 
 const BATCH_SIZE = 100
 
@@ -17,7 +28,7 @@ export const backfillEntityTypes = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntityTypes, {})
+      await ctx.scheduler.runAfter(0, backfillEntityTypesRef, {})
     }
 
     return { patched: count }
@@ -38,7 +49,7 @@ export const backfillRoles = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillRoles, {})
+      await ctx.scheduler.runAfter(0, backfillRolesRef, {})
     }
 
     return { patched: count }
@@ -59,7 +70,7 @@ export const backfillEntities = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntities, {})
+      await ctx.scheduler.runAfter(0, backfillEntitiesRef, {})
     }
 
     return { patched: count }
@@ -80,7 +91,7 @@ export const backfillEntityRelations = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntityRelations, {})
+      await ctx.scheduler.runAfter(0, backfillEntityRelationsRef, {})
     }
 
     return { patched: count }
@@ -101,7 +112,7 @@ export const backfillEvents = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEvents, {})
+      await ctx.scheduler.runAfter(0, backfillEventsRef, {})
     }
 
     return { patched: count }
@@ -122,7 +133,7 @@ export const backfillThreads = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillThreads, {})
+      await ctx.scheduler.runAfter(0, backfillThreadsRef, {})
     }
 
     return { patched: count }
@@ -143,7 +154,7 @@ export const backfillExecutions = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillExecutions, {})
+      await ctx.scheduler.runAfter(0, backfillExecutionsRef, {})
     }
 
     return { patched: count }
@@ -164,7 +175,7 @@ export const backfillApiKeys = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillApiKeys, {})
+      await ctx.scheduler.runAfter(0, backfillApiKeysRef, {})
     }
 
     return { patched: count }
@@ -185,7 +196,7 @@ export const backfillIntegrationConfigs = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillIntegrationConfigs, {})
+      await ctx.scheduler.runAfter(0, backfillIntegrationConfigsRef, {})
     }
 
     return { patched: count }
@@ -219,16 +230,16 @@ export const removeAgentConfigFKs = internalMutation({
 export const runAll = internalMutation({
   args: {},
   handler: async (ctx) => {
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntityTypes, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillRoles, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntities, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEntityRelations, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillEvents, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillThreads, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillExecutions, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillApiKeys, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.backfillIntegrationConfigs, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.addEnvironment.removeAgentConfigFKs, {})
+    await ctx.scheduler.runAfter(0, backfillEntityTypesRef, {})
+    await ctx.scheduler.runAfter(0, backfillRolesRef, {})
+    await ctx.scheduler.runAfter(0, backfillEntitiesRef, {})
+    await ctx.scheduler.runAfter(0, backfillEntityRelationsRef, {})
+    await ctx.scheduler.runAfter(0, backfillEventsRef, {})
+    await ctx.scheduler.runAfter(0, backfillThreadsRef, {})
+    await ctx.scheduler.runAfter(0, backfillExecutionsRef, {})
+    await ctx.scheduler.runAfter(0, backfillApiKeysRef, {})
+    await ctx.scheduler.runAfter(0, backfillIntegrationConfigsRef, {})
+    await ctx.scheduler.runAfter(0, removeAgentConfigFKsRef, {})
     return { scheduled: true }
   },
 })

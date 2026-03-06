@@ -1,10 +1,36 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
+import { bodyLimit } from "hono/body-limit"
 import { serve } from "@hono/node-server"
+
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : []
 
 const app = new Hono()
 
-app.use("*", cors())
+app.use(
+  "*",
+  cors({
+    origin: (origin) => {
+      if (!origin) return null
+      if (
+        origin.endsWith(".struere.dev") ||
+        origin.endsWith(".convex.cloud") ||
+        origin.endsWith(".convex.site")
+      ) {
+        return origin
+      }
+      if (ALLOWED_ORIGINS.includes(origin)) return origin
+      return null
+    },
+    allowMethods: ["GET", "POST"],
+    allowHeaders: ["Authorization", "Content-Type"],
+    maxAge: 86400,
+  })
+)
+
+app.use("*", bodyLimit({ maxSize: 1024 * 1024 }))
 
 app.get("/health", (c) => {
   return c.json({ status: "ok", service: "tool-executor", timestamp: Date.now() })
@@ -73,17 +99,14 @@ app.post("/execute", async (c) => {
     return c.json({ result })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
-    const stack = error instanceof Error ? error.stack : undefined
 
-    console.error("Tool execution error:", { message, stack, handlerCode })
+    console.error("Tool execution error:", {
+      message,
+      stack: error instanceof Error ? error.stack : undefined,
+      handlerCode,
+    })
 
-    return c.json(
-      {
-        error: message,
-        details: stack,
-      },
-      500
-    )
+    return c.json({ error: message }, 500)
   }
 })
 

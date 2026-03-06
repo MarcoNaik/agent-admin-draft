@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X } from "lucide-react"
+import { Menu, X, Search } from "lucide-react"
 import { SidebarContent } from "./sidebar"
+import { openSearch } from "./search"
 import type { NavSection } from "@/lib/navigation"
 
 export function MobileNav({ navigation }: { navigation?: NavSection[] }) {
@@ -31,13 +32,22 @@ export function MobileNav({ navigation }: { navigation?: NavSection[] }) {
           <span className="text-lg font-bold tracking-tight text-charcoal-heading font-display">struere</span>
           <span className="text-xs text-content-tertiary bg-background-secondary px-1.5 py-0.5 rounded">docs</span>
         </Link>
-        <button
-          onClick={() => setOpen(!open)}
-          className="p-2 text-charcoal"
-          aria-label="Toggle menu"
-        >
-          {open ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => openSearch()}
+            className="p-2 text-content-tertiary hover:text-charcoal transition-colors"
+            aria-label="Search"
+          >
+            <Search size={20} />
+          </button>
+          <button
+            onClick={() => setOpen(!open)}
+            className="p-2 text-charcoal"
+            aria-label="Toggle menu"
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
       {open && (
         <>

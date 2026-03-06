@@ -311,11 +311,30 @@ export function useStudioEvents(
         setIsConnected(false)
         es.close()
         reconnectAttemptsRef.current += 1
-        const delay = Math.min(
-          BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current - 1),
-          30000,
-        )
-        setTimeout(connect, delay)
+
+        fetch(`/api/studio/sessions/${sessionId}/keepalive`, { method: "POST" })
+          .then((res) => {
+            if (!res.ok) {
+              setSessionEnded(true)
+              setError("Session is no longer available.")
+              setTurnInProgress(false)
+              return
+            }
+            if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+              setError("Connection lost. Please refresh the page.")
+              return
+            }
+            const delay = Math.min(
+              BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current - 1),
+              30000,
+            )
+            setTimeout(connect, delay)
+          })
+          .catch(() => {
+            setSessionEnded(true)
+            setError("Session is no longer available.")
+            setTurnInProgress(false)
+          })
       }
     }
 

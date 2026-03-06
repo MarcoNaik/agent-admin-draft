@@ -90,7 +90,7 @@ export async function POST(request: Request) {
   const {
     environment = "development",
     provider = "xai" as StudioProvider,
-    model = "grok-code-fast-1",
+    model = "grok-4-1-fast",
     keySource = "platform" as "platform" | "custom",
   } = body
 
@@ -220,18 +220,18 @@ function buildClaudeMd(orgName: string, environment: string): string {
 
 ## File Structure
 - \`agents/\` — Agent definitions (defineAgent)
-- \`entity-types/\` — Entity type schemas (defineEntityType)
+- \`entity-types/\` — Data type schemas (defineData)
 - \`roles/\` — RBAC role definitions (defineRole)
 - \`triggers/\` — Event triggers (defineTrigger)
 - \`tools/\` — Custom tool handlers (defineTools)
 
 ## SDK Imports
 \`\`\`typescript
-import { defineAgent, defineEntityType, defineRole, defineTrigger, defineTools } from 'struere'
+import { defineAgent, defineData, defineRole, defineTrigger, defineTools } from 'struere'
 \`\`\`
 
 ## Key Conventions
-- Agent model default: \`{ provider: "anthropic", name: "claude-sonnet-4" }\`
+- Agent model default: \`{ provider: "xai", name: "grok-4-1-fast" }\`
 - Built-in tools: entity.create/get/query/update/delete/link/unlink, event.emit/query, calendar.*, whatsapp.*, agent.chat
 - Schema format: JSON Schema (type: "object", properties, required)
 - Policy effect: "allow" or "deny" (deny overrides allow)

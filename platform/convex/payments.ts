@@ -1,8 +1,18 @@
 import { v } from "convex/values"
 import { query, action, internalMutation, internalAction, internalQuery, mutation } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
+import { log } from "./lib/logger"
+
+const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
+const getPendingPaymentsRef = makeFunctionReference<"query">("payments:getPendingPayments")
+const markAsPaidRef = makeFunctionReference<"mutation">("payments:markAsPaid")
+const markAsFailedRef = makeFunctionReference<"mutation">("payments:markAsFailed")
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const getPaymentInternalRef = makeFunctionReference<"query">("payments:getPaymentInternal")
+const storePaymentLinkRef = makeFunctionReference<"mutation">("payments:storePaymentLink")
+const emitPaymentEventRef = makeFunctionReference<"mutation">("payments:emitPaymentEvent")
 import {
   FlowConfig,
   createFlowPaymentLinkAction,
@@ -32,7 +42,7 @@ async function queryConfigInternal(
   organizationId: Id<"organizations">,
   environment: string,
 ): Promise<any> {
-  return await ctx.runQuery(internal.integrations.getConfigInternal, {
+  return await ctx.runQuery(getIntegrationConfigInternalRef, {
     organizationId,
     environment,
     provider: "flow" as const,
@@ -40,15 +50,15 @@ async function queryConfigInternal(
 }
 
 async function queryPendingPayments(ctx: any): Promise<any[]> {
-  return await ctx.runQuery(internal.payments.getPendingPayments)
+  return await ctx.runQuery(getPendingPaymentsRef)
 }
 
 async function runMarkAsPaid(ctx: any, providerReference: string, paidAt: number): Promise<void> {
-  await ctx.runMutation(internal.payments.markAsPaid, { providerReference, paidAt })
+  await ctx.runMutation(markAsPaidRef, { providerReference, paidAt } as any)
 }
 
 async function runMarkAsFailed(ctx: any, providerReference: string, reason: string): Promise<void> {
-  await ctx.runMutation(internal.payments.markAsFailed, { providerReference, reason })
+  await ctx.runMutation(markAsFailedRef, { providerReference, reason } as any)
 }
 
 export const createPaymentLink = action({
@@ -61,10 +71,10 @@ export const createPaymentLink = action({
     flowOrderId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo)
+    const auth = await ctx.runQuery(getAuthInfoRef)
     if (!auth) throw new Error("Not authenticated")
 
-    const payment = await (ctx as any).runQuery(internal.payments.getPaymentInternal, {
+    const payment = await (ctx as any).runQuery(getPaymentInternalRef, {
       paymentId: args.paymentId,
       organizationId: auth.organizationId,
     })
@@ -102,14 +112,14 @@ export const createPaymentLink = action({
       returnUrl,
     })
 
-    await (ctx as any).runMutation(internal.payments.storePaymentLink, {
+    await (ctx as any).runMutation(storePaymentLinkRef, {
       paymentId: args.paymentId,
       paymentLinkUrl: result.url,
       providerReference: result.flowOrder,
       flowToken: result.token,
     })
 
-    await (ctx as any).runMutation(internal.payments.emitPaymentEvent, {
+    await (ctx as any).runMutation(emitPaymentEventRef, {
       organizationId: auth.organizationId,
       environment: payment.environment,
       entityId: args.paymentId,
@@ -144,7 +154,9 @@ export const markAsPaid = internalMutation({
       .first()
 
     if (!payment) {
-      console.warn("Payment not found:", args.providerReference)
+      log.warn("Payment not found when marking as paid", {
+        providerReference: args.providerReference,
+      })
       return null
     }
 
@@ -199,7 +211,10 @@ export const markAsFailed = internalMutation({
       .first()
 
     if (!payment) {
-      console.warn("Payment not found:", args.providerReference)
+      log.warn("Payment not found when marking as failed", {
+        providerReference: args.providerReference,
+        reason: args.reason,
+      })
       return null
     }
 
@@ -493,7 +508,11 @@ export const reconcilePayments = internalAction({
           await runMarkAsFailed(ctx, payment.data.providerReference!, flowStatus.statusMessage)
         }
       } catch (error) {
-        console.error("Reconciliation error for payment:", payment._id, error)
+        log.error("Payment reconciliation failed", {
+          paymentId: payment._id,
+          providerReference: payment.data.providerReference,
+          error: error instanceof Error ? error : new Error(String(error)),
+        })
       }
     }
 

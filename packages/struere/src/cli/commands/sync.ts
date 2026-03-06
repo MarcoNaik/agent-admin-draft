@@ -81,7 +81,7 @@ export async function checkForDeletions(
   if (deletedAgents.length > 0) deletions.push({ type: 'Agents', remote: remoteState.agents.length, local: payload.agents.length, deleted: deletedAgents })
 
   const deletedEntityTypes = remoteState.entityTypes.filter((et) => !localSlugs.entityTypes.has(et.slug)).map((et) => et.name)
-  if (deletedEntityTypes.length > 0) deletions.push({ type: 'Entity types', remote: remoteState.entityTypes.length, local: payload.entityTypes.length, deleted: deletedEntityTypes })
+  if (deletedEntityTypes.length > 0) deletions.push({ type: 'Data types', remote: remoteState.entityTypes.length, local: payload.entityTypes.length, deleted: deletedEntityTypes })
 
   const deletedRoles = remoteState.roles.filter((r) => !localSlugs.roles.has(r.name)).map((r) => r.name)
   if (deletedRoles.length > 0) deletions.push({ type: 'Roles', remote: remoteState.roles.length, local: payload.roles.length, deleted: deletedRoles })
@@ -201,7 +201,7 @@ export const syncCommand = new Command('sync')
         }
         process.exit(1)
       }
-      if (!jsonMode && !options.dryRun) output.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} entity types, ${resources.roles.length} roles`)
+      if (!jsonMode && !options.dryRun) output.succeed(`Loaded ${resources.agents.length} agents, ${resources.entityTypes.length} data types, ${resources.roles.length} roles`)
     } catch (error) {
       if (jsonMode) {
         console.log(JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }))
@@ -234,7 +234,7 @@ export const syncCommand = new Command('sync')
         console.log(chalk.bold('Dry run — nothing will be synced'))
         console.log()
         console.log(chalk.gray('  Agents:'), payload.agents.map((a) => a.slug).join(', ') || 'none')
-        console.log(chalk.gray('  Entity types:'), payload.entityTypes.map((et) => et.slug).join(', ') || 'none')
+        console.log(chalk.gray('  Data types:'), payload.entityTypes.map((et) => et.slug).join(', ') || 'none')
         console.log(chalk.gray('  Roles:'), payload.roles.map((r) => r.name).join(', ') || 'none')
         console.log(chalk.gray('  Triggers:'), (payload.triggers || []).map((t) => t.slug).join(', ') || 'none')
         if (deletions.length > 0) {

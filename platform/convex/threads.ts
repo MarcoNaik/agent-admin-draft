@@ -301,7 +301,11 @@ export const addMessage = mutation({
       v.literal("tool")
     ),
     content: v.string(),
-    toolCalls: v.optional(v.array(v.any())),
+    toolCalls: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      arguments: v.any(),
+    }))),
     toolCallId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -421,7 +425,11 @@ export const appendMessages = internalMutation({
           v.literal("tool")
         ),
         content: v.string(),
-        toolCalls: v.optional(v.array(v.any())),
+        toolCalls: v.optional(v.array(v.object({
+          id: v.string(),
+          name: v.string(),
+          arguments: v.any(),
+        }))),
         toolCallId: v.optional(v.string()),
       })
     ),

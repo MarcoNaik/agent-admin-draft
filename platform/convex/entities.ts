@@ -574,12 +574,9 @@ export const link = mutation({
     const existing = await ctx.db
       .query("entityRelations")
       .withIndex("by_from", (q) =>
-        q.eq("fromEntityId", args.fromId).eq("relationType", args.relationType)
+        q.eq("fromEntityId", args.fromId).eq("relationType", args.relationType).eq("environment", environment)
       )
-      .filter((q) => q.and(
-        q.eq(q.field("toEntityId"), args.toId),
-        q.eq(q.field("environment"), environment)
-      ))
+      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
       .first()
 
     if (existing) {
@@ -660,12 +657,9 @@ export const unlink = mutation({
     const relation = await ctx.db
       .query("entityRelations")
       .withIndex("by_from", (q) =>
-        q.eq("fromEntityId", args.fromId).eq("relationType", args.relationType)
+        q.eq("fromEntityId", args.fromId).eq("relationType", args.relationType).eq("environment", environment)
       )
-      .filter((q) => q.and(
-        q.eq(q.field("toEntityId"), args.toId),
-        q.eq(q.field("environment"), environment)
-      ))
+      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
       .first()
 
     if (!relation || relation.organizationId !== auth.organizationId) {
@@ -740,9 +734,8 @@ export const getRelated = query({
       relations = await ctx.db
         .query("entityRelations")
         .withIndex(indexName, (q) =>
-          q.eq(entityField, args.entityId).eq("relationType", relType)
+          q.eq(entityField, args.entityId).eq("relationType", relType).eq("environment", environment)
         )
-        .filter((q) => q.eq(q.field("environment"), environment))
         .collect()
     } else {
       relations = await ctx.db

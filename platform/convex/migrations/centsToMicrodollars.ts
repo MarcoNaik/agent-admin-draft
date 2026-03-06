@@ -1,5 +1,9 @@
 import { internalMutation } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
+
+const migrateCreditBalancesRef = makeFunctionReference<"mutation">("migrations/centsToMicrodollars:migrateCreditBalances")
+const migrateCreditTransactionsRef = makeFunctionReference<"mutation">("migrations/centsToMicrodollars:migrateCreditTransactions")
+const migrateExecutionsRef = makeFunctionReference<"mutation">("migrations/centsToMicrodollars:migrateExecutions")
 
 const BATCH_SIZE = 100
 const MULTIPLIER = 10_000
@@ -21,7 +25,7 @@ export const migrateCreditBalances = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.centsToMicrodollars.migrateCreditBalances, {})
+      await ctx.scheduler.runAfter(0, migrateCreditBalancesRef, {})
     }
 
     return { patched: count }
@@ -48,7 +52,7 @@ export const migrateCreditTransactions = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.centsToMicrodollars.migrateCreditTransactions, {})
+      await ctx.scheduler.runAfter(0, migrateCreditTransactionsRef, {})
     }
 
     return { patched: count }
@@ -79,7 +83,7 @@ export const migrateExecutions = internalMutation({
     }
 
     if (records.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.migrations.centsToMicrodollars.migrateExecutions, {})
+      await ctx.scheduler.runAfter(0, migrateExecutionsRef, {})
     }
 
     return { patched: count }
@@ -89,9 +93,9 @@ export const migrateExecutions = internalMutation({
 export const runAll = internalMutation({
   args: {},
   handler: async (ctx) => {
-    await ctx.scheduler.runAfter(0, internal.migrations.centsToMicrodollars.migrateCreditBalances, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.centsToMicrodollars.migrateCreditTransactions, {})
-    await ctx.scheduler.runAfter(0, internal.migrations.centsToMicrodollars.migrateExecutions, {})
+    await ctx.scheduler.runAfter(0, migrateCreditBalancesRef, {})
+    await ctx.scheduler.runAfter(0, migrateCreditTransactionsRef, {})
+    await ctx.scheduler.runAfter(0, migrateExecutionsRef, {})
     return { scheduled: true }
   },
 })

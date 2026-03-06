@@ -126,4 +126,4 @@ Permission errors return empty results so agents degrade gracefully.
 
 - [System Prompt Templates](/tools/system-prompt-templates) — Full template reference
 - [Define Agent](/sdk/define-agent) — Agent configuration
-- [Data](/platform/entities) — Data model
+- [Data](/platform/data) — Data model

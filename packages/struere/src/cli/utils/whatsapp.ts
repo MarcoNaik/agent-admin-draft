@@ -1,12 +1,7 @@
 import { loadCredentials, getApiKey } from './credentials'
-
-const CONVEX_URL = process.env.STRUERE_CONVEX_URL || 'https://rapid-wildebeest-172.convex.cloud'
+import { CONVEX_URL, getSiteUrl } from './config'
 
 type Environment = 'development' | 'production'
-
-function getSiteUrl(): string {
-  return CONVEX_URL.replace('.cloud', '.site')
-}
 
 function getToken(): string | null {
   const credentials = loadCredentials()

@@ -1,7 +1,14 @@
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "../_generated/dataModel"
+
+const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
+const getPaymentEntityTypeRef = makeFunctionReference<"query">("payments:getPaymentEntityType")
+const createPaymentEntityRef = makeFunctionReference<"mutation">("payments:createPaymentEntity")
+const storePaymentLinkRef = makeFunctionReference<"mutation">("payments:storePaymentLink")
+const linkPaymentToEntityRef = makeFunctionReference<"mutation">("payments:linkPaymentToEntity")
+const getPaymentInternalRef = makeFunctionReference<"query">("payments:getPaymentInternal")
 import {
   FlowConfig,
   createFlowPaymentLinkAction,
@@ -17,7 +24,7 @@ async function resolveFlowConfig(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<FlowConfig> {
-  const config = await ctx.runQuery(internal.integrations.getConfigInternal, {
+  const config = await ctx.runQuery(getIntegrationConfigInternalRef, {
     organizationId,
     environment,
     provider: "flow" as const,
@@ -37,7 +44,7 @@ async function queryPaymentEntityType(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<{ _id: Id<"entityTypes">; slug: string }> {
-  const paymentType = await ctx.runQuery(internal.payments.getPaymentEntityType, {
+  const paymentType = await ctx.runQuery(getPaymentEntityTypeRef, {
     organizationId,
     environment,
   })
@@ -58,14 +65,14 @@ async function createPaymentEntityMutation(
     actorType: string
   }
 ): Promise<Id<"entities">> {
-  return await ctx.runMutation(internal.payments.createPaymentEntity, args)
+  return await ctx.runMutation(createPaymentEntityRef, args)
 }
 
 async function storePaymentLinkMutation(
   ctx: any,
   args: { paymentId: Id<"entities">; paymentLinkUrl: string; providerReference: string; flowToken?: string }
 ): Promise<void> {
-  await ctx.runMutation(internal.payments.storePaymentLink, args)
+  await ctx.runMutation(storePaymentLinkRef, args)
 }
 
 async function linkPaymentMutation(
@@ -77,7 +84,7 @@ async function linkPaymentMutation(
     entityId: Id<"entities">
   }
 ): Promise<void> {
-  await ctx.runMutation(internal.payments.linkPaymentToEntity, args)
+  await ctx.runMutation(linkPaymentToEntityRef, args)
 }
 
 async function queryPaymentInternal(
@@ -85,7 +92,7 @@ async function queryPaymentInternal(
   paymentId: Id<"entities">,
   organizationId: Id<"organizations">
 ): Promise<Record<string, unknown> | null> {
-  return await ctx.runQuery(internal.payments.getPaymentInternal, {
+  return await ctx.runQuery(getPaymentInternalRef, {
     paymentId,
     organizationId,
   })

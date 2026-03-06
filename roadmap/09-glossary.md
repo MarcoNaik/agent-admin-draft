@@ -41,7 +41,7 @@ A tool implemented as a Convex mutation that performs standard operations (entit
 The backend platform used by Struere. Provides real-time database, serverless functions, and scheduled jobs. All backend logic runs on Convex.
 
 ### Custom Tool
-A tool whose handler code is stored in the agent configuration and executed on the Cloudflare Worker (tool-executor). Has a sandboxed fetch allowlist for security.
+A tool whose handler code is stored in the agent configuration and executed on the Hono server on Fly.io (tool-executor). Has a sandboxed fetch allowlist for security.
 
 ### Customization (Pack)
 When a user modifies a pack-installed entity type, role, or policy. Customizations are tracked so they aren't overwritten during pack upgrades.
@@ -230,7 +230,7 @@ The library (`lib/templateEngine.ts`) that processes system prompt templates.
 A capability that an agent can invoke. Built-in tools are Convex mutations. Custom tools execute on the tool-executor.
 
 ### Tool Executor
-A Cloudflare Worker that executes custom tool handler code in a sandboxed environment with a fetch allowlist.
+A Hono Node.js server on Fly.io that executes custom tool handler code in a sandboxed environment with a fetch allowlist.
 
 ### Tool Permission
 A rule that controls whether an agent can use a specific tool and under what identity mode.

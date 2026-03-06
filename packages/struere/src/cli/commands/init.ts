@@ -11,6 +11,7 @@ import { listMyOrganizations, OrgInfo } from '../utils/convex'
 import { generateTypeDeclarations } from '../utils/plugin'
 import { generateDocs } from './docs'
 import { isInteractive } from '../utils/runtime'
+import { promptCreateOrg } from './org'
 
 export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boolean> {
   const spinner = ora()
@@ -43,11 +44,10 @@ export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boole
     }
 
     if (organizations.length === 0) {
-      console.log(chalk.red('No organizations found. Please create one in the dashboard first.'))
-      return false
-    }
-
-    if (organizations.length === 1) {
+      const created = await promptCreateOrg(credentials.token)
+      if (!created) return false
+      org = created
+    } else if (organizations.length === 1) {
       org = organizations[0]
     } else {
       org = await select({
@@ -147,13 +147,16 @@ export const initCommand = new Command('init')
       process.exit(1)
     }
 
+    let selectedOrg: OrgInfo | undefined
     if (organizations.length === 0) {
-      console.log(chalk.red('No organizations found. Please create one in the dashboard first.'))
-      process.exit(1)
-    }
-
-    let selectedOrg: OrgInfo
-    if (options.org) {
+      if (nonInteractive) {
+        console.log(chalk.red('No organizations found. Run struere org create to create one.'))
+        process.exit(1)
+      }
+      const created = await promptCreateOrg(credentials?.token || '')
+      if (!created) process.exit(1)
+      selectedOrg = created
+    } else if (options.org) {
       const found = organizations.find((o) => o.slug === options.org)
       if (!found) {
         console.log(chalk.red(`Organization "${options.org}" not found.`))
@@ -219,7 +222,7 @@ export const initCommand = new Command('init')
     console.log()
     console.log(chalk.gray('Project structure:'))
     console.log(chalk.gray('  agents/       '), chalk.cyan('Agent definitions'))
-    console.log(chalk.gray('  entity-types/ '), chalk.cyan('Entity type schemas'))
+    console.log(chalk.gray('  entity-types/ '), chalk.cyan('Data type schemas'))
     console.log(chalk.gray('  roles/        '), chalk.cyan('Role + permission definitions'))
     console.log(chalk.gray('  tools/        '), chalk.cyan('Shared custom tools'))
     console.log()

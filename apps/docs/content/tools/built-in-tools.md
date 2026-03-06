@@ -83,7 +83,7 @@ export default defineAgent({
   slug: "support",
   version: "0.1.0",
   systemPrompt: "You help customers with their requests.",
-  model: { provider: "anthropic", name: "claude-sonnet-4" },
+  model: { provider: "xai", name: "grok-4-1-fast" },
   tools: [
     "entity.create",
     "entity.query",
@@ -1138,7 +1138,7 @@ export default defineAgent({
 For scheduling questions, delegate to the scheduler agent.
 For billing questions, delegate to the billing agent.
 For general questions, answer directly.`,
-  model: { provider: "anthropic", name: "claude-sonnet-4" },
+  model: { provider: "xai", name: "grok-4-1-fast" },
   tools: ["entity.query", "agent.chat"],
 })
 ```

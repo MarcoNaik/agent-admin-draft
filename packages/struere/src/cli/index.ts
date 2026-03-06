@@ -7,6 +7,7 @@ import { syncCommand } from './commands/sync'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { whoamiCommand } from './commands/whoami'
+import { orgCommand } from './commands/org'
 import { addCommand } from './commands/add'
 import { statusCommand } from './commands/status'
 import { pullCommand } from './commands/pull'
@@ -61,6 +62,7 @@ program.addCommand(initCommand)
 program.addCommand(loginCommand)
 program.addCommand(logoutCommand)
 program.addCommand(whoamiCommand)
+program.addCommand(orgCommand)
 
 program.addCommand(syncCommand)
 program.addCommand(devCommand)

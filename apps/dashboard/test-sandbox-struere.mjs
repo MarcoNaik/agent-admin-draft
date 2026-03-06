@@ -125,13 +125,13 @@ const bootstrapFiles = [
 
 ## File Structure
 - \`agents/\` — Agent definitions (defineAgent)
-- \`entity-types/\` — Entity type schemas (defineEntityType)
+- \`entity-types/\` — Data type schemas (defineData)
 - \`roles/\` — RBAC role definitions (defineRole)
 - \`triggers/\` — Event triggers (defineTrigger)
 
 ## SDK Imports
 \`\`\`typescript
-import { defineAgent, defineEntityType, defineRole, defineTrigger, defineTools } from 'struere'
+import { defineAgent, defineData, defineRole, defineTrigger, defineTools } from 'struere'
 \`\`\`
 
 ## Key Conventions

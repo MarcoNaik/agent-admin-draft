@@ -2,8 +2,26 @@
 
 import { v } from "convex/values"
 import { action, internalAction } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
+
+const getOrgInternalRef = makeFunctionReference<"query">("organizations:getInternal")
+const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
+const patchConfigInternalRef = makeFunctionReference<"mutation">("integrations:patchConfigInternal")
+const createConnectionRef = makeFunctionReference<"mutation">("whatsapp:createConnection")
+const getOrCreateThreadRef = makeFunctionReference<"mutation">("threads:getOrCreate")
+const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenticated")
+const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
+const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
+const attachMediaToMessageRef = makeFunctionReference<"mutation">("whatsapp:attachMediaToMessage")
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const getOwnedTemplateNamesRef = makeFunctionReference<"query">("whatsapp:getOwnedTemplateNames")
+const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadInternal")
+const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
+const storeOutboundMediaMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMediaMessage")
+const registerOwnedTemplateRef = makeFunctionReference<"mutation">("whatsapp:registerOwnedTemplate")
+const unregisterOwnedTemplateRef = makeFunctionReference<"mutation">("whatsapp:unregisterOwnedTemplate")
+import { log } from "./lib/logger"
 import {
   createKapsoCustomer,
   createSetupLink,
@@ -51,7 +69,7 @@ export const createKapsoSetup = internalAction({
     let kapsoCustomerId = args.existingKapsoCustomerId
 
     if (!kapsoCustomerId) {
-      const org = await ctx.runQuery(internal.organizations.getInternal, {
+      const org = await ctx.runQuery(getOrgInternalRef, {
         organizationId: args.organizationId,
       }) as { name: string } | null
 
@@ -61,14 +79,14 @@ export const createKapsoSetup = internalAction({
       )
       kapsoCustomerId = customer.id
 
-      const integrationConfig = await ctx.runQuery(internal.integrations.getConfigInternal, {
+      const integrationConfig = await ctx.runQuery(getIntegrationConfigInternalRef, {
         organizationId: args.organizationId,
         environment: args.environment,
         provider: "whatsapp",
       }) as { _id: Id<"integrationConfigs">; config: Record<string, unknown> } | null
 
       if (integrationConfig) {
-        await ctx.runMutation(internal.integrations.patchConfigInternal, {
+        await ctx.runMutation(patchConfigInternalRef, {
           configId: integrationConfig._id,
           config: { ...integrationConfig.config, kapsoCustomerId },
         })
@@ -83,7 +101,10 @@ export const createKapsoSetup = internalAction({
         secret
       )
     } catch (e) {
-      console.error("Failed to register project webhook:", e)
+      log.error("Failed to register Kapso project webhook", {
+        ...log.withOrg(args.organizationId as string),
+        error: e instanceof Error ? e : new Error(String(e)),
+      })
     }
 
     const dashboardUrl = process.env.DASHBOARD_URL ?? ""
@@ -93,7 +114,7 @@ export const createKapsoSetup = internalAction({
       `${dashboardUrl}/settings/integrations/whatsapp`
     )
 
-    await ctx.runMutation(internal.whatsapp.createConnection, {
+    await ctx.runMutation(createConnectionRef, {
       organizationId: args.organizationId,
       environment: args.environment,
       status: "pending_setup",
@@ -144,7 +165,7 @@ export const routeInboundToAgent = internalAction({
   handler: async (ctx, args) => {
     const externalThreadId = `whatsapp:${args.connectionId}:${args.phoneNumber}`
 
-    const threadId = await ctx.runMutation(internal.threads.getOrCreate, {
+    const threadId = await ctx.runMutation(getOrCreateThreadRef, {
       organizationId: args.organizationId,
       agentId: args.agentId,
       externalId: externalThreadId,
@@ -153,7 +174,7 @@ export const routeInboundToAgent = internalAction({
       environment: args.environment,
     })
 
-    const result = await ctx.runAction(internal.agent.chatAuthenticated, {
+    const result = await ctx.runAction(chatAuthenticatedRef, {
       organizationId: args.organizationId,
       agentId: args.agentId,
       message: args.text,
@@ -168,7 +189,7 @@ export const routeInboundToAgent = internalAction({
       let messageId = `failed_${Date.now()}`
       let status: "sent" | "failed" = "sent"
 
-      const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+      const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
         connectionId: args.connectionId,
       }) as { kapsoPhoneNumberId?: string; status: string } | null
 
@@ -187,7 +208,7 @@ export const routeInboundToAgent = internalAction({
         status = "failed"
       }
 
-      await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+      await ctx.runMutation(storeOutboundMessageRef, {
         organizationId: args.organizationId,
         connectionId: args.connectionId,
         phoneNumber: args.phoneNumber,
@@ -228,7 +249,7 @@ export const downloadAndStoreMedia = internalAction({
 
     const blob = new Blob([data], { type: mimeType })
     const storageId = await ctx.storage.store(blob)
-    await ctx.runMutation(internal.whatsapp.attachMediaToMessage, {
+    await ctx.runMutation(attachMediaToMessageRef, {
       whatsappMessageId: args.whatsappMessageId,
       storageId,
       mimeType,
@@ -245,10 +266,10 @@ export const listTemplates = action({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -260,7 +281,7 @@ export const listTemplates = action({
       throw new Error("WhatsApp not connected")
     }
 
-    const ownedNames = await ctx.runQuery(internal.whatsapp.getOwnedTemplateNames, {
+    const ownedNames = await ctx.runQuery(getOwnedTemplateNamesRef, {
       organizationId: auth.organizationId,
       environment: args.environment,
     }) as string[]
@@ -287,10 +308,10 @@ export const sendTemplate = action({
     status: v.string(),
   }),
   handler: async (ctx, args): Promise<{ messageId: string; status: string }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const thread = await ctx.runQuery(internal.threads.getThreadInternal, {
+    const thread = await ctx.runQuery(getThreadInternalRef, {
       threadId: args.threadId,
     }) as { _id: Id<"threads">; organizationId: Id<"organizations">; externalId?: string; environment?: string } | null
 
@@ -307,7 +328,7 @@ export const sendTemplate = action({
 
     const { connectionId, customerPhone } = parsed
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: connectionId as Id<"whatsappConnections">,
     }) as { kapsoPhoneNumberId?: string; status: string } | null
 
@@ -323,7 +344,7 @@ export const sendTemplate = action({
       args.components as any
     )
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+    await ctx.runMutation(storeOutboundMessageRef, {
       organizationId: auth.organizationId,
       connectionId: connectionId as Id<"whatsappConnections">,
       phoneNumber: customerPhone,
@@ -333,7 +354,7 @@ export const sendTemplate = action({
       status: "sent",
     })
 
-    await ctx.runMutation(internal.threads.appendMessages, {
+    await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
       messages: [{ role: "assistant", content: `[Template: ${args.templateName}]` }],
     })
@@ -352,10 +373,10 @@ export const sendMedia = action({
   },
   returns: v.object({ messageId: v.string() }),
   handler: async (ctx, args): Promise<{ messageId: string }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const thread = await ctx.runQuery(internal.threads.getThreadInternal, {
+    const thread = await ctx.runQuery(getThreadInternalRef, {
       threadId: args.threadId,
     }) as { _id: Id<"threads">; organizationId: Id<"organizations">; externalId?: string; environment?: string } | null
 
@@ -367,7 +388,7 @@ export const sendMedia = action({
 
     const { connectionId, customerPhone } = parsed
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: connectionId as Id<"whatsappConnections">,
     }) as { kapsoPhoneNumberId?: string; status: string } | null
 
@@ -398,7 +419,7 @@ export const sendMedia = action({
 
     const displayText = args.caption ?? `[Sent ${args.mediaType}]`
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMediaMessage, {
+    await ctx.runMutation(storeOutboundMediaMessageRef, {
       organizationId: auth.organizationId,
       connectionId: connectionId as Id<"whatsappConnections">,
       phoneNumber: customerPhone,
@@ -412,7 +433,7 @@ export const sendMedia = action({
       mediaCaption: args.caption,
     })
 
-    await ctx.runMutation(internal.threads.appendMessages, {
+    await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
       messages: [{ role: "assistant", content: displayText }],
     })
@@ -430,10 +451,10 @@ export const sendInteractive = action({
   },
   returns: v.object({ messageId: v.string() }),
   handler: async (ctx, args): Promise<{ messageId: string }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const thread = await ctx.runQuery(internal.threads.getThreadInternal, {
+    const thread = await ctx.runQuery(getThreadInternalRef, {
       threadId: args.threadId,
     }) as { _id: Id<"threads">; organizationId: Id<"organizations">; externalId?: string; environment?: string; metadata?: Record<string, unknown> } | null
 
@@ -450,7 +471,7 @@ export const sendInteractive = action({
 
     const { connectionId, customerPhone } = parsed
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: connectionId as Id<"whatsappConnections">,
     }) as { kapsoPhoneNumberId?: string; status: string } | null
 
@@ -466,7 +487,7 @@ export const sendInteractive = action({
       args.footerText
     )
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+    await ctx.runMutation(storeOutboundMessageRef, {
       organizationId: auth.organizationId,
       connectionId: connectionId as Id<"whatsappConnections">,
       phoneNumber: customerPhone,
@@ -476,7 +497,7 @@ export const sendInteractive = action({
       status: "sent",
     })
 
-    await ctx.runMutation(internal.threads.appendMessages, {
+    await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
       messages: [{ role: "assistant", content: args.bodyText }],
     })
@@ -497,10 +518,10 @@ export const createTemplate = action({
   },
   returns: v.object({ id: v.string(), status: v.string(), category: v.string() }),
   handler: async (ctx, args): Promise<{ id: string; status: string; category: string }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -521,7 +542,7 @@ export const createTemplate = action({
       args.allowCategoryChange
     )
 
-    await ctx.runMutation(internal.whatsapp.registerOwnedTemplate, {
+    await ctx.runMutation(registerOwnedTemplateRef, {
       organizationId: auth.organizationId,
       environment: args.environment,
       templateName: args.name,
@@ -539,10 +560,10 @@ export const deleteTemplate = action({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args): Promise<{ success: boolean }> => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -556,7 +577,7 @@ export const deleteTemplate = action({
 
     const result = await deletePhoneTemplate(connection.kapsoPhoneNumberId, args.name)
 
-    await ctx.runMutation(internal.whatsapp.unregisterOwnedTemplate, {
+    await ctx.runMutation(unregisterOwnedTemplateRef, {
       organizationId: auth.organizationId,
       environment: args.environment,
       templateName: args.name,
@@ -574,10 +595,10 @@ export const getTemplateStatus = action({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const auth = await ctx.runQuery(internal.chat.getAuthInfo) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
+    const auth = await ctx.runQuery(getAuthInfoRef) as { userId: Id<"users">; organizationId: Id<"organizations"> } | null
     if (!auth) throw new Error("Not authenticated")
 
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -601,7 +622,7 @@ export const internalListTemplates = internalAction({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -613,7 +634,7 @@ export const internalListTemplates = internalAction({
       throw new Error("WhatsApp not connected")
     }
 
-    const ownedNames = await ctx.runQuery(internal.whatsapp.getOwnedTemplateNames, {
+    const ownedNames = await ctx.runQuery(getOwnedTemplateNamesRef, {
       organizationId: args.organizationId,
       environment: args.environment,
     }) as string[]
@@ -641,7 +662,7 @@ export const internalCreateTemplate = internalAction({
   },
   returns: v.object({ id: v.string(), status: v.string(), category: v.string() }),
   handler: async (ctx, args): Promise<{ id: string; status: string; category: string }> => {
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -662,7 +683,7 @@ export const internalCreateTemplate = internalAction({
       args.allowCategoryChange
     )
 
-    await ctx.runMutation(internal.whatsapp.registerOwnedTemplate, {
+    await ctx.runMutation(registerOwnedTemplateRef, {
       organizationId: args.organizationId,
       environment: args.environment,
       templateName: args.name,
@@ -681,7 +702,7 @@ export const internalDeleteTemplate = internalAction({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args): Promise<{ success: boolean }> => {
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 
@@ -695,7 +716,7 @@ export const internalDeleteTemplate = internalAction({
 
     const result = await deletePhoneTemplate(connection.kapsoPhoneNumberId, args.name)
 
-    await ctx.runMutation(internal.whatsapp.unregisterOwnedTemplate, {
+    await ctx.runMutation(unregisterOwnedTemplateRef, {
       organizationId: args.organizationId,
       environment: args.environment,
       templateName: args.name,
@@ -714,7 +735,7 @@ export const internalGetTemplateStatus = internalAction({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    const connection = await ctx.runQuery(getConnectionByIdInternalRef, {
       connectionId: args.connectionId,
     }) as { organizationId: Id<"organizations">; kapsoPhoneNumberId?: string; status: string } | null
 

@@ -1,8 +1,11 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { requireAuth } from "./lib/auth"
 import { calculateCost } from "./lib/creditPricing"
+
+const processUsageEventRef = makeFunctionReference<"mutation">("sandboxSessions:processUsageEvent")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 const providerValidator = v.optional(v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai")))
@@ -48,7 +51,7 @@ export const create = mutation({
     }
 
     const now = Date.now()
-    const model = args.model ?? "grok-code-fast-1"
+    const model = args.model ?? "grok-4-1-fast"
     const id = await ctx.db.insert("sandboxSessions", {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -365,11 +368,11 @@ export const recordUsage = mutation({
       throw new Error("Session not found")
     }
 
-    await ctx.scheduler.runAfter(0, internal.sandboxSessions.processUsageEvent, {
+    await ctx.scheduler.runAfter(0, processUsageEventRef, {
       sessionId: args.sessionId,
       inputTokens: args.inputTokens,
       outputTokens: args.outputTokens,
-    })
+    } as any)
   },
 })
 
@@ -383,7 +386,7 @@ export const processUsageEvent = internalMutation({
     const session = await ctx.db.get(args.sessionId)
     if (!session) return
 
-    const model = session.model ?? "grok-code-fast-1"
+    const model = session.model ?? "grok-4-1-fast"
     const cost = calculateCost(model, args.inputTokens, args.outputTokens)
 
     await ctx.db.patch(args.sessionId, {
@@ -393,12 +396,12 @@ export const processUsageEvent = internalMutation({
     })
 
     if (cost > 0 && session.keySource !== "custom") {
-      await ctx.scheduler.runAfter(0, internal.billing.deductCredits, {
+      await ctx.scheduler.runAfter(0, deductCreditsRef, {
         organizationId: session.organizationId,
         amount: cost,
         description: `Studio session (${model})`,
         metadata: { source: "studio", sessionId: args.sessionId, model },
-      })
+      } as any)
     }
   },
 })

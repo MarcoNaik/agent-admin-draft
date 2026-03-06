@@ -1,7 +1,14 @@
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "../_generated/dataModel"
+
+const getAgentBySlugInternalRef = makeFunctionReference<"query">("agent:getAgentBySlugInternal")
+const getActiveConfigRef = makeFunctionReference<"query">("agents:getActiveConfig")
+const getOrCreateThreadRef = makeFunctionReference<"mutation">("threads:getOrCreate")
+const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadInternal")
+const buildActorContextForAgentRef = makeFunctionReference<"query">("agent:buildActorContextForAgent")
+const executeChatActionRef = makeFunctionReference<"action">("agent:executeChatAction")
 import { generateId } from "../lib/utils"
 import { ActorContext, Environment } from "../lib/permissions/types"
 
@@ -57,7 +64,7 @@ export const agentChat = internalAction({
       )
     }
 
-    const targetAgent = await ctx.runQuery(internal.agent.getAgentBySlugInternal, {
+    const targetAgent = await ctx.runQuery(getAgentBySlugInternalRef, {
       slug: args.agentSlug,
       organizationId: args.organizationId,
     }) as { _id: Id<"agents">; name: string; slug: string; status: string } | null
@@ -70,7 +77,7 @@ export const agentChat = internalAction({
       throw new Error(`Agent "${args.agentSlug}" is not active (status: ${targetAgent.status})`)
     }
 
-    const config: any = await ctx.runQuery(internal.agents.getActiveConfig, {
+    const config: any = await ctx.runQuery(getActiveConfigRef, {
       agentId: targetAgent._id,
       environment: args.environment,
     })
@@ -81,7 +88,7 @@ export const agentChat = internalAction({
 
     const conversationId = args.conversationId ?? generateId("conv")
 
-    const threadId: Id<"threads"> = await ctx.runMutation(internal.threads.getOrCreate, {
+    const threadId: Id<"threads"> = await ctx.runMutation(getOrCreateThreadRef, {
       organizationId: args.organizationId,
       agentId: targetAgent._id,
       environment: args.environment,
@@ -94,16 +101,16 @@ export const agentChat = internalAction({
       conversationId,
     })
 
-    const thread: any = await ctx.runQuery(internal.threads.getThreadInternal, { threadId })
+    const thread: any = await ctx.runQuery(getThreadInternalRef, { threadId })
 
-    const actor: ActorContext = await ctx.runQuery(internal.agent.buildActorContextForAgent, {
+    const actor: ActorContext = await ctx.runQuery(buildActorContextForAgentRef, {
       organizationId: args.organizationId,
       actorType: "system",
       actorId: `agent:${targetAgent._id}`,
       environment: args.environment,
     }) as ActorContext
 
-    const result: { message: string; threadId: Id<"threads">; usage: { inputTokens: number; outputTokens: number; totalTokens: number } } = await ctx.runAction(internal.agent.executeChatAction, {
+    const result: { message: string; threadId: Id<"threads">; usage: { inputTokens: number; outputTokens: number; totalTokens: number } } = await ctx.runAction(executeChatActionRef, {
       organizationId: args.organizationId,
       agentId: targetAgent._id,
       message: args.message,

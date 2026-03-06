@@ -267,7 +267,7 @@ export default function UsersPage() {
           <div>
             <h4 className="font-medium text-content-primary">Assigned Roles</h4>
             <p className="mt-1">
-              Each member can have one role (like Teacher, Guardian) that controls access to specific entity types and actions.
+              Each member can have an assigned role that controls access to specific entity types and actions.
             </p>
           </div>
         </CardContent>

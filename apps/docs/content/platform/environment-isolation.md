@@ -118,7 +118,7 @@ The dashboard supports environment switching via a URL query parameter. The `Env
 
 ## Eval Environment
 
-The eval environment is purpose-built for automated testing. It mirrors the development schema (entity types, roles, agent configs) but also receives:
+The eval environment is purpose-built for automated testing. It mirrors the development schema (data types, roles, agent configs) but also receives:
 
 - **Eval suites** — test case definitions synced from `evals/*.eval.yaml`
 - **Fixture entities** — pre-defined test data synced from `fixtures/*.fixture.yaml`
@@ -135,4 +135,4 @@ The platform includes backfill migrations (`platform/convex/migrations/addEnviro
 
 **Test triggers in development first.** Since triggers fire from all mutation sources, test automated workflows in development before deploying to production.
 
-**Review entity type schemas before deploying.** Development and production entity types can diverge. Use `struere status` to compare local definitions against remote state before deploying.
+**Review data type schemas before deploying.** Development and production data types can diverge. Use `struere status` to compare local definitions against remote state before deploying.

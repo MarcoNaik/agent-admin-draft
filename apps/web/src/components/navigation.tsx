@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
 export function Navigation() {
-  const { locale, setLocale, t } = useI18n()
+  const { t } = useI18n()
   const { mounted } = useHeroEntrance()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pastHero, setPastHero] = useState(false)
@@ -26,13 +26,11 @@ export function Navigation() {
   }, [])
 
   const navLinks = [
-    { label: t.nav.howItWorks, href: "#como-funciona" },
-    { label: t.nav.useCases, href: "#agentes" },
-    { label: t.nav.earlyAccess, href: "#precios" },
+    { label: t.nav.howItWorks, href: "#how-it-works" },
+    { label: t.nav.useCases, href: "#use-cases" },
+    { label: t.nav.earlyAccess, href: "#pricing" },
     { label: t.nav.docs, href: "https://docs.struere.dev" },
   ]
-
-  const toggleLocale = () => setLocale(locale === "es" ? "en" : "es")
 
   const textColor = pastHero ? "text-[#1B5B7A]" : "text-white"
 
@@ -98,20 +96,6 @@ export function Navigation() {
               {link.label}
             </a>
           ))}
-          <button
-            onClick={toggleLocale}
-            className={`text-xs font-medium px-2 py-1 rounded transition-colors duration-500 cursor-pointer ${
-              pastHero
-                ? "text-[#1B5B7A]/60"
-                : ""
-            }`}
-            style={pastHero ? {} : {
-              color: "transparent",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {locale === "es" ? "EN" : "ES"}
-          </button>
           <a
             href="https://app.struere.dev?studio="
             className={`text-sm font-medium px-5 py-2 rounded-xl transition-colors duration-500 border ${
@@ -178,16 +162,6 @@ export function Navigation() {
                 {link.label}
               </a>
             ))}
-            <button
-              onClick={toggleLocale}
-              className={`text-left text-base transition-colors duration-500 cursor-pointer ${
-                pastHero
-                  ? "text-[#1B5B7A]/60"
-                  : "text-white/60"
-              }`}
-            >
-              {locale === "es" ? "English" : "Espa\u00f1ol"}
-            </button>
             <a
               href="https://app.struere.dev?studio="
               className={`mt-2 text-center text-sm font-medium px-5 py-3 rounded-xl transition-colors duration-500 border ${

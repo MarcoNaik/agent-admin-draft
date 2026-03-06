@@ -35,29 +35,6 @@ export interface ToolContext {
   userId?: string
 }
 
-export interface FrameworkConfig {
-  port?: number
-  host?: string
-  cors?: CorsConfig
-  logging?: LoggingConfig
-  auth?: AuthConfig
-}
-
-export interface CorsConfig {
-  origins: string[]
-  credentials?: boolean
-}
-
-export interface LoggingConfig {
-  level: 'debug' | 'info' | 'warn' | 'error'
-  format?: 'json' | 'pretty'
-}
-
-export interface AuthConfig {
-  type: 'none' | 'api-key' | 'jwt' | 'custom'
-  validate?: (token: string) => Promise<boolean>
-}
-
 export interface EvalAssertion {
   type: 'llm_judge' | 'contains' | 'matches' | 'tool_called' | 'tool_not_called'
   criteria?: string

@@ -3,6 +3,7 @@ import { DM_Sans, JetBrains_Mono, Fraunces, IBM_Plex_Mono } from "next/font/goog
 import { getNavigation } from "@/lib/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { MobileNav } from "@/components/mobile-nav"
+import { SearchDialog } from "@/components/search"
 import "./globals.css"
 
 const dmSans = DM_Sans({
@@ -80,6 +81,7 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+        <SearchDialog />
         <svg className="hidden" aria-hidden="true">
           <filter id="liquid-noise">
             <feTurbulence

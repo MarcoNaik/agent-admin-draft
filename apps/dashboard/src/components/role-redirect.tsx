@@ -14,8 +14,6 @@ interface RoleRedirectProps {
 
 const roleDefaultRoutes: Record<UserRole, string> = {
   admin: "/",
-  teacher: "/teacher/sessions",
-  guardian: "/guardian/sessions",
   member: "/conversations",
 }
 
@@ -52,22 +50,6 @@ export function RoleRedirect({ allowedRoles, redirectTo, children }: RoleRedirec
 export function AdminOnly({ children }: { children: React.ReactNode }) {
   return (
     <RoleRedirect allowedRoles={["admin"]}>
-      {children}
-    </RoleRedirect>
-  )
-}
-
-export function TeacherOnly({ children }: { children: React.ReactNode }) {
-  return (
-    <RoleRedirect allowedRoles={["teacher", "admin"]}>
-      {children}
-    </RoleRedirect>
-  )
-}
-
-export function GuardianOnly({ children }: { children: React.ReactNode }) {
-  return (
-    <RoleRedirect allowedRoles={["guardian", "admin"]}>
       {children}
     </RoleRedirect>
   )

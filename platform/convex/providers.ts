@@ -1,27 +1,16 @@
 import { v } from "convex/values"
 import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
-import { requireAuth } from "./lib/auth"
-import { QueryCtx, MutationCtx } from "./_generated/server"
+import { requireAuth, requireOrgAdmin } from "./lib/auth"
+
+const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
+const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
+const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
+const getConfigInternalRef = makeFunctionReference<"query">("providers:getConfigInternal")
+const patchStatusRef = makeFunctionReference<"mutation">("providers:patchStatus")
 
 const providerValidator = v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai"))
-
-async function isOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  const membership = await ctx.db
-    .query("userOrganizations")
-    .withIndex("by_user_org", (q) =>
-      q.eq("userId", auth.userId).eq("organizationId", auth.organizationId)
-    )
-    .first()
-  return membership?.role === "admin"
-}
-
-async function requireOrgAdmin(ctx: QueryCtx | MutationCtx, auth: { userId: Id<"users">; organizationId: Id<"organizations"> }) {
-  if (!(await isOrgAdmin(ctx, auth))) {
-    throw new Error("Admin access required")
-  }
-}
 
 function maskApiKey(key: string): string {
   if (key.length <= 8) return "***"
@@ -234,12 +223,12 @@ export const testConnection = action({
   }),
   handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
     const auth: { userId: Id<"users">; organizationId: Id<"organizations"> } | null =
-      await ctx.runQuery(internal.chat.getAuthInfo)
+      await ctx.runQuery(getAuthInfoRef)
     if (!auth) {
       throw new Error("Not authenticated")
     }
 
-    const isAdmin: boolean = await ctx.runQuery(internal.integrations.isOrgAdminInternal, {
+    const isAdmin: boolean = await ctx.runQuery(isOrgAdminInternalRef, {
       userId: auth.userId,
       organizationId: auth.organizationId,
     })
@@ -247,7 +236,7 @@ export const testConnection = action({
       throw new Error("Admin access required")
     }
 
-    const resolved: { apiKey: string } | null = await ctx.runQuery(internal.providers.resolveApiKey, {
+    const resolved: { apiKey: string } | null = await ctx.runQuery(resolveApiKeyRef, {
       organizationId: auth.organizationId,
       provider: args.provider,
     })
@@ -298,13 +287,13 @@ export const testConnection = action({
         }
       }
 
-      const providerConfig = await ctx.runQuery(internal.providers.getConfigInternal, {
+      const providerConfig = await ctx.runQuery(getConfigInternalRef, {
         organizationId: auth.organizationId,
         provider: args.provider,
       })
 
       if (providerConfig) {
-        await ctx.runMutation(internal.providers.patchStatus, {
+        await ctx.runMutation(patchStatusRef, {
           configId: providerConfig._id,
           status: "active" as const,
           lastVerifiedAt: Date.now(),
@@ -315,13 +304,13 @@ export const testConnection = action({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Connection failed"
 
-      const providerConfig = await ctx.runQuery(internal.providers.getConfigInternal, {
+      const providerConfig = await ctx.runQuery(getConfigInternalRef, {
         organizationId: auth.organizationId,
         provider: args.provider,
       })
 
       if (providerConfig) {
-        await ctx.runMutation(internal.providers.patchStatus, {
+        await ctx.runMutation(patchStatusRef, {
           configId: providerConfig._id,
           status: "error" as const,
         })

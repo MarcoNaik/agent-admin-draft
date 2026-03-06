@@ -168,13 +168,13 @@ Scope rules restrict which entities an actor can see by filtering query results 
 
 ### How Scope Rules Work
 
-When an actor queries entities, scope rules for their role and the target entity type are collected. These rules generate filters that are applied to the query:
+When an actor queries entities, scope rules for their role and the target data type are collected. These rules generate filters that are applied to the query:
 
 ```
 Actor queries "session" entities
     │
     ▼
-Scope rules for actor's roles + "session" entity type collected
+Scope rules for actor's roles + "session" data type collected
     │
     ▼
 Filters generated:
@@ -207,7 +207,7 @@ Field masks control which fields an actor can see on an entity, implementing col
 
 ### Allowlist Strategy
 
-Field masks use an **allowlist strategy**: new fields added to an entity type are hidden by default until explicitly allowed in a role's field mask configuration. This is a fail-safe design that prevents accidental data exposure.
+Field masks use an **allowlist strategy**: new fields added to a data type are hidden by default until explicitly allowed in a role's field mask configuration. This is a fail-safe design that prevents accidental data exposure.
 
 ### Mask Types
 

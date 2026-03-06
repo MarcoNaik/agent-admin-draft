@@ -1,9 +1,16 @@
 "use node"
 
 import { v } from "convex/values"
-import { ActionCtx, internalAction } from "../_generated/server"
-import { internal } from "../_generated/api"
+import { internalAction } from "../_generated/server"
 import { Id } from "../_generated/dataModel"
+import { makeFunctionReference } from "convex/server"
+
+const getConnectionByIdRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
+const getConnectionByAgentRef = makeFunctionReference<"query">("whatsapp:getConnectionByAgentInternal")
+const listConnectionsRef = makeFunctionReference<"query">("whatsapp:listConnectionsInternal")
+const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
+const getOwnedTemplateNamesRef = makeFunctionReference<"query">("whatsapp:getOwnedTemplateNames")
+const getConversationMessagesRef = makeFunctionReference<"query">("whatsapp:getConversationMessagesInternal")
 import {
   sendTextMessage,
   sendTemplateMessage,
@@ -16,34 +23,35 @@ import {
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 async function resolveConnection(
-  ctx: ActionCtx,
+  ctx: any,
   args: {
     organizationId: Id<"organizations">
     actorId: string
     actorType: string
     environment: "development" | "production" | "eval"
     connectionId?: Id<"whatsappConnections">
+    agentId?: Id<"agents">
   }
-) {
+): Promise<any> {
   let connection: any
 
   if (args.connectionId) {
-    connection = await ctx.runQuery(internal.whatsapp.getConnectionByIdInternal, {
+    connection = await ctx.runQuery(getConnectionByIdRef, {
       connectionId: args.connectionId,
-    })
-  } else if (args.actorType === "agent") {
-    connection = await ctx.runQuery(internal.whatsapp.getConnectionByAgentInternal, {
+    } as any)
+  } else if (args.agentId) {
+    connection = await ctx.runQuery(getConnectionByAgentRef, {
       organizationId: args.organizationId,
       environment: args.environment,
-      agentId: args.actorId as any,
-    })
+      agentId: args.agentId,
+    } as any)
   }
 
   if (!connection) {
-    const connections: any[] = await ctx.runQuery(internal.whatsapp.listConnectionsInternal, {
+    const connections: any[] = await ctx.runQuery(listConnectionsRef, {
       organizationId: args.organizationId,
       environment: args.environment,
-    })
+    } as any)
     connection = connections.find((c: any) => c.status === "connected")
   }
 
@@ -60,6 +68,7 @@ const connectionArgs = {
   actorType: v.string(),
   environment: environmentValidator,
   connectionId: v.optional(v.id("whatsappConnections")),
+  agentId: v.optional(v.id("agents")),
 }
 
 export const whatsappSend = internalAction({
@@ -78,7 +87,7 @@ export const whatsappSend = internalAction({
       args.text
     )
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+    await ctx.runMutation(storeOutboundMessageRef, {
       organizationId: args.organizationId,
       connectionId: connection._id,
       phoneNumber: args.to,
@@ -121,7 +130,7 @@ export const whatsappSendTemplate = internalAction({
       args.components as any
     )
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+    await ctx.runMutation(storeOutboundMessageRef, {
       organizationId: args.organizationId,
       connectionId: connection._id,
       phoneNumber: args.to,
@@ -171,7 +180,7 @@ export const whatsappSendInteractive = internalAction({
       args.footerText
     )
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+    await ctx.runMutation(storeOutboundMessageRef, {
       organizationId: args.organizationId,
       connectionId: connection._id,
       phoneNumber: args.to,
@@ -217,7 +226,7 @@ export const whatsappSendMedia = internalAction({
       )
     }
 
-    await ctx.runMutation(internal.whatsapp.storeOutboundMessage, {
+    await ctx.runMutation(storeOutboundMessageRef, {
       organizationId: args.organizationId,
       connectionId: connection._id,
       phoneNumber: args.to,
@@ -244,12 +253,13 @@ export const whatsappListTemplates = internalAction({
     actorType: v.string(),
     environment: environmentValidator,
     connectionId: v.optional(v.id("whatsappConnections")),
+    agentId: v.optional(v.id("agents")),
   },
   returns: v.any(),
   handler: async (ctx, args): Promise<unknown> => {
     const connection = await resolveConnection(ctx, args)
 
-    const ownedNames = await ctx.runQuery(internal.whatsapp.getOwnedTemplateNames, {
+    const ownedNames = await ctx.runQuery(getOwnedTemplateNamesRef, {
       organizationId: args.organizationId,
       environment: args.environment,
     }) as string[]
@@ -268,11 +278,12 @@ export const whatsappGetConversation = internalAction({
     environment: environmentValidator,
     phoneNumber: v.string(),
     connectionId: v.optional(v.id("whatsappConnections")),
+    agentId: v.optional(v.id("agents")),
     limit: v.optional(v.number()),
   },
   returns: v.any(),
   handler: async (ctx, args): Promise<unknown> => {
-    return await ctx.runQuery(internal.whatsapp.getConversationMessagesInternal, {
+    return await ctx.runQuery(getConversationMessagesRef, {
       organizationId: args.organizationId,
       phoneNumber: args.phoneNumber,
       connectionId: args.connectionId,
@@ -290,10 +301,10 @@ export const whatsappGetStatus = internalAction({
   },
   returns: v.any(),
   handler: async (ctx, args): Promise<unknown> => {
-    const connections: any[] = await ctx.runQuery(internal.whatsapp.listConnectionsInternal, {
+    const connections: any[] = await ctx.runQuery(listConnectionsRef, {
       organizationId: args.organizationId,
       environment: args.environment,
-    })
+    } as any)
 
     if (connections.length === 0) {
       return { connected: false, status: "not_configured", connections: [] }

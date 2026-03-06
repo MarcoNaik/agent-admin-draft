@@ -148,9 +148,9 @@ export function getEntityTypeTs(name: string, slug: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 
-  return `import { defineEntityType } from 'struere'
+  return `import { defineData } from 'struere'
 
-export default defineEntityType({
+export default defineData({
   name: "${displayName}",
   slug: "${slug}",
   schema: {
