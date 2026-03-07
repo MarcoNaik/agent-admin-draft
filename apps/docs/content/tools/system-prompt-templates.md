@@ -264,6 +264,8 @@ Any built-in tool in the agent's tool list can be used as a template function. T
 | **Payment** | `payment.create`, `payment.getStatus` |
 | **Custom** | Any custom tool with a handler defined in `tools/` |
 
+Custom tools defined with `templateOnly: true` in `defineTools()` are invoked the same way as regular tools: `{{toolName(args)}}`. They execute at compilation time and results are injected into the prompt, but they are never exposed to the LLM as callable tools at runtime. If a template-only tool fails, it produces `[TEMPLATE_ERROR: toolName - error message]` like any other template function.
+
 A template function only works if the tool is registered in the agent's `tools` array. If the tool is missing, the template outputs `[TEMPLATE_ERROR: toolName - tool not found]`.
 
 ## Filtering with entity.query

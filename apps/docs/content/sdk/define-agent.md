@@ -83,7 +83,7 @@ For the full list of providers, models, and pricing, see [Model Configuration](.
 
 ## Tools
 
-The `tools` field is an array of tool name strings referencing both [built-in tools](../tools/built-in-tools) and [custom tools](../tools/custom-tools) defined via `defineTools`.
+The `tools` field is an array of tool name strings referencing both [built-in tools](../tools/built-in-tools) and [custom tools](../tools/custom-tools) defined via `defineTools`. Custom tools can be marked as `templateOnly: true` to make them available only during system prompt template compilation, keeping the agent's runtime tool list focused.
 
 ```typescript
 tools: [

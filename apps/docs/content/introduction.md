@@ -113,7 +113,7 @@ Built-in tools for WhatsApp messaging, Google Calendar, Airtable, and Flow/Polar
 
 ### Custom Tools
 
-Define arbitrary TypeScript functions your agents can call. They run on the sandboxed tool executor service and can call built-in tools via the `struere` SDK or fetch external APIs.
+Define arbitrary TypeScript functions your agents can call. They run on the sandboxed tool executor service and can call built-in tools via the `struere` SDK or fetch external APIs. Tools can be marked `templateOnly: true` to inject data at prompt compilation time without exposing the tool to the LLM at runtime.
 
 ```typescript
 import { defineTools } from 'struere'

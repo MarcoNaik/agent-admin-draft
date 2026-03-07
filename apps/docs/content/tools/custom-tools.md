@@ -57,6 +57,7 @@ Each custom tool requires the following fields:
 | `description` | `string` | Yes | Human-readable description. Passed to the LLM to help it understand when to use the tool. |
 | `parameters` | `object` | Yes | JSON Schema defining the tool's input parameters. |
 | `handler` | `function` | Yes | Async function that executes the tool logic. |
+| `templateOnly` | `boolean` | No | If true, tool is only available during system prompt template compilation and not exposed to the LLM at runtime. Defaults to `false`. |
 
 The `parameters` field follows the JSON Schema specification:
 
@@ -254,6 +255,39 @@ export default defineAgent({
 })
 ```
 
+### Template-Only Tools
+
+Tools defined with `templateOnly: true` are executed during system prompt template compilation (e.g., `{{format_teacher_schedule()}}`) but are not exposed to the LLM as callable tools at runtime. This is useful for injecting dynamic data into system prompts without adding to the agent's runtime tool list.
+
+```typescript
+export default defineTools([
+  {
+    name: 'format_teacher_schedule',
+    description: 'Query teachers and format availability into a readable schedule',
+    templateOnly: true,
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async (args, context, struere) => {
+      const result = await struere.entity.query({ type: 'teacher' })
+      const teachers = Array.isArray(result) ? result : result?.results || []
+      return teachers.map((t) => `${t.data?.name}: ${JSON.stringify(t.data?.availability)}`).join('\n')
+    },
+  },
+])
+```
+
+Then reference the tool in your agent's system prompt:
+
+```
+You are a scheduling assistant. Here is the current teacher availability:
+
+{{format_teacher_schedule()}}
+```
+
+The tool runs at prompt compilation time and its output is inlined into the system prompt. The LLM never sees `format_teacher_schedule` as a callable tool.
+
 ## Complete Example
 
 A `tools/index.ts` with multiple custom tools:
@@ -449,3 +483,7 @@ defineTools({
 ```
 
 This pattern turns 3 tools into 1, keeping the agent's tool list short and the LLM's job simple.
+
+### Use Template-Only Tools for Dynamic System Prompt Data
+
+When you need to inject dynamic data (e.g., schedules, configurations, entity lists) into an agent's system prompt, use `templateOnly: true` instead of adding a runtime tool. This keeps the agent's callable tool list focused on actions while still providing rich context at prompt compilation time.

@@ -13,6 +13,8 @@ order: 7
 
 Agents perform significantly worse as the tool count increases. With more than 5 tools, the model spends more tokens reasoning about which tool to use and makes more mistakes. If your agent needs broad capabilities, split it into multiple agents and use `agent.chat` for delegation.
 
+Use `templateOnly: true` on custom tools to inject dynamic data into system prompts without counting toward the tool limit. Template-only tools execute during prompt compilation but are never exposed to the LLM at runtime.
+
 ### Build task-specific tools
 
 Generic CRUD tools force the agent to reason about multi-step workflows. Task-specific tools encode the workflow into a single call.
@@ -344,6 +346,7 @@ The eval platform can be flaky. If a run fails due to infrastructure issues, mak
 | Wrong intent routing | Routes to wrong flow | Add explicit row in intent detection table |
 | TEMPLATE_ERROR on first response | Agent has no data | Keep entity.query as fallback tool + add prompt instruction |
 | Agent acts without confirmation | Executes tool when user intent is ambiguous | Add "If context is unclear, confirm before acting" |
+| Agent lacks context data | Runtime tools can't access data the agent needs at prompt time | Use a template-only tool to inject pre-queried data into the system prompt |
 
 ## Related
 

@@ -150,7 +150,7 @@ Each file defines fixture data as a YAML file with the `.fixture.yaml` extension
 
 ### tools/
 
-Contains a single `index.ts` file that exports all custom tool definitions using `defineTools`. These tools are shared across all agents in the organization.
+Contains a single `index.ts` file that exports all custom tool definitions using `defineTools`. These tools are shared across all agents in the organization. Custom tools can include `templateOnly: true` to restrict them to system prompt template compilation only, preventing them from appearing in the agent's runtime tool list.
 
 ```typescript
 import { defineTools } from 'struere'

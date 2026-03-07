@@ -55,6 +55,7 @@ Each tool in the array requires the following fields:
 | `description` | `string` | Yes | Description shown to the LLM for tool selection |
 | `parameters` | `ToolParameters` | Yes | JSON Schema defining the tool's input parameters |
 | `handler` | `function` | Yes | Async function that executes when the tool is called |
+| `templateOnly` | `boolean` | No | If true, tool is only available during system prompt template compilation and not exposed to the LLM at runtime. Defaults to `false`. |
 
 ### Validation
 
@@ -155,6 +156,37 @@ export default defineAgent({
   ],
 })
 ```
+
+### Template-Only Tools
+
+Tools defined with `templateOnly: true` are executed during system prompt template compilation but are not exposed to the LLM as callable tools at runtime. This lets you inject dynamic data into system prompts without bloating the agent's tool list.
+
+```typescript
+export default defineTools([
+  {
+    name: 'format_teacher_schedule',
+    description: 'Query teachers and format availability into a readable schedule',
+    templateOnly: true,
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async (args, context, struere) => {
+      const result = await struere.entity.query({ type: 'teacher' })
+      const teachers = Array.isArray(result) ? result : result?.results || []
+      return teachers.map((t) => `${t.data?.name}: ${JSON.stringify(t.data?.availability)}`).join('\n')
+    },
+  },
+])
+```
+
+Reference the tool in your agent's system prompt using template syntax:
+
+```
+{{format_teacher_schedule()}}
+```
+
+Template-only tools don't count toward the agent's runtime tool list.
 
 Custom tool names and built-in tool names share the same namespace. Avoid naming conflicts by not using the `entity.`, `event.`, or `agent.` prefixes for custom tools.
 
