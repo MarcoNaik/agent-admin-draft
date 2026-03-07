@@ -1,8 +1,55 @@
 import { Id } from "../_generated/dataModel"
 import { ActorContext, ActorType, Environment } from "./permissions/types"
 import { makeFunctionReference } from "convex/server"
+import { ToolExecutor } from "./templateEngine"
 
 const ref = (name: string) => makeFunctionReference<"mutation" | "query" | "action">(name as any)
+
+const getToolIdentityRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery" as any)
+const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool" as any)
+
+export function buildToolExecutor(
+  ctx: any,
+  actor: ActorContext,
+  agentId: Id<"agents"> | string,
+  environment: Environment,
+  opts?: { conversationId?: string; depth?: number }
+): ToolExecutor {
+  return {
+    executeBuiltin: async (name, toolArgs) => {
+      const toolIdentity = await ctx.runQuery(
+        getToolIdentityRef,
+        { actor: serializeActor(actor), agentId, toolName: name }
+      )
+      return executeBuiltinTool(ctx, {
+        organizationId: toolIdentity.organizationId,
+        actorId: toolIdentity.actorId,
+        actorType: toolIdentity.actorType,
+        isOrgAdmin: toolIdentity.isOrgAdmin,
+        environment,
+        toolName: name,
+        args: toolArgs,
+        agentId: agentId as string,
+      })
+    },
+    executeCustom: (toolName, toolArgs, handlerCode) =>
+      ctx.runAction(executeCustomToolRef, {
+        toolName,
+        args: toolArgs,
+        handlerCode,
+        context: {
+          organizationId: actor.organizationId,
+          actorId: actor.actorId,
+          actorType: actor.actorType,
+        },
+        environment,
+        isOrgAdmin: actor.isOrgAdmin,
+        agentId: agentId as string,
+        ...(opts?.conversationId && { conversationId: opts.conversationId }),
+        ...(opts?.depth !== undefined && { depth: opts.depth }),
+      }),
+  }
+}
 
 export function serializeActor(actor: ActorContext) {
   return {

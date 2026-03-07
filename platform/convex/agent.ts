@@ -28,9 +28,9 @@ const chatActionRef = makeFunctionReference<"action">("agent:chat")
 import { hashApiKey, generateId } from "./lib/utils"
 import { isOrgAdmin as checkIsOrgAdmin } from "./lib/auth"
 import { calculateCost } from "./lib/creditPricing"
-import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
+import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
-import { serializeActor, executeBuiltinTool, sanitizeFilters } from "./lib/toolExecution"
+import { buildToolExecutor, serializeActor, executeBuiltinTool, sanitizeFilters } from "./lib/toolExecution"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
 import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps, cleanToolCallText } from "./lib/llm"
 import { isBuiltinTool } from "./tools/helpers"
@@ -74,6 +74,7 @@ interface ToolConfig {
   parameters: unknown
   handlerCode?: string
   isBuiltin?: boolean
+  templateOnly?: boolean
 }
 
 interface ThreadContextParamSchema {
@@ -212,40 +213,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     roles,
   }
 
-  const toolExecutor: ToolExecutor = {
-    executeBuiltin: async (name, toolArgs) => {
-      const toolIdentity = await ctx.runQuery(
-        getToolIdentityQueryRef,
-        { actor: serializeActor(actor), agentId, toolName: name }
-      )
-      return executeBuiltinTool(ctx, {
-        organizationId: toolIdentity.organizationId,
-        actorId: toolIdentity.actorId,
-        actorType: toolIdentity.actorType,
-        isOrgAdmin: toolIdentity.isOrgAdmin,
-        environment,
-        toolName: name,
-        args: toolArgs,
-        agentId: agentId as unknown as string,
-      })
-    },
-    executeCustom: (toolName, toolArgs, handlerCode) =>
-      ctx.runAction(executeCustomToolRef, {
-        toolName,
-        args: toolArgs,
-        handlerCode,
-        context: {
-          organizationId: actor.organizationId,
-          actorId: actor.actorId,
-          actorType: actor.actorType,
-        },
-        environment,
-        isOrgAdmin: actor.isOrgAdmin,
-        agentId: agentId as unknown as string,
-        conversationId,
-        depth,
-      }),
-  }
+  const toolExecutor = buildToolExecutor(ctx, actor, agentId, environment, { conversationId, depth })
 
   const processedSystemPrompt = await processTemplates(
     config.systemPrompt,
@@ -263,6 +231,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
   const aiTools: Record<string, any> = {}
   for (const t of config.tools as ToolConfig[]) {
+    if (t.templateOnly) continue
     const sanitized = sanitizeToolName(t.name)
     aiTools[sanitized] = tool<Record<string, unknown>, unknown>({
       description: t.description,

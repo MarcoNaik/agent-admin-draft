@@ -4,9 +4,9 @@ import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { getAuthContext, requireAuth, isOrgAdmin, requireOrgAdmin } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
-import { processTemplates, TemplateContext, ToolExecutor, EntityTypeContext } from "./lib/templateEngine"
+import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext } from "./lib/permissions/types"
-import { serializeActor, executeBuiltinTool } from "./lib/toolExecution"
+import { buildToolExecutor } from "./lib/toolExecution"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -453,37 +453,7 @@ export const compileSystemPrompt = action({
       roles,
     }
 
-    const getToolIdentityRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery")
-    const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
-
-    const toolExecutor: ToolExecutor = {
-      executeBuiltin: async (name, toolArgs) => {
-        const toolIdentity = await ctx.runQuery(
-          getToolIdentityRef,
-          { actor: serializeActor(actor), agentId: args.agentId, toolName: name }
-        )
-        return executeBuiltinTool(ctx, {
-          organizationId: toolIdentity.organizationId,
-          actorId: toolIdentity.actorId,
-          actorType: toolIdentity.actorType,
-          isOrgAdmin: toolIdentity.isOrgAdmin,
-          environment: args.environment,
-          toolName: name,
-          args: toolArgs,
-          agentId: args.agentId as unknown as string,
-        })
-      },
-      executeCustom: (toolName, toolArgs) =>
-        ctx.runAction(executeCustomToolRef, {
-          toolName,
-          args: toolArgs,
-          context: {
-            organizationId: actor.organizationId,
-            actorId: actor.actorId,
-            actorType: actor.actorType,
-          },
-        }),
-    }
+    const toolExecutor = buildToolExecutor(ctx, actor, args.agentId, args.environment)
 
     const compiled = await processTemplates(
       config.systemPrompt,
@@ -650,37 +620,7 @@ export const compileSystemPromptBySlug = internalAction({
       roles,
     }
 
-    const getToolIdentityRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery")
-    const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
-
-    const toolExecutor: ToolExecutor = {
-      executeBuiltin: async (name, toolArgs) => {
-        const toolIdentity = await ctx.runQuery(
-          getToolIdentityRef,
-          { actor: serializeActor(actor), agentId, toolName: name }
-        )
-        return executeBuiltinTool(ctx, {
-          organizationId: toolIdentity.organizationId,
-          actorId: toolIdentity.actorId,
-          actorType: toolIdentity.actorType,
-          isOrgAdmin: toolIdentity.isOrgAdmin,
-          environment: args.environment,
-          toolName: name,
-          args: toolArgs,
-          agentId: agentId as unknown as string,
-        })
-      },
-      executeCustom: (toolName, toolArgs) =>
-        ctx.runAction(executeCustomToolRef, {
-          toolName,
-          args: toolArgs,
-          context: {
-            organizationId: actor.organizationId,
-            actorId: actor.actorId,
-            actorType: actor.actorType,
-          },
-        }),
-    }
+    const toolExecutor = buildToolExecutor(ctx, actor, agentId, args.environment)
 
     const compiled = await processTemplates(
       config.systemPrompt,
