@@ -5,8 +5,6 @@ import { getAuthContext, requireAuth } from "./lib/auth"
 import { estimateMinimumCost } from "./lib/creditPricing"
 
 const executeCaseRef = makeFunctionReference<"action">("evalRunner:executeCase")
-const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
-
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 const assertionValidator = v.object({
@@ -419,36 +417,25 @@ export const startRun = mutation({
       throw new Error("Suite has no cases")
     }
 
-    const creditBalance = await ctx.db
-      .query("creditBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .first()
-
-    const cachedBalance = creditBalance?.balance ?? 0
-
-    const pendingTxs = await ctx.db
-      .query("creditTransactions")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .order("desc")
-      .collect()
-
-    const pendingDeductions = pendingTxs
-      .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
-      .reduce((sum, tx) => sum + tx.amount, 0)
-
-    const effectiveBalance = cachedBalance - pendingDeductions
-    const judgeModelName = suite.judgeModel?.name ?? "grok-4-1-fast"
-    const minimumRequired = estimateMinimumCost(judgeModelName)
-
-    if (effectiveBalance < minimumRequired) {
-      throw new Error("Insufficient credits. Please add credits to your account before running evals.")
-    }
-
     const agentConfig = await ctx.db
       .query("agentConfigs")
       .withIndex("by_agent_env", (q) => q.eq("agentId", suite.agentId).eq("environment", suite.environment))
       .order("desc")
       .first()
+
+    const agentModelName = agentConfig?.model?.name ?? "grok-4-1-fast"
+    const judgeModelName = suite.judgeModel?.name ?? "grok-4-1-fast"
+    const minCost = estimateMinimumCost(agentModelName) + estimateMinimumCost(judgeModelName)
+
+    const creditBalance = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .first()
+
+    const effectiveBalance = (creditBalance?.balance ?? 0) - (creditBalance?.reservedCredits ?? 0)
+    if (effectiveBalance < minCost) {
+      throw new Error("Insufficient credits. Please add credits to your account before running evals.")
+    }
 
     const now = Date.now()
     const runId = await ctx.db.insert("evalRuns", {
@@ -507,6 +494,19 @@ export const cancelRun = mutation({
 
     if (run.status !== "pending" && run.status !== "running") {
       throw new Error("Can only cancel pending or running runs")
+    }
+
+    if (run.reservedCredits && run.reservedCredits > 0) {
+      const balance = await ctx.db
+        .query("creditBalances")
+        .withIndex("by_org", (q) => q.eq("organizationId", run.organizationId))
+        .first()
+      if (balance) {
+        await ctx.db.patch(balance._id, {
+          reservedCredits: Math.max(0, (balance.reservedCredits ?? 0) - run.reservedCredits),
+          updatedAt: Date.now(),
+        })
+      }
     }
 
     await ctx.db.patch(args.id, { status: "cancelled", completedAt: Date.now() })
@@ -632,15 +632,6 @@ export const caseCompleted = internalMutation({
       totalCost,
     }
 
-    if (args.judgeCost && args.judgeCost > 0) {
-      await ctx.scheduler.runAfter(0, deductCreditsRef, {
-        organizationId: run.organizationId,
-        amount: args.judgeCost,
-        description: `Eval judge — run ${args.runId}`,
-        metadata: { evalRunId: args.runId, type: "eval_judge" },
-      } as any)
-    }
-
     if (completedCases === run.totalCases) {
       const results = await ctx.db
         .query("evalResults")
@@ -656,6 +647,19 @@ export const caseCompleted = internalMutation({
         : completedCases > 0
           ? (passedCases / completedCases) * 5
           : undefined
+
+      if (run.reservedCredits && run.reservedCredits > 0) {
+        const balance = await ctx.db
+          .query("creditBalances")
+          .withIndex("by_org", (q) => q.eq("organizationId", run.organizationId))
+          .first()
+        if (balance) {
+          await ctx.db.patch(balance._id, {
+            reservedCredits: Math.max(0, (balance.reservedCredits ?? 0) - run.reservedCredits),
+            updatedAt: Date.now(),
+          })
+        }
+      }
 
       updates.status = "completed"
       updates.overallScore = overallScore
