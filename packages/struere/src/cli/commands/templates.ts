@@ -121,17 +121,15 @@ export const templatesCommand = new Command('templates')
 templatesCommand
   .command('list')
   .description('List all message templates')
-  .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--connection <id>', 'WhatsApp connection ID')
   .option('--json', 'Output raw JSON')
   .action(async (opts) => {
     await ensureAuth()
-    const env = opts.env as Environment
-    const connectionId = await resolveConnectionId(env, opts.connection)
+    const connectionId = await resolveConnectionId('development', opts.connection)
 
     const out = createOutput()
     out.start('Fetching templates')
-    const { data, error } = await listTemplates(connectionId, env)
+    const { data, error } = await listTemplates(connectionId)
 
     if (error) {
       out.fail('Failed to fetch templates')
@@ -176,7 +174,6 @@ templatesCommand
 templatesCommand
   .command('create <name>')
   .description('Create a new message template')
-  .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--connection <id>', 'WhatsApp connection ID')
   .option('--language <code>', 'Language code', 'en_US')
   .option('--category <cat>', 'Category (UTILITY|MARKETING|AUTHENTICATION)', 'UTILITY')
@@ -186,8 +183,7 @@ templatesCommand
   .option('--json', 'Output raw JSON')
   .action(async (name, opts) => {
     await ensureAuth()
-    const env = opts.env as Environment
-    const connectionId = await resolveConnectionId(env, opts.connection)
+    const connectionId = await resolveConnectionId('development', opts.connection)
 
     let components: Array<Record<string, unknown>>
 
@@ -221,7 +217,6 @@ templatesCommand
     out.start(`Creating template "${name}"`)
     const { data, error } = await createTemplate(
       connectionId,
-      env,
       name,
       opts.language,
       opts.category.toUpperCase(),
@@ -252,13 +247,11 @@ templatesCommand
 templatesCommand
   .command('delete <name>')
   .description('Delete a message template')
-  .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--connection <id>', 'WhatsApp connection ID')
   .option('--yes', 'Skip confirmation')
   .action(async (name, opts) => {
     await ensureAuth()
-    const env = opts.env as Environment
-    const connectionId = await resolveConnectionId(env, opts.connection)
+    const connectionId = await resolveConnectionId('development', opts.connection)
 
     if (!opts.yes && isInteractive()) {
       const confirmed = await confirm({
@@ -273,7 +266,7 @@ templatesCommand
 
     const out = createOutput()
     out.start(`Deleting template "${name}"`)
-    const { error } = await deleteTemplate(connectionId, env, name)
+    const { error } = await deleteTemplate(connectionId, name)
 
     if (error) {
       out.fail('Failed to delete template')
@@ -288,17 +281,15 @@ templatesCommand
 templatesCommand
   .command('status <name>')
   .description('Check template approval status')
-  .option('--env <environment>', 'Environment (development|production)', 'development')
   .option('--connection <id>', 'WhatsApp connection ID')
   .option('--json', 'Output raw JSON')
   .action(async (name, opts) => {
     await ensureAuth()
-    const env = opts.env as Environment
-    const connectionId = await resolveConnectionId(env, opts.connection)
+    const connectionId = await resolveConnectionId('development', opts.connection)
 
     const out = createOutput()
     out.start(`Checking status for "${name}"`)
-    const { data, error } = await getTemplateStatus(connectionId, env, name)
+    const { data, error } = await getTemplateStatus(connectionId, name)
 
     if (error) {
       out.fail('Failed to fetch template status')
