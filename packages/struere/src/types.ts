@@ -28,10 +28,64 @@ export interface ParameterDefinition {
   properties?: Record<string, ParameterDefinition>
 }
 
-export type ToolHandler = (params: Record<string, unknown>, context: ToolContext) => Promise<unknown>
+export interface StruereSDK {
+  entity: {
+    create: (args: Record<string, unknown>) => Promise<unknown>
+    get: (args: Record<string, unknown>) => Promise<unknown>
+    query: (args: Record<string, unknown>) => Promise<unknown>
+    update: (args: Record<string, unknown>) => Promise<unknown>
+    delete: (args: Record<string, unknown>) => Promise<unknown>
+    link: (args: Record<string, unknown>) => Promise<unknown>
+    unlink: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  event: {
+    emit: (args: Record<string, unknown>) => Promise<unknown>
+    query: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  whatsapp: {
+    send: (args: Record<string, unknown>) => Promise<unknown>
+    sendTemplate: (args: Record<string, unknown>) => Promise<unknown>
+    sendInteractive: (args: Record<string, unknown>) => Promise<unknown>
+    sendMedia: (args: Record<string, unknown>) => Promise<unknown>
+    listTemplates: (args: Record<string, unknown>) => Promise<unknown>
+    getConversation: (args: Record<string, unknown>) => Promise<unknown>
+    getStatus: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  calendar: {
+    list: (args: Record<string, unknown>) => Promise<unknown>
+    create: (args: Record<string, unknown>) => Promise<unknown>
+    update: (args: Record<string, unknown>) => Promise<unknown>
+    delete: (args: Record<string, unknown>) => Promise<unknown>
+    freeBusy: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  airtable: {
+    listBases: (args: Record<string, unknown>) => Promise<unknown>
+    listTables: (args: Record<string, unknown>) => Promise<unknown>
+    listRecords: (args: Record<string, unknown>) => Promise<unknown>
+    getRecord: (args: Record<string, unknown>) => Promise<unknown>
+    createRecords: (args: Record<string, unknown>) => Promise<unknown>
+    updateRecords: (args: Record<string, unknown>) => Promise<unknown>
+    deleteRecords: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  email: {
+    send: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  payment: {
+    create: (args: Record<string, unknown>) => Promise<unknown>
+    getStatus: (args: Record<string, unknown>) => Promise<unknown>
+  }
+  agent: {
+    chat: (args: Record<string, unknown>) => Promise<unknown>
+  }
+}
+
+export type ToolHandler = (params: Record<string, unknown>, context: ToolContext, struere: StruereSDK, fetch: typeof globalThis.fetch) => Promise<unknown>
 
 export interface ToolContext {
-  conversationId: string
+  organizationId?: string
+  actorId?: string
+  actorType?: string
+  conversationId?: string
   userId?: string
 }
 
