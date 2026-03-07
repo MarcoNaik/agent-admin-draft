@@ -790,24 +790,22 @@ export const disableWhatsApp = mutation({
 export const registerOwnedTemplate = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
     templateName: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const config = await ctx.db
-      .query("integrationConfigs")
-      .withIndex("by_org_env_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
+    const existing = await ctx.db
+      .query("whatsappOwnedTemplates")
+      .withIndex("by_org_name", (q) =>
+        q.eq("organizationId", args.organizationId).eq("templateName", args.templateName)
       )
       .first()
-    if (!config) return null
+    if (existing) return null
 
-    const existing = ((config.config as Record<string, unknown>)?.ownedTemplateNames as string[]) ?? []
-    if (existing.includes(args.templateName)) return null
-
-    await ctx.db.patch(config._id, {
-      config: { ...(config.config as Record<string, unknown>), ownedTemplateNames: [...existing, args.templateName] },
+    await ctx.db.insert("whatsappOwnedTemplates", {
+      organizationId: args.organizationId,
+      templateName: args.templateName,
+      createdAt: Date.now(),
     })
     return null
   },
@@ -816,25 +814,19 @@ export const registerOwnedTemplate = internalMutation({
 export const unregisterOwnedTemplate = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
     templateName: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const config = await ctx.db
-      .query("integrationConfigs")
-      .withIndex("by_org_env_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
+    const existing = await ctx.db
+      .query("whatsappOwnedTemplates")
+      .withIndex("by_org_name", (q) =>
+        q.eq("organizationId", args.organizationId).eq("templateName", args.templateName)
       )
       .first()
-    if (!config) return null
-
-    const existing = ((config.config as Record<string, unknown>)?.ownedTemplateNames as string[]) ?? []
-    const updated = existing.filter((n: string) => n !== args.templateName)
-
-    await ctx.db.patch(config._id, {
-      config: { ...(config.config as Record<string, unknown>), ownedTemplateNames: updated },
-    })
+    if (existing) {
+      await ctx.db.delete(existing._id)
+    }
     return null
   },
 })
@@ -842,18 +834,14 @@ export const unregisterOwnedTemplate = internalMutation({
 export const getOwnedTemplateNames = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
   },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
-    const config = await ctx.db
-      .query("integrationConfigs")
-      .withIndex("by_org_env_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("provider", "whatsapp")
-      )
-      .first()
-    if (!config) return []
-    return ((config.config as Record<string, unknown>)?.ownedTemplateNames as string[]) ?? []
+    const rows = await ctx.db
+      .query("whatsappOwnedTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+    return rows.map((r) => r.templateName)
   },
 })
 
