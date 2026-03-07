@@ -12,6 +12,7 @@ export type {
   ParameterDefinition,
   ToolHandler,
   ToolContext,
+  StruereSDK,
   EntityTypeConfig as DataTypeConfig,
   JSONSchema,
   JSONSchemaProperty,
