@@ -80,3 +80,9 @@ export function estimateMaxCost(model: string): number {
   const costUsd = (10000 * pricing.inputPerMTok + 40960 * pricing.outputPerMTok) / 1_000_000
   return Math.round(costUsd * 1_000_000) * 10
 }
+
+export function estimateBatchCost(model: string): number {
+  const pricing = resolvePricing(model)
+  const costUsd = (4000 * pricing.inputPerMTok + 4096 * pricing.outputPerMTok) / 1_000_000
+  return Math.round(costUsd * 1_000_000) * 2
+}
