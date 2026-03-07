@@ -147,7 +147,7 @@ export function HeroSection() {
             style={{ transitionProperty: "opacity", transitionDuration: "900ms" }}
           >
             <h1
-              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] whitespace-nowrap ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
+              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
               onAnimationEnd={(e) => {
                 if (e.animationName === "hero-gradient-flow") setHeroLooping(true)
               }}
