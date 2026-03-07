@@ -168,7 +168,7 @@ export default defineTools([
       },
       required: ["to", "subject", "body"],
     },
-    handler: async (args, context, fetch) => {
+    handler: async (args, context, struere, fetch) => {
       const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: {

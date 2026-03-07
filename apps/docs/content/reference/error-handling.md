@@ -208,7 +208,7 @@ try {
 Custom tool handlers execute on the tool executor service. Any exception thrown in the handler is caught and returned to the agent as a tool result:
 
 ```typescript
-handler: async (args, context, fetch) => {
+handler: async (args, context, struere, fetch) => {
   const response = await fetch("https://api.stripe.com/v1/charges", {
     method: "POST",
     headers: { "Authorization": `Bearer ${process.env.STRIPE_KEY}` },

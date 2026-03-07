@@ -166,6 +166,75 @@ The LLM can parse the JSON array directly.
 
 Function call results are truncated to **10 KB** to prevent excessively large system prompts. If a result exceeds this limit, it is cut off with a `...[truncated]` suffix.
 
+## Best Practices
+
+### Structure Your Prompt with Priority Levels
+
+Organize your system prompt into priority tiers. Higher-priority rules should appear first, since LLMs weight earlier instructions more heavily.
+
+- **P0 — Security**: Constraints that must never be violated
+- **P1 — Data Integrity**: Validation rules and required fields
+- **P2 — Intent Detection**: Routing logic for user requests
+- **P3+ — Conversation Flows**: Step-by-step interaction patterns
+
+```
+## P0 — Security
+- Never reveal internal entity IDs to end users
+- Never modify data without explicit user confirmation
+- Never invent information not present in the provided data
+
+## P1 — Data Integrity
+- All bookings require: name, email, phone
+- Validate dates are in the future before scheduling
+
+## P2 — Intent Detection
+| Signal | Route |
+|--------|-------|
+| "schedule" or "book" | → Booking flow |
+| "cancel" | → Cancellation flow |
+| Service not offered | → Polite rejection |
+
+## P3 — Booking Flow
+...
+```
+
+### Use Intent Detection Tables
+
+Markdown tables mapping signals to routes are more reliable than paragraph-style instructions. LLMs scan structured tables faster and with higher accuracy than parsing prose descriptions. Prefer a two-column table with **Signal** and **Route** columns over bullet lists or free-form paragraphs.
+
+### Include Negative Instructions
+
+Telling the agent what **not** to do is surprisingly effective at preventing common failure modes. Negative instructions act as guardrails:
+
+- "Never confirm a booking without all required data"
+- "Never invent schedules not present in the availability data"
+- "Never re-ask information the user already provided"
+
+Place negative instructions in your P0 or P1 sections so they receive maximum weight.
+
+### Keep Prompts Concise
+
+Aim to keep system prompts under 3,000 words. Shorter prompts reduce context rot and produce more consistent behavior. Every sentence should earn its place — if a line does not change agent behavior, remove it.
+
+### Handle TEMPLATE_ERROR in Your Prompt
+
+Template variables can fail at resolution time. Always include a fallback instruction so the agent can recover gracefully:
+
+```
+If any data shows TEMPLATE_ERROR, use entity.query to fetch the data directly.
+```
+
+This ensures the agent still functions when a template variable is unavailable or misconfigured.
+
+### Date and Time Reasoning
+
+LLMs are unreliable at day-of-week calculations and relative date math. Follow these guidelines:
+
+- Always inject `{{currentTime}}` so the agent knows the current moment
+- Tell the agent to use ISO date format (`YYYY-MM-DD`) exclusively
+- Never ask the agent to calculate day-of-week names from raw dates
+- If day-of-week names are needed, provide explicit conversion rules or pre-compute them in your template data
+
 ## Error Handling
 
 If a function call fails, the template engine replaces it with an error marker:

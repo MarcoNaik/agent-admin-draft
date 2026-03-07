@@ -94,6 +94,8 @@ export default defineAgent({
 })
 ```
 
+**Tip:** Aim for fewer than 5 tools per agent. LLM decision-making degrades as tool count grows. Use [custom tools](/tools/custom-tools#best-practices) to consolidate multiple built-in operations into single task-specific tools.
+
 ## Permission Enforcement
 
 Every tool call goes through the full permission pipeline:
@@ -246,6 +248,8 @@ Array<{
   updatedAt: number
 }>
 ```
+
+**Important:** Filters on `data.*` fields are applied in-memory after the index lookup and may return empty results for large datasets. For reliable filtering, query by `type` only and filter the results in your agent's system prompt or reasoning. If you need filtered data injected into the prompt, use a custom tool that queries and filters server-side.
 
 ---
 
@@ -1221,3 +1225,46 @@ Checks the current status of a payment entity. If the payment has a Flow provide
   "currency": "CLP"
 }
 ```
+
+## Using Built-in Tools from Custom Tools
+
+Custom tool handlers receive a `struere` SDK parameter that provides access to all built-in tools. This lets custom tools compose platform operations — create entities, emit events, query data, send messages — without going through the LLM loop.
+
+```typescript
+import { defineTools } from 'struere'
+
+export default defineTools([
+  {
+    name: "onboard_customer",
+    description: "Create a customer record and send a welcome message",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+        phone: { type: "string" },
+      },
+      required: ["name", "email"],
+    },
+    handler: async (args, context, struere, fetch) => {
+      const customer = await struere.entity.create({
+        type: "customer",
+        data: { name: args.name, email: args.email },
+      })
+      await struere.event.emit({
+        eventType: "customer.onboarded",
+        entityId: customer.id,
+      })
+      if (args.phone) {
+        await struere.whatsapp.send({
+          to: args.phone,
+          text: `Welcome ${args.name}!`,
+        })
+      }
+      return { customerId: customer.id }
+    },
+  },
+])
+```
+
+The `struere` parameter exposes the same tools listed on this page — all permission checks and scope rules apply as if the agent called the tool directly.
