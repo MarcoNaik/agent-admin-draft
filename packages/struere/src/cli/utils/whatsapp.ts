@@ -117,19 +117,17 @@ export async function listWhatsAppConnections(env: Environment) {
   return convexQuery('whatsapp:listConnections', { environment: env })
 }
 
-export async function listTemplates(connectionId: string, env: Environment) {
+export async function listTemplates(connectionId: string) {
   if (getApiKey()) {
     return httpPost('/v1/templates/list', { connectionId })
   }
   return convexAction('whatsappActions:listTemplates', {
     connectionId,
-    environment: env,
   })
 }
 
 export async function createTemplate(
   connectionId: string,
-  env: Environment,
   name: string,
   language: string,
   category: string,
@@ -148,7 +146,6 @@ export async function createTemplate(
   }
   return convexAction('whatsappActions:createTemplate', {
     connectionId,
-    environment: env,
     name,
     language,
     category,
@@ -157,24 +154,22 @@ export async function createTemplate(
   })
 }
 
-export async function deleteTemplate(connectionId: string, env: Environment, name: string) {
+export async function deleteTemplate(connectionId: string, name: string) {
   if (getApiKey()) {
     return httpPost('/v1/templates/delete', { connectionId, name })
   }
   return convexAction('whatsappActions:deleteTemplate', {
     connectionId,
-    environment: env,
     name,
   })
 }
 
-export async function getTemplateStatus(connectionId: string, env: Environment, name: string) {
+export async function getTemplateStatus(connectionId: string, name: string) {
   if (getApiKey()) {
     return httpPost('/v1/templates/status', { connectionId, name })
   }
   return convexAction('whatsappActions:getTemplateStatus', {
     connectionId,
-    environment: env,
     name,
   })
 }
