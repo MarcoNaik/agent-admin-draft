@@ -401,6 +401,14 @@ export default defineSchema({
     .index("by_connection_phone", ["connectionId", "phoneNumber"])
     .index("by_message_id", ["messageId"]),
 
+  whatsappOwnedTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    templateName: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_name", ["organizationId", "templateName"]),
+
   emailMessages: defineTable({
     organizationId: v.id("organizations"),
     environment: environmentValidator,
@@ -589,6 +597,7 @@ export default defineSchema({
       judge: v.number(),
     })),
     totalDurationMs: v.optional(v.number()),
+    reservedCredits: v.optional(v.number()),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
