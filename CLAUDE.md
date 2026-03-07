@@ -398,6 +398,22 @@ cd platform/tool-executor && bun run dev
 cd apps/docs && bun run dev
 ```
 
+### Convex CLI — Dev vs Prod
+
+| Command | Target |
+|---------|--------|
+| `npx convex run <fn>` | Dev deployment |
+| `npx convex run --prod <fn>` | **Production** deployment |
+| `npx convex deploy --yes` | Deploy code to production (non-interactive) |
+| `npx convex run --push <fn>` | Push code to dev, then run |
+| `npx convex run --prod --push <fn>` | Push code to prod, then run |
+
+**IMPORTANT**: Never use `CONVEX_DEPLOYMENT=<name>` env var to target prod — the local `.env.local` takes precedence and silently runs against dev. Always use `--prod` flag.
+
+**Deployments**: Dev = `giddy-wombat-967`, Prod = `rapid-wildebeest-172`
+
+**Node runtime constraint**: Files with `"use node"` can only export actions, not queries or mutations. Split helpers into separate files.
+
 ### Deployment
 - **CLI to npm**: `cd packages/struere && npm publish`
 - **Convex**: `cd platform/convex && npx convex deploy`
