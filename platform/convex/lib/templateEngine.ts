@@ -37,7 +37,7 @@ interface ToolConfig {
 
 export interface ToolExecutor {
   executeBuiltin: (name: string, args: Record<string, unknown>) => Promise<unknown>
-  executeCustom: (toolName: string, args: Record<string, unknown>) => Promise<unknown>
+  executeCustom: (toolName: string, args: Record<string, unknown>, handlerCode: string) => Promise<unknown>
 }
 
 interface ParsedTemplate {
@@ -186,7 +186,7 @@ async function executeTemplateFunction(
     if (isBuiltinTool(name)) {
       result = await executor.executeBuiltin(name, args)
     } else if (tool.handlerCode) {
-      result = await executor.executeCustom(name, args)
+      result = await executor.executeCustom(name, args, tool.handlerCode!)
     } else {
       return `[TEMPLATE_ERROR: ${name} - no handler]`
     }
