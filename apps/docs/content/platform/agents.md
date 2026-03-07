@@ -144,7 +144,7 @@ The agent runs an iterative loop with a maximum of 10 iterations. Each iteration
 | `event.query` | `tools.events.eventQuery` | Query events (visibility filtered) |
 | `agent.chat` | `tools.agents.agentChat` | Delegate to another agent |
 
-**Custom tools** are sent to the tool executor service at `tool-executor.struere.dev` for sandboxed execution with actor context.
+**Custom tools** are sent to the tool executor service at `tool-executor.struere.dev` for sandboxed execution with actor context. Custom tool handlers receive a `struere` SDK parameter that provides access to all built-in tools (e.g., `struere.entity.create`, `struere.event.emit`), enabling custom tools to compose platform operations within their handler logic.
 
 ## Multi-Agent Communication
 

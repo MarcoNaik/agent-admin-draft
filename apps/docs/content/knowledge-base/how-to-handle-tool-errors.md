@@ -60,15 +60,12 @@ export default defineAgent({
 Custom tool handlers run on the tool executor server. Throw descriptive errors:
 
 ```typescript
-export default {
-  name: "lookup-inventory",
-  handler: async ({ params, context }) => {
-    const response = await fetch(`https://api.example.com/inventory/${params.sku}`)
-    if (!response.ok) {
-      throw new Error(`Inventory lookup failed for SKU ${params.sku}: ${response.status}`)
-    }
-    return await response.json()
-  },
+handler: async (args, context, struere, fetch) => {
+  const response = await fetch(`https://api.example.com/inventory/${args.sku}`)
+  if (!response.ok) {
+    throw new Error(`Inventory lookup failed for SKU ${args.sku}: ${response.status}`)
+  }
+  return await response.json()
 }
 ```
 

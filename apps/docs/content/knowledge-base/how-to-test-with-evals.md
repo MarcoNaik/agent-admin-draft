@@ -142,12 +142,70 @@ cases:
 
 Without these fields, template variables like `{{threadContext.channel}}` resolve empty during eval runs.
 
+## Best Practices
+
+### Move `tool_called` to `finalAssertions`
+
+Agents often ask for confirmation or clarifying questions before executing a tool. If you assert `tool_called` on a single turn, it fails because the agent hasn't acted yet. Use `finalAssertions` for `tool_called` and `tool_not_called` checks — they verify the outcome across the entire conversation.
+
+```yaml
+# Bad: per-turn tool_called fails when agent confirms first
+turns:
+  - role: user
+    content: "Book a session for tomorrow"
+    assertions:
+      - type: tool_called
+        tool: book_session  # Fails — agent asks "What time?" first
+
+# Good: finalAssertions checks across all turns
+turns:
+  - role: user
+    content: "Book a session for tomorrow"
+    assertions:
+      - type: llm_judge
+        criteria: "Agent asks for required details"
+  - role: user
+    content: "10am with Teacher Ana"
+finalAssertions:
+  - type: tool_called
+    tool: book_session
+```
+
+### Include the current date in judge criteria
+
+LLM judges don't know what today's date is. If your eval involves date-sensitive logic, include it directly in the criteria:
+
+```yaml
+assertions:
+  - type: llm_judge
+    criteria: "Today is 2026-03-07. Agent only shows sessions from today forward."
+```
+
+### Guard against judge hallucinations
+
+LLM judges can hallucinate passing scores or fabricate reasoning. To mitigate this:
+
+- Make criteria as specific as possible.
+- Include expected values directly in criteria text (e.g., "Response mentions 'Ana García' as the teacher").
+- Use `tool_called` / `contains` for objective checks instead of relying solely on judge reasoning.
+
+### Connect fixture data to test cases
+
+Every entity referenced in your test conversation must exist in fixtures. If a case says "Show me teacher Ana" but no fixture creates a teacher named Ana, the eval fails unpredictably. Align your fixture refs with the data your cases expect.
+
 ## Common Mistakes
 
 - **Vague judge criteria.** "Good response" is too vague. Use specific criteria like "Response mentions the order status and expected delivery date."
 - **Not creating fixtures.** Without fixtures, `entity.query` returns empty results in the eval environment. Always create fixture data for your tests.
 - **Testing in development.** Evals run in the isolated eval environment. Development data is not visible during eval runs.
 - **Missing agent slug.** The `agent` field must match an agent slug defined in `agents/`.
+
+## Iteration Workflow
+
+- Read eval failure details, not just scores. The judge reasoning tells you why it failed.
+- Fix one thing at a time, then re-run that specific case: `struere eval --suite booking --case B16`.
+- Watch for regressions. Fixing one case can break another. Always re-run the full suite after targeted fixes.
+- The eval platform can return transient errors. Don't retry in a loop — make your changes, sync, and try again later.
 
 ## Related
 

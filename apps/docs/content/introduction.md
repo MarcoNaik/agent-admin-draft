@@ -113,21 +113,28 @@ Built-in tools for WhatsApp messaging, Google Calendar, Airtable, and Flow/Polar
 
 ### Custom Tools
 
-Define arbitrary TypeScript functions your agents can call. They run on the sandboxed tool executor service and can fetch external APIs, compute data, or format responses.
+Define arbitrary TypeScript functions your agents can call. They run on the sandboxed tool executor service and can call built-in tools via the `struere` SDK or fetch external APIs.
 
 ```typescript
 import { defineTools } from 'struere'
 
-export default defineTools({
-  "weather.get": {
+export default defineTools([
+  {
+    name: "weather.get",
     description: "Get current weather for a city",
-    parameters: { city: { type: "string" } },
-    handler: async ({ city }) => {
-      const res = await fetch(`https://api.weather.com/v1/current?city=${city}`)
+    parameters: {
+      type: "object",
+      properties: {
+        city: { type: "string", description: "City name" },
+      },
+      required: ["city"],
+    },
+    handler: async (args, context, struere, fetch) => {
+      const res = await fetch(`https://api.weather.com/v1/current?city=${args.city}`)
       return res.json()
     },
   },
-})
+])
 ```
 
 ### Security & Access Control
