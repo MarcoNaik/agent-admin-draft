@@ -207,7 +207,7 @@ function TemplatePicker({
   useEffect(() => {
     if (open && templates.length === 0 && connectionId) {
       dispatch({ type: "LOAD_START" })
-      listTemplates({ environment, connectionId })
+      listTemplates({ connectionId })
         .then((result: any) => {
           const data = result?.data ?? result ?? []
           dispatch({ type: "LOAD_SUCCESS", templates: Array.isArray(data) ? data : [] })

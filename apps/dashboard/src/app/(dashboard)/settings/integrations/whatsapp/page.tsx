@@ -151,11 +151,9 @@ function TemplateStatusBadge({ status }: { status: string }) {
 
 function CreateTemplateDialog({
   connectionId,
-  environment,
   onCreated,
 }: {
   connectionId: Id<"whatsappConnections">
-  environment: Environment
   onCreated: () => void
 }) {
   const createTemplate = useCreateWhatsAppTemplate()
@@ -186,7 +184,7 @@ function CreateTemplateDialog({
     }
     setCreating(true)
     try {
-      await createTemplate({ environment, connectionId, name: name.trim(), language, category, components })
+      await createTemplate({ connectionId, name: name.trim(), language, category, components })
       setOpen(false)
       setName("")
       setComponentsJson('[\n  {\n    "type": "BODY",\n    "text": "Hello {{1}}",\n    "example": {\n      "body_text": [["World"]]\n    }\n  }\n]')
@@ -276,10 +274,8 @@ function CreateTemplateDialog({
 
 function TemplatesSection({
   connectionId,
-  environment,
 }: {
   connectionId: Id<"whatsappConnections">
-  environment: Environment
 }) {
   const listTemplates = useListWhatsAppTemplates()
   const deleteTemplate = useDeleteWhatsAppTemplate()
@@ -292,14 +288,14 @@ function TemplatesSection({
     setLoading(true)
     setError(null)
     try {
-      const result = await listTemplates({ connectionId, environment }) as { data?: any[] }
+      const result = await listTemplates({ connectionId }) as { data?: any[] }
       setTemplates(result?.data ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load templates")
     } finally {
       setLoading(false)
     }
-  }, [listTemplates, connectionId, environment])
+  }, [listTemplates, connectionId])
 
   useEffect(() => {
     loadTemplates()
@@ -309,7 +305,7 @@ function TemplatesSection({
     if (!confirm(`Delete template "${name}"? This cannot be undone.`)) return
     setDeleting(name)
     try {
-      await deleteTemplate({ environment, connectionId, name })
+      await deleteTemplate({ connectionId, name })
       await loadTemplates()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete template")
@@ -329,7 +325,7 @@ function TemplatesSection({
           <Button variant="ghost" size="sm" onClick={loadTemplates} disabled={loading} className="h-7 px-2">
             <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
           </Button>
-          <CreateTemplateDialog connectionId={connectionId} environment={environment} onCreated={loadTemplates} />
+          <CreateTemplateDialog connectionId={connectionId} onCreated={loadTemplates} />
         </div>
       </div>
 
@@ -528,7 +524,7 @@ function PhoneNumberCard({
                 </SelectContent>
               </Select>
             </div>
-            <TemplatesSection connectionId={connection._id} environment={environment} />
+            <TemplatesSection connectionId={connection._id} />
             <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
               {disconnecting ? "Disconnecting..." : "Disconnect"}
             </Button>
