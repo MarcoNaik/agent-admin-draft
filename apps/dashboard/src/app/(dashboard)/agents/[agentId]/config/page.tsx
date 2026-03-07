@@ -21,6 +21,7 @@ interface Tool {
   name: string
   description: string
   isBuiltin: boolean
+  templateOnly?: boolean
   parameters?: Record<string, unknown>
 }
 
@@ -58,6 +59,9 @@ function ToolItem({ tool }: { tool: Tool }) {
         <span className="font-mono text-sm text-content-primary">{tool.name}</span>
         {tool.isBuiltin && (
           <Badge variant="secondary" className="text-xs">builtin</Badge>
+        )}
+        {tool.templateOnly && (
+          <Badge variant="amber" className="text-xs">template-only</Badge>
         )}
         <span className="text-sm text-content-secondary truncate ml-auto">
           {tool.description}

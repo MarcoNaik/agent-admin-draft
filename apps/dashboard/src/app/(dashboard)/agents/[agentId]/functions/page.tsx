@@ -27,6 +27,7 @@ interface Tool {
   name: string
   description: string
   isBuiltin: boolean
+  templateOnly?: boolean
   parameters?: {
     type: string
     properties?: Record<string, { type: string; description?: string }>
@@ -197,11 +198,13 @@ function ToolRow({
   name,
   description,
   isEnabled,
+  templateOnly,
   parameters,
 }: {
   name: string
   description: string
   isEnabled: boolean
+  templateOnly?: boolean
   parameters?: {
     type: string
     properties?: Record<string, { type: string; description?: string }>
@@ -224,6 +227,11 @@ function ToolRow({
           <ToolName name={name} />
         </div>
         <p className="flex-1 text-sm text-content-tertiary truncate">{description}</p>
+        {templateOnly && (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-amber/10 text-amber shrink-0">
+            template-only
+          </span>
+        )}
         {isEnabled && (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-success/10 text-success shrink-0">
             <Check className="h-3 w-3" />
@@ -308,6 +316,7 @@ function CategorySection({
               name={item.name}
               description={item.def?.description || item.tool?.description || ""}
               isEnabled={enabledToolNames.has(item.name)}
+              templateOnly={item.tool?.templateOnly}
               parameters={item.def?.parameters || item.tool?.parameters}
             />
           ))}
