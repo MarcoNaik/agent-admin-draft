@@ -235,7 +235,7 @@ export default defineTools([
         },
       },
     },
-    handler: async (args, context, fetch) => {
+    handler: async (args, context, struere, fetch) => {
       const timezone = (args.timezone as string) || 'UTC'
       const now = new Date()
       return {
@@ -264,7 +264,7 @@ export default defineTools([
       },
       required: ['message'],
     },
-    handler: async (args, context, fetch) => {
+    handler: async (args, context, struere, fetch) => {
       const webhookUrl = process.env.SLACK_WEBHOOK_URL
       if (!webhookUrl) {
         return { success: false, error: 'SLACK_WEBHOOK_URL not configured' }
