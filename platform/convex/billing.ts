@@ -42,21 +42,8 @@ export const getBalance = query({
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
       .first()
 
-    const cachedBalance = balance?.balance ?? 0
-    const reserved = balance?.reservedCredits ?? 0
-
-    const pendingTxs = await ctx.db
-      .query("creditTransactions")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
-      .order("desc")
-      .collect()
-
-    const pendingDeductions = pendingTxs
-      .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
-      .reduce((sum, tx) => sum + tx.amount, 0)
-
     return {
-      balance: cachedBalance - pendingDeductions - reserved,
+      balance: (balance?.balance ?? 0) - (balance?.reservedCredits ?? 0),
       updatedAt: balance?.updatedAt ?? Date.now(),
     }
   },
@@ -87,20 +74,7 @@ export const getBalanceInternal = internalQuery({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first()
 
-    const cachedBalance = balance?.balance ?? 0
-    const reserved = balance?.reservedCredits ?? 0
-
-    const pendingTxs = await ctx.db
-      .query("creditTransactions")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .collect()
-
-    const pendingDeductions = pendingTxs
-      .filter((tx) => tx.balanceAfter === undefined && tx.type === "deduction")
-      .reduce((sum, tx) => sum + tx.amount, 0)
-
-    return cachedBalance - pendingDeductions - reserved
+    return (balance?.balance ?? 0) - (balance?.reservedCredits ?? 0)
   },
 })
 
@@ -188,10 +162,19 @@ export const deductCredits = internalMutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
+    const newBalance = balanceDoc.balance - args.amount
+
+    await ctx.db.patch(balanceDoc._id, {
+      balance: newBalance,
+      updatedAt: Date.now(),
+    })
+
     await ctx.db.insert("creditTransactions", {
       organizationId: args.organizationId,
       type: "deduction",
       amount: args.amount,
+      balanceAfter: newBalance,
       description: args.description,
       executionId: args.executionId,
       metadata: args.metadata,
@@ -208,45 +191,21 @@ export const reconcileBalances = internalMutation({
       .collect()
 
     const unprocessed = pendingTxs.filter((tx) => tx.balanceAfter === undefined)
-    const batch = unprocessed.slice(0, 200)
-    if (batch.length === 0) return
+    if (unprocessed.length === 0) return
 
-    const byOrg = new Map<string, typeof batch>()
-    for (const tx of batch) {
-      const orgId = tx.organizationId as string
-      if (!byOrg.has(orgId)) byOrg.set(orgId, [])
-      byOrg.get(orgId)!.push(tx)
-    }
+    for (const tx of unprocessed) {
+      const balanceDoc = await getOrCreateBalance(ctx, tx.organizationId)
 
-    for (const [orgId, txs] of byOrg) {
-      const balanceDoc = await ctx.db
-        .query("creditBalances")
-        .withIndex("by_org", (q) => q.eq("organizationId", orgId as Id<"organizations">))
-        .first()
+      const newBalance = tx.type === "deduction"
+        ? balanceDoc.balance - tx.amount
+        : balanceDoc.balance + tx.amount
 
-      let currentBalance = balanceDoc?.balance ?? 0
+      await ctx.db.patch(balanceDoc._id, {
+        balance: newBalance,
+        updatedAt: Date.now(),
+      })
 
-      for (const tx of txs) {
-        if (tx.type === "deduction") {
-          currentBalance -= tx.amount
-        } else {
-          currentBalance += tx.amount
-        }
-        await ctx.db.patch(tx._id, { balanceAfter: currentBalance })
-      }
-
-      if (balanceDoc) {
-        await ctx.db.patch(balanceDoc._id, {
-          balance: currentBalance,
-          updatedAt: Date.now(),
-        })
-      } else {
-        await ctx.db.insert("creditBalances", {
-          organizationId: orgId as Id<"organizations">,
-          balance: currentBalance,
-          updatedAt: Date.now(),
-        })
-      }
+      await ctx.db.patch(tx._id, { balanceAfter: newBalance })
     }
   },
 })
