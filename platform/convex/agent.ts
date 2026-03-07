@@ -229,15 +229,21 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         agentId: agentId as unknown as string,
       })
     },
-    executeCustom: (toolName, toolArgs) =>
+    executeCustom: (toolName, toolArgs, handlerCode) =>
       ctx.runAction(executeCustomToolRef, {
         toolName,
         args: toolArgs,
+        handlerCode,
         context: {
           organizationId: actor.organizationId,
           actorId: actor.actorId,
           actorType: actor.actorType,
         },
+        environment,
+        isOrgAdmin: actor.isOrgAdmin,
+        agentId: agentId as unknown as string,
+        conversationId,
+        depth,
       }),
   }
 
@@ -307,11 +313,18 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
             return await ctx.runAction(executeCustomToolRef, {
               toolName: originalName,
               args,
+              handlerCode: toolConfig.handlerCode,
               context: {
                 organizationId: toolIdentity.organizationId,
                 actorId: toolIdentity.actorId,
                 actorType: toolIdentity.actorType,
               },
+              environment,
+              isOrgAdmin: toolIdentity.isOrgAdmin,
+              agentId: agentId as unknown as string,
+              conversationId,
+              depth,
+              callerAgentSlug: agent.slug,
             })
           }
 
@@ -338,7 +351,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
   const usedPlatformKey = providerKey === null
   let reservedAmount = 0
-  if (usedPlatformKey) {
+  if (usedPlatformKey && !params.evalRunId) {
     try {
       reservedAmount = await ctx.runMutation(reserveCreditsRef, {
         organizationId,
@@ -931,6 +944,7 @@ export const executeCustomTool = internalAction({
   args: {
     toolName: v.string(),
     args: v.any(),
+    handlerCode: v.string(),
     context: v.optional(
       v.object({
         organizationId: v.id("organizations"),
@@ -938,106 +952,103 @@ export const executeCustomTool = internalAction({
         actorType: v.string(),
       })
     ),
+    environment: v.optional(environmentValidator),
+    isOrgAdmin: v.optional(v.boolean()),
+    agentId: v.optional(v.string()),
+    conversationId: v.optional(v.string()),
+    depth: v.optional(v.number()),
+    callerAgentSlug: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const allowedDomains = [
-      "api.openai.com",
-      "api.anthropic.com",
-      "api.stripe.com",
-      "api.sendgrid.com",
-      "api.twilio.com",
-      "hooks.slack.com",
-      "discord.com",
-      "api.github.com",
-    ]
+    const toolExecutorUrl = process.env.TOOL_EXECUTOR_URL
+    const toolExecutorSecret = process.env.TOOL_EXECUTOR_SECRET
+    const callbackUrl = process.env.CONVEX_SITE_URL + "/internal/tool-callback"
 
-    const sandboxedFetch = async (url: string, options?: RequestInit) => {
-      const urlObj = new URL(url)
-      const isAllowed = allowedDomains.some(
-        (domain) =>
-          urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
-      )
-      if (!isAllowed) {
-        throw new Error(
-          `Fetch to ${urlObj.hostname} is not allowed. Allowed domains: ${allowedDomains.join(", ")}`
-        )
-      }
-      return fetch(url, options)
+    if (!toolExecutorUrl || !toolExecutorSecret) {
+      throw new Error("TOOL_EXECUTOR_URL and TOOL_EXECUTOR_SECRET must be configured")
     }
 
-    const toolContext = args.context ?? {}
-    const toolArgs = args.args as Record<string, any>
-    const handler = customToolHandlers[args.toolName]
+    const identity = args.context ? {
+      organizationId: args.context.organizationId as string,
+      actorId: args.context.actorId,
+      actorType: args.context.actorType,
+      isOrgAdmin: args.isOrgAdmin,
+      environment: args.environment ?? "development",
+      agentId: args.agentId,
+      conversationId: args.conversationId,
+      depth: args.depth,
+      callerAgentSlug: args.callerAgentSlug,
+    } : undefined
 
-    if (!handler) {
-      throw new Error(`Unknown custom tool: ${args.toolName}`)
+    const response = await fetch(`${toolExecutorUrl}/execute`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${toolExecutorSecret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        handlerCode: args.handlerCode,
+        args: args.args,
+        context: args.context ? {
+          organizationId: args.context.organizationId,
+          actorId: args.context.actorId,
+          actorType: args.context.actorType,
+        } : undefined,
+        callbackUrl,
+        callbackToken: toolExecutorSecret,
+        identity,
+      }),
+    })
+
+    const data = await response.json() as { result?: unknown; error?: string }
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error ?? `Tool executor returned ${response.status}`)
     }
 
-    return await handler(toolArgs, toolContext, sandboxedFetch)
+    return data.result
   },
 })
 
-const customToolHandlers: Record<string, (args: any, context: any, fetch: (url: string, options?: RequestInit) => Promise<Response>) => Promise<any>> = {
-  send_whatsapp_message: async (args, context, fetch) => {
-    const response = await fetch("https://api.twilio.com/2010-04-01/Accounts/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: `whatsapp:${args.to}`,
-        body: args.body,
-        templateName: args.templateName,
-        organizationId: context.organizationId,
-      }),
-    })
-    return await response.json()
+export const executeToolCallback = internalAction({
+  args: {
+    toolName: v.string(),
+    args: v.any(),
+    identity: v.object({
+      organizationId: v.id("organizations"),
+      actorId: v.string(),
+      actorType: v.string(),
+      isOrgAdmin: v.optional(v.boolean()),
+      environment: environmentValidator,
+      agentId: v.optional(v.string()),
+      conversationId: v.optional(v.string()),
+      depth: v.optional(v.number()),
+      callerAgentSlug: v.optional(v.string()),
+    }),
   },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const { toolName, identity } = args
+    const toolArgs = args.args as Record<string, unknown>
 
-  generate_flow_payment_link: async (args, context, fetch) => {
-    return {
-      method: "bank_transfer",
-      bankDetails: {
-        name: "Educaland Spa",
-        rut: "77.528.846-9",
-        bank: "Banco Crédito e Inversión (BCI)",
-        account: "Cta Cte 63542501",
-        email: "Educalandspa@gmail.com",
-      },
-      amount: args.amount,
-      description: args.description,
-      referenceEmail: args.email,
-      paymentId: args.paymentId,
+    if (!isBuiltinTool(toolName)) {
+      throw new Error(`Tool callback only supports built-in tools. Got: ${toolName}`)
     }
-  },
 
-  notify_admin: async (args, context, fetch) => {
-    const response = await fetch("https://hooks.slack.com/services/webhook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: `[${args.type.toUpperCase()}] ${args.message}`,
-        attachments: [{
-          fields: [
-            { title: "Contact", value: args.contact || "N/A", short: true },
-            { title: "Context", value: args.context || "N/A", short: false },
-            { title: "Org", value: context.organizationId, short: true },
-          ],
-        }],
-      }),
+    return await executeBuiltinTool(ctx, {
+      organizationId: identity.organizationId,
+      actorId: identity.actorId,
+      actorType: identity.actorType as ActorType,
+      isOrgAdmin: identity.isOrgAdmin,
+      environment: identity.environment,
+      toolName,
+      args: toolArgs,
+      agentId: identity.agentId,
+      conversationId: identity.conversationId,
+      depth: identity.depth,
+      callerAgentSlug: identity.callerAgentSlug,
     })
-    return { success: response.ok, status: response.status }
   },
-
-  get_current_time: async (args, context, fetch) => {
-    const timezone = args.timezone || "America/Santiago"
-    const now = new Date()
-    return {
-      iso: now.toISOString(),
-      local: now.toLocaleString("es-CL", { timeZone: timezone }),
-      timezone,
-      timestamp: now.getTime(),
-    }
-  },
-
-}
+})
 
