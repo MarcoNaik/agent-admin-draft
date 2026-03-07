@@ -278,6 +278,9 @@ export const deleteAllOrgData = internalMutation({
     const whatsappMessages = await ctx.db.query("whatsappMessages").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
     for (const wm of whatsappMessages) await ctx.db.delete(wm._id)
 
+    const whatsappOwnedTemplates = await ctx.db.query("whatsappOwnedTemplates").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
+    for (const wot of whatsappOwnedTemplates) await ctx.db.delete(wot._id)
+
     const emailMessages = await ctx.db.query("emailMessages").withIndex("by_org_env", (q) => q.eq("organizationId", orgId)).collect()
     for (const em of emailMessages) await ctx.db.delete(em._id)
 
