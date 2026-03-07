@@ -180,9 +180,9 @@ export default defineTools([])
     ]
 
     if (tool.handlerCode) {
-      parts.push(`    handler: async (args, context, fetch) => {\n      ${tool.handlerCode.split('\n').join('\n      ')}\n    }`)
+      parts.push(`    handler: async (args, context, struere, fetch) => {\n      ${tool.handlerCode.split('\n').join('\n      ')}\n    }`)
     } else {
-      parts.push(`    handler: async (args, context, fetch) => {\n      throw new Error("TODO: implement handler")\n    }`)
+      parts.push(`    handler: async (args, context, struere, fetch) => {\n      throw new Error("TODO: implement handler")\n    }`)
     }
 
     return `  {\n${parts.join(',\n')},\n  }`
