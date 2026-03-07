@@ -58,6 +58,7 @@ export default defineSchema({
         parameters: v.any(),
         handlerCode: v.optional(v.string()),
         isBuiltin: v.optional(v.boolean()),
+        templateOnly: v.optional(v.boolean()),
       })
     ),
     firstMessageSuggestions: v.optional(v.array(v.string())),
