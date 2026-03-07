@@ -1,4 +1,4 @@
-import type { ToolReference, ToolParameters, ToolHandler, ToolContext } from '../types'
+import type { ToolReference, ToolParameters, ToolHandler } from '../types'
 
 interface ToolDefinition {
   name: string
@@ -35,9 +35,9 @@ function validateTool(tool: ToolDefinition): ToolReference {
 }
 
 function wrapHandler(name: string, handler: ToolHandler): ToolHandler {
-  return async (params: Record<string, unknown>, context: ToolContext) => {
+  return async (params, context, struere, fetch) => {
     try {
-      return await handler(params, context)
+      return await handler(params, context, struere, fetch)
     } catch (error) {
       console.error(`Tool "${name}" execution error:`, error)
       throw error
