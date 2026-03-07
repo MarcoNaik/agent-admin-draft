@@ -261,7 +261,6 @@ export const whatsappListTemplates = internalAction({
 
     const ownedNames = await ctx.runQuery(getOwnedTemplateNamesRef, {
       organizationId: args.organizationId,
-      environment: args.environment,
     }) as string[]
 
     const allTemplates = await listPhoneTemplates(connection.kapsoPhoneNumberId) as { data?: Array<{ name: string }> }
