@@ -5,6 +5,7 @@ interface ToolDefinition {
   description: string
   parameters: ToolParameters
   handler: ToolHandler
+  templateOnly?: boolean
 }
 
 export function defineTools(tools: ToolDefinition[]): ToolReference[] {
@@ -31,6 +32,7 @@ function validateTool(tool: ToolDefinition): ToolReference {
     parameters: tool.parameters,
     handler: wrapHandler(tool.name, tool.handler),
     _originalHandler: tool.handler,
+    templateOnly: tool.templateOnly,
   }
 }
 

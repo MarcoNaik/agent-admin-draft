@@ -68,6 +68,7 @@ export interface SyncPayload {
       description: string
       parameters: unknown
       handlerCode?: string
+      templateOnly?: boolean
     }>
   }>
   entityTypes: Array<{
@@ -322,6 +323,7 @@ function extractAgentPayload(
       description: customTool.description,
       parameters: customTool.parameters || { type: 'object', properties: {} },
       handlerCode: extractHandlerCode(customTool._originalHandler || customTool.handler),
+      ...(customTool.templateOnly && { templateOnly: true }),
     }
   })
 

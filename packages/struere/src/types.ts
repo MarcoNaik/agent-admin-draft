@@ -12,6 +12,7 @@ export interface ToolReference {
   parameters: ToolParameters
   handler: ToolHandler
   _originalHandler?: ToolHandler
+  templateOnly?: boolean
 }
 
 export interface ToolParameters {
