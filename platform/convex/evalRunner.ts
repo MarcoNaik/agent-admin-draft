@@ -19,7 +19,7 @@ const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenti
 const getAgentConfigRef = makeFunctionReference<"query">("evals:getAgentConfig")
 const recordResultRef = makeFunctionReference<"mutation">("evals:recordResult")
 const caseCompletedRef = makeFunctionReference<"mutation">("evals:caseCompleted")
-const checkCreditsPreExecutionRef = makeFunctionReference<"mutation">("billing:checkCreditsPreExecution")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
 const getOrgNameRef = makeFunctionReference<"query">("evals:getOrgName")
 const getAgentInternalRef = makeFunctionReference<"query">("evals:getAgentInternal")
 const getEntityTypesRef = makeFunctionReference<"query">("evals:getEntityTypes")
@@ -641,11 +641,6 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
 
   const modelName = args.model?.name || "grok-4-1-fast"
 
-  await ctx.runMutation(checkCreditsPreExecutionRef, {
-    organizationId,
-    model: modelName,
-  })
-
   const result = await generateText({
     model: createModel({
       provider: args.model?.provider || "xai",
@@ -662,6 +657,19 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const outputTokens = result.usage.outputTokens ?? 0
   const textContent = result.text
   const cost = calculateCost(modelName, inputTokens, outputTokens)
+
+  if (cost > 0) {
+    await ctx.runMutation(deductCreditsRef, {
+      organizationId,
+      amount: cost,
+      description: `Eval judge: ${modelName} — ${inputTokens} in / ${outputTokens} out`,
+      metadata: {
+        model: modelName,
+        inputTokens,
+        outputTokens,
+      },
+    })
+  }
 
   try {
     const jsonMatch = textContent.match(/\{[\s\S]*\}/)
