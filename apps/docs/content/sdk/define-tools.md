@@ -25,7 +25,7 @@ export default defineTools([
       },
       required: ["to", "subject", "body"],
     },
-    handler: async (args, context, fetch) => {
+    handler: async (args, context, struere, fetch) => {
       const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: {
@@ -62,10 +62,10 @@ Each tool in the array requires the following fields:
 
 ## Handler Function
 
-The handler function receives three arguments:
+The handler function receives four arguments:
 
 ```typescript
-handler: async (args, context, sandboxedFetch) => {
+handler: async (args, context, struere, fetch) => {
   return { result: "value" }
 }
 ```
@@ -74,7 +74,8 @@ handler: async (args, context, sandboxedFetch) => {
 |----------|------|-------------|
 | `args` | `Record<string, unknown>` | Parsed arguments matching the `parameters` schema |
 | `context` | `ExecutionContext` | Actor and organization context |
-| `sandboxedFetch` | `function` | Fetch function restricted to allowed domains |
+| `struere` | `StruereSDK` | SDK object providing access to all built-in tools |
+| `fetch` | `function` | Fetch function restricted to allowed domains |
 
 The handler must return a JSON-serializable value. This value is passed back to the LLM as the tool result.
 
@@ -86,6 +87,52 @@ interface ExecutionContext {
   actorId: string
   actorType: "user" | "agent" | "system"
 }
+```
+
+### StruereSDK
+
+The `struere` parameter gives custom tool handlers access to all built-in tools. This enables custom tools to compose platform operations without making raw API calls.
+
+```typescript
+import type { StruereSDK } from 'struere'
+```
+
+Available namespaces:
+
+| Namespace | Methods |
+|-----------|---------|
+| `struere.entity` | `create`, `get`, `query`, `update`, `delete`, `link`, `unlink` |
+| `struere.event` | `emit`, `query` |
+| `struere.agent` | `chat` |
+
+Example using `struere` to create an entity inside a custom tool handler:
+
+```typescript
+export default defineTools([
+  {
+    name: "onboard_student",
+    description: "Register a new student and emit an onboarding event",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+      },
+      required: ["name", "email"],
+    },
+    handler: async (args, context, struere) => {
+      const student = await struere.entity.create({
+        type: "student",
+        data: { name: args.name, email: args.email },
+      })
+      await struere.event.emit({
+        eventType: "student.onboarded",
+        entityId: student.id,
+      })
+      return { studentId: student.id }
+    },
+  },
+])
 ```
 
 ## Using Custom Tools in Agents

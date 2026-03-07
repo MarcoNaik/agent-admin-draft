@@ -109,6 +109,7 @@ import type {
   ParameterDefinition,
   ToolHandler,
   ToolContext,
+  StruereSDK,
   StruereProject,
   SyncPayload,
   SyncState,
