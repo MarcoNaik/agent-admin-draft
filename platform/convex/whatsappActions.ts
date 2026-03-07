@@ -261,7 +261,6 @@ export const downloadAndStoreMedia = internalAction({
 
 export const listTemplates = action({
   args: {
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
   },
   returns: v.any(),
@@ -283,7 +282,6 @@ export const listTemplates = action({
 
     const ownedNames = await ctx.runQuery(getOwnedTemplateNamesRef, {
       organizationId: auth.organizationId,
-      environment: args.environment,
     }) as string[]
 
     const allTemplates = await listPhoneTemplates(connection.kapsoPhoneNumberId) as { data?: Array<{ name: string; [key: string]: unknown }> }
@@ -508,7 +506,6 @@ export const sendInteractive = action({
 
 export const createTemplate = action({
   args: {
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
     name: v.string(),
     language: v.string(),
@@ -544,7 +541,6 @@ export const createTemplate = action({
 
     await ctx.runMutation(registerOwnedTemplateRef, {
       organizationId: auth.organizationId,
-      environment: args.environment,
       templateName: args.name,
     })
 
@@ -554,7 +550,6 @@ export const createTemplate = action({
 
 export const deleteTemplate = action({
   args: {
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
     name: v.string(),
   },
@@ -579,7 +574,6 @@ export const deleteTemplate = action({
 
     await ctx.runMutation(unregisterOwnedTemplateRef, {
       organizationId: auth.organizationId,
-      environment: args.environment,
       templateName: args.name,
     })
 
@@ -589,7 +583,6 @@ export const deleteTemplate = action({
 
 export const getTemplateStatus = action({
   args: {
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
     name: v.string(),
   },
@@ -617,7 +610,6 @@ export const getTemplateStatus = action({
 export const internalListTemplates = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
   },
   returns: v.any(),
@@ -636,7 +628,6 @@ export const internalListTemplates = internalAction({
 
     const ownedNames = await ctx.runQuery(getOwnedTemplateNamesRef, {
       organizationId: args.organizationId,
-      environment: args.environment,
     }) as string[]
 
     const allTemplates = await listPhoneTemplates(connection.kapsoPhoneNumberId) as { data?: Array<{ name: string; [key: string]: unknown }> }
@@ -652,7 +643,6 @@ export const internalListTemplates = internalAction({
 export const internalCreateTemplate = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
     name: v.string(),
     language: v.string(),
@@ -685,7 +675,6 @@ export const internalCreateTemplate = internalAction({
 
     await ctx.runMutation(registerOwnedTemplateRef, {
       organizationId: args.organizationId,
-      environment: args.environment,
       templateName: args.name,
     })
 
@@ -696,7 +685,6 @@ export const internalCreateTemplate = internalAction({
 export const internalDeleteTemplate = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
     name: v.string(),
   },
@@ -718,7 +706,6 @@ export const internalDeleteTemplate = internalAction({
 
     await ctx.runMutation(unregisterOwnedTemplateRef, {
       organizationId: args.organizationId,
-      environment: args.environment,
       templateName: args.name,
     })
 
@@ -729,7 +716,6 @@ export const internalDeleteTemplate = internalAction({
 export const internalGetTemplateStatus = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    environment: environmentValidator,
     connectionId: v.id("whatsappConnections"),
     name: v.string(),
   },
