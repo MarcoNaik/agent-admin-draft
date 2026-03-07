@@ -36,6 +36,7 @@ const internalCreateTemplateRef = makeFunctionReference<"action">("whatsappActio
 const internalDeleteTemplateRef = makeFunctionReference<"action">("whatsappActions:internalDeleteTemplate")
 const internalGetTemplateStatusRef = makeFunctionReference<"action">("whatsappActions:internalGetTemplateStatus")
 const compileSystemPromptBySlugRef = makeFunctionReference<"action">("agents:compileSystemPromptBySlug")
+const executeToolCallbackRef = makeFunctionReference<"action">("agent:executeToolCallback")
 
 async function hashApiKey(key: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -1084,7 +1085,6 @@ http.route({
       const body = await request.json() as { connectionId: string }
       const result = await ctx.runAction(internalListTemplatesRef, {
         organizationId: authResult.organizationId,
-        environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
       })
 
@@ -1120,7 +1120,6 @@ http.route({
       }
       const result = await ctx.runAction(internalCreateTemplateRef, {
         organizationId: authResult.organizationId,
-        environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
         name: body.name,
         language: body.language,
@@ -1154,7 +1153,6 @@ http.route({
       const body = await request.json() as { connectionId: string; name: string }
       const result = await ctx.runAction(internalDeleteTemplateRef, {
         organizationId: authResult.organizationId,
-        environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
         name: body.name,
       })
@@ -1184,7 +1182,6 @@ http.route({
       const body = await request.json() as { connectionId: string; name: string }
       const result = await ctx.runAction(internalGetTemplateStatusRef, {
         organizationId: authResult.organizationId,
-        environment: authResult.environment,
         connectionId: body.connectionId as Id<"whatsappConnections">,
         name: body.name,
       })
@@ -1249,6 +1246,74 @@ http.route({
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/internal/tool-callback",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const auth = request.headers.get("Authorization")
+    const secret = process.env.TOOL_EXECUTOR_SECRET
+    if (!secret || auth !== `Bearer ${secret}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    try {
+      const body = await request.json()
+      const { toolName, args, identity } = body as {
+        toolName: string
+        args: Record<string, unknown>
+        identity: {
+          organizationId: string
+          actorId: string
+          actorType: string
+          isOrgAdmin?: boolean
+          environment: string
+          agentId?: string
+          conversationId?: string
+          depth?: number
+          callerAgentSlug?: string
+        }
+      }
+
+      if (!toolName || !identity) {
+        return new Response(JSON.stringify({ error: "toolName and identity are required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+
+      const result = await ctx.runAction(executeToolCallbackRef, {
+        toolName,
+        args: args ?? {},
+        identity: {
+          organizationId: identity.organizationId as any,
+          actorId: identity.actorId,
+          actorType: identity.actorType,
+          isOrgAdmin: identity.isOrgAdmin,
+          environment: identity.environment as any,
+          agentId: identity.agentId,
+          conversationId: identity.conversationId,
+          depth: identity.depth,
+          callerAgentSlug: identity.callerAgentSlug,
+        },
+      })
+
+      return new Response(JSON.stringify({ result }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Internal error"
       return new Response(JSON.stringify({ error: message }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
