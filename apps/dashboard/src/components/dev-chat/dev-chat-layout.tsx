@@ -22,7 +22,7 @@ interface DevChatLayoutProps {
   children: ReactNode
 }
 
-export function DevChatLayout({ threadId, children }: DevChatLayoutProps) {
+export function DevChatLayout({ threadId, agentId, children }: DevChatLayoutProps) {
   const [activityOpen, setActivityOpen] = useState(() => getStored(ACTIVITY_KEY, true))
   const [inspectorOpen, setInspectorOpen] = useState(() => getStored(INSPECTOR_KEY, true))
 
@@ -54,7 +54,7 @@ export function DevChatLayout({ threadId, children }: DevChatLayoutProps) {
       <div className="flex-1 flex flex-col min-w-0">
         {isValidElement(children) ? cloneElement(children as React.ReactElement<any>, { headerExtra }) : children}
       </div>
-      <InspectorPanel open={inspectorOpen} onClose={toggleInspector} />
+      <InspectorPanel open={inspectorOpen} onClose={toggleInspector} agentId={agentId} />
     </div>
   )
 }

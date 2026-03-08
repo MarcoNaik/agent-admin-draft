@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { X, Activity } from "lucide-react"
+import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"
@@ -86,11 +86,8 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
       open ? "w-80" : "w-0 border-r-0"
     )}>
       <div className="flex flex-col h-full w-80 min-w-80">
-        <div className="px-3 py-2 border-b flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-content-secondary" />
-            <span className="text-sm font-medium">Activity</span>
-          </div>
+        <div className="border-b flex items-center justify-between px-3 py-1.5 shrink-0">
+          <span className="text-xs text-content-tertiary">Activity</span>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
             <X className="h-4 w-4" />
           </Button>
@@ -98,15 +95,14 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
         <div className="flex-1 overflow-y-auto">
           {!threadId ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <Activity className="h-8 w-8 text-content-tertiary mb-2" />
-              <p className="text-sm text-content-secondary">Start a conversation to see activity</p>
+              <p className="text-xs text-content-tertiary">Start a conversation to see activity</p>
             </div>
           ) : feedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <p className="text-sm text-content-tertiary">No activity yet</p>
+              <p className="text-xs text-content-tertiary">No activity yet</p>
             </div>
           ) : (
-            <div className="p-2 space-y-1">
+            <div className="divide-y">
               {feedItems.map((item) => (
                 <ActivityItem key={`${item.type}-${item.id}`} item={item} />
               ))}

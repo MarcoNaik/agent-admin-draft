@@ -6,13 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { DataTab } from "@/components/dev-chat/data-tab"
 import { TriggersTab } from "@/components/dev-chat/triggers-tab"
+import { ToolsTab } from "@/components/dev-chat/tools-tab"
+import { Id } from "@convex/_generated/dataModel"
 
 interface InspectorPanelProps {
   open: boolean
   onClose: () => void
+  agentId: Id<"agents"> | undefined
 }
 
-export function InspectorPanel({ open, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ open, onClose, agentId }: InspectorPanelProps) {
   return (
     <div className={cn(
       "flex flex-col border-l bg-background-secondary h-full overflow-hidden transition-[width] ease-out-soft duration-300",
@@ -24,6 +27,7 @@ export function InspectorPanel({ open, onClose }: InspectorPanelProps) {
             <TabsList className="flex-1 h-10 rounded-none bg-transparent p-0">
               <TabsTrigger value="data" className="flex-1 h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-ocean text-sm">Data</TabsTrigger>
               <TabsTrigger value="triggers" className="flex-1 h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-ocean text-sm">Triggers</TabsTrigger>
+              <TabsTrigger value="tools" className="flex-1 h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-ocean text-sm">Tools</TabsTrigger>
             </TabsList>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 mr-1 shrink-0">
               <X className="h-4 w-4" />
@@ -34,6 +38,9 @@ export function InspectorPanel({ open, onClose }: InspectorPanelProps) {
           </TabsContent>
           <TabsContent value="triggers" className="flex-1 overflow-y-auto mt-0 p-0">
             <TriggersTab />
+          </TabsContent>
+          <TabsContent value="tools" className="flex-1 overflow-y-auto mt-0 p-0">
+            <ToolsTab agentId={agentId} />
           </TabsContent>
         </Tabs>
       </div>
