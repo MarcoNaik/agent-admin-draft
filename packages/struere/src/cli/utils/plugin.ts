@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 let registered = false
@@ -115,11 +115,16 @@ function defineTools(tools) {
       parameters: tool.parameters,
       handler: wrapHandler(tool.name, tool.handler),
       _originalHandler: tool.handler,
+      templateOnly: tool.templateOnly,
     }
   })
 }
 
-export { defineAgent, defineRole, defineData, defineTrigger, defineTools }
+function defineEntityType() {
+  throw new Error('defineEntityType has been renamed to defineData. Please update your imports: import { defineData } from "struere"')
+}
+
+export { defineAgent, defineRole, defineData, defineEntityType, defineTrigger, defineTools }
 `
 
 export function registerStruerePlugin(): void {
@@ -177,6 +182,7 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
     description: string
     parameters: ToolParameters
     handler: ToolHandler
+    templateOnly?: boolean
   }
 
   export interface ToolReference {
@@ -185,6 +191,7 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
     parameters: ToolParameters
     handler: ToolHandler
     _originalHandler?: ToolHandler
+    templateOnly?: boolean
   }
 
   export interface AgentConfig {
@@ -293,6 +300,8 @@ const TYPE_DECLARATIONS = `declare module 'struere' {
   export function defineAgent(config: AgentConfig): AgentConfig
   export function defineRole(config: RoleConfig): RoleConfig
   export function defineData(config: EntityTypeConfig): EntityTypeConfig
+  /** @deprecated Use defineData instead */
+  export function defineEntityType(config: EntityTypeConfig): never
   export function defineTrigger(config: TriggerConfig): TriggerConfig
   export function defineTools(tools: ToolDefinition[]): ToolReference[]
 }
@@ -308,8 +317,12 @@ export function generateTypeDeclarations(cwd: string): void {
   writeFileSync(join(struereDir, 'index.js'), VIRTUAL_MODULE_SOURCE)
 
   const shimDir = join(cwd, 'node_modules', 'struere')
-  mkdirSync(shimDir, { recursive: true })
-  writeFileSync(join(shimDir, 'index.js'), VIRTUAL_MODULE_SOURCE)
-  writeFileSync(join(shimDir, 'index.d.ts'), TYPE_DECLARATIONS)
-  writeFileSync(join(shimDir, 'package.json'), JSON.stringify({ name: 'struere', version: '0.0.0', type: 'module', main: 'index.js', types: 'index.d.ts' }))
+  const realPkg = join(shimDir, 'package.json')
+  const isRealPackage = existsSync(realPkg) && JSON.parse(readFileSync(realPkg, 'utf8')).version !== '0.0.0'
+  if (!isRealPackage) {
+    mkdirSync(shimDir, { recursive: true })
+    writeFileSync(join(shimDir, 'index.js'), VIRTUAL_MODULE_SOURCE)
+    writeFileSync(join(shimDir, 'index.d.ts'), TYPE_DECLARATIONS)
+    writeFileSync(join(shimDir, 'package.json'), JSON.stringify({ name: 'struere', version: '0.0.0', type: 'module', main: 'index.js', types: 'index.d.ts' }))
+  }
 }

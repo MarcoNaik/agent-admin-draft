@@ -7,6 +7,7 @@ import { syncOrganization, getSyncState, type SyncResult, type SyncOptions } fro
 import { loadAllResources, type LoadedResources } from '../utils/loader'
 import { extractSyncPayload } from '../utils/extractor'
 import { isInteractive, createOutput, isAuthError } from '../utils/runtime'
+import { generateTypeDeclarations } from '../utils/plugin'
 import { performLogin } from './login'
 
 type Environment = SyncOptions['environment']
@@ -19,6 +20,7 @@ export interface DeletionWarning {
 }
 
 export async function performDevSync(cwd: string, organizationId: string): Promise<SyncResult> {
+  generateTypeDeclarations(cwd)
   const resources = await loadAllResources(cwd)
   if (resources.errors.length > 0) {
     throw new Error(`${resources.errors.length} resource loading error(s):\n${resources.errors.join('\n')}`)
