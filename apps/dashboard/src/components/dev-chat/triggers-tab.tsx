@@ -189,7 +189,7 @@ function TriggerCard({
 
         {trigger.condition && (
           <p className="text-[10px] text-content-tertiary pl-0.5 truncate">
-            if {trigger.condition}
+            if {typeof trigger.condition === "object" ? JSON.stringify(trigger.condition) : String(trigger.condition)}
           </p>
         )}
 
