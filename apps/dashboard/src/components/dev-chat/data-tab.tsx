@@ -398,9 +398,9 @@ export function DataTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b shrink-0">
+      <div className="flex items-center border-b shrink-0">
         <Select value={activeSlug} onValueChange={setSelectedSlug}>
-          <SelectTrigger className="h-7 text-xs flex-1 min-w-0">
+          <SelectTrigger className="h-9 text-xs flex-1 min-w-0 border-0 rounded-none shadow-none focus:ring-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -411,14 +411,15 @@ export function DataTab() {
             ))}
           </SelectContent>
         </Select>
-        <div className="flex items-center shrink-0 border rounded">
+        <div className="flex items-center shrink-0 border-l">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setView("table")}
             className={cn(
-              "h-7 w-7 rounded-r-none",
-              view === "table" && "bg-background"
+              "h-9 w-9 rounded-none",
+              view === "table" && "bg-background text-content-primary",
+              view !== "table" && "text-content-tertiary"
             )}
           >
             <LayoutList className="h-3.5 w-3.5" />
@@ -428,8 +429,9 @@ export function DataTab() {
             size="icon"
             onClick={() => setView("card")}
             className={cn(
-              "h-7 w-7 rounded-l-none",
-              view === "card" && "bg-background"
+              "h-9 w-9 rounded-none",
+              view === "card" && "bg-background text-content-primary",
+              view !== "card" && "text-content-tertiary"
             )}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
