@@ -2,15 +2,18 @@
 
 import { useMemo, useState } from "react"
 import {
-  Zap,
   ChevronRight,
   ChevronDown,
   RotateCcw,
   XCircle,
   Clock,
   Repeat,
-  Play,
-  Pause,
+  Zap,
+  CircleDot,
+  CheckCircle2,
+  XOctagon,
+  Loader2,
+  Timer,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,20 +27,34 @@ import {
   useCancelTriggerRun,
 } from "@/hooks/use-convex-data"
 
-function getStatusVariant(status: string) {
+function getStatusColor(status: string) {
   switch (status) {
-    case "completed":
-      return "success" as const
-    case "failed":
-    case "dead":
-      return "destructive" as const
-    case "running":
-      return "warning" as const
-    case "pending":
-      return "amber" as const
-    default:
-      return "secondary" as const
+    case "completed": return "text-success"
+    case "failed": case "dead": return "text-destructive"
+    case "running": return "text-warning"
+    case "pending": return "text-amber"
+    default: return "text-content-tertiary"
   }
+}
+
+function StatusIcon({ status }: { status: string }) {
+  const cls = cn("h-3 w-3 shrink-0", getStatusColor(status))
+  switch (status) {
+    case "completed": return <CheckCircle2 className={cls} />
+    case "failed": case "dead": return <XOctagon className={cls} />
+    case "running": return <Loader2 className={cn(cls, "animate-spin")} />
+    case "pending": return <Timer className={cls} />
+    default: return <CircleDot className={cls} />
+  }
+}
+
+function formatCondition(condition: unknown): string {
+  if (typeof condition === "string") return condition
+  if (typeof condition !== "object" || condition === null) return String(condition)
+  const obj = condition as Record<string, unknown>
+  return Object.entries(obj)
+    .map(([k, v]) => `${k} = ${typeof v === "string" ? v : JSON.stringify(v)}`)
+    .join(", ")
 }
 
 function formatDetail(data: unknown, depth = 0): React.ReactNode {
@@ -79,13 +96,13 @@ function TriggerRunItem({ run }: { run: any }) {
   const hasDetail = run.result || run.error
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-1.5">
         {hasDetail ? (
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-0.5 transition-colors ease-out-soft hover:text-content-primary"
+            className="flex items-center transition-colors ease-out-soft hover:text-content-primary"
           >
             {expanded ? (
               <ChevronDown className="h-3 w-3 text-content-tertiary" />
@@ -96,18 +113,14 @@ function TriggerRunItem({ run }: { run: any }) {
         ) : (
           <div className="w-3" />
         )}
-        <Badge
-          variant={getStatusVariant(run.status)}
-          className="text-[10px] px-1.5 py-0 h-4"
-        >
-          {run.status}
-        </Badge>
+        <StatusIcon status={run.status} />
+        <span className="text-[11px] text-content-secondary">{run.status}</span>
         <span className="text-[10px] text-content-tertiary">
           {formatRelativeTime(run.createdAt)}
         </span>
         {run.attempt && run.attempt > 1 && (
           <span className="text-[10px] text-content-tertiary">
-            attempt {run.attempt}
+            #{run.attempt}
           </span>
         )}
         <div className="flex items-center gap-0.5 ml-auto">
@@ -155,102 +168,68 @@ function TriggerCard({
   const recentRuns = runs.slice(0, 5)
 
   return (
-    <div className="border rounded-lg bg-background">
-      <div className="px-3 py-2.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Zap className="h-3.5 w-3.5 text-amber shrink-0" />
-          <span className="text-sm font-medium truncate">{trigger.name}</span>
-        </div>
-        {trigger.enabled ? (
-          <Badge variant="success" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
-            <Play className="h-2.5 w-2.5 mr-0.5" />
-            enabled
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
-            <Pause className="h-2.5 w-2.5 mr-0.5" />
-            disabled
-          </Badge>
-        )}
+    <div className="px-3 py-2.5 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium truncate">{trigger.name}</span>
+        <div className={cn(
+          "h-1.5 w-1.5 rounded-full shrink-0",
+          trigger.enabled ? "bg-success" : "bg-content-tertiary"
+        )} />
       </div>
 
-      <div className="px-3 pb-2.5 space-y-1.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] text-content-tertiary uppercase tracking-wide">
-            When
+      <div className="text-[11px] text-content-secondary">
+        <span className="text-content-tertiary">on </span>
+        <span className="text-content-primary font-medium">{trigger.entityType}</span>
+        <span className="text-content-tertiary"> . </span>
+        <span className="text-content-primary font-medium">{trigger.action}</span>
+      </div>
+
+      {trigger.condition && (
+        <p className="text-[10px] text-content-tertiary truncate">
+          where {formatCondition(trigger.condition)}
+        </p>
+      )}
+
+      {trigger.schedule && (
+        <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
+          <Clock className="h-2.5 w-2.5 shrink-0" />
+          {trigger.schedule.delay && (
+            <span>delay {formatDuration(trigger.schedule.delay)}</span>
+          )}
+          {trigger.schedule.at && <span>at {trigger.schedule.at}</span>}
+          {trigger.schedule.offset && (
+            <span>offset {formatDuration(trigger.schedule.offset)}</span>
+          )}
+          {trigger.schedule.cancelPrevious && <span>(cancels prev)</span>}
+        </div>
+      )}
+
+      {trigger.retry && (
+        <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
+          <Repeat className="h-2.5 w-2.5 shrink-0" />
+          <span>
+            {trigger.retry.maxAttempts} retries
+            {trigger.retry.backoffMs && `, ${formatDuration(trigger.retry.backoffMs)} backoff`}
           </span>
-          <Badge variant="ocean" className="text-[10px] px-1.5 py-0 h-4">
-            {trigger.entityType}
-          </Badge>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-            {trigger.action}
-          </Badge>
         </div>
+      )}
 
-        {trigger.condition && (
-          <p className="text-[10px] text-content-tertiary pl-0.5 truncate">
-            if {typeof trigger.condition === "object" ? JSON.stringify(trigger.condition) : String(trigger.condition)}
-          </p>
-        )}
+      {trigger.actions && trigger.actions.length > 0 && (
+        <div className="text-[10px] text-content-tertiary">
+          <span>runs </span>
+          <span className="text-content-secondary font-mono">
+            {trigger.actions.map((a: any) => a.tool).join(" → ")}
+          </span>
+        </div>
+      )}
 
-        {trigger.schedule && (
-          <div className="flex items-center gap-1 text-[10px] text-content-secondary">
-            <Clock className="h-3 w-3 text-content-tertiary shrink-0" />
-            {trigger.schedule.delay && (
-              <span>delay {formatDuration(trigger.schedule.delay)}</span>
-            )}
-            {trigger.schedule.at && <span>at {trigger.schedule.at}</span>}
-            {trigger.schedule.offset && (
-              <span>offset {formatDuration(trigger.schedule.offset)}</span>
-            )}
-            {trigger.schedule.cancelPrevious && (
-              <span className="text-content-tertiary">(cancels previous)</span>
-            )}
-          </div>
-        )}
-
-        {trigger.retry && (
-          <div className="flex items-center gap-1 text-[10px] text-content-secondary">
-            <Repeat className="h-3 w-3 text-content-tertiary shrink-0" />
-            <span>
-              {trigger.retry.maxAttempts} attempts
-              {trigger.retry.backoffMs &&
-                `, ${formatDuration(trigger.retry.backoffMs)} backoff`}
-            </span>
-          </div>
-        )}
-
-        {trigger.actions && trigger.actions.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] text-content-tertiary uppercase tracking-wide">
-              Then
-            </span>
-            {trigger.actions.map((action: any, i: number) => (
-              <Badge
-                key={i}
-                variant="outline"
-                className="text-[10px] px-1.5 py-0 h-4"
-              >
-                {action.tool}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="border-t pt-2 mt-0 mx-3 pb-2.5">
-        {recentRuns.length === 0 ? (
-          <p className="text-[10px] text-content-tertiary text-center py-1">
-            No runs yet
-          </p>
-        ) : (
-          <div className="space-y-1.5">
-            {recentRuns.map((run: any) => (
-              <TriggerRunItem key={run._id} run={run} />
-            ))}
-          </div>
-        )}
-      </div>
+      {recentRuns.length > 0 && (
+        <div className="pt-1.5 mt-0.5 border-t border-border/50 space-y-1">
+          {recentRuns.map((run: any) => (
+            <TriggerRunItem key={run._id} run={run} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -276,59 +255,44 @@ export function TriggersTab() {
 
   const loading = triggers === undefined || runs === undefined
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <p className="text-xs text-content-tertiary">Loading...</p>
+      </div>
+    )
+  }
+
+  if ((triggers as any[]).length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Zap className="h-8 w-8 text-content-tertiary mb-2" />
+        <p className="text-sm text-content-secondary">No triggers defined</p>
+      </div>
+    )
+  }
+
+  const hasStats = stats && (stats.pending > 0 || stats.running > 0 || stats.completed > 0 || stats.failed > 0)
+
   return (
-    <div className="p-3 space-y-3">
-      {loading ? (
-        <p className="text-sm text-content-tertiary text-center py-4">
-          Loading...
-        </p>
-      ) : (triggers as any[]).length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Zap className="h-8 w-8 text-content-tertiary mb-2" />
-          <p className="text-sm text-content-secondary">No triggers defined</p>
+    <div>
+      {hasStats && (
+        <div className="flex items-center gap-3 px-3 py-2 border-b text-[10px] text-content-tertiary">
+          {stats.pending > 0 && <span>{stats.pending} pending</span>}
+          {stats.running > 0 && <span>{stats.running} running</span>}
+          {stats.completed > 0 && <span>{stats.completed} completed</span>}
+          {stats.failed > 0 && <span className="text-destructive">{stats.failed} failed</span>}
         </div>
-      ) : (
-        <>
-          {stats && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {stats.pending > 0 && (
-                <Badge variant="amber" className="text-[10px] px-1.5 py-0 h-4">
-                  {stats.pending} pending
-                </Badge>
-              )}
-              {stats.running > 0 && (
-                <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">
-                  {stats.running} running
-                </Badge>
-              )}
-              {stats.completed > 0 && (
-                <Badge variant="success" className="text-[10px] px-1.5 py-0 h-4">
-                  {stats.completed} completed
-                </Badge>
-              )}
-              {stats.failed > 0 && (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
-                  {stats.failed} failed
-                </Badge>
-              )}
-              {(stats as any).dead > 0 && (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
-                  {(stats as any).dead} dead
-                </Badge>
-              )}
-            </div>
-          )}
-          <div className="space-y-2">
-            {(triggers as any[]).map((trigger: any) => (
-              <TriggerCard
-                key={trigger._id}
-                trigger={trigger}
-                runs={runsBySlug.get(trigger.slug) ?? []}
-              />
-            ))}
-          </div>
-        </>
       )}
+      <div className="divide-y">
+        {(triggers as any[]).map((trigger: any) => (
+          <TriggerCard
+            key={trigger._id}
+            trigger={trigger}
+            runs={runsBySlug.get(trigger.slug) ?? []}
+          />
+        ))}
+      </div>
     </div>
   )
 }
