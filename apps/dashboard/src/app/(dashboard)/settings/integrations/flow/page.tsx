@@ -16,6 +16,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+const FLOW_URLS: Record<string, { apiUrl: string; label: string }> = {
+  development: { apiUrl: "https://sandbox.flow.cl/api", label: "Sandbox" },
+  production: { apiUrl: "https://www.flow.cl/api", label: "Production" },
+}
+
 export default function FlowSettingsPage() {
   const router = useRouter()
   const { environment } = useEnvironment()
@@ -23,6 +28,14 @@ export default function FlowSettingsPage() {
   const updateConfig = useUpdateIntegrationConfig()
   const testConnection = useTestIntegrationConnection()
   const deleteConfig = useDeleteIntegrationConfig()
+
+  const flowEnv = FLOW_URLS[environment] ?? FLOW_URLS.development
+  const isSandbox = environment === "development"
+  const currentApiUrl = config?.config?.apiUrl ? String(config.config.apiUrl) : ""
+  const urlMismatch = currentApiUrl && (
+    (isSandbox && currentApiUrl.includes("www.flow.cl")) ||
+    (!isSandbox && currentApiUrl.includes("sandbox.flow.cl"))
+  )
 
   const [apiUrl, setApiUrl] = useState("")
   const [apiKey, setApiKey] = useState("")
@@ -126,8 +139,13 @@ export default function FlowSettingsPage() {
               </Badge>
             )}
           </div>
+          <Badge variant={isSandbox ? "warning" : "success"} className="mt-1">
+            {flowEnv.label}
+          </Badge>
           <p className="text-content-secondary mt-1">
-            Create payment links via Flow.cl for agents to collect payments
+            {isSandbox
+              ? "Sandbox credentials for testing — also used by evals"
+              : "Production credentials for live payments"}
           </p>
         </div>
       </div>
@@ -162,16 +180,14 @@ export default function FlowSettingsPage() {
             <Input
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
-              placeholder={
-                config?.config?.apiUrl
-                  ? String(config.config.apiUrl)
-                  : "https://www.flow.cl/api"
-              }
+              placeholder={currentApiUrl || flowEnv.apiUrl}
               className="font-input text-sm"
             />
-            <p className="text-xs text-content-tertiary">
-              Use https://sandbox.flow.cl/api for testing
-            </p>
+            {urlMismatch && (
+              <p className="text-xs text-warning">
+                This URL doesn&apos;t match the current environment. Expected: {flowEnv.apiUrl}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
