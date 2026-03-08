@@ -182,6 +182,7 @@ export interface SyncPayload {
       description: string
       parameters: unknown
       handlerCode?: string
+      templateOnly?: boolean
     }>
   }>
   entityTypes: Array<{
@@ -389,16 +390,23 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
 
   const text = await response.text()
 
-  let json: { status?: string; value?: SyncResult; errorMessage?: string; message?: string; errorData?: { message?: string; code?: string }; code?: string }
+  let json: { status?: string; value?: SyncResult; errorMessage?: string; message?: string; errorData?: string | { message?: string; code?: string }; code?: string }
   try {
     json = JSON.parse(text)
   } catch {
     return { success: false, error: text || `HTTP ${response.status}` }
   }
 
+  const extractError = (): string => {
+    if (typeof json.errorData === 'string') return json.errorData
+    if (json.errorData?.message) return json.errorData.message
+    if (json.errorMessage) return json.errorMessage
+    if (json.message) return json.message
+    return text
+  }
+
   if (!response.ok) {
-    const msg = json.errorData?.message || json.message || json.errorMessage || text
-    return { success: false, error: msg }
+    return { success: false, error: extractError() }
   }
 
   if (json.status === 'success' && json.value) {
@@ -406,7 +414,7 @@ export async function syncOrganization(payload: SyncOptions): Promise<SyncResult
   }
 
   if (json.status === 'error') {
-    return { success: false, error: json.errorData?.message || json.errorMessage || 'Unknown error from Convex' }
+    return { success: false, error: extractError() }
   }
 
   return { success: false, error: `Unexpected response: ${text}` }

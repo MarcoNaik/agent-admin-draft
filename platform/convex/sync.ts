@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { v, ConvexError } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 import { getAuthContextForOrg } from "./lib/auth"
@@ -38,6 +38,7 @@ const agentValidator = v.object({
       description: v.string(),
       parameters: v.any(),
       handlerCode: v.optional(v.string()),
+      templateOnly: v.optional(v.boolean()),
     })
   ),
 })
@@ -279,6 +280,7 @@ export const syncOrganization = mutation({
         fixtures: fixturesResult,
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       await ctx.db.insert("events", {
         organizationId: auth.organizationId,
         environment: args.environment,
@@ -289,10 +291,10 @@ export const syncOrganization = mutation({
         timestamp: Date.now(),
         payload: {
           operation,
-          error: error instanceof Error ? error.message : String(error),
+          error: message,
         },
       })
-      throw error
+      throw new ConvexError(message)
     }
   },
 })
@@ -649,6 +651,7 @@ export const internalSyncOrganization = internalMutation({
         fixtures: fixturesResult,
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       await ctx.db.insert("events", {
         organizationId: args.organizationId,
         environment: args.environment,
@@ -658,10 +661,10 @@ export const internalSyncOrganization = internalMutation({
         timestamp: Date.now(),
         payload: {
           operation,
-          error: error instanceof Error ? error.message : String(error),
+          error: message,
         },
       })
-      throw error
+      throw new ConvexError(message)
     }
   },
 })

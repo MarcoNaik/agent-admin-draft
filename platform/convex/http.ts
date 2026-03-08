@@ -1,4 +1,5 @@
 import { httpRouter, makeFunctionReference } from "convex/server"
+import { ConvexError } from "convex/values"
 import { httpAction } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 import { log } from "./lib/logger"
@@ -984,7 +985,9 @@ http.route({
         headers: { "Content-Type": "application/json" },
       })
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error"
+      const message = error instanceof ConvexError
+        ? String(error.data)
+        : error instanceof Error ? error.message : "Unknown error"
       return new Response(JSON.stringify({ error: message }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
