@@ -63,6 +63,8 @@ interface ChatInterfaceProps {
   authenticated?: boolean
   mode?: "public" | "dev"
   embedded?: boolean
+  onThreadChange?: (threadId: Id<"threads">) => void
+  headerExtra?: React.ReactNode
 }
 
 function TypingIndicator({ embedded }: { embedded?: boolean }) {
@@ -114,7 +116,7 @@ function MessageContent({ content, embedded }: { content: string; embedded?: boo
   )
 }
 
-export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, authenticated, mode = "public", embedded }: ChatInterfaceProps) {
+export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, authenticated, mode = "public", embedded, onThreadChange, headerExtra }: ChatInterfaceProps) {
   const [threadId, setThreadId] = useState<Id<"threads"> | null>(null)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -220,6 +222,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
       if (!threadId && result.threadId) {
         setThreadId(result.threadId)
+        onThreadChange?.(result.threadId)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message")
@@ -250,6 +253,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
 
       if (!threadId && result.threadId) {
         setThreadId(result.threadId)
+        onThreadChange?.(result.threadId)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message")
@@ -299,6 +303,11 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
               {environmentLabel && ` · ${environmentLabel}`}
             </p>
           </div>
+          {headerExtra && (
+            <div className="ml-auto flex items-center gap-1">
+              {headerExtra}
+            </div>
+          )}
         </header>
       )}
 

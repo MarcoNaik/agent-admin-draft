@@ -254,6 +254,20 @@ export const getRecent = query({
   },
 })
 
+export const getByThread = query({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    return await ctx.db
+      .query("executions")
+      .withIndex("by_thread", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("threadId", args.threadId)
+      )
+      .order("desc")
+      .take(50)
+  },
+})
+
 export const record = internalMutation({
   args: {
     organizationId: v.id("organizations"),

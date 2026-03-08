@@ -25,3 +25,7 @@ export function useUsageByModel(environment?: Environment, since?: number) {
 export function useRecentExecutions(agentId?: Id<"agents">, environment?: Environment, limit?: number) {
   return useQuery(api.executions.getRecent, { agentId, environment, limit })
 }
+
+export function useExecutionsByThread(threadId: Id<"threads"> | null) {
+  return useQuery(api.executions.getByThread, threadId ? { threadId } : "skip")
+}

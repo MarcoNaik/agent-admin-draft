@@ -25,3 +25,7 @@ export function useEmitEvent() {
 export function useSyncEvents(environment: Environment, limit?: number) {
   return useQuery(api.events.listSyncEvents, { environment, limit })
 }
+
+export function useRecentEvents(environment?: Environment, since?: number, limit?: number) {
+  return useQuery(api.events.getRecent, { environment, since, limit })
+}

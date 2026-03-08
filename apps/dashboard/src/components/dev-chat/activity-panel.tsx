@@ -1,0 +1,119 @@
+"use client"
+
+import { useMemo } from "react"
+import { X, Activity } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { Id } from "@convex/_generated/dataModel"
+import { useExecutionsByThread, useRecentEvents, useTriggerRuns } from "@/hooks/use-convex-data"
+import { ActivityItem, type ActivityFeedItem } from "@/components/dev-chat/activity-item"
+
+interface ActivityPanelProps {
+  open: boolean
+  threadId: Id<"threads"> | null
+  onClose: () => void
+}
+
+function extractEntityIds(executions: any[]): Set<string> {
+  const ids = new Set<string>()
+  for (const exec of executions) {
+    if (!exec.toolCalls) continue
+    for (const tc of exec.toolCalls) {
+      if (tc.arguments?.id) ids.add(tc.arguments.id)
+      if (tc.result?.id) ids.add(tc.result.id)
+      if (tc.result?._id) ids.add(tc.result._id)
+    }
+  }
+  return ids
+}
+
+export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
+  const executions = useExecutionsByThread(threadId)
+  const threadStartTime = useMemo(() => {
+    if (!executions || executions.length === 0) return undefined
+    return Math.min(...executions.map((e: any) => e.createdAt))
+  }, [executions])
+  const events = useRecentEvents("development", threadStartTime, 200)
+  const triggerRuns = useTriggerRuns("development")
+
+  const feedItems: ActivityFeedItem[] = useMemo(() => {
+    const items: ActivityFeedItem[] = []
+
+    const entityIds = extractEntityIds(executions ?? [])
+
+    if (executions) {
+      for (const exec of executions) {
+        items.push({
+          type: "execution",
+          id: exec._id,
+          timestamp: exec.createdAt,
+          data: exec,
+        })
+      }
+    }
+
+    if (events) {
+      for (const event of events as any[]) {
+        if (event.entityId && !entityIds.has(event.entityId)) continue
+        items.push({
+          type: "event",
+          id: event._id,
+          timestamp: event.timestamp,
+          data: event,
+        })
+      }
+    }
+
+    if (triggerRuns && threadStartTime) {
+      for (const run of triggerRuns as any[]) {
+        if (run.createdAt < threadStartTime) continue
+        if (run.entityId && !entityIds.has(run.entityId)) continue
+        items.push({
+          type: "trigger",
+          id: run._id,
+          timestamp: run.createdAt,
+          data: run,
+        })
+      }
+    }
+
+    return items.sort((a, b) => b.timestamp - a.timestamp)
+  }, [executions, events, triggerRuns, threadStartTime])
+
+  return (
+    <div className={cn(
+      "flex flex-col border-r bg-background-secondary h-full overflow-hidden transition-[width] ease-out-soft duration-300",
+      open ? "w-80" : "w-0 border-r-0"
+    )}>
+      <div className="flex flex-col h-full w-80 min-w-80">
+        <div className="px-3 py-2 border-b flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-content-secondary" />
+            <span className="text-sm font-medium">Activity</span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {!threadId ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <Activity className="h-8 w-8 text-content-tertiary mb-2" />
+              <p className="text-sm text-content-secondary">Start a conversation to see activity</p>
+            </div>
+          ) : feedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <p className="text-sm text-content-tertiary">No activity yet</p>
+            </div>
+          ) : (
+            <div className="p-2 space-y-1">
+              {feedItems.map((item) => (
+                <ActivityItem key={`${item.type}-${item.id}`} item={item} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

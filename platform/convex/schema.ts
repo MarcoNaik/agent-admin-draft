@@ -333,7 +333,8 @@ export default defineSchema({
     .index("by_agent", ["agentId"])
     .index("by_agent_env", ["agentId", "environment"])
     .index("by_timestamp", ["createdAt"])
-    .index("by_eval_run", ["evalRunId"]),
+    .index("by_eval_run", ["evalRunId"])
+    .index("by_thread", ["organizationId", "threadId"]),
 
   toolPermissions: defineTable({
     agentId: v.id("agents"),
