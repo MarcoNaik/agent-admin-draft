@@ -5,6 +5,7 @@ import { Id } from "../_generated/dataModel"
 
 const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
 const getPaymentEntityTypeRef = makeFunctionReference<"query">("payments:getPaymentEntityType")
+const ensurePaymentEntityTypeRef = makeFunctionReference<"mutation">("payments:ensurePaymentEntityType")
 const createPaymentEntityRef = makeFunctionReference<"mutation">("payments:createPaymentEntity")
 const storePaymentLinkRef = makeFunctionReference<"mutation">("payments:storePaymentLink")
 const linkPaymentToEntityRef = makeFunctionReference<"mutation">("payments:linkPaymentToEntity")
@@ -24,11 +25,18 @@ async function resolveFlowConfig(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<FlowConfig> {
-  const config = await ctx.runQuery(getIntegrationConfigInternalRef, {
+  let config = await ctx.runQuery(getIntegrationConfigInternalRef, {
     organizationId,
     environment,
     provider: "flow" as const,
   })
+  if ((!config || config.status !== "active") && environment === "eval") {
+    config = await ctx.runQuery(getIntegrationConfigInternalRef, {
+      organizationId,
+      environment: "development" as const,
+      provider: "flow" as const,
+    })
+  }
   if (!config || config.status !== "active") {
     throw new Error("Flow integration is not configured or not active")
   }
@@ -44,14 +52,10 @@ async function queryPaymentEntityType(
   organizationId: Id<"organizations">,
   environment: Environment
 ): Promise<{ _id: Id<"entityTypes">; slug: string }> {
-  const paymentType = await ctx.runQuery(getPaymentEntityTypeRef, {
+  return await ctx.runMutation(ensurePaymentEntityTypeRef, {
     organizationId,
     environment,
   })
-  if (!paymentType) {
-    throw new Error("Payment entity type not found. Create a 'payment' entity type first.")
-  }
-  return paymentType
 }
 
 async function createPaymentEntityMutation(
@@ -113,7 +117,7 @@ export const paymentCreate = internalAction({
   handler: async (ctx, args) => {
     const config = await resolveFlowConfig(ctx, args.organizationId, args.environment as Environment)
     const currency = args.currency || config.defaultCurrency || "CLP"
-    const returnUrl = config.returnUrl || config.webhookBaseUrl || ""
+    const returnUrl = config.returnUrl || ""
 
     if (!args.customerEmail) {
       throw new Error("payment.create requires 'customerEmail' parameter (required by Flow)")

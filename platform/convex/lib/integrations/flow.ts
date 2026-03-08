@@ -5,7 +5,6 @@ export interface FlowConfig {
   apiUrl: string
   apiKey: string
   secretKey: string
-  webhookBaseUrl: string
   defaultCurrency?: string
   returnUrl?: string
 }
@@ -82,7 +81,7 @@ export async function createFlowPaymentLinkAction(
     currency: params.currency,
     amount: params.amount,
     email: params.customerEmail,
-    urlConfirmation: `${config.webhookBaseUrl}/webhook/flow`,
+    urlConfirmation: `${process.env.CONVEX_SITE_URL}/webhook/flow`,
     urlReturn: params.returnUrl,
   }
 

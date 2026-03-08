@@ -395,6 +395,51 @@ export const getPaymentEntityType = internalQuery({
   },
 })
 
+export const ensurePaymentEntityType = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: environmentValidator,
+  },
+  returns: v.object({ _id: v.id("entityTypes"), slug: v.string() }),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env_slug", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment).eq("slug", "payment")
+      )
+      .first()
+    if (existing) return { _id: existing._id, slug: existing.slug }
+
+    const now = Date.now()
+    const id = await ctx.db.insert("entityTypes", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      name: "Payment",
+      slug: "payment",
+      schema: {
+        type: "object",
+        properties: {
+          amount: { type: "number" },
+          currency: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["draft", "pending", "paid", "failed", "cancelled"] },
+          customerEmail: { type: "string", format: "email" },
+          paymentLinkUrl: { type: "string" },
+          providerReference: { type: "string" },
+          paidAt: { type: "number" },
+          failedAt: { type: "number" },
+          failureReason: { type: "string" },
+        },
+        required: ["amount", "currency", "status"],
+      },
+      searchFields: ["status", "customerEmail", "providerReference"],
+      createdAt: now,
+      updatedAt: now,
+    })
+    return { _id: id, slug: "payment" }
+  },
+})
+
 export const createPaymentEntity = internalMutation({
   args: {
     organizationId: v.id("organizations"),

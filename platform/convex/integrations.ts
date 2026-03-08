@@ -17,7 +17,6 @@ interface FlowConfig {
   apiUrl: string
   apiKey: string
   secretKey: string
-  webhookBaseUrl: string
   defaultCurrency?: string
   returnUrl?: string
 }
