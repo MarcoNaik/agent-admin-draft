@@ -57,6 +57,7 @@ import type * as migrations from "../migrations.js";
 import type * as migrations_addEnvironment from "../migrations/addEnvironment.js";
 import type * as migrations_centsToMicrodollars from "../migrations/centsToMicrodollars.js";
 import type * as migrations_clearStaleReservations from "../migrations/clearStaleReservations.js";
+import type * as migrations_debugTemplateOnly from "../migrations/debugTemplateOnly.js";
 import type * as migrations_debugTemplates from "../migrations/debugTemplates.js";
 import type * as migrations_deleteBaileysConnections from "../migrations/deleteBaileysConnections.js";
 import type * as migrations_initReservedCredits from "../migrations/initReservedCredits.js";
@@ -145,6 +146,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/addEnvironment": typeof migrations_addEnvironment;
   "migrations/centsToMicrodollars": typeof migrations_centsToMicrodollars;
   "migrations/clearStaleReservations": typeof migrations_clearStaleReservations;
+  "migrations/debugTemplateOnly": typeof migrations_debugTemplateOnly;
   "migrations/debugTemplates": typeof migrations_debugTemplates;
   "migrations/deleteBaileysConnections": typeof migrations_deleteBaileysConnections;
   "migrations/initReservedCredits": typeof migrations_initReservedCredits;
