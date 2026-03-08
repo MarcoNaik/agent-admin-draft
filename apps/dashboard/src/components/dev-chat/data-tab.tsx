@@ -11,7 +11,13 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn, formatDate } from "@/lib/utils"
 import { formatRelativeTime } from "@/lib/format"
 import { useEntityTypes, useEntities } from "@/hooks/use-entities"
@@ -85,7 +91,7 @@ function FieldRenderer({
 
   if (typeof value === "boolean") {
     return (
-      <Badge variant={value ? "success" : "secondary"}>
+      <Badge variant={value ? "success" : "secondary"} className="text-[10px] px-1.5 py-0 h-4">
         {value ? "Yes" : "No"}
       </Badge>
     )
@@ -148,7 +154,7 @@ function FieldRenderer({
           onClick={() => setExpanded(!expanded)}
           className="ml-1 text-[11px] text-ocean hover:underline"
         >
-          {expanded ? "Show less" : "Show more"}
+          {expanded ? "Less" : "More"}
         </button>
       </div>
     )
@@ -157,8 +163,8 @@ function FieldRenderer({
   if (Array.isArray(value)) {
     if (compact) {
       return (
-        <Badge variant="secondary" className="text-[10px]">
-          {value.length} items
+        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+          {value.length}
         </Badge>
       )
     }
@@ -169,7 +175,7 @@ function FieldRenderer({
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center gap-1"
         >
-          <Badge variant="secondary" className="text-[10px] cursor-pointer">
+          <Badge variant="secondary" className="text-[10px] cursor-pointer px-1 py-0 h-4">
             {value.length} items
           </Badge>
           {expanded ? (
@@ -179,7 +185,7 @@ function FieldRenderer({
           )}
         </button>
         {expanded && (
-          <div className="mt-1 space-y-1 pl-2 border-l border-border">
+          <div className="mt-1 space-y-0.5 pl-2 border-l border-border">
             {value.map((item, i) => (
               <div key={i} className="text-xs">
                 <FieldRenderer value={item} compact />
@@ -204,13 +210,13 @@ function FieldRenderer({
       )
     }
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
-          <div key={k}>
-            <span className="text-[11px] text-content-tertiary">
-              {formatFieldName(k)}
+          <div key={k} className="flex gap-1.5 items-baseline">
+            <span className="text-[10px] text-content-tertiary shrink-0">
+              {formatFieldName(k)}:
             </span>
-            <div className="ml-2">
+            <div className="min-w-0">
               <FieldRenderer value={v} compact />
             </div>
           </div>
@@ -269,7 +275,7 @@ function EntityContent({
               {columns.map((col) => (
                 <th
                   key={col}
-                  className="px-2 py-1.5 text-left text-[11px] font-medium text-content-tertiary uppercase tracking-wider sticky top-0 bg-background"
+                  className="px-2 py-1.5 text-left text-[10px] font-medium text-content-tertiary uppercase tracking-wider sticky top-0 bg-background-secondary"
                 >
                   {formatFieldName(col)}
                 </th>
@@ -280,10 +286,10 @@ function EntityContent({
             {entities.map((entity: any) => (
               <tr
                 key={entity._id}
-                className="border-b last:border-b-0 hover:bg-background-secondary transition-colors ease-out-soft"
+                className="border-b last:border-b-0 hover:bg-background transition-colors ease-out-soft"
               >
                 {listFields.map((field) => (
-                  <td key={field} className="px-2 py-1.5 max-w-[140px]">
+                  <td key={field} className="px-2 py-1 max-w-[120px]">
                     <FieldRenderer
                       value={entity.data?.[field]}
                       schemaType={fieldTypeMap.get(field)}
@@ -291,11 +297,11 @@ function EntityContent({
                     />
                   </td>
                 ))}
-                <td className="px-2 py-1.5">
+                <td className="px-2 py-1">
                   {entity.status ? (
                     <Badge
                       variant={getStatusVariant(entity.status)}
-                      className="text-[10px] px-1.5 py-0"
+                      className="text-[10px] px-1 py-0 h-4"
                     >
                       {entity.status}
                     </Badge>
@@ -312,7 +318,7 @@ function EntityContent({
   }
 
   return (
-    <div className="space-y-2 p-2">
+    <div className="divide-y">
       {entities.map((entity: any) => {
         const displayName =
           entity.data?.name ??
@@ -320,38 +326,42 @@ function EntityContent({
           entity.data?.email ??
           entity._id
         return (
-          <div key={entity._id} className="border rounded p-3 bg-background">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium truncate max-w-[240px]">
+          <div key={entity._id} className="px-3 py-2">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-xs font-medium truncate">
                 {String(displayName)}
               </span>
-              {entity.status && (
-                <Badge
-                  variant={getStatusVariant(entity.status)}
-                  className="text-[10px] px-1.5 py-0 shrink-0"
-                >
-                  {entity.status}
-                </Badge>
-              )}
-            </div>
-            <div className="space-y-2">
-              {fields.map((field) => (
-                <div key={field.name}>
-                  <div className="text-content-tertiary text-[11px] uppercase tracking-wider mb-0.5">
-                    {formatFieldName(field.name)}
-                  </div>
-                  <FieldRenderer
-                    value={entity.data?.[field.name]}
-                    schemaType={field.type}
-                  />
-                </div>
-              ))}
-            </div>
-            {entity._creationTime && (
-              <div className="mt-2 pt-2 border-t text-[11px] text-content-tertiary">
-                Created {formatRelativeTime(entity._creationTime)}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {entity.status && (
+                  <Badge
+                    variant={getStatusVariant(entity.status)}
+                    className="text-[10px] px-1 py-0 h-4"
+                  >
+                    {entity.status}
+                  </Badge>
+                )}
               </div>
-            )}
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+              {fields.map((field) => {
+                const val = entity.data?.[field.name]
+                if (val === null || val === undefined) return null
+                return (
+                  <div key={field.name} className="min-w-0">
+                    <div className="text-[10px] text-content-tertiary truncate">
+                      {formatFieldName(field.name)}
+                    </div>
+                    <div className="truncate">
+                      <FieldRenderer
+                        value={val}
+                        schemaType={field.type}
+                        compact
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )
       })}
@@ -362,6 +372,7 @@ function EntityContent({
 export function DataTab() {
   const entityTypes = useEntityTypes("development")
   const [view, setView] = useState<"table" | "card">("table")
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
 
   if (!entityTypes) {
     return (
@@ -382,29 +393,32 @@ export function DataTab() {
     )
   }
 
+  const activeSlug = selectedSlug ?? entityTypes[0]?.slug
+  const activeType = entityTypes.find((et: any) => et.slug === activeSlug)
+
   return (
-    <Tabs defaultValue={entityTypes[0]?.slug} className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-2 py-1.5 border-b shrink-0">
-        <TabsList className="flex-1 h-8 overflow-x-auto justify-start bg-transparent p-0 gap-1">
-          {entityTypes.map((et: any) => (
-            <TabsTrigger
-              key={et._id}
-              value={et.slug}
-              className="h-7 px-2.5 text-xs rounded-full data-[state=active]:bg-ocean/10 data-[state=active]:text-ocean data-[state=active]:shadow-none shrink-0"
-            >
-              {et.name}
-              <EntityCountBadge slug={et.slug} />
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <div className="flex items-center shrink-0 border rounded-md">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b shrink-0">
+        <Select value={activeSlug} onValueChange={setSelectedSlug}>
+          <SelectTrigger className="h-7 text-xs flex-1 min-w-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {entityTypes.map((et: any) => (
+              <SelectItem key={et._id} value={et.slug} className="text-xs">
+                {et.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center shrink-0 border rounded">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setView("table")}
             className={cn(
               "h-7 w-7 rounded-r-none",
-              view === "table" && "bg-background-secondary"
+              view === "table" && "bg-background"
             )}
           >
             <LayoutList className="h-3.5 w-3.5" />
@@ -415,7 +429,7 @@ export function DataTab() {
             onClick={() => setView("card")}
             className={cn(
               "h-7 w-7 rounded-l-none",
-              view === "card" && "bg-background-secondary"
+              view === "card" && "bg-background"
             )}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
@@ -423,22 +437,8 @@ export function DataTab() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {entityTypes.map((et: any) => (
-          <TabsContent key={et._id} value={et.slug} className="mt-0">
-            <EntityContent entityType={et} view={view} />
-          </TabsContent>
-        ))}
+        {activeType && <EntityContent entityType={activeType} view={view} />}
       </div>
-    </Tabs>
-  )
-}
-
-function EntityCountBadge({ slug }: { slug: string }) {
-  const entities = useEntities(slug, "development")
-  if (!entities) return null
-  return (
-    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0 h-4 min-w-[20px] justify-center">
-      {entities.length}
-    </Badge>
+    </div>
   )
 }
