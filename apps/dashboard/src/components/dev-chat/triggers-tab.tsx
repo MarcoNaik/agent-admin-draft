@@ -25,6 +25,7 @@ import {
   useRetryTriggerRun,
   useCancelTriggerRun,
 } from "@/hooks/use-convex-data"
+import { useAnimateNew, idKeyFn } from "@/hooks/use-animate-new"
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -123,14 +124,14 @@ function RunCountSummary({ runs }: { runs: any[] }) {
   )
 }
 
-function TriggerRunItem({ run }: { run: any }) {
+function TriggerRunItem({ run, isNew }: { run: any; isNew?: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const retryRun = useRetryTriggerRun()
   const cancelRun = useCancelTriggerRun()
   const hasDetail = run.result || run.error
 
   return (
-    <div className="space-y-0.5">
+    <div className={cn("space-y-0.5", isNew && "animate-highlight-new")}>
       <div className="flex items-center gap-1.5">
         {hasDetail ? (
           <button
@@ -195,12 +196,15 @@ function TriggerRunItem({ run }: { run: any }) {
 function TriggerRow({
   trigger,
   runs,
+  isNew,
 }: {
   trigger: any
   runs: any[]
+  isNew?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const [showRuns, setShowRuns] = useState(false)
+  const newRunKeys = useAnimateNew(runs, idKeyFn)
   const recentRuns = runs.slice(0, 5)
   const actionCount = trigger.actions?.length ?? 0
 
@@ -210,7 +214,7 @@ function TriggerRow({
   const hasDetails = trigger.condition || trigger.schedule || trigger.retry || actionCount > 0
 
   return (
-    <div className="px-3">
+    <div className={cn("px-3", isNew && "animate-highlight-new")}>
       <button
         type="button"
         onClick={toggle}
@@ -304,7 +308,7 @@ function TriggerRow({
               {showRuns && (
                 <div className="mt-1.5 space-y-1 pl-0.5">
                   {recentRuns.map((run: any) => (
-                    <TriggerRunItem key={run._id} run={run} />
+                    <TriggerRunItem key={run._id} run={run} isNew={newRunKeys.has(run._id)} />
                   ))}
                 </div>
               )}
@@ -320,10 +324,12 @@ function EntityGroup({
   entityType,
   triggers,
   runsBySlug,
+  newTriggerKeys,
 }: {
   entityType: string
   triggers: any[]
   runsBySlug: Map<string, any[]>
+  newTriggerKeys: Set<string>
 }) {
   return (
     <div>
@@ -338,6 +344,7 @@ function EntityGroup({
             key={trigger._id}
             trigger={trigger}
             runs={runsBySlug.get(trigger.slug) ?? []}
+            isNew={newTriggerKeys.has(trigger._id)}
           />
         ))}
       </div>
@@ -382,6 +389,8 @@ export function TriggersTab() {
     }))
   }, [triggers])
 
+  const newTriggerKeys = useAnimateNew(triggers as any[] | undefined, idKeyFn)
+
   const loading = triggers === undefined || runs === undefined
 
   if (loading) {
@@ -420,6 +429,7 @@ export function TriggersTab() {
               key={trigger._id}
               trigger={trigger}
               runs={runsBySlug.get(trigger.slug) ?? []}
+              isNew={newTriggerKeys.has(trigger._id)}
             />
           ))}
         </div>
@@ -431,6 +441,7 @@ export function TriggersTab() {
               entityType={entityType}
               triggers={groupTriggers}
               runsBySlug={runsBySlug}
+              newTriggerKeys={newTriggerKeys}
             />
           ))}
         </div>
