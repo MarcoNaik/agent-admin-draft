@@ -29,8 +29,30 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
 
     if (executions) {
       for (const exec of executions) {
+        const hasToolCalls = exec.toolCalls && exec.toolCalls.length > 0
+
+        if (hasToolCalls) {
+          const baseTime = exec.createdAt
+          const timeStep = (exec.durationMs ?? 1000) / (exec.toolCalls.length + 1)
+
+          for (let i = 0; i < exec.toolCalls.length; i++) {
+            const tc = exec.toolCalls[i]
+            items.push({
+              type: "tool_call",
+              id: `${exec._id}-tc-${i}`,
+              timestamp: baseTime + timeStep * (i + 1),
+              data: {
+                ...tc,
+                timestamp: baseTime + timeStep * (i + 1),
+                executionId: exec._id,
+                model: exec.model,
+              },
+            })
+          }
+        }
+
         items.push({
-          type: "execution",
+          type: "thinking",
           id: exec._id,
           timestamp: exec.createdAt,
           data: exec,
@@ -89,7 +111,7 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
               <p className="text-xs text-content-tertiary">No activity yet</p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border/50">
               {feedItems.map((item) => {
                 const key = `${item.type}-${item.id}`
                 return (
