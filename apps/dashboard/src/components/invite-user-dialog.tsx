@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useOrganization } from "@clerk/nextjs"
 import { Loader2, UserPlus } from "lucide-react"
 import {
@@ -21,8 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useCreatePendingAssignment } from "@/hooks/use-convex-data"
-import { Doc } from "@convex/_generated/dataModel"
+import { useCreatePendingAssignment, useEntityTypes } from "@/hooks/use-convex-data"
+import { useEntitiesByEmail } from "@/hooks/use-entities"
+import { Doc, Id } from "@convex/_generated/dataModel"
 import type { Environment } from "@/contexts/environment-context"
 
 interface InviteUserDialogProps {
@@ -36,10 +37,30 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
   const [email, setEmail] = useState("")
   const [orgRole, setOrgRole] = useState<string>("org:member")
   const [internalRoleId, setInternalRoleId] = useState<string>("none")
+  const [entityChoice, setEntityChoice] = useState<string>("create")
   const [isInviting, setIsInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { organization } = useOrganization()
   const createPendingAssignment = useCreatePendingAssignment()
+  const entityTypes = useEntityTypes(environment)
+
+  const selectedRole = useMemo(() => {
+    if (internalRoleId === "none" || !roles) return null
+    return roles.find((r) => r._id === internalRoleId) ?? null
+  }, [internalRoleId, roles])
+
+  const boundEntityType = useMemo(() => {
+    if (!selectedRole || !entityTypes) return null
+    return entityTypes.find((et: Doc<"entityTypes">) => et.boundToRole === selectedRole.name) ?? null
+  }, [selectedRole, entityTypes])
+
+  const showEntityFields = !!boundEntityType
+
+  const matchingEntities = useEntitiesByEmail(
+    boundEntityType?._id ?? undefined,
+    showEntityFields && email ? email.trim() : undefined,
+    environment
+  )
 
   const handleInvite = async () => {
     if (!email.trim() || !organization) return
@@ -50,16 +71,25 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
       await organization.inviteMember({ emailAddress: email.trim(), role: orgRole })
 
       if (orgRole === "org:member" && internalRoleId !== "none" && environment) {
-        await createPendingAssignment({
+        const assignmentArgs: {
+          email: string
+          roleId: Id<"roles">
+          environment: Environment
+          linkedEntityId?: Id<"entities">
+        } = {
           email: email.trim(),
-          roleId: internalRoleId as any,
+          roleId: internalRoleId as Id<"roles">,
           environment,
-        })
+        }
+
+        if (entityChoice !== "create") {
+          assignmentArgs.linkedEntityId = entityChoice as Id<"entities">
+        }
+
+        await createPendingAssignment(assignmentArgs)
       }
 
-      setEmail("")
-      setOrgRole("org:member")
-      setInternalRoleId("none")
+      resetForm()
       onOpenChange(false)
     } catch (err: any) {
       const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || "Failed to send invitation"
@@ -67,6 +97,13 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
     } finally {
       setIsInviting(false)
     }
+  }
+
+  const resetForm = () => {
+    setEmail("")
+    setOrgRole("org:member")
+    setInternalRoleId("none")
+    setEntityChoice("create")
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,13 +116,26 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
     setOrgRole(value)
     if (value !== "org:member") {
       setInternalRoleId("none")
+      setEntityChoice("create")
     }
+  }
+
+  const handleRoleChange = (value: string) => {
+    setInternalRoleId(value)
+    setEntityChoice("create")
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm()
+    }
+    onOpenChange(nextOpen)
   }
 
   const showInternalRoleSelector = orgRole === "org:member" && roles && roles.length > 0
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md bg-background-secondary border-border/50">
         <DialogHeader>
           <DialogTitle className="text-content-primary">Invite User</DialogTitle>
@@ -123,7 +173,7 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
           {showInternalRoleSelector && (
             <div className="space-y-2">
               <Label htmlFor="internalRole" className="text-content-primary">Internal Role</Label>
-              <Select value={internalRoleId} onValueChange={setInternalRoleId} disabled={isInviting}>
+              <Select value={internalRoleId} onValueChange={handleRoleChange} disabled={isInviting}>
                 <SelectTrigger className="bg-background-tertiary border-border/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -141,12 +191,62 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
               </p>
             </div>
           )}
+
+          {showEntityFields && email && (
+            <div className="space-y-3">
+              {matchingEntities && matchingEntities.length > 0 ? (
+                <>
+                  <Label className="text-content-primary">
+                    Existing {boundEntityType!.name} records found
+                  </Label>
+                  <div className="space-y-2">
+                    {matchingEntities.map((entity: any) => (
+                      <div
+                        key={entity._id}
+                        onClick={() => setEntityChoice(entity._id)}
+                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer bg-zinc-900 ${
+                          entityChoice === entity._id ? "border-blue-500" : "border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-content-primary truncate">
+                            {entity.data?.name || entity._id}
+                          </div>
+                          {entity.data?.email && (
+                            <div className="text-xs text-content-secondary truncate">
+                              {entity.data.email}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs text-content-secondary shrink-0">Link existing</span>
+                      </div>
+                    ))}
+                    <div
+                      onClick={() => setEntityChoice("create")}
+                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer bg-zinc-900 ${
+                        entityChoice === "create" ? "border-blue-500" : "border-zinc-700"
+                      }`}
+                    >
+                      <span className="text-sm text-content-primary">
+                        Create new {boundEntityType!.name}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-content-secondary">
+                  A new {boundEntityType!.name} will be created
+                </p>
+              )}
+            </div>
+          )}
+
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isInviting}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isInviting}>
             Cancel
           </Button>
           <Button onClick={handleInvite} disabled={!email.trim() || isInviting}>
