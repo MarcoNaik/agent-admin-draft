@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Shield, User, UserPlus } from "lucide-react"
+import { Loader2, Shield, User, UserPlus, Link, Unlink, Plus } from "lucide-react"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes, useCreateEntity } from "@/hooks/use-convex-data"
+import { useEntitiesByEmail, useLinkedEntity, useLinkUserToEntity, useUnlinkUserFromEntity } from "@/hooks/use-entities"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,9 +24,143 @@ import {
 } from "@/components/ui/dialog"
 import { Doc, Id } from "@convex/_generated/dataModel"
 import { InviteUserDialog } from "@/components/invite-user-dialog"
+import { toast } from "sonner"
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
 type UserWithRole = Doc<"users"> & { role: "admin" | "member" }
+
+function LinkEntityDialog({
+  open,
+  onOpenChange,
+  userId,
+  userEmail,
+  entityTypeId,
+  entityTypeName,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  userId: Id<"users">
+  userEmail: string
+  entityTypeId: Id<"entityTypes">
+  entityTypeName: string
+}) {
+  const { environment } = useEnvironment()
+  const matchingEntities = useEntitiesByEmail(entityTypeId, userEmail, environment)
+  const linkUser = useLinkUserToEntity()
+  const [isLinking, setIsLinking] = useState(false)
+
+  const handleLink = async (entityId: Id<"entities">) => {
+    setIsLinking(true)
+    try {
+      await linkUser({ entityId, userId, environment })
+      toast.success(`Linked ${entityTypeName} entity`)
+      onOpenChange(false)
+    } catch (err) {
+      toast.error(`Failed to link entity: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setIsLinking(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Link {entityTypeName}</DialogTitle>
+          <DialogDescription>
+            Select a {entityTypeName} entity matching {userEmail} to link.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {matchingEntities === undefined ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />
+            </div>
+          ) : matchingEntities.length === 0 ? (
+            <p className="text-sm text-content-secondary py-4 text-center">No matching entities found</p>
+          ) : (
+            matchingEntities.map((entity: { _id: Id<"entities">; data?: { name?: string; email?: string } }) => (
+              <div
+                key={entity._id}
+                className="flex items-center justify-between rounded-md border border-border/50 bg-background-tertiary p-3"
+              >
+                <div className="text-sm">
+                  <span className="font-medium text-content-primary">
+                    {entity.data?.name || entity.data?.email || entity._id}
+                  </span>
+                  {entity.data?.email && entity.data?.name && (
+                    <span className="ml-2 text-content-secondary">{entity.data.email}</span>
+                  )}
+                </div>
+                <Button size="sm" onClick={() => handleLink(entity._id)} disabled={isLinking}>
+                  {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link className="h-3 w-3" />}
+                  <span className="ml-1">Link</span>
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function UnlinkEntityDialog({
+  open,
+  onOpenChange,
+  entityId,
+  entityName,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  entityId: Id<"entities">
+  entityName: string
+}) {
+  const unlinkUser = useUnlinkUserFromEntity()
+  const [isUnlinking, setIsUnlinking] = useState(false)
+
+  const handleUnlink = async (deleteEntity: boolean) => {
+    setIsUnlinking(true)
+    try {
+      await unlinkUser({ entityId, deleteEntity })
+      toast.success(deleteEntity ? `Deleted and unlinked ${entityName}` : `Unlinked ${entityName}`)
+      onOpenChange(false)
+    } catch (err) {
+      toast.error(`Failed to unlink: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setIsUnlinking(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Unlink {entityName}</DialogTitle>
+          <DialogDescription>
+            Choose whether to just unlink the entity or delete it entirely.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUnlinking}>
+            Cancel
+          </Button>
+          <Button variant="outline" onClick={() => handleUnlink(false)} disabled={isUnlinking}>
+            {isUnlinking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Just Unlink
+          </Button>
+          <Button variant="destructive" onClick={() => handleUnlink(true)} disabled={isUnlinking}>
+            {isUnlinking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Delete & Unlink
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[] }) {
   const { environment } = useEnvironment()
@@ -37,8 +172,17 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
   const [isUpdating, setIsUpdating] = useState(false)
   const [pendingEntityCreation, setPendingEntityCreation] = useState<Doc<"entityTypes"> | null>(null)
   const [isCreatingEntity, setIsCreatingEntity] = useState(false)
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false)
+  const [linkEntityType, setLinkEntityType] = useState<Doc<"entityTypes"> | null>(null)
 
   const currentRole = userRoles?.find((ur: UserRoleWithDetails) => ur.role !== null)
+
+  const boundEntityType = currentRole?.role
+    ? entityTypes.find((et) => et.boundToRole === currentRole.role?.name)
+    : undefined
+
+  const linkedEntity = useLinkedEntity(boundEntityType?._id, user.clerkUserId, environment)
 
   const handleOrgRoleChange = async (newRole: "admin" | "member") => {
     setIsUpdating(true)
@@ -59,11 +203,11 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
 
         const assignedRole = roles.find((r) => r._id === value)
         if (assignedRole) {
-          const boundEntityType = entityTypes.find(
+          const bet = entityTypes.find(
             (et) => et.boundToRole === assignedRole.name
           )
-          if (boundEntityType) {
-            setPendingEntityCreation(boundEntityType)
+          if (bet) {
+            setPendingEntityCreation(bet)
           }
         }
       }
@@ -102,6 +246,11 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
     }
   }
 
+  const handleOpenLinkDialog = (et: Doc<"entityTypes">) => {
+    setLinkEntityType(et)
+    setLinkDialogOpen(true)
+  }
+
   const roleIcon = user.role === "admin" ? Shield : User
 
   return (
@@ -117,6 +266,47 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
         <div>
           <div className="font-medium text-content-primary">{user.name || "Unnamed User"}</div>
           <div className="text-sm text-content-secondary">{user.email}</div>
+          {boundEntityType && (
+            <div className="mt-1 flex items-center gap-2">
+              {linkedEntity ? (
+                <>
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                    {boundEntityType.name}: {(linkedEntity as { data?: { name?: string; email?: string } }).data?.name || (linkedEntity as { data?: { name?: string; email?: string } }).data?.email || "Linked"}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-xs text-content-secondary hover:text-red-400"
+                    onClick={() => setUnlinkDialogOpen(true)}
+                  >
+                    <Unlink className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : linkedEntity === null ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-content-secondary">No {boundEntityType.name} entity</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-xs"
+                    onClick={() => handleOpenLinkDialog(boundEntityType)}
+                  >
+                    <Link className="h-3 w-3 mr-1" />
+                    Link
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-xs"
+                    onClick={() => setPendingEntityCreation(boundEntityType)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Create
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -186,6 +376,26 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {linkEntityType && (
+        <LinkEntityDialog
+          open={linkDialogOpen}
+          onOpenChange={setLinkDialogOpen}
+          userId={user._id}
+          userEmail={user.email}
+          entityTypeId={linkEntityType._id}
+          entityTypeName={linkEntityType.name}
+        />
+      )}
+
+      {boundEntityType && linkedEntity && (
+        <UnlinkEntityDialog
+          open={unlinkDialogOpen}
+          onOpenChange={setUnlinkDialogOpen}
+          entityId={(linkedEntity as { _id: Id<"entities"> })._id}
+          entityName={(linkedEntity as { data?: { name?: string } }).data?.name || boundEntityType.name}
+        />
+      )}
     </div>
   )
 }
