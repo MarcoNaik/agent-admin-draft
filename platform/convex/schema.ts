@@ -613,6 +613,7 @@ export default defineSchema({
     email: v.string(),
     roleId: v.id("roles"),
     environment: environmentValidator,
+    linkedEntityId: v.optional(v.id("entities")),
     createdBy: v.id("users"),
     createdAt: v.number(),
   })
