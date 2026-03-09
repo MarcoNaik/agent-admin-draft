@@ -15,19 +15,6 @@ interface ActivityPanelProps {
   onClose: () => void
 }
 
-function extractEntityIds(executions: any[]): Set<string> {
-  const ids = new Set<string>()
-  for (const exec of executions) {
-    if (!exec.toolCalls) continue
-    for (const tc of exec.toolCalls) {
-      if (tc.arguments?.id) ids.add(tc.arguments.id)
-      if (tc.result?.id) ids.add(tc.result.id)
-      if (tc.result?._id) ids.add(tc.result._id)
-    }
-  }
-  return ids
-}
-
 export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
   const executions = useExecutionsByThread(threadId)
   const threadStartTime = useMemo(() => {
@@ -39,8 +26,6 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
 
   const feedItems: ActivityFeedItem[] = useMemo(() => {
     const items: ActivityFeedItem[] = []
-
-    const entityIds = extractEntityIds(executions ?? [])
 
     if (executions) {
       for (const exec of executions) {
@@ -55,7 +40,6 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
 
     if (events) {
       for (const event of events as any[]) {
-        if (event.entityId && !entityIds.has(event.entityId)) continue
         items.push({
           type: "event",
           id: event._id,
@@ -68,7 +52,6 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
     if (triggerRuns && threadStartTime) {
       for (const run of triggerRuns as any[]) {
         if (run.createdAt < threadStartTime) continue
-        if (run.entityId && !entityIds.has(run.entityId)) continue
         items.push({
           type: "trigger",
           id: run._id,
