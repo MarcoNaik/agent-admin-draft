@@ -81,10 +81,10 @@ export function useRelatedEntities(entityId: Id<"entities"> | undefined, environ
   return useQuery(api.entities.getRelated, entityId ? { entityId, environment, relationType } : "skip")
 }
 
-export function useEntitiesByEmail(entityTypeId: Id<"entityTypes"> | undefined, email: string | undefined, environment?: Environment) {
+export function useEntitiesByEmail(entityTypeId: Id<"entityTypes"> | undefined, email?: string, environment?: Environment) {
   return useQuery(
     api.entities.searchByEmail,
-    entityTypeId && email ? { entityTypeId, email, environment } : "skip"
+    entityTypeId ? { entityTypeId, email, environment } : "skip"
   )
 }
 

@@ -68,7 +68,7 @@ function LinkEntityDialog({
         <DialogHeader>
           <DialogTitle>Link {entityTypeName}</DialogTitle>
           <DialogDescription>
-            Select a {entityTypeName} entity matching {userEmail} to link.
+            Select a {entityTypeName} entity to link to {userEmail}.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -77,7 +77,7 @@ function LinkEntityDialog({
               <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />
             </div>
           ) : matchingEntities.length === 0 ? (
-            <p className="text-sm text-content-secondary py-4 text-center">No matching entities found</p>
+            <p className="text-sm text-content-secondary py-4 text-center">No entities found</p>
           ) : (
             matchingEntities.map((entity: { _id: Id<"entities">; data?: { name?: string; email?: string } }) => (
               <div
