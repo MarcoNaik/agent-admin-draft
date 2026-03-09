@@ -487,27 +487,40 @@ async function ensureMembershipFromClerk(
 
         if (boundEntityType) {
           const userIdField = boundEntityType.userIdField || "userId"
-          const schema = boundEntityType.schema as { properties?: Record<string, unknown> } | undefined
-          const properties = schema?.properties || {}
-          const data: Record<string, unknown> = {
-            [userIdField]: user!.clerkUserId,
-          }
-          if ("name" in properties && user!.name) {
-            data.name = user!.name
-          }
-          if ("email" in properties && user!.email) {
-            data.email = user!.email
-          }
 
-          await ctx.db.insert("entities", {
-            organizationId: org._id,
-            environment: pending.environment,
-            entityTypeId: boundEntityType._id,
-            status: "active",
-            data,
-            createdAt: now,
-            updatedAt: now,
-          })
+          let linkedEntity = pending.linkedEntityId
+            ? await ctx.db.get(pending.linkedEntityId)
+            : null
+
+          if (linkedEntity && !linkedEntity.deletedAt) {
+            const existingData = (linkedEntity.data ?? {}) as Record<string, unknown>
+            await ctx.db.patch(linkedEntity._id, {
+              data: { ...existingData, [userIdField]: user!.clerkUserId },
+              updatedAt: now,
+            })
+          } else {
+            const schema = boundEntityType.schema as { properties?: Record<string, unknown> } | undefined
+            const properties = schema?.properties || {}
+            const data: Record<string, unknown> = {
+              [userIdField]: user!.clerkUserId,
+            }
+            if ("name" in properties && user!.name) {
+              data.name = user!.name
+            }
+            if ("email" in properties && user!.email) {
+              data.email = user!.email
+            }
+
+            await ctx.db.insert("entities", {
+              organizationId: org._id,
+              environment: pending.environment,
+              entityTypeId: boundEntityType._id,
+              status: "active",
+              data,
+              createdAt: now,
+              updatedAt: now,
+            })
+          }
         }
       }
 
