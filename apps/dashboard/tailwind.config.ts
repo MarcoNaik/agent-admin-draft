@@ -114,11 +114,26 @@ const config: Config = {
           "0%": { backgroundPosition: "200% 0" },
           "100%": { backgroundPosition: "-200% 0" },
         },
+        "feed-in": {
+          "0%": { opacity: "0", transform: "translateY(-6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "highlight-new": {
+          "0%": { backgroundColor: "hsl(var(--ocean) / 0.08)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "pulse-dot": {
+          "0%, 100%": { opacity: "0.6", transform: "scale(1)" },
+          "50%": { opacity: "1", transform: "scale(1.4)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 3s linear infinite",
+        "feed-in": "feed-in 0.35s ease-out both",
+        "highlight-new": "highlight-new 1.5s ease-out both",
+        "pulse-dot": "pulse-dot 2s ease-in-out infinite",
       },
     },
   },
