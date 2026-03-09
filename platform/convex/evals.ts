@@ -472,10 +472,10 @@ export const startRun = mutation({
       })
     }
 
-    for (const c of cases) {
-      await ctx.scheduler.runAfter(0, executeCaseRef, {
+    for (let i = 0; i < cases.length; i++) {
+      await ctx.scheduler.runAfter(i * 500, executeCaseRef, {
         runId,
-        caseId: c._id,
+        caseId: cases[i]._id,
       } as any)
     }
 
@@ -744,6 +744,64 @@ export const getRoles = internalQuery({
       .withIndex("by_org_env", (q) => q.eq("organizationId", args.organizationId).eq("environment", args.environment))
       .collect()
     return roles.filter((r) => !r.isSystem)
+  },
+})
+
+export const cleanupStuckRuns = internalMutation({
+  handler: async (ctx) => {
+    const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000
+    const runs = await ctx.db.query("evalRuns").collect()
+    const stuckRuns = runs.filter(
+      (r) => r.status === "running" && r.startedAt && r.startedAt < thirtyMinutesAgo
+    )
+
+    for (const run of stuckRuns) {
+      const results = await ctx.db
+        .query("evalResults")
+        .withIndex("by_run", (q) => q.eq("runId", run._id))
+        .collect()
+
+      const completedResults = results.filter((r) => r.status !== "pending")
+      const passedResults = completedResults.filter((r) => r.status === "passed")
+      const failedResults = completedResults.filter((r) => r.status !== "passed")
+
+      const completedCases = completedResults.length
+      const passedCases = passedResults.length
+      const failedCases = failedResults.length
+
+      const scores = completedResults
+        .map((r) => r.overallScore)
+        .filter((s): s is number => s !== undefined)
+
+      const overallScore = scores.length > 0
+        ? scores.reduce((sum, s) => sum + s, 0) / scores.length
+        : completedCases > 0
+          ? (passedCases / completedCases) * 5
+          : undefined
+
+      if (run.reservedCredits && run.reservedCredits > 0) {
+        const balance = await ctx.db
+          .query("creditBalances")
+          .withIndex("by_org", (q) => q.eq("organizationId", run.organizationId))
+          .first()
+        if (balance) {
+          await ctx.db.patch(balance._id, {
+            reservedCredits: Math.max(0, (balance.reservedCredits ?? 0) - run.reservedCredits),
+            updatedAt: Date.now(),
+          })
+        }
+      }
+
+      await ctx.db.patch(run._id, {
+        status: completedCases === 0 ? "failed" : "completed",
+        completedCases,
+        passedCases,
+        failedCases,
+        overallScore,
+        totalDurationMs: Date.now() - (run.startedAt ?? run.createdAt),
+        completedAt: Date.now(),
+      })
+    }
   },
 })
 

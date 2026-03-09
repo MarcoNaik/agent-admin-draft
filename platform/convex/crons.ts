@@ -6,6 +6,7 @@ const reconcileBalancesRef = makeFunctionReference<"mutation">("billing:reconcil
 const cleanupOldMessagesRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldMessages")
 const cleanupOldExecutionsRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldExecutions")
 const cleanupOldEventsRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldEvents")
+const cleanupStuckRunsRef = makeFunctionReference<"mutation">("evals:cleanupStuckRuns")
 
 const crons = cronJobs()
 
@@ -43,6 +44,12 @@ crons.interval(
   "cleanup old events",
   { hours: 24 },
   cleanupOldEventsRef,
+)
+
+crons.interval(
+  "cleanup stuck eval runs",
+  { minutes: 5 },
+  cleanupStuckRunsRef,
 )
 
 export default crons

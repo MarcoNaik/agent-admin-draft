@@ -108,17 +108,6 @@ export const executeCase = internalAction({
   handler: async (ctx, args) => {
     const turnIndex = args.turnIndex ?? 0
     const retryCount = args.retryCount ?? 0
-
-    const run = await ctx.runQuery(getRunInternalRef, { runId: args.runId })
-    if (!run) throw new Error("Run not found")
-    if (run.status === "cancelled") return
-
-    const suite = await ctx.runQuery(getSuiteInternalRef, { suiteId: run.suiteId })
-    if (!suite) throw new Error("Suite not found")
-
-    const evalCase = await ctx.runQuery(getCaseInternalRef, { caseId: args.caseId })
-    if (!evalCase) throw new Error("Case not found")
-
     const state: CaseState = args.state ?? {
       turnResults: [],
       allAssertionsPassed: true,
@@ -130,40 +119,50 @@ export const executeCase = internalAction({
       caseStartTime: Date.now(),
     }
 
-    let threadId = args.threadId as Id<"threads"> | undefined
-
-    if (suite.judgeContext && state.resolvedJudgeContext === undefined) {
-      try {
-        state.resolvedJudgeContext = await resolveJudgeContext(
-          ctx,
-          suite.judgeContext,
-          run.organizationId,
-          run.agentId,
-          run.environment,
-          evalCase.channel,
-          evalCase.contextParams
-        )
-      } catch {
-        state.resolvedJudgeContext = suite.judgeContext
-      }
-    }
-
-    if (state.resolvedAgentPrompt === undefined) {
-      try {
-        state.resolvedAgentPrompt = await resolveAgentSystemPrompt(
-          ctx,
-          run.organizationId,
-          run.agentId,
-          run.environment,
-          evalCase.channel,
-          evalCase.contextParams
-        )
-      } catch {
-        state.resolvedAgentPrompt = ""
-      }
-    }
-
     try {
+      const run = await ctx.runQuery(getRunInternalRef, { runId: args.runId })
+      if (!run) throw new Error("Run not found")
+      if (run.status === "cancelled") return
+
+      const suite = await ctx.runQuery(getSuiteInternalRef, { suiteId: run.suiteId })
+      if (!suite) throw new Error("Suite not found")
+
+      const evalCase = await ctx.runQuery(getCaseInternalRef, { caseId: args.caseId })
+      if (!evalCase) throw new Error("Case not found")
+
+      let threadId = args.threadId as Id<"threads"> | undefined
+
+      if (suite.judgeContext && state.resolvedJudgeContext === undefined) {
+        try {
+          state.resolvedJudgeContext = await resolveJudgeContext(
+            ctx,
+            suite.judgeContext,
+            run.organizationId,
+            run.agentId,
+            run.environment,
+            evalCase.channel,
+            evalCase.contextParams
+          )
+        } catch {
+          state.resolvedJudgeContext = suite.judgeContext
+        }
+      }
+
+      if (state.resolvedAgentPrompt === undefined) {
+        try {
+          state.resolvedAgentPrompt = await resolveAgentSystemPrompt(
+            ctx,
+            run.organizationId,
+            run.agentId,
+            run.environment,
+            evalCase.channel,
+            evalCase.contextParams
+          )
+        } catch {
+          state.resolvedAgentPrompt = ""
+        }
+      }
+
       if (!threadId) {
         const externalId = `eval:${args.runId}:${args.caseId}`
         threadId = await ctx.runMutation(getOrCreateThreadRef, {
@@ -389,6 +388,10 @@ export const executeCase = internalAction({
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
+
+      const run = await ctx.runQuery(getRunInternalRef, { runId: args.runId })
+      if (run?.status === "cancelled") return
+
       const isRateLimit = errorMessage.includes("429") || errorMessage.includes("rate") || errorMessage.includes("Too Many")
 
       if (isRateLimit && retryCount < MAX_TURN_RETRIES) {
@@ -397,7 +400,7 @@ export const executeCase = internalAction({
           runId: args.runId,
           caseId: args.caseId,
           turnIndex,
-          threadId,
+          threadId: args.threadId,
           state,
           retryCount: retryCount + 1,
         })
