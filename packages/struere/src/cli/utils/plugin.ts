@@ -93,9 +93,9 @@ function defineTrigger(config) {
 }
 
 function wrapHandler(name, handler) {
-  return async (params, context) => {
+  return async (params, context, struere, fetch) => {
     try {
-      return await handler(params, context)
+      return await handler(params, context, struere, fetch)
     } catch (error) {
       console.error('Tool "' + name + '" execution error:', error)
       throw error
@@ -147,164 +147,215 @@ export function registerStruerePlugin(): void {
   })
 }
 
-const TYPE_DECLARATIONS = `declare module 'struere' {
-  export interface ModelConfig {
-    provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
-    name: string
-    temperature?: number
-    maxTokens?: number
-    apiKey?: string
-  }
-
-  export interface ToolParameters {
-    type: 'object'
-    properties: Record<string, ParameterDefinition>
-    required?: string[]
-  }
-
-  export interface ParameterDefinition {
-    type: 'string' | 'number' | 'boolean' | 'array' | 'object'
-    description: string
-    enum?: string[]
-    items?: ParameterDefinition
-    properties?: Record<string, ParameterDefinition>
-  }
-
-  export interface ToolContext {
-    conversationId: string
-    userId?: string
-  }
-
-  export type ToolHandler = (params: Record<string, unknown>, context: ToolContext) => Promise<unknown>
-
-  export interface ToolDefinition {
-    name: string
-    description: string
-    parameters: ToolParameters
-    handler: ToolHandler
-    templateOnly?: boolean
-  }
-
-  export interface ToolReference {
-    name: string
-    description: string
-    parameters: ToolParameters
-    handler: ToolHandler
-    _originalHandler?: ToolHandler
-    templateOnly?: boolean
-  }
-
-  export interface AgentConfig {
-    name: string
-    slug: string
-    version: string
-    description?: string
-    systemPrompt: string | (() => string | Promise<string>)
-    model?: ModelConfig
-    tools?: string[]
-    firstMessageSuggestions?: string[]
-    threadContextParams?: Array<{
-      name: string
-      type: 'string' | 'number' | 'boolean'
-      required?: boolean
-      description?: string
-    }>
-  }
-
-  export interface JSONSchemaProperty {
-    type: 'string' | 'number' | 'boolean' | 'array' | 'object'
-    description?: string
-    format?: string
-    enum?: string[]
-    items?: JSONSchemaProperty
-    properties?: Record<string, JSONSchemaProperty>
-    required?: string[]
-  }
-
-  export interface JSONSchema {
-    type: 'object'
-    properties: Record<string, JSONSchemaProperty>
-    required?: string[]
-  }
-
-  export interface EntityTypeConfig {
-    name: string
-    slug: string
-    schema: JSONSchema
-    searchFields?: string[]
-    displayConfig?: {
-      titleField?: string
-      subtitleField?: string
-      descriptionField?: string
-    }
-    boundToRole?: string
-    userIdField?: string
-  }
-
-  export interface PolicyConfig {
-    resource: string
-    actions: string[]
-    effect: 'allow' | 'deny'
-  }
-
-  export interface ScopeRuleConfig {
-    entityType: string
-    field: string
-    operator: 'eq' | 'neq' | 'in' | 'contains'
-    value: string
-  }
-
-  export interface FieldMaskConfig {
-    entityType: string
-    fieldPath: string
-    maskType: 'hide' | 'redact'
-    maskConfig?: Record<string, unknown>
-  }
-
-  export interface RoleConfig {
-    name: string
-    description?: string
-    policies: PolicyConfig[]
-    scopeRules?: ScopeRuleConfig[]
-    fieldMasks?: FieldMaskConfig[]
-  }
-
-  export interface TriggerAction {
-    tool: string
-    args: Record<string, unknown>
-    as?: string
-  }
-
-  export interface TriggerConfig {
-    name: string
-    slug: string
-    description?: string
-    on: {
-      entityType: string
-      action: 'created' | 'updated' | 'deleted'
-      condition?: Record<string, unknown>
-    }
-    actions: TriggerAction[]
-    schedule?: {
-      delay?: number
-      at?: string
-      offset?: number
-      cancelPrevious?: boolean
-    }
-    retry?: {
-      maxAttempts?: number
-      backoffMs?: number
-    }
-  }
-
-  export function defineAgent(config: AgentConfig): AgentConfig
-  export function defineRole(config: RoleConfig): RoleConfig
-  export function defineData(config: EntityTypeConfig): EntityTypeConfig
-  /** @deprecated Use defineData instead */
-  export function defineEntityType(config: EntityTypeConfig): never
-  export function defineTrigger(config: TriggerConfig): TriggerConfig
-  export function defineTools(tools: ToolDefinition[]): ToolReference[]
+const TYPE_DECLARATIONS = `export interface ModelConfig {
+  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
+  name: string
+  temperature?: number
+  maxTokens?: number
+  apiKey?: string
 }
+
+export interface ToolParameters {
+  type: 'object'
+  properties: Record<string, ParameterDefinition>
+  required?: string[]
+}
+
+export interface ParameterDefinition {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object'
+  description?: string
+  enum?: (string | number)[]
+  items?: ParameterDefinition
+  properties?: Record<string, ParameterDefinition>
+}
+
+export interface ToolContext {
+  organizationId?: string
+  actorId?: string
+  actorType?: string
+  conversationId?: string
+  userId?: string
+}
+
+export interface StruereSDK {
+  entity: {
+    create: (args: Record<string, unknown>) => Promise<any>
+    get: (args: Record<string, unknown>) => Promise<any>
+    query: (args: Record<string, unknown>) => Promise<any>
+    update: (args: Record<string, unknown>) => Promise<any>
+    delete: (args: Record<string, unknown>) => Promise<any>
+    link: (args: Record<string, unknown>) => Promise<any>
+    unlink: (args: Record<string, unknown>) => Promise<any>
+  }
+  event: {
+    emit: (args: Record<string, unknown>) => Promise<any>
+    query: (args: Record<string, unknown>) => Promise<any>
+  }
+  whatsapp: {
+    send: (args: Record<string, unknown>) => Promise<any>
+    sendTemplate: (args: Record<string, unknown>) => Promise<any>
+    sendInteractive: (args: Record<string, unknown>) => Promise<any>
+    sendMedia: (args: Record<string, unknown>) => Promise<any>
+    listTemplates: (args: Record<string, unknown>) => Promise<any>
+    getConversation: (args: Record<string, unknown>) => Promise<any>
+    getStatus: (args: Record<string, unknown>) => Promise<any>
+  }
+  calendar: {
+    list: (args: Record<string, unknown>) => Promise<any>
+    create: (args: Record<string, unknown>) => Promise<any>
+    update: (args: Record<string, unknown>) => Promise<any>
+    delete: (args: Record<string, unknown>) => Promise<any>
+    freeBusy: (args: Record<string, unknown>) => Promise<any>
+  }
+  airtable: {
+    listBases: (args: Record<string, unknown>) => Promise<any>
+    listTables: (args: Record<string, unknown>) => Promise<any>
+    listRecords: (args: Record<string, unknown>) => Promise<any>
+    getRecord: (args: Record<string, unknown>) => Promise<any>
+    createRecords: (args: Record<string, unknown>) => Promise<any>
+    updateRecords: (args: Record<string, unknown>) => Promise<any>
+    deleteRecords: (args: Record<string, unknown>) => Promise<any>
+  }
+  email: {
+    send: (args: Record<string, unknown>) => Promise<any>
+  }
+  payment: {
+    create: (args: Record<string, unknown>) => Promise<any>
+    getStatus: (args: Record<string, unknown>) => Promise<any>
+  }
+  agent: {
+    chat: (args: Record<string, unknown>) => Promise<any>
+  }
+}
+
+export type ToolHandler = (params: Record<string, unknown>, context: ToolContext, struere: StruereSDK, fetch: typeof globalThis.fetch) => Promise<any>
+
+export interface ToolDefinition {
+  name: string
+  description: string
+  parameters: ToolParameters
+  handler: ToolHandler
+  templateOnly?: boolean
+}
+
+export interface ToolReference {
+  name: string
+  description: string
+  parameters: ToolParameters
+  handler: ToolHandler
+  _originalHandler?: ToolHandler
+  templateOnly?: boolean
+}
+
+export interface AgentConfig {
+  name: string
+  slug: string
+  version: string
+  description?: string
+  systemPrompt: string | (() => string | Promise<string>)
+  model?: ModelConfig
+  tools?: string[]
+  firstMessageSuggestions?: string[]
+  threadContextParams?: Array<{
+    name: string
+    type: 'string' | 'number' | 'boolean'
+    required?: boolean
+    description?: string
+  }>
+}
+
+export interface JSONSchemaProperty {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object'
+  description?: string
+  format?: string
+  enum?: string[]
+  items?: JSONSchemaProperty
+  properties?: Record<string, JSONSchemaProperty>
+  required?: string[]
+}
+
+export interface JSONSchema {
+  type: 'object'
+  properties: Record<string, JSONSchemaProperty>
+  required?: string[]
+}
+
+export interface EntityTypeConfig {
+  name: string
+  slug: string
+  schema: JSONSchema
+  searchFields?: string[]
+  displayConfig?: {
+    titleField?: string
+    subtitleField?: string
+    descriptionField?: string
+  }
+  boundToRole?: string
+  userIdField?: string
+}
+
+export interface PolicyConfig {
+  resource: string
+  actions: string[]
+  effect: 'allow' | 'deny'
+}
+
+export interface ScopeRuleConfig {
+  entityType: string
+  field: string
+  operator: 'eq' | 'neq' | 'in' | 'contains'
+  value: string
+}
+
+export interface FieldMaskConfig {
+  entityType: string
+  fieldPath: string
+  maskType: 'hide' | 'redact'
+  maskConfig?: Record<string, unknown>
+}
+
+export interface RoleConfig {
+  name: string
+  description?: string
+  policies: PolicyConfig[]
+  scopeRules?: ScopeRuleConfig[]
+  fieldMasks?: FieldMaskConfig[]
+}
+
+export interface TriggerAction {
+  tool: string
+  args: Record<string, unknown>
+  as?: string
+}
+
+export interface TriggerConfig {
+  name: string
+  slug: string
+  description?: string
+  on: {
+    entityType: string
+    action: 'created' | 'updated' | 'deleted'
+    condition?: Record<string, unknown>
+  }
+  actions: TriggerAction[]
+  schedule?: {
+    delay?: number
+    at?: string
+    offset?: number
+    cancelPrevious?: boolean
+  }
+  retry?: {
+    maxAttempts?: number
+    backoffMs?: number
+  }
+}
+
+export function defineAgent(config: AgentConfig): AgentConfig
+export function defineRole(config: RoleConfig): RoleConfig
+export function defineData(config: EntityTypeConfig): EntityTypeConfig
+export function defineEntityType(config: EntityTypeConfig): never
+export function defineTrigger(config: TriggerConfig): TriggerConfig
+export function defineTools(tools: ToolDefinition[]): ToolReference[]
 `
 
 export function generateTypeDeclarations(cwd: string): void {

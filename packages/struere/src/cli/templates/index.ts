@@ -14,7 +14,7 @@ export function getTsConfig(): string {
         rootDir: '.',
         types: ['bun-types'],
         paths: {
-          struere: ['./.struere/index.js'],
+          struere: ['./.struere/index.d.ts'],
         },
       },
       include: ['**/*.ts'],

@@ -23,64 +23,64 @@ export interface ToolParameters {
 
 export interface ParameterDefinition {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object'
-  description: string
-  enum?: string[]
+  description?: string
+  enum?: (string | number)[]
   items?: ParameterDefinition
   properties?: Record<string, ParameterDefinition>
 }
 
 export interface StruereSDK {
   entity: {
-    create: (args: Record<string, unknown>) => Promise<unknown>
-    get: (args: Record<string, unknown>) => Promise<unknown>
-    query: (args: Record<string, unknown>) => Promise<unknown>
-    update: (args: Record<string, unknown>) => Promise<unknown>
-    delete: (args: Record<string, unknown>) => Promise<unknown>
-    link: (args: Record<string, unknown>) => Promise<unknown>
-    unlink: (args: Record<string, unknown>) => Promise<unknown>
+    create: (args: Record<string, unknown>) => Promise<any>
+    get: (args: Record<string, unknown>) => Promise<any>
+    query: (args: Record<string, unknown>) => Promise<any>
+    update: (args: Record<string, unknown>) => Promise<any>
+    delete: (args: Record<string, unknown>) => Promise<any>
+    link: (args: Record<string, unknown>) => Promise<any>
+    unlink: (args: Record<string, unknown>) => Promise<any>
   }
   event: {
-    emit: (args: Record<string, unknown>) => Promise<unknown>
-    query: (args: Record<string, unknown>) => Promise<unknown>
+    emit: (args: Record<string, unknown>) => Promise<any>
+    query: (args: Record<string, unknown>) => Promise<any>
   }
   whatsapp: {
-    send: (args: Record<string, unknown>) => Promise<unknown>
-    sendTemplate: (args: Record<string, unknown>) => Promise<unknown>
-    sendInteractive: (args: Record<string, unknown>) => Promise<unknown>
-    sendMedia: (args: Record<string, unknown>) => Promise<unknown>
-    listTemplates: (args: Record<string, unknown>) => Promise<unknown>
-    getConversation: (args: Record<string, unknown>) => Promise<unknown>
-    getStatus: (args: Record<string, unknown>) => Promise<unknown>
+    send: (args: Record<string, unknown>) => Promise<any>
+    sendTemplate: (args: Record<string, unknown>) => Promise<any>
+    sendInteractive: (args: Record<string, unknown>) => Promise<any>
+    sendMedia: (args: Record<string, unknown>) => Promise<any>
+    listTemplates: (args: Record<string, unknown>) => Promise<any>
+    getConversation: (args: Record<string, unknown>) => Promise<any>
+    getStatus: (args: Record<string, unknown>) => Promise<any>
   }
   calendar: {
-    list: (args: Record<string, unknown>) => Promise<unknown>
-    create: (args: Record<string, unknown>) => Promise<unknown>
-    update: (args: Record<string, unknown>) => Promise<unknown>
-    delete: (args: Record<string, unknown>) => Promise<unknown>
-    freeBusy: (args: Record<string, unknown>) => Promise<unknown>
+    list: (args: Record<string, unknown>) => Promise<any>
+    create: (args: Record<string, unknown>) => Promise<any>
+    update: (args: Record<string, unknown>) => Promise<any>
+    delete: (args: Record<string, unknown>) => Promise<any>
+    freeBusy: (args: Record<string, unknown>) => Promise<any>
   }
   airtable: {
-    listBases: (args: Record<string, unknown>) => Promise<unknown>
-    listTables: (args: Record<string, unknown>) => Promise<unknown>
-    listRecords: (args: Record<string, unknown>) => Promise<unknown>
-    getRecord: (args: Record<string, unknown>) => Promise<unknown>
-    createRecords: (args: Record<string, unknown>) => Promise<unknown>
-    updateRecords: (args: Record<string, unknown>) => Promise<unknown>
-    deleteRecords: (args: Record<string, unknown>) => Promise<unknown>
+    listBases: (args: Record<string, unknown>) => Promise<any>
+    listTables: (args: Record<string, unknown>) => Promise<any>
+    listRecords: (args: Record<string, unknown>) => Promise<any>
+    getRecord: (args: Record<string, unknown>) => Promise<any>
+    createRecords: (args: Record<string, unknown>) => Promise<any>
+    updateRecords: (args: Record<string, unknown>) => Promise<any>
+    deleteRecords: (args: Record<string, unknown>) => Promise<any>
   }
   email: {
-    send: (args: Record<string, unknown>) => Promise<unknown>
+    send: (args: Record<string, unknown>) => Promise<any>
   }
   payment: {
-    create: (args: Record<string, unknown>) => Promise<unknown>
-    getStatus: (args: Record<string, unknown>) => Promise<unknown>
+    create: (args: Record<string, unknown>) => Promise<any>
+    getStatus: (args: Record<string, unknown>) => Promise<any>
   }
   agent: {
-    chat: (args: Record<string, unknown>) => Promise<unknown>
+    chat: (args: Record<string, unknown>) => Promise<any>
   }
 }
 
-export type ToolHandler = (params: Record<string, unknown>, context: ToolContext, struere: StruereSDK, fetch: typeof globalThis.fetch) => Promise<unknown>
+export type ToolHandler = (params: Record<string, unknown>, context: ToolContext, struere: StruereSDK, fetch: typeof globalThis.fetch) => Promise<any>
 
 export interface ToolContext {
   organizationId?: string
@@ -227,7 +227,7 @@ export interface PolicyConfig {
 export interface ScopeRuleConfig {
   entityType: string
   field: string
-  operator: 'eq' | 'ne' | 'in' | 'contains'
+  operator: 'eq' | 'neq' | 'in' | 'contains'
   value: string
 }
 
