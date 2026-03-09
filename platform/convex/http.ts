@@ -459,6 +459,7 @@ http.route({
     const eventType = request.headers.get("X-Webhook-Event") ?? ""
     const parsed = JSON.parse(rawBody) as {
       phone_number_id?: string
+      display_phone_number?: string
       customer?: { id?: string }
       project?: { id?: string }
     }
@@ -471,6 +472,7 @@ http.route({
         await ctx.runMutation(handlePhoneConnectedRef, {
           kapsoCustomerId,
           kapsoPhoneNumberId: phoneNumberId,
+          phoneNumber: parsed.display_phone_number,
         })
       }
     }
