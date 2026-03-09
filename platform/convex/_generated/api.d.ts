@@ -56,6 +56,7 @@ import type * as lib_whatsappPricing from "../lib/whatsappPricing.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_addEnvironment from "../migrations/addEnvironment.js";
 import type * as migrations_centsToMicrodollars from "../migrations/centsToMicrodollars.js";
+import type * as migrations_cleanupAllWhatsApp from "../migrations/cleanupAllWhatsApp.js";
 import type * as migrations_clearStaleReservations from "../migrations/clearStaleReservations.js";
 import type * as migrations_debugTemplateOnly from "../migrations/debugTemplateOnly.js";
 import type * as migrations_debugTemplates from "../migrations/debugTemplates.js";
@@ -63,6 +64,7 @@ import type * as migrations_deleteBaileysConnections from "../migrations/deleteB
 import type * as migrations_initReservedCredits from "../migrations/initReservedCredits.js";
 import type * as migrations_migrateOwnedTemplates from "../migrations/migrateOwnedTemplates.js";
 import type * as migrations_multiNumberWhatsApp from "../migrations/multiNumberWhatsApp.js";
+import type * as migrations_registerMathlandTemplates from "../migrations/registerMathlandTemplates.js";
 import type * as migrations_syncKapsoTemplates from "../migrations/syncKapsoTemplates.js";
 import type * as migrations_syncKapsoTemplatesHelper from "../migrations/syncKapsoTemplatesHelper.js";
 import type * as organizations from "../organizations.js";
@@ -145,6 +147,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   "migrations/addEnvironment": typeof migrations_addEnvironment;
   "migrations/centsToMicrodollars": typeof migrations_centsToMicrodollars;
+  "migrations/cleanupAllWhatsApp": typeof migrations_cleanupAllWhatsApp;
   "migrations/clearStaleReservations": typeof migrations_clearStaleReservations;
   "migrations/debugTemplateOnly": typeof migrations_debugTemplateOnly;
   "migrations/debugTemplates": typeof migrations_debugTemplates;
@@ -152,6 +155,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/initReservedCredits": typeof migrations_initReservedCredits;
   "migrations/migrateOwnedTemplates": typeof migrations_migrateOwnedTemplates;
   "migrations/multiNumberWhatsApp": typeof migrations_multiNumberWhatsApp;
+  "migrations/registerMathlandTemplates": typeof migrations_registerMathlandTemplates;
   "migrations/syncKapsoTemplates": typeof migrations_syncKapsoTemplates;
   "migrations/syncKapsoTemplatesHelper": typeof migrations_syncKapsoTemplatesHelper;
   organizations: typeof organizations;
