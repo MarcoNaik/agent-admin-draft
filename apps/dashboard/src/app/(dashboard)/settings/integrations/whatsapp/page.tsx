@@ -464,7 +464,7 @@ function PhoneNumberCard({
                   </>
                 )}
               </div>
-              {connection.label && connection.phoneNumber && (
+              {connection.phoneNumber && (
                 <p className="text-xs text-content-tertiary">+{connection.phoneNumber}</p>
               )}
               {connection.lastConnectedAt && connection.status === "connected" && (
