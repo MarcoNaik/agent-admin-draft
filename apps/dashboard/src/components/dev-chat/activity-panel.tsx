@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useCallback } from "react"
+import { useAnimateNew } from "@/hooks/use-animate-new"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -80,6 +81,9 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
     return items.sort((a, b) => b.timestamp - a.timestamp)
   }, [executions, events, triggerRuns, threadStartTime])
 
+  const feedKeyFn = useCallback((item: ActivityFeedItem) => `${item.type}-${item.id}`, [])
+  const newKeys = useAnimateNew(feedItems, feedKeyFn)
+
   return (
     <div className={cn(
       "flex flex-col border-r bg-background-secondary h-full overflow-hidden transition-[width] ease-out-soft duration-300",
@@ -103,9 +107,12 @@ export function ActivityPanel({ open, threadId, onClose }: ActivityPanelProps) {
             </div>
           ) : (
             <div className="divide-y">
-              {feedItems.map((item) => (
-                <ActivityItem key={`${item.type}-${item.id}`} item={item} />
-              ))}
+              {feedItems.map((item) => {
+                const key = `${item.type}-${item.id}`
+                return (
+                  <ActivityItem key={key} item={item} isNew={newKeys.has(key)} />
+                )
+              })}
             </div>
           )}
         </div>

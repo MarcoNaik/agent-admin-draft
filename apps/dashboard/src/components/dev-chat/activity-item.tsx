@@ -148,9 +148,9 @@ function ExecutionActivityItem({ data }: { data: any }) {
   )
 }
 
-export function ActivityItem({ item }: { item: ActivityFeedItem }) {
+export function ActivityItem({ item, isNew }: { item: ActivityFeedItem; isNew?: boolean }) {
   return (
-    <div className="px-3 py-2">
+    <div className={cn("px-3 py-2", isNew && "animate-feed-in")}>
       {item.type === "event" && <EventActivityItem data={item.data} />}
       {item.type === "trigger" && <TriggerActivityItem data={item.data} />}
       {item.type === "execution" && <ExecutionActivityItem data={item.data} />}
