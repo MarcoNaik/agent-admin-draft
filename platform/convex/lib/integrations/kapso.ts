@@ -46,6 +46,21 @@ async function kapsoPlatformRequest(
   return response
 }
 
+export async function findKapsoCustomer(
+  externalId: string
+): Promise<{ id: string } | null> {
+  const url = `${PLATFORM_API_BASE}/customers?external_customer_id=${encodeURIComponent(externalId)}`
+  const response = await fetch(url, {
+    headers: {
+      "X-API-Key": getKapsoApiKey(),
+    },
+  })
+  if (!response.ok) return null
+  const json = (await response.json()) as { data: Array<{ id: string }> }
+  if (json.data && json.data.length > 0) return json.data[0]
+  return null
+}
+
 export async function createKapsoCustomer(
   name: string,
   externalId: string
@@ -58,6 +73,15 @@ export async function createKapsoCustomer(
   })
   const json = (await response.json()) as { data: { id: string } }
   return json.data
+}
+
+export async function findOrCreateKapsoCustomer(
+  name: string,
+  externalId: string
+): Promise<{ id: string }> {
+  const existing = await findKapsoCustomer(externalId)
+  if (existing) return existing
+  return await createKapsoCustomer(name, externalId)
 }
 
 export async function createSetupLink(
