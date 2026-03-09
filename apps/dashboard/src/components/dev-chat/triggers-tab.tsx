@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import {
   ChevronRight,
   ChevronDown,
@@ -15,7 +15,6 @@ import {
   Loader2,
   Timer,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { formatRelativeTime, formatDuration } from "@/lib/format"
@@ -48,13 +47,26 @@ function StatusIcon({ status }: { status: string }) {
   }
 }
 
-function formatCondition(condition: unknown): string {
+function humanizeAction(action: string): string {
+  const map: Record<string, string> = {
+    created: "is created",
+    updated: "is updated",
+    deleted: "is deleted",
+  }
+  return map[action] || action
+}
+
+function humanizeCondition(condition: unknown): string {
   if (typeof condition === "string") return condition
   if (typeof condition !== "object" || condition === null) return String(condition)
   const obj = condition as Record<string, unknown>
   return Object.entries(obj)
-    .map(([k, v]) => `${k} = ${typeof v === "string" ? v : JSON.stringify(v)}`)
-    .join(", ")
+    .map(([k, v]) => {
+      const field = k.replace(/^data\./, "").replace(/([A-Z])/g, " $1").replace(/_/g, " ").toLowerCase().trim()
+      const value = typeof v === "string" ? v : JSON.stringify(v)
+      return `${field} is "${value}"`
+    })
+    .join(" and ")
 }
 
 function formatDetail(data: unknown, depth = 0): React.ReactNode {
@@ -87,6 +99,28 @@ function formatDetail(data: unknown, depth = 0): React.ReactNode {
     )
   }
   return <span>{String(data)}</span>
+}
+
+function formatToolName(tool: string): string {
+  const parts = tool.split(".")
+  if (parts.length === 2) {
+    return parts[1].replace(/([A-Z])/g, " $1").replace(/^\w/, c => c.toUpperCase()).trim()
+  }
+  return tool
+}
+
+function RunCountSummary({ runs }: { runs: any[] }) {
+  if (runs.length === 0) return null
+  const failed = runs.filter(r => r.status === "failed" || r.status === "dead").length
+  const running = runs.filter(r => r.status === "running" || r.status === "pending").length
+
+  return (
+    <div className="flex items-center gap-1.5 text-[10px] text-content-tertiary">
+      <span>{runs.length} run{runs.length !== 1 ? "s" : ""}</span>
+      {running > 0 && <span className="text-warning">{running} active</span>}
+      {failed > 0 && <span className="text-destructive">{failed} failed</span>}
+    </div>
+  )
 }
 
 function TriggerRunItem({ run }: { run: any }) {
@@ -158,78 +192,155 @@ function TriggerRunItem({ run }: { run: any }) {
   )
 }
 
-function TriggerCard({
+function TriggerRow({
   trigger,
   runs,
 }: {
   trigger: any
   runs: any[]
 }) {
+  const [expanded, setExpanded] = useState(false)
+  const [showRuns, setShowRuns] = useState(false)
   const recentRuns = runs.slice(0, 5)
+  const actionCount = trigger.actions?.length ?? 0
+
+  const toggle = useCallback(() => setExpanded(prev => !prev), [])
+  const toggleRuns = useCallback(() => setShowRuns(prev => !prev), [])
+
+  const hasDetails = trigger.condition || trigger.schedule || trigger.retry || actionCount > 0
 
   return (
-    <div className="px-3 py-2.5 space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium truncate">{trigger.name}</span>
+    <div className="px-3">
+      <button
+        type="button"
+        onClick={toggle}
+        className="w-full py-2.5 flex items-center gap-2 text-left group"
+      >
         <div className={cn(
-          "h-1.5 w-1.5 rounded-full shrink-0",
-          trigger.enabled ? "bg-success" : "bg-content-tertiary"
+          "h-1.5 w-1.5 rounded-full shrink-0 mt-0.5",
+          trigger.enabled ? "bg-success" : "bg-content-tertiary/40"
         )} />
-      </div>
 
-      <div className="text-[11px] text-content-secondary">
-        <span className="text-content-tertiary">on </span>
-        <span className="text-content-primary font-medium">{trigger.entityType}</span>
-        <span className="text-content-tertiary"> . </span>
-        <span className="text-content-primary font-medium">{trigger.action}</span>
-      </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium truncate">{trigger.name}</span>
+          </div>
+          <p className="text-[11px] text-content-tertiary mt-0.5 truncate">
+            When {trigger.entityType} {humanizeAction(trigger.action)}
+            {trigger.condition && (
+              <span> &middot; {humanizeCondition(trigger.condition)}</span>
+            )}
+          </p>
+        </div>
 
-      {trigger.condition && (
-        <p className="text-[10px] text-content-tertiary truncate">
-          where {formatCondition(trigger.condition)}
-        </p>
-      )}
-
-      {trigger.schedule && (
-        <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
-          <Clock className="h-2.5 w-2.5 shrink-0" />
-          {trigger.schedule.delay && (
-            <span>delay {formatDuration(trigger.schedule.delay)}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {actionCount > 0 && (
+            <span className="text-[10px] text-content-tertiary">
+              {actionCount} step{actionCount !== 1 ? "s" : ""}
+            </span>
           )}
-          {trigger.schedule.at && <span>at {trigger.schedule.at}</span>}
-          {trigger.schedule.offset && (
-            <span>offset {formatDuration(trigger.schedule.offset)}</span>
+          {hasDetails && (
+            expanded
+              ? <ChevronDown className="h-3 w-3 text-content-tertiary" />
+              : <ChevronRight className="h-3 w-3 text-content-tertiary group-hover:text-content-secondary transition-colors" />
           )}
-          {trigger.schedule.cancelPrevious && <span>(cancels prev)</span>}
         </div>
-      )}
+      </button>
 
-      {trigger.retry && (
-        <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
-          <Repeat className="h-2.5 w-2.5 shrink-0" />
-          <span>
-            {trigger.retry.maxAttempts} retries
-            {trigger.retry.backoffMs && `, ${formatDuration(trigger.retry.backoffMs)} backoff`}
-          </span>
-        </div>
-      )}
+      {expanded && (
+        <div className="pb-2.5 pl-[14px] space-y-2">
+          {trigger.schedule && (
+            <div className="flex items-center gap-1.5 text-[11px] text-content-secondary">
+              <Clock className="h-3 w-3 shrink-0 text-content-tertiary" />
+              <span>
+                {trigger.schedule.delay && `Waits ${formatDuration(trigger.schedule.delay)}`}
+                {trigger.schedule.at && `Runs at ${trigger.schedule.at}`}
+                {trigger.schedule.offset && `, offset ${formatDuration(trigger.schedule.offset)}`}
+                {trigger.schedule.cancelPrevious && " (replaces previous)"}
+              </span>
+            </div>
+          )}
 
-      {trigger.actions && trigger.actions.length > 0 && (
-        <div className="text-[10px] text-content-tertiary">
-          <span>runs </span>
-          <span className="text-content-secondary font-mono">
-            {trigger.actions.map((a: any) => a.tool).join(" → ")}
-          </span>
-        </div>
-      )}
+          {trigger.retry && (
+            <div className="flex items-center gap-1.5 text-[11px] text-content-secondary">
+              <Repeat className="h-3 w-3 shrink-0 text-content-tertiary" />
+              <span>
+                Retries up to {trigger.retry.maxAttempts} times
+                {trigger.retry.backoffMs && `, ${formatDuration(trigger.retry.backoffMs)} between`}
+              </span>
+            </div>
+          )}
 
-      {recentRuns.length > 0 && (
-        <div className="pt-1.5 mt-0.5 border-t border-border/50 space-y-1">
-          {recentRuns.map((run: any) => (
-            <TriggerRunItem key={run._id} run={run} />
-          ))}
+          {actionCount > 0 && (
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-content-tertiary">
+                Steps
+              </span>
+              <ol className="space-y-0.5">
+                {trigger.actions.map((a: any, i: number) => (
+                  <li key={i} className="flex items-baseline gap-1.5 text-[11px]">
+                    <span className="text-content-tertiary shrink-0 tabular-nums w-3 text-right">{i + 1}.</span>
+                    <span className="text-content-secondary">{formatToolName(a.tool)}</span>
+                    <span className="text-[10px] text-content-tertiary font-mono">{a.tool}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {recentRuns.length > 0 && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={toggleRuns}
+                className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content-secondary transition-colors"
+              >
+                {showRuns
+                  ? <ChevronDown className="h-2.5 w-2.5" />
+                  : <ChevronRight className="h-2.5 w-2.5" />
+                }
+                <RunCountSummary runs={recentRuns} />
+              </button>
+              {showRuns && (
+                <div className="mt-1.5 space-y-1 pl-0.5">
+                  {recentRuns.map((run: any) => (
+                    <TriggerRunItem key={run._id} run={run} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+function EntityGroup({
+  entityType,
+  triggers,
+  runsBySlug,
+}: {
+  entityType: string
+  triggers: any[]
+  runsBySlug: Map<string, any[]>
+}) {
+  return (
+    <div>
+      <div className="px-3 pt-3 pb-1">
+        <span className="text-[10px] uppercase tracking-wider text-content-tertiary">
+          {entityType}
+        </span>
+      </div>
+      <div className="divide-y divide-border/50">
+        {triggers.map((trigger: any) => (
+          <TriggerRow
+            key={trigger._id}
+            trigger={trigger}
+            runs={runsBySlug.get(trigger.slug) ?? []}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -252,6 +363,24 @@ export function TriggersTab() {
     }
     return map
   }, [runs])
+
+  const groupedByEntity = useMemo(() => {
+    if (!triggers) return []
+    const map = new Map<string, any[]>()
+    for (const trigger of triggers as any[]) {
+      const key = trigger.entityType ?? "other"
+      const existing = map.get(key)
+      if (existing) {
+        existing.push(trigger)
+      } else {
+        map.set(key, [trigger])
+      }
+    }
+    return Array.from(map.entries()).map(([entityType, items]) => ({
+      entityType,
+      triggers: items,
+    }))
+  }, [triggers])
 
   const loading = triggers === undefined || runs === undefined
 
@@ -284,15 +413,28 @@ export function TriggersTab() {
           {stats.failed > 0 && <span className="text-destructive">{stats.failed} failed</span>}
         </div>
       )}
-      <div className="divide-y">
-        {(triggers as any[]).map((trigger: any) => (
-          <TriggerCard
-            key={trigger._id}
-            trigger={trigger}
-            runs={runsBySlug.get(trigger.slug) ?? []}
-          />
-        ))}
-      </div>
+      {groupedByEntity.length === 1 ? (
+        <div className="divide-y divide-border/50">
+          {groupedByEntity[0].triggers.map((trigger: any) => (
+            <TriggerRow
+              key={trigger._id}
+              trigger={trigger}
+              runs={runsBySlug.get(trigger.slug) ?? []}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y">
+          {groupedByEntity.map(({ entityType, triggers: groupTriggers }) => (
+            <EntityGroup
+              key={entityType}
+              entityType={entityType}
+              triggers={groupTriggers}
+              runsBySlug={runsBySlug}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
