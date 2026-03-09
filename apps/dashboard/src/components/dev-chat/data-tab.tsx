@@ -21,6 +21,7 @@ import {
 import { cn, formatDate } from "@/lib/utils"
 import { formatRelativeTime } from "@/lib/format"
 import { useEntityTypes, useEntities } from "@/hooks/use-entities"
+import { useAnimateNew, idKeyFn } from "@/hooks/use-animate-new"
 
 function getSchemaFields(
   schema: unknown
@@ -242,6 +243,7 @@ function EntityContent({
   view: "table" | "card"
 }) {
   const entities = useEntities(entityType.slug, "development")
+  const newEntityKeys = useAnimateNew(entities, idKeyFn)
   const fields = getSchemaFields(entityType.schema)
   const fieldTypeMap = new Map(fields.map((f) => [f.name, f.type]))
 
@@ -286,7 +288,10 @@ function EntityContent({
             {entities.map((entity: any) => (
               <tr
                 key={entity._id}
-                className="border-b last:border-b-0 hover:bg-background transition-colors ease-out-soft"
+                className={cn(
+                  "border-b last:border-b-0 hover:bg-background transition-colors ease-out-soft",
+                  newEntityKeys.has(entity._id) && "animate-highlight-new"
+                )}
               >
                 {listFields.map((field) => (
                   <td key={field} className="px-2 py-1 max-w-[120px]">
@@ -326,7 +331,7 @@ function EntityContent({
           entity.data?.email ??
           entity._id
         return (
-          <div key={entity._id} className="px-3 py-2">
+          <div key={entity._id} className={cn("px-3 py-2", newEntityKeys.has(entity._id) && "animate-highlight-new")}>
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-xs font-medium truncate">
                 {String(displayName)}
