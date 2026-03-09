@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
 import { query, mutation } from "./_generated/server"
-import { getAuthContextForOrg } from "./lib/auth"
+import { getAuthContextForOrg, requireAuth } from "./lib/auth"
 import { buildSearchText } from "./lib/utils"
 import {
   buildActorContext,
@@ -764,5 +764,166 @@ export const getRelated = query({
     )
 
     return relatedEntities.filter((e) => e !== null)
+  },
+})
+
+export const searchByEmail = query({
+  args: {
+    entityTypeId: v.id("entityTypes"),
+    email: v.string(),
+    environment: environmentValidator,
+  },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const normalizedEmail = args.email.toLowerCase()
+
+    const entities = await ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) =>
+        q
+          .eq("organizationId", auth.organizationId)
+          .eq("environment", args.environment)
+          .eq("entityTypeId", args.entityTypeId)
+      )
+      .collect()
+
+    return entities.filter(
+      (e) =>
+        !e.deletedAt &&
+        typeof e.data?.email === "string" &&
+        e.data.email.toLowerCase() === normalizedEmail
+    )
+  },
+})
+
+export const getByUserIdField = query({
+  args: {
+    entityTypeId: v.id("entityTypes"),
+    userClerkId: v.string(),
+    environment: environmentValidator,
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+
+    const entityType = await ctx.db.get(args.entityTypeId)
+    if (!entityType || !entityType.userIdField) {
+      return null
+    }
+
+    const userIdField = entityType.userIdField
+
+    const entities = await ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) =>
+        q
+          .eq("organizationId", auth.organizationId)
+          .eq("environment", args.environment)
+          .eq("entityTypeId", args.entityTypeId)
+      )
+      .collect()
+
+    return (
+      entities.find(
+        (e) => !e.deletedAt && e.data?.[userIdField] === args.userClerkId
+      ) ?? null
+    )
+  },
+})
+
+export const linkUserToEntity = mutation({
+  args: {
+    entityId: v.id("entities"),
+    userId: v.id("users"),
+    environment: environmentValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+
+    const entity = await ctx.db.get(args.entityId)
+    if (!entity || entity.deletedAt || entity.organizationId !== auth.organizationId) {
+      throw new Error("Entity not found")
+    }
+
+    const entityType = await ctx.db.get(entity.entityTypeId)
+    if (!entityType || !entityType.userIdField) {
+      throw new Error("Entity type has no userIdField")
+    }
+
+    const userIdField = entityType.userIdField
+
+    const user = await ctx.db.get(args.userId)
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    const currentValue = entity.data?.[userIdField]
+    if (currentValue && currentValue !== user.clerkUserId) {
+      throw new Error("Entity is already linked to another user")
+    }
+
+    const existingEntities = await ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) =>
+        q
+          .eq("organizationId", auth.organizationId)
+          .eq("environment", args.environment)
+          .eq("entityTypeId", entity.entityTypeId)
+      )
+      .collect()
+
+    const alreadyLinked = existingEntities.find(
+      (e) =>
+        !e.deletedAt &&
+        e._id !== args.entityId &&
+        e.data?.[userIdField] === user.clerkUserId
+    )
+
+    if (alreadyLinked) {
+      throw new Error("User already has a linked entity of this type")
+    }
+
+    await ctx.db.patch(args.entityId, {
+      data: { ...entity.data, [userIdField]: user.clerkUserId },
+    })
+
+    return null
+  },
+})
+
+export const unlinkUserFromEntity = mutation({
+  args: {
+    entityId: v.id("entities"),
+    deleteEntity: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+
+    const entity = await ctx.db.get(args.entityId)
+    if (!entity || entity.deletedAt || entity.organizationId !== auth.organizationId) {
+      throw new Error("Entity not found")
+    }
+
+    const entityType = await ctx.db.get(entity.entityTypeId)
+    if (!entityType || !entityType.userIdField) {
+      throw new Error("Entity type has no userIdField")
+    }
+
+    const userIdField = entityType.userIdField
+
+    if (args.deleteEntity) {
+      await ctx.db.patch(args.entityId, {
+        deletedAt: Date.now(),
+      })
+    } else {
+      await ctx.db.patch(args.entityId, {
+        data: { ...entity.data, [userIdField]: undefined },
+      })
+    }
+
+    return null
   },
 })
