@@ -770,13 +770,12 @@ export const getRelated = query({
 export const searchByEmail = query({
   args: {
     entityTypeId: v.id("entityTypes"),
-    email: v.string(),
+    email: v.optional(v.string()),
     environment: environmentValidator,
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
-    const normalizedEmail = args.email.toLowerCase()
 
     const entities = await ctx.db
       .query("entities")
@@ -788,12 +787,34 @@ export const searchByEmail = query({
       )
       .collect()
 
-    return entities.filter(
-      (e) =>
-        !e.deletedAt &&
-        typeof e.data?.email === "string" &&
-        e.data.email.toLowerCase() === normalizedEmail
-    )
+    const active = entities.filter((e) => !e.deletedAt)
+
+    if (!args.email) {
+      return active.sort((a, b) => {
+        const nameA = (a.data?.name || a.data?.email || "").toLowerCase()
+        const nameB = (b.data?.name || b.data?.email || "").toLowerCase()
+        return nameA.localeCompare(nameB)
+      })
+    }
+
+    const search = args.email.toLowerCase()
+
+    return active.sort((a, b) => {
+      const emailA = typeof a.data?.email === "string" ? a.data.email.toLowerCase() : ""
+      const emailB = typeof b.data?.email === "string" ? b.data.email.toLowerCase() : ""
+
+      const exactA = emailA === search
+      const exactB = emailB === search
+      if (exactA !== exactB) return exactA ? -1 : 1
+
+      const containsA = emailA.includes(search) || search.includes(emailA)
+      const containsB = emailB.includes(search) || search.includes(emailB)
+      if (containsA !== containsB) return containsA ? -1 : 1
+
+      const nameA = (a.data?.name || emailA || "").toLowerCase()
+      const nameB = (b.data?.name || emailB || "").toLowerCase()
+      return nameA.localeCompare(nameB)
+    })
   },
 })
 
