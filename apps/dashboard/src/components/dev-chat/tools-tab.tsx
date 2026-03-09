@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react"
 import { ChevronRight, ChevronDown, Wrench } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAgentWithConfig } from "@/hooks/use-convex-data"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
 interface ToolsTabProps {
@@ -120,7 +121,7 @@ function ToolItem({ tool }: { tool: ToolDef }) {
 }
 
 export function ToolsTab({ agentId }: ToolsTabProps) {
-  const agent = useAgentWithConfig(agentId!)
+  const agent = useQuery(api.agents.getWithConfig, agentId ? { id: agentId } : "skip")
 
   const grouped = useMemo(() => {
     if (!agent?.developmentConfig?.tools) return null
