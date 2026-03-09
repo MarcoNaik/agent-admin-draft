@@ -446,6 +446,7 @@ export const createPendingAssignment = mutation({
     email: v.string(),
     roleId: v.id("roles"),
     environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+    linkedEntityId: v.optional(v.id("entities")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
@@ -461,6 +462,33 @@ export const createPendingAssignment = mutation({
       throw new Error("Cannot assign system roles")
     }
 
+    if (args.linkedEntityId) {
+      const entity = await ctx.db.get(args.linkedEntityId)
+      if (!entity || entity.deletedAt || entity.organizationId !== auth.organizationId) {
+        throw new Error("Linked entity not found")
+      }
+
+      const boundEntityType = await ctx.db
+        .query("entityTypes")
+        .withIndex("by_org_env", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
+        )
+        .filter((q) => q.eq(q.field("boundToRole"), role.name))
+        .first()
+
+      if (!boundEntityType) {
+        throw new Error("Role has no bound entity type")
+      }
+
+      if (entity.entityTypeId !== boundEntityType._id) {
+        throw new Error("Entity type does not match bound entity type")
+      }
+
+      if (entity.environment !== args.environment) {
+        throw new Error("Entity environment does not match")
+      }
+    }
+
     const normalizedEmail = args.email.toLowerCase().trim()
 
     const existing = await ctx.db
@@ -474,6 +502,7 @@ export const createPendingAssignment = mutation({
       await ctx.db.patch(existing._id, {
         roleId: args.roleId,
         environment: args.environment,
+        linkedEntityId: args.linkedEntityId,
         createdBy: auth.userId,
         createdAt: Date.now(),
       })
@@ -485,6 +514,7 @@ export const createPendingAssignment = mutation({
       email: normalizedEmail,
       roleId: args.roleId,
       environment: args.environment,
+      linkedEntityId: args.linkedEntityId,
       createdBy: auth.userId,
       createdAt: Date.now(),
     })
