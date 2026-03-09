@@ -23,7 +23,7 @@ const registerOwnedTemplateRef = makeFunctionReference<"mutation">("whatsapp:reg
 const unregisterOwnedTemplateRef = makeFunctionReference<"mutation">("whatsapp:unregisterOwnedTemplate")
 import { log } from "./lib/logger"
 import {
-  createKapsoCustomer,
+  findOrCreateKapsoCustomer,
   createSetupLink,
   registerProjectWebhook,
   registerPhoneWebhook,
@@ -73,9 +73,10 @@ export const createKapsoSetup = internalAction({
         organizationId: args.organizationId,
       }) as { name: string } | null
 
-      const customer = await createKapsoCustomer(
+      const envScopedId = `${args.organizationId as string}:${args.environment}`
+      const customer = await findOrCreateKapsoCustomer(
         org?.name ?? "Organization",
-        args.organizationId as string
+        envScopedId
       )
       kapsoCustomerId = customer.id
 
