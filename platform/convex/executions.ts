@@ -1,4 +1,5 @@
 import { v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
 import { query, mutation, internalMutation } from "./_generated/server"
 import { getAuthContext } from "./lib/auth"
 
@@ -40,6 +41,48 @@ export const list = query({
       return executions.filter((e) => e.status === args.status)
     }
     return executions
+  },
+})
+
+export const listPaginated = query({
+  args: {
+    agentId: v.optional(v.id("agents")),
+    environment: v.optional(environmentValidator),
+    status: v.optional(
+      v.union(v.literal("success"), v.literal("error"), v.literal("timeout"))
+    ),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "development"
+
+    let q
+    if (args.agentId) {
+      q = ctx.db
+        .query("executions")
+        .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
+    } else {
+      q = ctx.db
+        .query("executions")
+        .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
+    }
+
+    const result = await q.order("desc").paginate(args.paginationOpts)
+
+    if (args.status) {
+      return {
+        ...result,
+        page: result.page.filter((e) => e.status === args.status),
+      }
+    }
+
+    return result
   },
 })
 
