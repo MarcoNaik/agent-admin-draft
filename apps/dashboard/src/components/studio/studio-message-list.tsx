@@ -20,10 +20,12 @@ export function StudioMessageList({ items, turnInProgress }: StudioMessageListPr
 
   if (items.length === 0 && !turnInProgress) {
     return (
-      <div className="flex-1 flex items-center justify-center text-content-tertiary">
-        <div className="text-center space-y-2">
-          <Terminal className="h-8 w-8 mx-auto opacity-50" />
-          <p className="text-sm font-mono">Send a message to begin</p>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center space-y-4 px-8 max-w-sm">
+          <p className="text-lg font-display text-content-primary">What do you want to build?</p>
+          <p className="text-xs text-content-tertiary leading-relaxed">
+            Studio spins up a sandboxed environment with a coding agent. Describe your idea and it will write, execute, and iterate.
+          </p>
         </div>
       </div>
     )
@@ -84,11 +86,8 @@ function MessageRow({ item }: { item: ItemState }) {
 
   if (isUser) {
     return (
-      <div className="py-1">
-        <div className="flex items-start gap-2">
-          <span className="shrink-0 text-ocean font-bold select-none">{">"}</span>
-          <span className="text-content-primary whitespace-pre-wrap">{displayText}</span>
-        </div>
+      <div className="py-1 pl-3 border-l-2 border-ocean/40">
+        <span className="text-content-primary whitespace-pre-wrap">{displayText}</span>
       </div>
     )
   }
@@ -149,6 +148,7 @@ function ToolCallRow({ item }: { item: ItemState }) {
     <div className="py-0.5">
       <button
         onClick={() => hasDetail && setExpanded((v) => !v)}
+        aria-expanded={expanded}
         className={cn(
           "flex items-center gap-2 text-xs w-full text-left group",
           hasDetail && "cursor-pointer hover:text-content-primary",
@@ -187,7 +187,7 @@ function ToolCallRow({ item }: { item: ItemState }) {
       </button>
 
       {expanded && hasDetail && (
-        <div className="ml-5 mt-1 rounded border bg-background-secondary overflow-hidden text-xs">
+        <div className="ml-5 mt-1 rounded border bg-background-tertiary/50 overflow-hidden text-xs">
           {inputPairs && (
             <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-content-secondary">
               {inputPairs.map(([k, v]) => (
@@ -274,6 +274,7 @@ function FileChangeRow({ item }: { item: ItemState }) {
     <div className="py-0.5">
       <button
         onClick={() => hasDiff && setExpanded((v) => !v)}
+        aria-expanded={expanded}
         className={cn(
           "flex items-center gap-2 text-xs w-full text-left",
           hasDiff && "cursor-pointer hover:text-content-primary",
@@ -298,7 +299,7 @@ function FileChangeRow({ item }: { item: ItemState }) {
         )}
       </button>
       {expanded && part.diff && (
-        <div className="ml-5 mt-1 rounded border bg-background-secondary overflow-hidden text-xs">
+        <div className="ml-5 mt-1 rounded border bg-background-tertiary/50 overflow-hidden text-xs">
           <div className="px-3 py-2 overflow-x-auto max-h-64 overflow-y-auto">
             {part.diff.split("\n").map((line, i) => (
               <div
@@ -337,6 +338,7 @@ function ThinkingRow({ item }: { item: ItemState }) {
     <div className="py-0.5">
       <button
         onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
         className="flex items-center gap-2 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
       >
         <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />
@@ -348,7 +350,7 @@ function ThinkingRow({ item }: { item: ItemState }) {
         <span>Thinking{isStreaming ? "..." : ""}</span>
       </button>
       {expanded && text && (
-        <div className="ml-5 mt-1 rounded border bg-background-secondary px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
+        <div className="ml-5 mt-1 rounded border bg-background-tertiary/50 px-3 py-2 text-xs text-content-tertiary whitespace-pre-wrap max-h-48 overflow-y-auto">
           {text}
         </div>
       )}
@@ -363,6 +365,7 @@ function PlanRow({ item }: { item: ItemState }) {
     <div className="py-0.5">
       <button
         onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
         className="flex items-center gap-2 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
       >
         <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />
@@ -391,7 +394,7 @@ function PlanRow({ item }: { item: ItemState }) {
 function ImagePart({ part }: { part: ContentPart }) {
   if (!part.path) return null
   return (
-    <div className="rounded border bg-background-secondary overflow-hidden my-1 max-w-md">
+    <div className="rounded border bg-background-tertiary/50 overflow-hidden my-1 max-w-md">
       <img
         src={part.path}
         alt={part.path}
