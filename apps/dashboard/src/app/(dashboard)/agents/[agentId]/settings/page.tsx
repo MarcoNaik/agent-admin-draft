@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Settings, Key, Trash2, Loader2, Plus, Copy, Check } from "lucide-react"
+import { Settings, Key, Trash2, Loader2, Plus, Copy, Check } from "@/lib/icons"
 import { useAgent, useUpdateAgent, useDeleteAgent, useApiKeys, useCreateApiKey, useDeleteApiKey } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useSettingsTab } from "@/contexts/settings-tab-context"

@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, Copy, Trash2, Key, Loader2 } from "lucide-react"
+import { Plus, Copy, Trash2, Key, Loader2 } from "@/lib/icons"
 import { useApiKeys, useDeleteApiKey } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

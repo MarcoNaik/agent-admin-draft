@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Loader2, ArrowLeft, Plus, Trash2 } from "lucide-react"
+import { Loader2, ArrowLeft, Plus, Trash2 } from "@/lib/icons"
 import { useCreateEvalCase, useEvalSuite, useAgentWithConfig } from "@/hooks/use-convex-data"
 import { AssertionRow, type AssertionType, type AssertionForm } from "@/components/evals/assertion-row"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useOrganizationList, useUser } from "@clerk/nextjs"
-import { Loader2, MessageSquare, Zap, Database, Sparkles } from "lucide-react"
+import { Loader2, MessageSquare, Zap, Database, Sparkles } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useEnsureOrganization } from "@/hooks/use-organizations"

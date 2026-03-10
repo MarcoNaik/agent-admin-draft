@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useReducer } from "react"
-import { Bot, Check, CheckCheck, FlaskConical, Loader2, MessageSquare, User, Phone, Send, AlertCircle, X, FileText, Clock, Paperclip, ImageIcon, Mic, Plus, Minus, Globe, Monitor, Code } from "lucide-react"
+import { Bot, Check, CheckCheck, FlaskConical, Loader2, MessageSquare, User, Phone, Send, AlertCircle, X, FileText, Clock, Paperclip, ImageIcon, Mic, Plus, Minus, Globe, Monitor, Code } from "@/lib/icons"
 import { ToolCallBubble, ToolResultBubble } from "@/components/chat/tool-bubbles"
 import {
   useThreadsWithPreviews,

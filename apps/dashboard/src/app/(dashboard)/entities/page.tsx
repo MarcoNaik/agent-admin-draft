@@ -1,6 +1,6 @@
 "use client"
 
-import { Database, ArrowRight } from "lucide-react"
+import { Database, ArrowRight } from "@/lib/icons"
 import { useEntityTypes } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { EmptyState } from "@/components/empty-state"

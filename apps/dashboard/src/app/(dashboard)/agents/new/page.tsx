@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2 } from "@/lib/icons"
 import { useCreateAgent } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

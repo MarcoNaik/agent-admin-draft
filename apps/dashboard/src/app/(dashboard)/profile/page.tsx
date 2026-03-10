@@ -1,7 +1,7 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { Loader2, User, Mail, Shield } from "lucide-react"
+import { Loader2, User, Mail, Shield } from "@/lib/icons"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
 import { CalendarConnectionCard } from "@/components/calendar-connection-card"

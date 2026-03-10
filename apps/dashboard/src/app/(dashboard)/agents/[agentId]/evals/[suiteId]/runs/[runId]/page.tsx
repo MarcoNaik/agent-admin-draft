@@ -20,7 +20,7 @@ import {
   Check,
   Play,
   RotateCcw,
-} from "lucide-react"
+} from "@/lib/icons"
 import {
   useEvalRun,
   useEvalRunResults,

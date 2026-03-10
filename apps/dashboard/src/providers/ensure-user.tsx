@@ -4,7 +4,7 @@ import { useEffect, useState, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useUser, useOrganization } from "@clerk/nextjs"
 import { useCurrentUser, useEnsureUser } from "@/hooks/use-convex-data"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from "@/lib/icons"
 
 export function EnsureUserProvider({ children }: { children: ReactNode }) {
   const router = useRouter()

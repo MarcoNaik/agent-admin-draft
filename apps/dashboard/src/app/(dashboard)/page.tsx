@@ -13,7 +13,7 @@ import {
   ChevronRight,
   Calendar,
   Sparkles,
-} from "lucide-react"
+} from "@/lib/icons"
 import { toast } from "sonner"
 import { useAgents, useEntityTypes, useRoles, useThreads, useTriggers } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"

@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react"
+import { FileText } from "@/lib/icons"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function AgentFilesPage() {

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft } from "@/lib/icons"
 import Link from "next/link"
 import { useCreateEvalSuite } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"

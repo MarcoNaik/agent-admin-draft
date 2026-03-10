@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Filter, Plus, Layers, Loader2, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "lucide-react"
+import { Search, Filter, Plus, Layers, Loader2, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "@/lib/icons"
 import { useEntityTypeBySlug, useEntitiesPaginated, useSearchEntities } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"

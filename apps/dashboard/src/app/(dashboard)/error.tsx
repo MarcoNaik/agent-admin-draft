@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useOrganization } from "@clerk/nextjs"
-import { AlertTriangle, RefreshCw, ArrowLeft } from "lucide-react"
+import { AlertTriangle, RefreshCw, ArrowLeft } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 
 const PERMISSION_PATTERNS = [

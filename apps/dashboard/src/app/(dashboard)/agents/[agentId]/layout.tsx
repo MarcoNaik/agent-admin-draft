@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from "@/lib/icons"
 import { useAgentWithConfig } from "@/hooks/use-convex-data"
 import { useAgentContext } from "@/contexts/agent-context"
 import { Id } from "@convex/_generated/dataModel"

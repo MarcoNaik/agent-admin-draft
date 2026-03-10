@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Loader2, Plus, Play, FlaskConical, ChevronRight, Database, ChevronDown } from "lucide-react"
+import { Loader2, Plus, Play, FlaskConical, ChevronRight, Database, ChevronDown } from "@/lib/icons"
 import { useEvalSuites, useEvalRuns, useStartEvalRun, useFixtures, useFixtureEntities } from "@/hooks/use-convex-data"
 import { Badge } from "@/components/ui/badge"
 import { EntityTable } from "@/components/entities/entity-table"

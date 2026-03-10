@@ -5,7 +5,7 @@ import { api } from "@convex/_generated/api"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, XCircle, Loader2, Activity } from "lucide-react"
+import { CheckCircle2, XCircle, Loader2, Activity } from "@/lib/icons"
 
 const RESOURCE_LABELS: Record<string, string> = {
   agents: "Agents",

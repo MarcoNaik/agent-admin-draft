@@ -4,21 +4,22 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  Blocks,
   Database,
   Search,
   Layers,
   Shield,
   Loader2,
-  LucideIcon,
-} from "lucide-react"
+  IconComponent,
+} from "@/lib/icons"
 import { useEntityTypes } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Doc } from "@convex/_generated/dataModel"
 
-function getEntityTypeIcon(_slug: string): LucideIcon {
-  return Layers
+function getEntityTypeIcon(_slug: string): IconComponent {
+  return Database
 }
 
 export default function EntitiesLayout({
