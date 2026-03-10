@@ -114,7 +114,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
       const caseIds = Array.from(selectedCases) as Id<"evalCases">[]
       const runId = await startRun({ suiteId: suite._id, triggerSource: "dashboard", caseIds })
       setSelectedCases(new Set())
-      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${runId}`)
+      router.push(`/system/agents/${agentId}/evals/${suiteId}/runs/${runId}`)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Failed to start run")
     } finally {
@@ -125,7 +125,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   const handleDeleteSuite = async () => {
     try {
       await deleteSuite({ id: suite._id })
-      router.push(`/agents/${agentId}/evals`)
+      router.push(`/system/agents/${agentId}/evals`)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Failed to delete suite")
     }
@@ -144,7 +144,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
     setRunError(null)
     try {
       const runId = await startRun({ suiteId: suite._id, triggerSource: "dashboard", caseIds: [caseId] })
-      router.push(`/agents/${agentId}/evals/${suiteId}/runs/${runId}`)
+      router.push(`/system/agents/${agentId}/evals/${suiteId}/runs/${runId}`)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Failed to start run")
     } finally {
@@ -163,7 +163,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
-            href={`/agents/${agentId}/evals`}
+            href={`/system/agents/${agentId}/evals`}
             className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <ArrowLeft className="h-4 w-4 text-content-secondary" />
@@ -247,7 +247,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
             <TabsTrigger value="runs">Run History ({runs.length})</TabsTrigger>
           </TabsList>
           <Link
-            href={`/agents/${agentId}/evals/${suiteId}/cases/new`}
+            href={`/system/agents/${agentId}/evals/${suiteId}/cases/new`}
             className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <Plus className="h-3 w-3" />
@@ -276,7 +276,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                       className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer shrink-0"
                     />
                     <Link
-                      href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
+                      href={`/system/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}
                       className="flex items-center gap-3 min-w-0 flex-1"
                     >
                       <span className="text-xs text-content-tertiary font-input w-5">{idx + 1}</span>
@@ -326,7 +326,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Link href={`/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}>
+                    <Link href={`/system/agents/${agentId}/evals/${suiteId}/cases/${c._id}`}>
                       <ChevronRight className="h-4 w-4 text-content-tertiary" />
                     </Link>
                   </div>
@@ -363,7 +363,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
                       return (
                         <tr
                           key={run._id}
-                          onClick={() => router.push(`/agents/${agentId}/evals/${suiteId}/runs/${run._id}`)}
+                          onClick={() => router.push(`/system/agents/${agentId}/evals/${suiteId}/runs/${run._id}`)}
                           className="border-b hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer"
                         >
                           <td className="px-4 py-3">

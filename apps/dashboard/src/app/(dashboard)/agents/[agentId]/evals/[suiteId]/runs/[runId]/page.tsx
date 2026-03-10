@@ -564,7 +564,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
     setStartingCaseId(caseId)
     try {
       const newRunId = await startRun({ suiteId: run.suiteId, triggerSource: "dashboard", caseIds: [caseId as Id<"evalCases">] })
-      router.push(`/agents/${agentId}/evals/${run.suiteId}/runs/${newRunId}`)
+      router.push(`/system/agents/${agentId}/evals/${run.suiteId}/runs/${newRunId}`)
     } catch {
     } finally {
       setStartingCaseId(null)
@@ -577,7 +577,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
     try {
       const failedCaseIds = errorResults.map((r: any) => r.caseId as Id<"evalCases">)
       const newRunId = await startRun({ suiteId: run.suiteId, triggerSource: "dashboard", caseIds: failedCaseIds })
-      router.push(`/agents/${agentId}/evals/${run.suiteId}/runs/${newRunId}`)
+      router.push(`/system/agents/${agentId}/evals/${run.suiteId}/runs/${newRunId}`)
     } catch {
     } finally {
       setStartingFailed(false)
@@ -608,7 +608,7 @@ export default function RunResultsPage({ params }: RunResultsPageProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
-            href={`/agents/${agentId}/evals/${effectiveSuiteId}`}
+            href={`/system/agents/${agentId}/evals/${effectiveSuiteId}`}
             className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             <ArrowLeft className="h-4 w-4 text-content-secondary" />

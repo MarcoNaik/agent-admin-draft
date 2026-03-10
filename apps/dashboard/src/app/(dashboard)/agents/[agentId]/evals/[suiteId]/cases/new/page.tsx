@@ -146,7 +146,7 @@ export default function NewCasePage({ params }: NewCasePageProps) {
         contextParams: coercedParams,
       })
 
-      router.push(`/agents/${agentId}/evals/${suiteId}`)
+      router.push(`/system/agents/${agentId}/evals/${suiteId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create case")
       setSaving(false)
@@ -157,7 +157,7 @@ export default function NewCasePage({ params }: NewCasePageProps) {
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={`/agents/${agentId}/evals/${suiteId}`}
+          href={`/system/agents/${agentId}/evals/${suiteId}`}
           className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
         >
           <ArrowLeft className="h-4 w-4 text-content-secondary" />
@@ -360,7 +360,7 @@ export default function NewCasePage({ params }: NewCasePageProps) {
             Create Case
           </button>
           <Link
-            href={`/agents/${agentId}/evals/${suiteId}`}
+            href={`/system/agents/${agentId}/evals/${suiteId}`}
             className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             Cancel

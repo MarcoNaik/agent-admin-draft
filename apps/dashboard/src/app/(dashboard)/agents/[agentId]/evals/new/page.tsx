@@ -114,7 +114,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
         judgePrompt: judgePrompt.trim() || undefined,
         environment,
       })
-      router.push(`/agents/${agentId}/evals/${suiteId}`)
+      router.push(`/system/agents/${agentId}/evals/${suiteId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create suite")
       setSaving(false)
@@ -125,7 +125,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={`/agents/${agentId}/evals`}
+          href={`/system/agents/${agentId}/evals`}
           className="rounded-md p-1.5 hover:bg-background-tertiary transition-colors ease-out-soft"
         >
           <ArrowLeft className="h-4 w-4 text-content-secondary" />
@@ -279,7 +279,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
             Create Suite
           </button>
           <Link
-            href={`/agents/${agentId}/evals`}
+            href={`/system/agents/${agentId}/evals`}
             className="rounded-md border px-4 py-2 text-sm text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
           >
             Cancel

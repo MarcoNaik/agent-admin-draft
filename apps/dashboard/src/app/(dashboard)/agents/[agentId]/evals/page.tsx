@@ -41,7 +41,7 @@ function SuiteRow({ suite, agentId }: { suite: any; agentId: string }) {
   return (
     <div>
       <Link
-        href={`/agents/${agentId}/evals/${suite._id}`}
+        href={`/system/agents/${agentId}/evals/${suite._id}`}
         className="flex items-center justify-between rounded-md border bg-card p-4 hover:bg-background-secondary transition-colors ease-out-soft"
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -233,7 +233,7 @@ export default function EvalsPage({ params }: EvalsPageProps) {
           <p className="text-sm text-content-secondary mt-0.5">Evaluate agent behavior with test suites</p>
         </div>
         <Link
-          href={`/agents/${agentId}/evals/new`}
+          href={`/system/agents/${agentId}/evals/new`}
           className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors ease-out-soft"
         >
           <Plus className="h-4 w-4" />
