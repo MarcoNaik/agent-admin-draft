@@ -266,7 +266,7 @@ export default function AgentSettingsPage({ params }: AgentSettingsPageProps) {
     setIsDeleting(true)
     try {
       await deleteAgent({ id: agent._id })
-      router.push("/agents")
+      router.push("/system/agents")
     } catch {
       setIsDeleting(false)
     }
