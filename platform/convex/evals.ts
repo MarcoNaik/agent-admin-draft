@@ -121,6 +121,63 @@ export const listRuns = query({
   },
 })
 
+export const listRunsByAgent = query({
+  args: {
+    agentId: v.id("agents"),
+    environment: v.optional(environmentValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "eval"
+
+    const runs = await ctx.db
+      .query("evalRuns")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId).eq("environment", environment))
+      .order("desc")
+      .take(args.limit ?? 50)
+
+    return runs.filter((r) => r.organizationId === auth.organizationId)
+  },
+})
+
+export const listAllRuns = query({
+  args: {
+    environment: v.optional(environmentValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "eval"
+
+    return await ctx.db
+      .query("evalRuns")
+      .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
+      .order("desc")
+      .take(args.limit ?? 50)
+  },
+})
+
+export const listSuitesMap = query({
+  args: {
+    agentId: v.id("agents"),
+    environment: v.optional(environmentValidator),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const environment = args.environment ?? "eval"
+
+    const suites = await ctx.db
+      .query("evalSuites")
+      .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId).eq("environment", environment))
+      .collect()
+
+    return suites
+      .filter((s) => s.organizationId === auth.organizationId && s.status === "active")
+      .map((s) => ({ _id: s._id, name: s.name }))
+  },
+})
+
 export const getRun = query({
   args: { id: v.id("evalRuns") },
   handler: async (ctx, args) => {
