@@ -129,7 +129,7 @@ export function Header() {
 
   return (
     <div className="sticky top-0 z-40">
-      <header className="flex items-center min-h-[48px] overflow-x-auto scrollbar-none">
+      <header className="relative flex items-center justify-between min-h-[48px] overflow-x-auto scrollbar-none">
         <div className="flex items-center px-3">
           <Link href="/" className="flex items-center mr-3 font-display text-lg font-semibold tracking-tight text-foreground">
             Struere
@@ -137,7 +137,7 @@ export function Header() {
           <OrgSwitcher />
         </div>
 
-        <nav className="flex items-center gap-0.5 mx-auto">
+        <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
           {roleNavigation.map((item) => {
             const isActive = pathname.startsWith(item.href)
             return (
