@@ -196,7 +196,9 @@ export function resolveTemplateVars(
     const exactMatch = obj.match(/^\{\{([^}]+)\}\}$/)
     if (exactMatch) {
       const value = getNestedValue(context as Record<string, unknown>, exactMatch[1].trim())
-      return value ?? ""
+      if (value === undefined || value === null) return ""
+      if (typeof value === "object") return value
+      return String(value)
     }
 
     return obj.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
