@@ -8,7 +8,6 @@ import { useStudio } from "@/contexts/studio-context"
 import { useStudioSession } from "@/hooks/use-studio-session"
 import { useStudioEvents } from "@/hooks/use-studio-events"
 import { useProviderConfigs } from "@/hooks/use-convex-data"
-import { StudioSessionControls } from "@/components/studio/studio-session-controls"
 import { StudioConfigBar } from "@/components/studio/studio-config-bar"
 import { StudioChat } from "@/components/studio/studio-chat"
 import { PermissionRequestCard, QuestionRequestCard } from "@/components/studio/studio-hitl"
@@ -123,20 +122,11 @@ export function StudioPanel() {
   return (
     <div
       className={cn(
-        "flex flex-col border-l bg-background-secondary h-full overflow-hidden transition-[width] ease-out-soft duration-300",
-        isOpen ? "w-[480px]" : "w-0 border-l-0"
+        "flex flex-col h-full overflow-hidden shrink-0 transition-[width] ease-out-soft duration-300",
+        isOpen ? "w-[480px]" : "w-0"
       )}
     >
-      <div className="flex flex-col h-full w-[480px] min-w-[480px]">
-        <StudioSessionControls
-          status={session?.status}
-          isStarting={isStarting}
-          isStopping={isStopping}
-          isConnected={isConnected}
-          onStop={stopSession}
-          model={isActive ? (session?.model ?? undefined) : undefined}
-        />
-
+      <div className="flex flex-col h-full w-[480px] min-w-[480px] pl-3 border-l border-border/40">
         <StudioConfigBar
           provider={isActive ? ((session?.provider as StudioProvider) ?? selectedProvider) : selectedProvider}
           model={isActive ? (session?.model ?? selectedModel) : selectedModel}
@@ -146,10 +136,16 @@ export function StudioPanel() {
           onKeySourceChange={setSelectedKeySource}
           isSessionActive={isActive}
           hasCustomKey={hasCustomKey}
+          status={session?.status}
+          isStarting={isStarting}
+          isStopping={isStopping}
+          onStop={isActive ? stopSession : undefined}
         />
 
+        <div className="prismatic-border-animated" />
+
         {isCreditsError ? (
-          <div className="px-4 py-4 bg-background-tertiary border-b space-y-3">
+          <div className="px-4 py-4 bg-background-tertiary/50 rounded-lg border-b space-y-3">
             <p className="text-sm font-medium text-content-primary">
               You need credits to use Studio
             </p>
@@ -158,7 +154,7 @@ export function StudioPanel() {
             </p>
             <div className="flex items-center gap-2">
               <Link
-                href="/settings/billing"
+                href="/system/settings/billing"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
               >
                 <CreditCard className="h-3 w-3" />
