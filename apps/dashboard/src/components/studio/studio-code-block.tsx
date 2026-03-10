@@ -44,7 +44,7 @@ export function StudioCodeBlock({ className, children, ...props }: StudioCodeBlo
         onClick={handleCopy}
         className={cn(
           "absolute top-1.5 right-2 p-1 rounded transition-opacity",
-          "opacity-0 group-hover:opacity-100",
+          "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
           "text-content-tertiary hover:text-content-primary hover:bg-muted"
         )}
       >
