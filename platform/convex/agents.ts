@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { query, mutation, internalQuery, internalAction, action } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
-import { getAuthContext, requireAuth, isOrgAdmin, requireOrgAdmin } from "./lib/auth"
+import { getAuthContext, getAuthContextForOrg, requireAuth, isOrgAdmin, requireOrgAdmin } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
 import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext } from "./lib/permissions/types"
@@ -49,9 +49,9 @@ export const get = query({
 })
 
 export const getBySlug = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), organizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     if (!(await isOrgAdmin(ctx, auth))) return null
 
     return await ctx.db
@@ -364,10 +364,11 @@ export const getCompileData = internalQuery({
   args: {
     agentId: v.id("agents"),
     environment: environmentValidator,
+    organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const agent = await ctx.db.get(args.agentId)
 
     if (!agent || agent.organizationId !== auth.organizationId) {
@@ -433,6 +434,7 @@ export const compileSystemPrompt = action({
   args: {
     agentId: v.id("agents"),
     environment: environmentValidator,
+    organizationId: v.optional(v.string()),
     sampleContext: v.optional(v.object({
       message: v.optional(v.string()),
       channel: v.optional(v.string()),
@@ -452,6 +454,7 @@ export const compileSystemPrompt = action({
     const data = await ctx.runQuery(getCompileDataRef, {
       agentId: args.agentId,
       environment: args.environment,
+      organizationId: args.organizationId,
     }) as CompileData | null
 
     if (!data) {

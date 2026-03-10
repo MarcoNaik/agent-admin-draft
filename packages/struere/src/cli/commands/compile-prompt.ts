@@ -102,6 +102,7 @@ export const compilePromptCommand = new Command('compile-prompt')
       return compilePrompt({
         slug: agentSlug,
         environment,
+        organizationId: project?.organization.id,
         message: options.message,
         channel: options.channel,
         threadMetadata: Object.keys(threadMetadata).length > 0 ? threadMetadata : undefined,

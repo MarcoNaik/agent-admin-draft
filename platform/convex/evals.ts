@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, getAuthContextForOrg, requireAuth } from "./lib/auth"
 import { estimateMinimumCost } from "./lib/creditPricing"
 
 const executeCaseRef = makeFunctionReference<"action">("evalRunner:executeCase")
@@ -55,9 +55,10 @@ export const listSuites = query({
 export const listAllSuites = query({
   args: {
     environment: v.optional(environmentValidator),
+    organizationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const environment = args.environment ?? "development"
 
     const suites = await ctx.db
@@ -80,9 +81,9 @@ export const getSuite = query({
 })
 
 export const listCases = query({
-  args: { suiteId: v.id("evalSuites") },
+  args: { suiteId: v.id("evalSuites"), organizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const suite = await ctx.db.get(args.suiteId)
     if (!suite || suite.organizationId !== auth.organizationId) return []
 
@@ -179,9 +180,9 @@ export const listSuitesMap = query({
 })
 
 export const getRun = query({
-  args: { id: v.id("evalRuns") },
+  args: { id: v.id("evalRuns"), organizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const run = await ctx.db.get(args.id)
     if (!run || run.organizationId !== auth.organizationId) return null
     return run
@@ -189,9 +190,9 @@ export const getRun = query({
 })
 
 export const getRunResults = query({
-  args: { runId: v.id("evalRuns") },
+  args: { runId: v.id("evalRuns"), organizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const run = await ctx.db.get(args.runId)
     if (!run || run.organizationId !== auth.organizationId) return []
 
@@ -445,9 +446,10 @@ export const startRun = mutation({
     suiteId: v.id("evalSuites"),
     triggerSource: v.union(v.literal("dashboard"), v.literal("cli")),
     caseIds: v.optional(v.array(v.id("evalCases"))),
+    organizationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
+    const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const suite = await ctx.db.get(args.suiteId)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")

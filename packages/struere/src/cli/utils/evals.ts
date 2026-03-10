@@ -161,26 +161,27 @@ export interface EvalResult {
   judgeTokens?: { input: number; output: number }
 }
 
-export async function listAllSuites(environment: Environment): Promise<EvalSuite[]> {
-  return convexQuery<EvalSuite[]>('evals:listAllSuites', { environment })
+export async function listAllSuites(environment: Environment, organizationId?: string): Promise<EvalSuite[]> {
+  return convexQuery<EvalSuite[]>('evals:listAllSuites', { environment, organizationId })
 }
 
-export async function listCases(suiteId: string): Promise<EvalCase[]> {
-  return convexQuery<EvalCase[]>('evals:listCases', { suiteId })
+export async function listCases(suiteId: string, organizationId?: string): Promise<EvalCase[]> {
+  return convexQuery<EvalCase[]>('evals:listCases', { suiteId, organizationId })
 }
 
-export async function startRun(suiteId: string, caseIds?: string[]): Promise<string> {
+export async function startRun(suiteId: string, caseIds?: string[], organizationId?: string): Promise<string> {
   return convexMutation<string>('evals:startRun', {
     suiteId,
     triggerSource: 'cli',
+    organizationId,
     ...(caseIds ? { caseIds } : {}),
   })
 }
 
-export async function getRun(runId: string): Promise<EvalRun | null> {
-  return convexQuery<EvalRun | null>('evals:getRun', { id: runId })
+export async function getRun(runId: string, organizationId?: string): Promise<EvalRun | null> {
+  return convexQuery<EvalRun | null>('evals:getRun', { id: runId, organizationId })
 }
 
-export async function getRunResults(runId: string): Promise<EvalResult[]> {
-  return convexQuery<EvalResult[]>('evals:getRunResults', { runId })
+export async function getRunResults(runId: string, organizationId?: string): Promise<EvalResult[]> {
+  return convexQuery<EvalResult[]>('evals:getRunResults', { runId, organizationId })
 }

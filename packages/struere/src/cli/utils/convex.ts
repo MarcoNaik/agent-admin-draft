@@ -545,6 +545,7 @@ export interface PullState {
 export interface CompilePromptOptions {
   slug: string
   environment: 'development' | 'production' | 'eval'
+  organizationId?: string
   message?: string
   channel?: string
   threadMetadata?: Record<string, unknown>
@@ -619,7 +620,7 @@ export async function compilePrompt(options: CompilePromptOptions): Promise<{ re
     },
     body: JSON.stringify({
       path: 'agents:getBySlug',
-      args: { slug: options.slug },
+      args: { slug: options.slug, organizationId: options.organizationId },
     }),
   })
 
@@ -648,6 +649,7 @@ export async function compilePrompt(options: CompilePromptOptions): Promise<{ re
       args: {
         agentId: agentResult.value._id,
         environment: options.environment,
+        organizationId: options.organizationId,
         sampleContext: {
           message: options.message,
           channel: options.channel,

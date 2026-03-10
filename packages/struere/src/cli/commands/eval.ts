@@ -228,7 +228,7 @@ const runCommand = new Command('run')
     spinner.start('Resolving suite')
     let suites
     try {
-      suites = await listAllSuites('eval')
+      suites = await listAllSuites('eval', project.organization.id)
     } catch (error) {
       spinner.fail('Failed to list suites')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
@@ -254,7 +254,7 @@ const runCommand = new Command('run')
 
     let cases
     try {
-      cases = await listCases(suite._id)
+      cases = await listCases(suite._id, project.organization.id)
     } catch (error) {
       spinner.fail('Failed to list cases')
       console.log(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
@@ -303,7 +303,7 @@ const runCommand = new Command('run')
 
     let runId: string
     try {
-      runId = await startRun(suite._id, filteredCaseIds)
+      runId = await startRun(suite._id, filteredCaseIds, project.organization.id)
     } catch (error) {
       console.log(chalk.red('Failed to start run:'), error instanceof Error ? error.message : String(error))
       process.exit(1)
@@ -318,7 +318,7 @@ const runCommand = new Command('run')
     let run: EvalRun | null = null
     while (true) {
       await new Promise((r) => setTimeout(r, 3000))
-      run = await getRun(runId)
+      run = await getRun(runId, project.organization.id)
       if (!run) {
         spinner.fail('Run not found')
         process.exit(1)
@@ -344,7 +344,7 @@ const runCommand = new Command('run')
       spinner.fail(`Run ${run.status}`)
     }
 
-    const results = await getRunResults(runId)
+    const results = await getRunResults(runId, project.organization.id)
     results.sort((a, b) => {
       const caseA = cases.find((c) => c._id === a.caseId)
       const caseB = cases.find((c) => c._id === b.caseId)
