@@ -14,7 +14,7 @@ interface EnvironmentGuardProps {
   children: React.ReactNode
 }
 
-export function EnvironmentGuard({ allowedEnvironments, redirectTo = "/settings", children }: EnvironmentGuardProps) {
+export function EnvironmentGuard({ allowedEnvironments, redirectTo = "/system/settings", children }: EnvironmentGuardProps) {
   const router = useRouter()
   const { environment } = useEnvironment()
   const { isLoading } = useRoleContext()

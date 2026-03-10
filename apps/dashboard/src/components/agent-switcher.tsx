@@ -41,13 +41,13 @@ export function AgentSwitcher() {
   const handleAgentSelect = (agentId: string) => {
     setOpen(false)
     setSearchQuery("")
-    router.push(`/agents/${agentId}`)
+    router.push(`/system/agents/${agentId}`)
   }
 
   const handleCreateAgent = () => {
     setOpen(false)
     setSearchQuery("")
-    router.push("/agents/new")
+    router.push("/system/agents/new")
   }
 
   return (

@@ -36,7 +36,7 @@ export function CreateOrgDialog({ open, onOpenChange, onSuccess }: CreateOrgDial
       await setActive?.({ organization: org.id })
       setName("")
       onOpenChange(false)
-      window.location.href = "/agents"
+      window.location.href = "/system/agents"
     } catch (error) {
       console.error("Failed to create organization:", error)
       setIsCreating(false)

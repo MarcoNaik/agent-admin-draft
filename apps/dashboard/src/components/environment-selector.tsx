@@ -104,7 +104,7 @@ export function EnvironmentSelector({ agentId, agentSlug, environments }: Enviro
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={`/agents/${agentId}/settings`} className="flex items-center gap-3 py-3">
+          <Link href={`/system/agents/${agentId}/settings`} className="flex items-center gap-3 py-3">
             <Settings className="h-4 w-4" />
             <span className="font-medium text-content-primary">Agent Settings</span>
           </Link>

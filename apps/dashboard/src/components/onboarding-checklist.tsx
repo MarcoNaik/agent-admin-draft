@@ -61,7 +61,7 @@ export function OnboardingChecklist() {
     {
       label: "Chat with your agent",
       done: hasThread,
-      action: () => firstAgentId && router.push(`/agents/${firstAgentId}`),
+      action: () => firstAgentId && router.push(`/system/agents/${firstAgentId}`),
       unlocked: hasAgent,
     },
     {
@@ -73,7 +73,7 @@ export function OnboardingChecklist() {
     {
       label: "Run your eval",
       done: hasCompletedRun,
-      action: () => firstAgentId && router.push(`/agents/${firstAgentId}/evals`),
+      action: () => firstAgentId && router.push(`/system/agents/${firstAgentId}/evals`),
       unlocked: hasEval,
     },
   ]

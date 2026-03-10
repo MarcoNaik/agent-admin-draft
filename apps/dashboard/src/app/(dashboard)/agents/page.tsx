@@ -8,7 +8,7 @@ export default function AgentsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace("/")
+    router.replace("/system/agents")
   }, [router])
 
   return (

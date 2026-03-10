@@ -55,7 +55,7 @@ function StatCard({
 function AgentRow({ agent }: { agent: Doc<"agents"> }) {
   return (
     <Link
-      href={`/agents/${agent._id}`}
+      href={`/system/agents/${agent._id}`}
       className="flex items-center gap-3 rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
     >
       <Bot className="h-4 w-4 text-content-tertiary shrink-0" />
@@ -158,8 +158,8 @@ function HomeContent() {
         <div className="space-y-1.5">
           <StatCard label="Conversations" value={threads?.length} icon={MessageSquare} href="/conversations" />
           <StatCard label="Data Types" value={entityTypes?.length} icon={Database} href="/entities" />
-          <StatCard label="Roles" value={roles?.length} icon={Shield} href="/roles" />
-          <StatCard label="Automations" value={triggers?.length} icon={Zap} href="/triggers" />
+          <StatCard label="Roles" value={roles?.length} icon={Shield} href="/system/roles" />
+          <StatCard label="Automations" value={triggers?.length} icon={Zap} href="/system/automations" />
         </div>
       </section>
     </div>

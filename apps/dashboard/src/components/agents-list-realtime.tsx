@@ -92,7 +92,7 @@ export function AgentsListRealtime() {
                   {agent.description || "No description"}
                 </p>
                 <div className="flex items-center justify-between">
-                  <Link href={`/agents/${agent._id}`}>
+                  <Link href={`/system/agents/${agent._id}`}>
                     <Button variant="outline" size="sm">
                       <ExternalLink className="h-4 w-4 mr-1" />
                       View

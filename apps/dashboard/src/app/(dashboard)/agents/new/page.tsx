@@ -63,7 +63,7 @@ export default function NewAgentPage() {
         description: description.trim() || undefined,
       })
 
-      router.push(`/agents/${agentId}`)
+      router.push(`/system/agents/${agentId}`)
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes("already exists") || err.message.includes("duplicate")) {
@@ -81,7 +81,7 @@ export default function NewAgentPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-6">
       <div className="flex items-center gap-4">
-        <Link href="/agents">
+        <Link href="/system/agents">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -146,7 +146,7 @@ export default function NewAgentPage() {
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Agent
               </Button>
-              <Link href="/agents">
+              <Link href="/system/agents">
                 <Button type="button" variant="outline" disabled={isSubmitting}>
                   Cancel
                 </Button>

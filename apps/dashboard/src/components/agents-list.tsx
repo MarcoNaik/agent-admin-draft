@@ -114,7 +114,7 @@ export function AgentsList({ agents }: AgentsListProps) {
             </div>
           </div>
 
-          <Link href="/agents/new">
+          <Link href="/system/agents/new">
             <Button variant="outline" className="h-9 border-border/50">
               <Plus className="h-4 w-4" />
               Create Agent
@@ -148,7 +148,7 @@ export function AgentsList({ agents }: AgentsListProps) {
               <p className="mt-1 text-xs text-content-secondary">
                 Create your first agent to get started
               </p>
-              <Link href="/agents/new">
+              <Link href="/system/agents/new">
                 <Button className="mt-4" size="sm">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Agent
@@ -162,7 +162,7 @@ export function AgentsList({ agents }: AgentsListProps) {
           {paginatedAgents.map((agent) => (
             <Link
               key={agent.id}
-              href={`/agents/${agent.id}`}
+              href={`/system/agents/${agent.id}`}
               className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors ease-out-soft"
             >
               <div className="min-w-0 flex-1">
@@ -185,13 +185,13 @@ export function AgentsList({ agents }: AgentsListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href={`/agents/${agent.id}/logs`}>
+                      <Link href={`/system/agents/${agent.id}/logs`}>
                         <FileText className="mr-2 h-4 w-4" />
                         View Logs
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/agents/${agent.id}/settings`}>
+                      <Link href={`/system/agents/${agent.id}/settings`}>
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
                       </Link>
@@ -212,7 +212,7 @@ export function AgentsList({ agents }: AgentsListProps) {
           {paginatedAgents.map((agent) => (
             <Link
               key={agent.id}
-              href={`/agents/${agent.id}`}
+              href={`/system/agents/${agent.id}`}
               className="relative rounded-lg bg-background-secondary hover:bg-background-tertiary flex items-center justify-between p-4 group transition-colors ease-out-soft"
             >
               <div className="min-w-0 flex-1">
@@ -242,13 +242,13 @@ export function AgentsList({ agents }: AgentsListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href={`/agents/${agent.id}/logs`}>
+                      <Link href={`/system/agents/${agent.id}/logs`}>
                         <FileText className="mr-2 h-4 w-4" />
                         View Logs
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/agents/${agent.id}/settings`}>
+                      <Link href={`/system/agents/${agent.id}/settings`}>
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
                       </Link>

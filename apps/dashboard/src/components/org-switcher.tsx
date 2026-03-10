@@ -67,12 +67,12 @@ export function OrgSwitcher() {
     if (setActive) {
       await setActive({ organization: orgId })
       setOpen(false)
-      window.location.href = "/agents"
+      window.location.href = "/system/agents"
     }
   }
 
   const handleOrgCreated = () => {
-    router.push("/agents")
+    router.push("/system/agents")
   }
 
   return (
