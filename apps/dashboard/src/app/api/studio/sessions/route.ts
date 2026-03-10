@@ -89,8 +89,8 @@ export async function POST(request: Request) {
   const body = await request.json()
   const {
     environment = "development",
-    provider = "xai" as StudioProvider,
-    model = "grok-4-1-fast",
+    provider = "anthropic" as StudioProvider,
+    model = "claude-sonnet-4-6",
     keySource = "platform" as "platform" | "custom",
   } = body
 
