@@ -53,11 +53,6 @@ export const listPaginated = query({
     ),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.object({
-    page: v.array(v.any()),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  }),
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
@@ -74,15 +69,15 @@ export const listPaginated = query({
     }
 
     const result = await q.order("desc").paginate(args.paginationOpts)
+    const page = args.status
+      ? result.page.filter((e) => e.status === args.status)
+      : result.page
 
-    if (args.status) {
-      return {
-        ...result,
-        page: result.page.filter((e) => e.status === args.status),
-      }
+    return {
+      page,
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
     }
-
-    return result
   },
 })
 
