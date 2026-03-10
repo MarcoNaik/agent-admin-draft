@@ -79,3 +79,7 @@ export function useFixtures() {
 export function useFixtureEntities(entityTypeSlug: string) {
   return useQuery(api.evals.listFixtureEntities, { entityTypeSlug })
 }
+
+export function useAllEvalSuites() {
+  return useQuery(api.evals.listAllSuites, { environment: "eval" })
+}
