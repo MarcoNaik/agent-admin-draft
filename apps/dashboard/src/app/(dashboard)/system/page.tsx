@@ -1,0 +1,19 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Loader2 } from "@/lib/icons"
+
+export default function SystemPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    router.replace("/system/agents")
+  }, [router])
+
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
+    </div>
+  )
+}
