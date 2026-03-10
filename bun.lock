@@ -35,6 +35,7 @@
         "lucide-react": "^0.312.0",
         "next": "14.2.35",
         "next-themes": "^0.4.6",
+        "pixelarticons": "^2.0.2",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-markdown": "^9.0.1",
@@ -109,7 +110,7 @@
     },
     "packages/struere": {
       "name": "struere",
-      "version": "0.9.12",
+      "version": "0.9.13",
       "bin": {
         "struere": "./dist/bin/struere.js",
       },
@@ -924,6 +925,8 @@
     "pify": ["pify@2.3.0", "", {}, "sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog=="],
 
     "pirates": ["pirates@4.0.7", "", {}, "sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA=="],
+
+    "pixelarticons": ["pixelarticons@2.0.2", "", { "peerDependencies": { "react": ">=16" }, "bin": { "pixelarticons": "bin/upgrade.js" } }, "sha512-/BlUJp9oRv2hx0ELy2+X8R2khnAvzztUmYuu7KfHZSQNDc09PTK0BxDl9+AYE7qVNupE/12Z/89iz7joYDHYDw=="],
 
     "platform": ["platform@1.3.6", "", {}, "sha512-fnWVljUchTro6RiCFvCXBbNhJc2NijN7oIQxbwsyL0buWJPG85v81ehlHI9fXrJsMNgTofEoWIQeClKpgxFLrg=="],
 
