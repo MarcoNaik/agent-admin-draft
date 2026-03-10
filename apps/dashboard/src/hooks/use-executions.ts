@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery, usePaginatedQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -28,4 +28,12 @@ export function useRecentExecutions(agentId?: Id<"agents">, environment?: Enviro
 
 export function useExecutionsByThread(threadId: Id<"threads"> | null) {
   return useQuery(api.executions.getByThread, threadId ? { threadId } : "skip")
+}
+
+export function useExecutionsPaginated(agentId?: Id<"agents">, environment?: Environment) {
+  return usePaginatedQuery(
+    api.executions.listPaginated,
+    { agentId, environment },
+    { initialNumItems: 25 }
+  )
 }
