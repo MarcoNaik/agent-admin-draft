@@ -573,6 +573,7 @@ export const verifyPaymentFromWebhook = internalAction({
   },
   returns: v.object({
     flowOrder: v.number(),
+    commerceOrder: v.string(),
     status: v.number(),
     statusMessage: v.string(),
     amount: v.number(),

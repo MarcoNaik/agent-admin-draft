@@ -19,6 +19,18 @@ export interface FlowPaymentStatus {
   payer: string
 }
 
+function parseFlowPaymentStatus(raw: Record<string, unknown>): FlowPaymentStatus {
+  return {
+    flowOrder: Number(raw.flowOrder),
+    commerceOrder: String(raw.commerceOrder),
+    status: Number(raw.status),
+    statusMessage: String(raw.statusMessage),
+    amount: Number(raw.amount),
+    currency: String(raw.currency),
+    payer: String(raw.payer),
+  }
+}
+
 export async function getFlowConfig(
   ctx: QueryCtx,
   organizationId: Id<"organizations">,
@@ -135,7 +147,8 @@ export async function checkFlowOrderStatusAction(
     throw new Error(`Flow API error: ${error}`)
   }
 
-  return await response.json() as FlowPaymentStatus
+  const raw = await response.json()
+  return parseFlowPaymentStatus(raw)
 }
 
 export async function verifyPaymentStatusAction(
@@ -160,5 +173,6 @@ export async function verifyPaymentStatusAction(
     throw new Error(`Flow API error: ${error}`)
   }
 
-  return await response.json() as FlowPaymentStatus
+  const raw = await response.json()
+  return parseFlowPaymentStatus(raw)
 }
