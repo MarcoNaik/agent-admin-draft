@@ -29,3 +29,21 @@ export const Key = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M13 3h4v2h2v2h2v4h-2v2h-2v2h-4v-2h-2v2H9v2H7v2H5v2H3v2H1v-4h2v-2h2v-2h2v-2h2v-2h2V9h2V3zm2 2v2h2v2h2V7h-2V5h-2zm0 4h-2v2h2V9z" />
   </svg>
 )
+
+export const Shield = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path fillRule="evenodd" d="M6 2h12v1h1v1h1v7h-1v2h-1v1h-1v1h-1v1h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-2h-1v-7h1v-1h1v-1zM10 4h4v3h4v3h-4v6h-4v-6h-4v-3h4z" />
+  </svg>
+)
+
+export const ShieldCheck = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path fillRule="evenodd" d="M6 2h12v1h1v1h1v7h-1v2h-1v1h-1v1h-1v1h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-2h-1v-7h1v-1h1v-1zM16 5h2v1h-2zM15 6h2v1h-2zM14 7h2v1h-2zM13 8h2v1h-2zM12 9h2v1h-2zM7 10h2v1h-2zM11 10h2v1h-2zM8 11h4v1h-4zM9 12h2v1h-2z" />
+  </svg>
+)
+
+export const ShieldX = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path fillRule="evenodd" d="M6 2h12v1h1v1h1v7h-1v2h-1v1h-1v1h-1v1h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-2h-1v-7h1v-1h1v-1zM8 6h2v1h-2zM14 6h2v1h-2zM9 7h2v1h-2zM13 7h2v1h-2zM10 8h2v1h-2zM12 8h2v1h-2zM11 9h2v1h-2zM10 10h2v1h-2zM12 10h2v1h-2zM9 11h2v1h-2zM13 11h2v1h-2zM8 12h2v1h-2zM14 12h2v1h-2z" />
+  </svg>
+)

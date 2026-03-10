@@ -42,7 +42,7 @@ export {
   Search,
   Send,
   Server,
-  Shield,
+  Shield as _Shield,
   Smartphone,
   Sparkles,
   Square,
@@ -103,15 +103,15 @@ export { Cancel as XOctagon } from "pixelarticons/react"
 export { AlarmClock as Timer } from "pixelarticons/react"
 export { BuildingCommunity as Building2 } from "pixelarticons/react"
 export { ChartBarBig as BarChart3 } from "pixelarticons/react"
-export { Shield as ShieldCheck } from "pixelarticons/react"
-export { Shield as ShieldX } from "pixelarticons/react"
+export { ShieldCheck } from "./icons-custom"
+export { ShieldX } from "./icons-custom"
 export { ChevronsVertical as ChevronsUpDown } from "pixelarticons/react"
 export { Grid3x3 as LayoutGrid } from "pixelarticons/react"
 export { ListBox as List } from "pixelarticons/react"
 export { ListBox as LayoutList } from "pixelarticons/react"
 export { Circle as CircleDot } from "pixelarticons/react"
 
-export { Sun, Key } from "./icons-custom"
+export { Sun, Key, Shield } from "./icons-custom"
 export { ToolCase as Wrench } from "pixelarticons/react"
 export { Message as MessageCircle } from "pixelarticons/react"
 export { Grid2x3 as Table } from "pixelarticons/react"
