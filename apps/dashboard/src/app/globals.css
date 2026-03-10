@@ -40,6 +40,7 @@
     --ocean-light: 200 51% 40%;
     --amber: 40 56% 58%;
     --amber-light: 42 72% 66%;
+    --background-chrome: 39 20% 88%;
     --charcoal: 30 5% 16%;
     --charcoal-heading: 30 6% 9%;
   }
@@ -47,6 +48,7 @@
   .dark {
     --background: 210 20% 8%;
     --background-primary: 210 20% 8%;
+    --background-chrome: 220 20% 5%;
     --background-secondary: 210 15% 11%;
     --background-tertiary: 210 12% 15%;
     --foreground: 39 30% 95%;
@@ -256,6 +258,14 @@
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin,
+  .animate-pulse,
+  .prismatic-border-animated {
+    animation: none !important;
   }
 }
 

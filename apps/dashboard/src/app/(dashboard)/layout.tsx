@@ -23,14 +23,16 @@ export default function DashboardLayout({
             <EnvironmentProvider>
               <SyncNotifications />
               <StudioProvider>
-                <div className="flex h-screen flex-col">
+                <div className="flex h-screen flex-col bg-background-chrome">
                   <Header />
-                  <div className="flex flex-1 overflow-hidden">
-                    <main className="scrollbar flex-1 overflow-y-auto bg-background-primary">
-                      <ErrorBoundary>
-                        {children}
-                      </ErrorBoundary>
-                    </main>
+                  <div className="flex flex-1 overflow-hidden p-3 pt-0">
+                    <div className="flex-1 overflow-hidden rounded-xl border border-border/40 bg-background-secondary shadow-lg shadow-black/5 dark:shadow-black/20">
+                      <main className="scrollbar h-full overflow-y-auto">
+                        <ErrorBoundary>
+                          {children}
+                        </ErrorBoundary>
+                      </main>
+                    </div>
                     <StudioPanel />
                   </div>
                 </div>

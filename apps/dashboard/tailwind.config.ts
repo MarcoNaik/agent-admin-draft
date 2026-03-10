@@ -34,6 +34,7 @@ const config: Config = {
           primary: "hsl(var(--background-primary))",
           secondary: "hsl(var(--background-secondary))",
           tertiary: "hsl(var(--background-tertiary))",
+          chrome: "hsl(var(--background-chrome))",
         },
         foreground: "hsl(var(--foreground))",
         primary: {
