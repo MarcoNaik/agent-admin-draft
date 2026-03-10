@@ -1,6 +1,6 @@
 "use client"
 
-import { Key, Cpu } from "lucide-react"
+import { Key, Cpu, Square, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +18,15 @@ import {
 } from "@/lib/studio/models"
 import Link from "next/link"
 
+const STATUS_COLORS: Record<string, string> = {
+  provisioning: "bg-warning",
+  ready: "bg-success",
+  active: "bg-success",
+  idle: "bg-warning",
+  stopped: "bg-muted-foreground",
+  error: "bg-destructive",
+}
+
 interface StudioConfigBarProps {
   provider: StudioProvider
   model: string
@@ -27,6 +36,10 @@ interface StudioConfigBarProps {
   onKeySourceChange: (keySource: "platform" | "custom") => void
   isSessionActive: boolean
   hasCustomKey: boolean
+  status?: string
+  isStarting?: boolean
+  isStopping?: boolean
+  onStop?: () => void
 }
 
 export function StudioConfigBar({
@@ -38,10 +51,22 @@ export function StudioConfigBar({
   onKeySourceChange,
   isSessionActive,
   hasCustomKey,
+  status,
+  isStarting,
+  isStopping,
+  onStop,
 }: StudioConfigBarProps) {
   if (isSessionActive) {
     return (
-      <div className="flex items-center gap-1.5 px-4 py-1.5 border-b bg-background-secondary">
+      <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-border/40">
+        {isStarting ? (
+          <Loader2 className="h-3 w-3 animate-spin text-content-tertiary shrink-0" />
+        ) : status ? (
+          <>
+            <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_COLORS[status] ?? "bg-muted-foreground"}`} />
+            <span className="sr-only">Status: {{ provisioning: "Starting", ready: "Ready", active: "Active", idle: "Idle", stopped: "Stopped", error: "Error" }[status] ?? status}</span>
+          </>
+        ) : null}
         <Badge variant="outline" className="text-[10px] font-normal">
           {STUDIO_PROVIDERS[provider]?.name ?? provider}
         </Badge>
@@ -55,6 +80,23 @@ export function StudioConfigBar({
             <><Cpu className="h-2.5 w-2.5 mr-0.5" />Platform</>
           )}
         </Badge>
+        <div className="flex-1" />
+        {onStop && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onStop}
+            disabled={isStopping}
+            aria-label="Stop session"
+            className="h-6 px-2 text-xs text-content-tertiary hover:text-destructive"
+          >
+            {isStopping ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Square className="h-3 w-3" />
+            )}
+          </Button>
+        )}
       </div>
     )
   }
@@ -64,57 +106,23 @@ export function StudioConfigBar({
   const showKeyError = keySource === "custom" && !hasCustomKey
 
   return (
-    <div className="px-4 py-2.5 border-b bg-background-secondary space-y-2">
+    <div className="px-4 py-2 border-b border-border/40">
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-0.5">
-          {(Object.entries(STUDIO_PROVIDERS) as [StudioProvider, typeof STUDIO_PROVIDERS[StudioProvider]][]).map(
-            ([key, config]) => (
-              <button
-                key={key}
-                onClick={() => onProviderChange(key)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                  provider === key
-                    ? "bg-background text-content-primary shadow-sm"
-                    : "text-content-tertiary hover:text-content-secondary"
-                }`}
-              >
-                {config.name}
-              </button>
-            )
-          )}
-        </div>
+        <Select value={provider} onValueChange={(v) => onProviderChange(v as StudioProvider)}>
+          <SelectTrigger className="h-7 text-xs w-auto gap-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(STUDIO_PROVIDERS) as [StudioProvider, typeof STUDIO_PROVIDERS[StudioProvider]][]).map(
+              ([key, config]) => (
+                <SelectItem key={key} value={key} className="text-xs">{config.name}</SelectItem>
+              )
+            )}
+          </SelectContent>
+        </Select>
 
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-0.5">
-          <button
-            onClick={() => onKeySourceChange("platform")}
-            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-              keySource === "platform"
-                ? "bg-background text-content-primary shadow-sm"
-                : "text-content-tertiary hover:text-content-secondary"
-            }`}
-          >
-            <Cpu className="h-3 w-3" />
-            Platform
-          </button>
-          <button
-            onClick={() => onKeySourceChange("custom")}
-            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-              keySource === "custom"
-                ? "bg-background text-content-primary shadow-sm"
-                : "text-content-tertiary hover:text-content-secondary"
-            }`}
-          >
-            <Key className="h-3 w-3" />
-            My Key
-          </button>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
         <Select value={model} onValueChange={onModelChange}>
-          <SelectTrigger className="h-7 text-xs w-[220px]">
+          <SelectTrigger className="h-7 text-xs w-auto gap-1">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -141,15 +149,25 @@ export function StudioConfigBar({
           </SelectContent>
         </Select>
 
-        {showKeyError && (
-          <span className="text-[11px] text-destructive">
-            No key configured.{" "}
-            <Link href="/settings/providers" className="underline hover:text-destructive/80">
-              Add one
-            </Link>
-          </span>
-        )}
+        <div className="flex-1" />
+
+        <button
+          onClick={() => onKeySourceChange(keySource === "platform" ? "custom" : "platform")}
+          className="flex items-center gap-1 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
+        >
+          {keySource === "custom" ? <Key className="h-3 w-3" /> : <Cpu className="h-3 w-3" />}
+          {keySource === "custom" ? "My Key" : "Platform"}
+        </button>
       </div>
+
+      {showKeyError && (
+        <span className="text-[11px] text-destructive mt-1 block">
+          No key configured.{" "}
+          <Link href="/system/settings/providers" className="underline hover:text-destructive/80">
+            Add one
+          </Link>
+        </span>
+      )}
     </div>
   )
 }

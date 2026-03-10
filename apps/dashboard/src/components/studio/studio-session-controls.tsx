@@ -42,7 +42,7 @@ export function StudioSessionControls({
   const isActive = status === "provisioning" || status === "ready" || status === "active" || status === "idle"
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-b bg-background-secondary">
+    <div className="flex items-center gap-2 px-4 py-2 border-b border-border/40">
       <span className="text-sm font-medium text-content-primary">Studio</span>
 
       {isStarting && (
