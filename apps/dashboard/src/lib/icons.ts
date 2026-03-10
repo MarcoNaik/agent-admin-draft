@@ -3,115 +3,117 @@ export type { SVGProps } from "react"
 export type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>
 
 export {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowRightLeft,
   ArrowUp,
+  ArrowUpDown,
+  Ban,
+  BarChart3,
   Bell,
   Blocks,
+  BookOpen,
+  Bot,
+  Brain,
+  Building2,
   Calendar,
   Check,
+  CheckCheck,
+  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ChevronsUpDown,
   Circle,
+  CircleDot,
+  ClipboardCopy,
   Clock,
+  Code,
   Copy,
   Cpu,
   CreditCard,
   Database,
+  DollarSign,
+  Edit,
   ExternalLink,
   Eye,
   EyeOff,
+  FileCode,
   FileText,
+  Filter,
+  FlaskConical,
   Globe,
+  HelpCircle,
+  ImageIcon,
+  Key,
+  Layers,
+  LayoutGrid,
   Link,
+  Link2,
+  List,
+  Loader2,
   Lock,
   Mail,
+  MessageCircle,
+  MessageSquare,
   Mic,
   Minus,
   Monitor,
   Moon,
   MoreHorizontal,
+  MoreVertical,
+  PanelLeft,
+  PanelRight,
+  Paperclip,
+  Pencil,
   Phone,
   Play,
+  Plug,
   Plus,
   Power,
   PowerOff,
+  RefreshCw,
+  Repeat,
+  RotateCcw,
+  RotateCw,
+  Save,
   Search,
   Send,
   Server,
-  Shield as _Shield,
+  Settings,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  Skull,
   Smartphone,
   Sparkles,
   Square,
+  Sun,
+  Table,
   Terminal,
+  Timer,
+  ToggleLeft,
+  Trash2,
+  TrendingUp,
   Unlink,
   User,
   UserPlus,
   Users,
+  Webhook,
   Wifi,
+  WifiOff,
+  Wrench,
+  X,
+  XCircle,
+  XOctagon,
   Zap,
-} from "pixelarticons/react"
+} from "./icons-custom"
 
-export { Analytics as Activity } from "pixelarticons/react"
-export { SquareAlert as AlertCircle } from "pixelarticons/react"
-export { WarningDiamond as AlertTriangle } from "pixelarticons/react"
-export { ArrowsHorizontal as ArrowRightLeft } from "pixelarticons/react"
-export { SortVertical as ArrowUpDown } from "pixelarticons/react"
-export { Cancel as Ban } from "pixelarticons/react"
-export { RobotFace as Bot } from "pixelarticons/react"
-export { AiScan as Brain } from "pixelarticons/react"
-export { CheckDouble as CheckCheck } from "pixelarticons/react"
-export { CheckboxOn as CheckCircle } from "pixelarticons/react"
-export { CheckboxOn as CheckCircle2 } from "pixelarticons/react"
-export { Clipboard as ClipboardCopy } from "pixelarticons/react"
-export { Braces as Code } from "pixelarticons/react"
-export { Coins as DollarSign } from "pixelarticons/react"
-export { PenSquare as Edit } from "pixelarticons/react"
-export { File as FileCode } from "pixelarticons/react"
-export { File as FileEdit } from "pixelarticons/react"
-export { SortVertical as Filter } from "pixelarticons/react"
-export { TestTube as FlaskConical } from "pixelarticons/react"
-export { InfoBox as HelpCircle } from "pixelarticons/react"
-export { Image as ImageIcon } from "pixelarticons/react"
-export { Flatten as Layers } from "pixelarticons/react"
-export { Link as Link2 } from "pixelarticons/react"
-export { Loader as Loader2 } from "pixelarticons/react"
-export { Message as MessageSquare } from "pixelarticons/react"
-export { PanelLeft, PanelRight } from "./icons-custom"
-export { Attachment as Paperclip } from "pixelarticons/react"
-export { PenSquare as Pencil } from "pixelarticons/react"
-export { Modem as Plug } from "pixelarticons/react"
-export { Reload as RefreshCw } from "pixelarticons/react"
-export { Download as Save } from "pixelarticons/react"
-export { SettingsCog as Settings } from "pixelarticons/react"
-export { Switch as ToggleLeft } from "pixelarticons/react"
-export { Delete as Trash2 } from "pixelarticons/react"
-export { RssCircle as Webhook } from "pixelarticons/react"
-export { Signal as WifiOff } from "pixelarticons/react"
-export { X } from "./icons-custom"
-export { CopyX as XCircle } from "pixelarticons/react"
-export { MoreVertical } from "pixelarticons/react"
-export { Skull } from "pixelarticons/react"
-export { Repeat } from "pixelarticons/react"
-export { BookOpen } from "pixelarticons/react"
-export { Reload as RotateCcw } from "pixelarticons/react"
-export { ChartBarBig as TrendingUp } from "pixelarticons/react"
-export { Cancel as XOctagon } from "pixelarticons/react"
-export { AlarmClock as Timer } from "pixelarticons/react"
-export { BuildingCommunity as Building2 } from "pixelarticons/react"
-export { ChartBarBig as BarChart3 } from "pixelarticons/react"
-export { ShieldCheck } from "./icons-custom"
-export { ShieldX } from "./icons-custom"
-export { ChevronsVertical as ChevronsUpDown } from "pixelarticons/react"
-export { Grid3x3 as LayoutGrid } from "pixelarticons/react"
-export { ListBox as List } from "pixelarticons/react"
-export { ListBox as LayoutList } from "pixelarticons/react"
-export { Circle as CircleDot } from "pixelarticons/react"
-
-export { Sun, Key, Shield } from "./icons-custom"
-export { ToolCase as Wrench } from "pixelarticons/react"
-export { Message as MessageCircle } from "pixelarticons/react"
-export { Grid2x3 as Table } from "pixelarticons/react"
+export { CheckCircle as CheckCircle2 } from "./icons-custom"
+export { FileCode as FileEdit } from "./icons-custom"
+export { List as LayoutList } from "./icons-custom"
