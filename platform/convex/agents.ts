@@ -175,6 +175,56 @@ export const remove = mutation({
   },
 })
 
+export const listCustomTools = query({
+  args: {
+    environment: environmentValidator,
+  },
+  returns: v.array(v.object({
+    name: v.string(),
+    description: v.string(),
+    parameters: v.any(),
+    agentName: v.string(),
+    agentSlug: v.string(),
+  })),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    if (!(await isOrgAdmin(ctx, auth))) return []
+
+    const agents = await ctx.db
+      .query("agents")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .filter((q) => q.neq(q.field("status"), "deleted"))
+      .collect()
+
+    const results: Array<{ name: string; description: string; parameters: any; agentName: string; agentSlug: string }> = []
+    const seen = new Set<string>()
+
+    for (const agent of agents) {
+      const config = await ctx.db
+        .query("agentConfigs")
+        .withIndex("by_agent_env", (q) => q.eq("agentId", agent._id).eq("environment", args.environment))
+        .first()
+
+      if (!config?.tools) continue
+
+      for (const tool of config.tools) {
+        if (tool.handlerCode && !seen.has(tool.name)) {
+          seen.add(tool.name)
+          results.push({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+            agentName: agent.name,
+            agentSlug: agent.slug,
+          })
+        }
+      }
+    }
+
+    return results
+  },
+})
+
 export const getActiveConfig = internalQuery({
   args: {
     agentId: v.id("agents"),
