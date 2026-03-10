@@ -36,6 +36,18 @@ export function useEvalRunResults(runId: Id<"evalRuns"> | undefined) {
   return useQuery(api.evals.getRunResults, runId ? { runId } : "skip")
 }
 
+export function useEvalRunsByAgent(agentId: Id<"agents"> | undefined, limit?: number) {
+  return useQuery(api.evals.listRunsByAgent, agentId ? { agentId, limit } : "skip")
+}
+
+export function useEvalSuitesMap(agentId: Id<"agents"> | undefined) {
+  return useQuery(api.evals.listSuitesMap, agentId ? { agentId } : "skip")
+}
+
+export function useAllEvalRuns(limit?: number) {
+  return useQuery(api.evals.listAllRuns, { limit })
+}
+
 export function useCreateEvalSuite() {
   return useMutation(api.evals.createSuite)
 }
