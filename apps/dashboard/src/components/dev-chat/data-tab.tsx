@@ -21,6 +21,7 @@ import {
 import { cn, formatDate } from "@/lib/utils"
 import { formatRelativeTime } from "@/lib/format"
 import { useEntityTypes, useEntities } from "@/hooks/use-entities"
+import { useRoleContext } from "@/contexts/role-context"
 import { useAnimateNew, idKeyFn } from "@/hooks/use-animate-new"
 
 function getSchemaFields(
@@ -242,14 +243,15 @@ function EntityContent({
   }
   view: "table" | "card"
 }) {
+  const { isAdmin } = useRoleContext()
   const entities = useEntities(entityType.slug, "development")
   const newEntityKeys = useAnimateNew(entities, idKeyFn)
   const fields = getSchemaFields(entityType.schema)
   const fieldTypeMap = new Map(fields.map((f) => [f.name, f.type]))
 
-  const listFields =
-    entityType.displayConfig?.listFields ??
-    fields.slice(0, 3).map((f) => f.name)
+  const listFields = isAdmin
+    ? fields.map((f) => f.name)
+    : (entityType.displayConfig?.listFields ?? fields.slice(0, 3).map((f) => f.name))
 
   if (!entities) {
     return (

@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useRoleContext } from "@/contexts/role-context"
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
@@ -146,11 +147,12 @@ function SortIcon({ field, sortField, sortDirection }: { field: string; sortFiel
 
 export function EntityTable({ entityType, entities, onRowClick, sortField, sortDirection, onSort }: EntityTableProps) {
   const router = useRouter()
+  const { isAdmin } = useRoleContext()
 
   const schemaFields = getSchemaFields(entityType.schema)
-  const columns =
-    entityType.displayConfig?.listFields ||
-    schemaFields.slice(0, 5).map((f) => f.name)
+  const columns = isAdmin
+    ? schemaFields.map((f) => f.name)
+    : (entityType.displayConfig?.listFields || schemaFields.slice(0, 5).map((f) => f.name))
 
   const handleRowClick = (entity: Entity) => {
     if (onRowClick) {

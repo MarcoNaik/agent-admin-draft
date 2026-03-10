@@ -1,6 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
+import { useRoleContext } from "@/contexts/role-context"
 import { formatDate } from "@/lib/utils"
 
 interface EntityTypeField {
@@ -204,10 +205,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
 }
 
 export function EntityDetail({ entityType, entity }: EntityDetailProps) {
+  const { isAdmin } = useRoleContext()
   const schemaFields = getSchemaFields(entityType.schema)
-  const displayFields =
-    entityType.displayConfig?.detailFields ||
-    schemaFields.map((f) => f.name)
+  const displayFields = isAdmin
+    ? schemaFields.map((f) => f.name)
+    : (entityType.displayConfig?.detailFields || schemaFields.map((f) => f.name))
 
   return (
     <div className="space-y-6">
