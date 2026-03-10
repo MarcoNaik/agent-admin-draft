@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
+import { Loader2 } from "@/lib/icons"
 import { useEntityTypeBySlug, useCreateEntity } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { EntityForm } from "./entity-form"

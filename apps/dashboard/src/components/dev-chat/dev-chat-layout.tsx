@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, type ReactNode, isValidElement, cloneElement } from "react"
-import { PanelLeft, PanelRight } from "lucide-react"
+import { PanelLeft, PanelRight } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { ActivityPanel } from "@/components/dev-chat/activity-panel"
 import { InspectorPanel } from "@/components/dev-chat/inspector-panel"

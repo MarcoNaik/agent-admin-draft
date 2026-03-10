@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Shield, HelpCircle } from "lucide-react"
+import { Shield, HelpCircle } from "@/lib/icons"
 import type { PendingPermission, PendingQuestion } from "@/hooks/use-studio-events"
 
 interface PermissionRequestCardProps {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, Calendar, CheckCircle, XCircle, RefreshCw, ExternalLink } from "lucide-react"
+import { Loader2, Calendar, CheckCircle, XCircle, RefreshCw, ExternalLink } from "@/lib/icons"
 import { useUser, useClerk } from "@clerk/nextjs"
 import {
   useCalendarConnection,

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, CheckCircle2, Lock } from "lucide-react"
+import { Check, CheckCircle2, Lock } from "@/lib/icons"
 import { useAgents, useThreads } from "@/hooks/use-convex-data"
 import { useStudio } from "@/contexts/studio-context"
 import { useEnvironment } from "@/contexts/environment-context"

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useOrganization } from "@clerk/nextjs"
-import { Loader2, UserPlus } from "lucide-react"
+import { Loader2, UserPlus } from "@/lib/icons"
 import {
   Dialog,
   DialogContent,

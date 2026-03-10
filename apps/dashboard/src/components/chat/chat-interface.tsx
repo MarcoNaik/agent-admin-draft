@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { Loader2, Send, Bot, User, AlertCircle } from "lucide-react"
+import { Loader2, Send, Bot, User, AlertCircle } from "@/lib/icons"
 import { ToolCallBubble, ToolResultBubble } from "@/components/chat/tool-bubbles"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"

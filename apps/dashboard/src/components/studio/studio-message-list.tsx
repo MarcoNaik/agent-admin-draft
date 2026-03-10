@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
-import { Loader2, ChevronRight, Search, FileEdit, Terminal, Eye, Trash2, ArrowRightLeft, Brain, Zap, Globe, ToggleLeft, HelpCircle, AlertCircle } from "lucide-react"
+import { Loader2, ChevronRight, Search, FileEdit, Terminal, Eye, Trash2, ArrowRightLeft, Brain, Zap, Globe, ToggleLeft, HelpCircle, AlertCircle } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { StudioMarkdown } from "./studio-markdown"
 import type { ItemState, ContentPart } from "@/hooks/use-studio-events"

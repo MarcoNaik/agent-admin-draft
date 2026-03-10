@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Check, Copy } from "lucide-react"
+import { Check, Copy } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 interface StudioCodeBlockProps {

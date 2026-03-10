@@ -4,7 +4,7 @@ import { useAgents, useCreateAgent, useDeleteAgent } from "@/hooks/use-convex-da
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Plus, Trash2, Bot, ExternalLink } from "lucide-react"
+import { Loader2, Plus, Trash2, Bot, ExternalLink } from "@/lib/icons"
 import Link from "next/link"
 import { useState } from "react"
 import { Doc } from "@convex/_generated/dataModel"

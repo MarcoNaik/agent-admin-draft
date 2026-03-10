@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2, Clock, CheckCircle2, XCircle, Ban } from "lucide-react"
+import { Loader2, Clock, CheckCircle2, XCircle, Ban } from "@/lib/icons"
 import { Badge } from "@/components/ui/badge"
 
 export const statusConfig = {

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useRoleContext } from "@/contexts/role-context"
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
+import { ArrowUp, ArrowDown, ArrowUpDown } from "@/lib/icons"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 

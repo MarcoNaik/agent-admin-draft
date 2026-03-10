@@ -7,7 +7,7 @@ import {
   Plus,
   ChevronsUpDown,
   Check,
-} from "lucide-react"
+} from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
 import {

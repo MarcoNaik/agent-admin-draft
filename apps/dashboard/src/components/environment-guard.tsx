@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from "@/lib/icons"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useRoleContext } from "@/contexts/role-context"
 

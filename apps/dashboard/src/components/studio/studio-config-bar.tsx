@@ -1,6 +1,6 @@
 "use client"
 
-import { Key, Cpu, Square, Loader2 } from "lucide-react"
+import { Key, Cpu, Square, Loader2 } from "@/lib/icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -126,26 +126,16 @@ export function StudioConfigBar({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectGroup>
-              <SelectLabel className="text-[10px] text-content-tertiary">Fast</SelectLabel>
-              {models.filter((m) => m.tier === "fast").map((m) => (
-                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-              ))}
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="text-[10px] text-content-tertiary">Standard</SelectLabel>
-              {models.filter((m) => m.tier === "standard").map((m) => (
-                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-              ))}
-            </SelectGroup>
-            {models.some((m) => m.tier === "premium") && (
-              <SelectGroup>
-                <SelectLabel className="text-[10px] text-content-tertiary">Premium</SelectLabel>
-                {models.filter((m) => m.tier === "premium").map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-                ))}
-              </SelectGroup>
-            )}
+            {models.map((m) => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">
+                <span className="flex items-center gap-1.5">
+                  {m.name}
+                  {m.tier === "recommended" && (
+                    <span className="text-[9px] font-medium opacity-60 border border-current px-1 py-px rounded">Recommended</span>
+                  )}
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, Trash2, MoreHorizontal, Eye } from "lucide-react"
+import { Pencil, Trash2, MoreHorizontal, Eye } from "@/lib/icons"
 import { useRoleContext } from "@/contexts/role-context"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useDeleteEntity } from "@/hooks/use-convex-data"

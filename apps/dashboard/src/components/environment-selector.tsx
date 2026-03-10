@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronDown, Globe, Code, Settings } from "lucide-react"
+import { ChevronDown, Globe, Code, Settings } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

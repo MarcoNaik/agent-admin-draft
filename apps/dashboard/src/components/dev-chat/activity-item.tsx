@@ -18,7 +18,7 @@ import {
   Wrench,
   MessageSquare,
   Sparkles,
-} from "lucide-react"
+} from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { formatRelativeTime, formatDuration } from "@/lib/format"
 

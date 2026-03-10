@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from "react"
 import { useAnimateNew } from "@/hooks/use-animate-new"
-import { X } from "lucide-react"
+import { X } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Id } from "@convex/_generated/dataModel"

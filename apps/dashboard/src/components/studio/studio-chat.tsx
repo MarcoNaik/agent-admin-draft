@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ReactNode } from "react"
-import { Send } from "lucide-react"
+import { Send } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { StudioMessageList } from "./studio-message-list"
 import type { ItemState } from "@/hooks/use-studio-events"

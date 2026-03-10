@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Wrench, CheckCircle2 } from "lucide-react"
+import { Wrench, CheckCircle2 } from "@/lib/icons"
 
 interface ToolCall {
   id: string

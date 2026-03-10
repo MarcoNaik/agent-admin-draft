@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import Link from "next/link"
-import { Bell, CheckCircle2, XCircle, ExternalLink } from "lucide-react"
+import { Bell, CheckCircle2, XCircle, ExternalLink } from "@/lib/icons"
 import {
   DropdownMenu,
   DropdownMenuContent,

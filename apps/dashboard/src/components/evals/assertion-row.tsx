@@ -1,6 +1,6 @@
 "use client"
 
-import { Trash2 } from "lucide-react"
+import { Trash2 } from "@/lib/icons"
 import {
   Tooltip,
   TooltipTrigger,

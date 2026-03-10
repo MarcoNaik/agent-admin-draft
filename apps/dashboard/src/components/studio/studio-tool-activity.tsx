@@ -1,6 +1,6 @@
 "use client"
 
-import { Terminal, FileCode, CheckCircle2 } from "lucide-react"
+import { Terminal, FileCode, CheckCircle2 } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import type { ContentPart } from "@/hooks/use-studio-events"
 

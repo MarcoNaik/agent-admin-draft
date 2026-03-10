@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Square, Loader2 } from "lucide-react"
+import { Square, Loader2 } from "@/lib/icons"
 
 interface StudioSessionControlsProps {
   status: string | undefined

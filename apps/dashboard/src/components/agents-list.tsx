@@ -14,7 +14,7 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react"
+} from "@/lib/icons"
 
 interface Agent {
   id: string

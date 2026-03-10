@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ChevronRight, ChevronDown, Wrench } from "lucide-react"
+import { ChevronRight, ChevronDown, Wrench } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"

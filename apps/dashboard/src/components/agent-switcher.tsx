@@ -8,7 +8,7 @@ import {
   ChevronsUpDown,
   Bot,
   Check,
-} from "lucide-react"
+} from "@/lib/icons"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Doc } from "@convex/_generated/dataModel"

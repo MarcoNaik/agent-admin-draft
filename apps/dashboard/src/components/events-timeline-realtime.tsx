@@ -4,7 +4,7 @@ import { useEvents, useEventTypes } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Activity, Filter } from "lucide-react"
+import { Loader2, Activity, Filter } from "@/lib/icons"
 import { useState } from "react"
 import { Doc } from "@convex/_generated/dataModel"
 

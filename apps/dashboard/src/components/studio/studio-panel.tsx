@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
-import { CreditCard, Terminal } from "lucide-react"
+import { CreditCard, Terminal } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { useStudio } from "@/contexts/studio-context"
 import { useStudioSession } from "@/hooks/use-studio-session"
