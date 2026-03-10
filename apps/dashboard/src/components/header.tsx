@@ -24,7 +24,6 @@ import { useCurrentRole } from "@/hooks/use-current-role"
 import { useAgents } from "@/hooks/use-agents"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { OrgSwitcher } from "@/components/org-switcher"
-import { AgentSwitcher } from "@/components/agent-switcher"
 import { NotificationBell } from "@/components/notification-bell"
 
 type NavItem = {
@@ -36,10 +35,7 @@ type NavItem = {
 const adminNavigation: NavItem[] = [
   { name: "Conversations", href: "/conversations" },
   { name: "Data", href: "/entities" },
-  { name: "Roles", href: "/roles" },
-  { name: "Tools", href: "/tools" },
-  { name: "Automations", href: "/triggers" },
-  { name: "Settings", href: "/settings" },
+  { name: "System", href: "/system" },
 ]
 
 const memberNavigation: NavItem[] = [
@@ -100,8 +96,6 @@ function EnvironmentSelector() {
   )
 }
 
-const EXACT_MATCH_TABS = new Set(["/settings"])
-
 function StudioToggle() {
   const { isOpen, toggleStudio, hasActiveSession } = useStudio()
   const agents = useAgents()
@@ -135,40 +129,40 @@ export function Header() {
 
   return (
     <div className="sticky top-0 z-40">
-      <header className="flex justify-between min-h-[48px] overflow-x-auto scrollbar-none backdrop-blur-md bg-background-secondary/80 border-b">
+      <header className="flex items-center min-h-[48px] overflow-x-auto scrollbar-none">
         <div className="flex items-center px-3">
           <Link href="/" className="flex items-center mr-3 font-display text-lg font-semibold tracking-tight text-foreground">
             Struere
           </Link>
-
-          <div className="flex items-center">
-            <OrgSwitcher />
-
-            <span className="text-content-tertiary mx-1">/</span>
-            <AgentSwitcher />
-
-            <div className="flex items-center gap-0.5 ml-4">
-              {roleNavigation.map((item) => {
-                const isActive = EXACT_MATCH_TABS.has(item.href)
-                  ? pathname === item.href
-                  : pathname.startsWith(item.href)
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft",
-                      isActive && "text-content-primary font-medium"
-                    )}
-                  >
-                    {item.icon && <item.icon className="h-4 w-4" />}
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
+          <OrgSwitcher />
         </div>
+
+        <nav className="flex items-center gap-0.5 mx-auto">
+          {roleNavigation.map((item) => {
+            const isActive = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "relative flex flex-col items-center px-3 py-1.5 text-sm rounded-md transition-colors ease-out-soft",
+                  isActive
+                    ? "text-content-primary"
+                    : "text-content-secondary hover:text-content-primary hover:bg-background-tertiary"
+                )}
+              >
+                <span className="font-medium invisible flex items-center gap-1.5" aria-hidden="true">
+                  {item.icon && <item.icon className="h-4 w-4" />}
+                  {item.name}
+                </span>
+                <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", isActive && "font-medium")}>
+                  {item.icon && <item.icon className="h-4 w-4" />}
+                  {item.name}
+                </span>
+              </Link>
+            )
+          })}
+        </nav>
 
         <div className="flex items-center gap-2 px-3">
           <a
