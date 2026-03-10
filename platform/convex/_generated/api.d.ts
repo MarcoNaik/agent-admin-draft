@@ -55,6 +55,8 @@ import type * as lib_utils from "../lib/utils.js";
 import type * as lib_whatsappPricing from "../lib/whatsappPricing.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_addEnvironment from "../migrations/addEnvironment.js";
+import type * as migrations_backfillPhoneNumbers from "../migrations/backfillPhoneNumbers.js";
+import type * as migrations_backfillPhoneNumbersHelper from "../migrations/backfillPhoneNumbersHelper.js";
 import type * as migrations_centsToMicrodollars from "../migrations/centsToMicrodollars.js";
 import type * as migrations_cleanupAllWhatsApp from "../migrations/cleanupAllWhatsApp.js";
 import type * as migrations_clearStaleReservations from "../migrations/clearStaleReservations.js";
@@ -146,6 +148,8 @@ declare const fullApi: ApiFromModules<{
   "lib/whatsappPricing": typeof lib_whatsappPricing;
   migrations: typeof migrations;
   "migrations/addEnvironment": typeof migrations_addEnvironment;
+  "migrations/backfillPhoneNumbers": typeof migrations_backfillPhoneNumbers;
+  "migrations/backfillPhoneNumbersHelper": typeof migrations_backfillPhoneNumbersHelper;
   "migrations/centsToMicrodollars": typeof migrations_centsToMicrodollars;
   "migrations/cleanupAllWhatsApp": typeof migrations_cleanupAllWhatsApp;
   "migrations/clearStaleReservations": typeof migrations_clearStaleReservations;
