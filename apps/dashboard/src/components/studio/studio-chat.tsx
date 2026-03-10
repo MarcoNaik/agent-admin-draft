@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, FormEvent, KeyboardEvent, ReactNode } from "react"
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ReactNode } from "react"
 import { Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StudioMessageList } from "./studio-message-list"
@@ -28,6 +28,13 @@ export function StudioChat({
 }: StudioChatProps) {
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [])
 
   const inputDisabled = sessionEnded === true
   const canSend = input.trim() && !inputDisabled && !turnInProgress && !isStarting
@@ -82,9 +89,17 @@ export function StudioChat({
 
       {children}
 
-      <form onSubmit={handleSubmit} className="shrink-0 border-t bg-background p-4">
+      {sessionEnded && (
+        <div className="shrink-0 px-4 py-3 border-t border-border/40 text-center">
+          <p className="text-xs text-content-tertiary">Session ended</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="shrink-0 border-t border-border/40 p-4">
         <div className="flex items-end gap-2">
+          <label htmlFor="studio-input" className="sr-only">Message</label>
           <textarea
+            id="studio-input"
             ref={textareaRef}
             value={input}
             onChange={handleInput}
@@ -92,12 +107,13 @@ export function StudioChat({
             placeholder={placeholder}
             disabled={inputDisabled}
             rows={1}
-            className="flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-sm font-input text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+            className="flex-1 resize-none rounded-lg border bg-transparent px-3 py-2 text-sm font-input text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           />
           <Button
             type="submit"
             size="icon"
             disabled={!canSend}
+            aria-label="Send message"
             className="shrink-0 h-9 w-9"
           >
             <Send className="h-4 w-4" />
