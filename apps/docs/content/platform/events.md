@@ -7,7 +7,7 @@ order: 4
 
 # Events
 
-Events provide a complete audit trail of all mutations in the Struere platform. Every entity creation, update, deletion, and custom action is recorded with full actor context, enabling compliance tracking, debugging, and event-driven automation.
+Events provide a complete audit trail of all mutations in the Struere platform. The platform automatically emits events whenever entities are created, updated, deleted, or linked. Every mutation is recorded with full actor context, enabling compliance tracking, debugging, and event-driven automation.
 
 ## Event Structure
 
@@ -26,11 +26,9 @@ Each event captures the full context of what happened, who did it, and when:
 
 ## Event Types
 
-Events fall into two categories: system events emitted automatically by the platform, and custom events emitted explicitly by tools or automations.
+All events are system-generated. The platform automatically emits events when mutations occur.
 
-### System Events
-
-These events are emitted automatically when entity mutations occur:
+### Entity Lifecycle Events
 
 | Event Type | Trigger |
 |------------|---------|
@@ -39,72 +37,25 @@ These events are emitted automatically when entity mutations occur:
 | `{type}.deleted` | An entity is soft-deleted |
 | `entity.linked` | A relation is created between two entities |
 | `entity.unlinked` | A relation is removed between two entities |
+
+### Trigger Execution Events
+
+| Event Type | Trigger |
+|------------|---------|
 | `trigger.executed` | An automation completes successfully |
 | `trigger.failed` | An automation fails during execution |
 
-### Custom Events
-
-Custom events are emitted using the `event.emit` tool:
-
-```typescript
-event.emit({
-  eventType: "session.reminder.sent",
-  entityId: "ent_abc123",
-  payload: {
-    recipientType: "guardian",
-    recipientId: "ent_def456",
-    channel: "whatsapp",
-  },
-})
-```
-
-Custom event types follow a dot-notation naming convention (e.g., `"session.completed"`, `"payment.received"`, `"credits.deducted"`).
-
 ## Event Sources
 
-Events are emitted from three mutation sources:
+Events are emitted automatically from three mutation sources:
 
 | Source | Description |
 |--------|-------------|
 | Dashboard CRUD | User actions in the admin dashboard |
-| Agent tool calls | Built-in tools like `entity.create` and `event.emit` |
+| Agent tool calls | Built-in tools like `entity.create`, `entity.update`, `entity.delete` |
 | API mutations | External API calls via HTTP endpoints |
 
 All sources capture the actor context, so events always record who performed the action.
-
-## Querying Events
-
-Events can be queried using the `event.query` tool:
-
-```typescript
-event.query({
-  eventType: "session.created",
-  entityId: "ent_abc123",
-  since: 1700000000000,
-  limit: 50,
-})
-```
-
-### Query Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `eventType` | string | Filter by event type |
-| `entityId` | string | Filter by associated entity |
-| `since` | number | Unix timestamp for lower bound |
-| `limit` | number | Maximum number of events to return |
-
-All parameters are optional. When multiple are provided, they act as AND filters.
-
-## Visibility Filtering
-
-Event queries are **visibility-filtered** based on the actor's permissions. An actor can only see events related to entities they have permission to access. This means:
-
-- A teacher only sees events for their own sessions and assigned students
-- A guardian only sees events related to their children
-- An admin sees all events within the organization
-
-The visibility filtering applies the same scope rules used for entity queries, ensuring consistent access control across the platform.
 
 ## Environment Scoping
 
@@ -114,7 +65,7 @@ Events are indexed by `by_org_env_type` for efficient querying by organization, 
 
 ## Event Payloads
 
-Event payloads contain event-specific data. For system events, the payload typically includes the entity data at the time of the event:
+Event payloads contain event-specific data. The payload typically includes the entity data at the time of the event:
 
 ### {type}.created Payload
 
@@ -145,17 +96,9 @@ Event payloads contain event-specific data. For system events, the payload typic
 }
 ```
 
-### Custom Event Payload
+## Viewing Events
 
-Custom events can include any JSON-serializable payload:
-
-```typescript
-{
-  message: "Session reminder sent",
-  channel: "whatsapp",
-  templateName: "session_reminder",
-}
-```
+Events are visible in the dashboard under the **Events** tab. You can filter by event type, entity, and time range to inspect the audit trail for any record.
 
 ## Events and Automations
 
@@ -174,8 +117,7 @@ Automation engine checks for matching automations
 Matching automations scheduled for execution
     │
     ▼
-Automation actions execute (may emit more events)
+Automation actions execute
 ```
 
-Automations can also emit events via the `event.emit` tool in their action chains, creating observable side effects for other automations or audit purposes.
-
+Automations are defined using [`defineTrigger`](/sdk/define-trigger) and fire based on entity lifecycle events. See [Automations](/sdk/define-trigger) for details.
