@@ -1,8 +1,8 @@
 import { Navigation } from "@/components/navigation"
 import { HeroSection } from "@/components/hero-section"
-import { HowItWorks } from "@/components/how-it-works"
+import { DemoVideo } from "@/components/demo-video"
 import { UseCases } from "@/components/use-cases"
-import { Integrations } from "@/components/integrations"
+import { IntegrationsBar } from "@/components/integrations-bar"
 import { Pricing } from "@/components/pricing"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
@@ -12,9 +12,9 @@ export default function Home() {
     <div>
       <Navigation />
       <HeroSection />
-      <HowItWorks />
       <UseCases />
-      <Integrations />
+      <DemoVideo />
+      <IntegrationsBar />
       <Pricing />
       <CTASection />
       <Footer />
