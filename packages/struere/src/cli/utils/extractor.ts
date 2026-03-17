@@ -14,8 +14,6 @@ const BUILTIN_TOOLS = [
   'entity.query',
   'entity.update',
   'entity.delete',
-  'entity.link',
-  'entity.unlink',
   'calendar.list',
   'calendar.create',
   'calendar.update',
@@ -350,8 +348,6 @@ function getBuiltinToolDescription(name: string): string {
     'entity.query': 'Query entities by type with optional filters',
     'entity.update': 'Update an existing entity by ID',
     'entity.delete': 'Delete an entity by ID',
-    'entity.link': 'Create a relation between two entities',
-    'entity.unlink': 'Remove a relation between two entities',
     'calendar.list': 'List Google Calendar events for a user within a time range',
     'calendar.create': 'Create a Google Calendar event on a user\'s calendar',
     'calendar.update': 'Update an existing Google Calendar event',
@@ -423,25 +419,6 @@ function getBuiltinToolParameters(name: string): unknown {
         id: { type: 'string', description: 'The entity ID to delete' },
       },
       required: ['id'],
-    },
-    'entity.link': {
-      type: 'object',
-      properties: {
-        fromId: { type: 'string', description: 'Source entity ID' },
-        toId: { type: 'string', description: 'Target entity ID' },
-        relationType: { type: 'string', description: 'Type of relation (e.g., "assigned_to", "belongs_to")' },
-        metadata: { type: 'object', description: 'Optional metadata for the relation' },
-      },
-      required: ['fromId', 'toId', 'relationType'],
-    },
-    'entity.unlink': {
-      type: 'object',
-      properties: {
-        fromId: { type: 'string', description: 'Source entity ID' },
-        toId: { type: 'string', description: 'Target entity ID' },
-        relationType: { type: 'string', description: 'Type of relation to remove' },
-      },
-      required: ['fromId', 'toId', 'relationType'],
     },
     'calendar.list': {
       type: 'object',
