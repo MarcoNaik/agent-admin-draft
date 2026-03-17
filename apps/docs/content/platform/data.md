@@ -117,37 +117,42 @@ entity.delete({ id: "ent_abc123" })
 
 Performs a soft delete (sets status to `"deleted"`) and emits an event. The actor must have `delete` permission.
 
-## Relations
+## References
 
-Records can be linked to each other through the `entityRelations` table. Relations are typed and directional.
+Records can reference other records through schema-level foreign keys. Add `references: "entity-type-slug"` to any string field in your data type schema to enforce referential integrity.
 
-### Link
+### Defining References
 
 ```typescript
-entity.link({
-  fromId: "ent_abc123",
-  toId: "ent_def456",
-  relationType: "enrolled_in",
+import { defineData } from 'struere'
+
+export default defineData({
+  name: "Session",
+  slug: "session",
+  schema: {
+    type: "object",
+    properties: {
+      studentId: { type: "string", references: "student" },
+      teacherId: { type: "string", references: "teacher" },
+      startTime: { type: "number" },
+      duration: { type: "number" },
+      subject: { type: "string" },
+    },
+    required: ["studentId", "teacherId", "startTime", "duration"],
+  },
 })
 ```
 
-### Unlink
+### What It Enforces
 
-```typescript
-entity.unlink({
-  fromId: "ent_abc123",
-  toId: "ent_def456",
-  relationType: "enrolled_in",
-})
-```
+When `entity.create` or `entity.update` is called, the platform validates every field that has a `references` value:
 
-### Environment Filtering
+- The referenced entity must exist
+- The referenced entity must be active (not deleted)
+- The referenced entity must belong to the same organization and environment
+- The referenced entity must be of the correct entity type (e.g., a field with `references: "student"` must point to a `student` entity)
 
-The `entityRelations` table indexes (`by_from` and `by_to`) do not include the environment field. All relation queries apply a post-index filter to ensure environment isolation:
-
-```typescript
-.filter((q) => q.eq(q.field("environment"), environment))
-```
+If any check fails, the operation throws an error identifying the invalid reference field.
 
 ## Search
 
