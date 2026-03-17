@@ -7,6 +7,8 @@ const MINUTE = 60_000
 const { rateLimit } = defineRateLimits({
   chatPerKey: { kind: "token bucket", rate: 30, period: MINUTE, capacity: 10 },
   chatPerOrg: { kind: "token bucket", rate: 100, period: MINUTE, capacity: 30 },
+  dataPerKey: { kind: "token bucket", rate: 60, period: MINUTE, capacity: 20 },
+  dataPerOrg: { kind: "token bucket", rate: 200, period: MINUTE, capacity: 60 },
   authRefresh: { kind: "fixed window", rate: 20, period: MINUTE },
 })
 
@@ -22,6 +24,26 @@ export const checkChatRateLimit = internalMutation({
     }
 
     const perOrg = await rateLimit(ctx, { name: "chatPerOrg", key: args.organizationId })
+    if (!perOrg.ok) {
+      return { ok: false as const, retryAt: perOrg.retryAt }
+    }
+
+    return { ok: true as const, retryAt: undefined }
+  },
+})
+
+export const checkDataRateLimit = internalMutation({
+  args: {
+    key: v.string(),
+    organizationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const perKey = await rateLimit(ctx, { name: "dataPerKey", key: args.key })
+    if (!perKey.ok) {
+      return { ok: false as const, retryAt: perKey.retryAt }
+    }
+
+    const perOrg = await rateLimit(ctx, { name: "dataPerOrg", key: args.organizationId })
     if (!perOrg.ok) {
       return { ok: false as const, retryAt: perOrg.retryAt }
     }
