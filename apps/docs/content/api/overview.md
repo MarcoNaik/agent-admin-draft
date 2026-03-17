@@ -28,6 +28,14 @@ API keys are validated by computing a SHA-256 hash and looking up the hashed val
 | `GET` | `/health` | None | Health check |
 | `POST` | `/v1/chat` | Bearer token | Chat with an agent by agent ID |
 | `POST` | `/v1/agents/:slug/chat` | Bearer token | Chat with an agent by slug |
+| `GET` | `/v1/entity-types` | Bearer token (data) | List entity types |
+| `GET` | `/v1/data/:type` | Bearer token (data) | List entities |
+| `GET` | `/v1/data/:type/:id` | Bearer token (data) | Get entity by ID |
+| `POST` | `/v1/data/:type` | Bearer token (data) | Create entity |
+| `POST` | `/v1/data/:type/query` | Bearer token (data) | Query entities with filters |
+| `POST` | `/v1/data/:type/search` | Bearer token (data) | Full-text search entities |
+| `PATCH` | `/v1/data/:type/:id` | Bearer token (data) | Update entity |
+| `DELETE` | `/v1/data/:type/:id` | Bearer token (data) | Delete entity |
 | `POST` | `/webhook/clerk` | None | Clerk user/organization sync webhook |
 | `POST` | `/webhook/kapso/project` | HMAC signature | WhatsApp phone number connection events |
 | `POST` | `/webhook/kapso/messages` | HMAC signature | WhatsApp inbound messages and status updates |
@@ -60,6 +68,10 @@ Send a message to an agent identified by its Convex document ID. See the [Chat A
 ## POST /v1/agents/:slug/chat
 
 Send a message to an agent identified by its slug. This is the preferred endpoint for external integrations as slugs are human-readable and stable across deployments. See the [Chat API](./chat) documentation for full details.
+
+## Data API
+
+CRUD and query operations for entities in your data layer. Requires an API key with the `data` permission. See the [Data API](./data) documentation for full details.
 
 ## Webhook Endpoints
 
