@@ -48,6 +48,48 @@ function filterDataByMask(
   return data
 }
 
+async function validateReferences(
+  ctx: { db: any },
+  schema: Record<string, unknown>,
+  data: Record<string, unknown>,
+  organizationId: Id<"organizations">,
+  environment: Environment
+) {
+  const properties = (schema as any).properties as Record<string, any> | undefined
+  if (!properties) return
+
+  for (const [fieldName, propDef] of Object.entries(properties)) {
+    const referencesSlug = propDef?.references as string | undefined
+    if (!referencesSlug) continue
+
+    const value = data[fieldName]
+    if (value === undefined || value === null) continue
+
+    const referencedType = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env_slug", (q: any) =>
+        q.eq("organizationId", organizationId).eq("environment", environment).eq("slug", referencesSlug)
+      )
+      .first()
+
+    if (!referencedType) {
+      throw new Error(`Referenced entity type '${referencesSlug}' not found`)
+    }
+
+    const entity = await ctx.db.get(value as Id<"entities">)
+
+    if (
+      !entity ||
+      entity.deletedAt ||
+      entity.organizationId !== organizationId ||
+      entity.environment !== environment ||
+      entity.entityTypeId !== referencedType._id
+    ) {
+      throw new Error(`Referenced entity not found: field '${fieldName}' references type '${referencesSlug}', but entity '${value}' does not exist`)
+    }
+  }
+}
+
 export const entityCreate = internalMutation({
   args: {
     organizationId: v.id("organizations"),
@@ -83,6 +125,10 @@ export const entityCreate = internalMutation({
 
     if (!entityType) {
       throw new Error(`Entity type ${args.type} not found`)
+    }
+
+    if (entityType.schema?.properties) {
+      await validateReferences(ctx, entityType.schema, args.data, args.organizationId, args.environment)
     }
 
     const now = Date.now()
@@ -489,6 +535,10 @@ export const entityUpdate = internalMutation({
     const fieldMask = await getFieldMask(ctx, actor, entityType.slug)
     const allowedData = filterDataByMask(args.data, fieldMask)
 
+    if (entityType.schema?.properties) {
+      await validateReferences(ctx, entityType.schema, allowedData, args.organizationId, args.environment)
+    }
+
     const mergedData = { ...entity.data, ...allowedData }
     const now = Date.now()
 
@@ -614,175 +664,3 @@ export const entityDelete = internalMutation({
   },
 })
 
-export const entityLink = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    actorId: v.string(),
-    actorType: v.union(
-      v.literal("user"),
-      v.literal("agent"),
-      v.literal("system"),
-      v.literal("webhook")
-    ),
-    environment: environmentValidator,
-    fromId: v.string(),
-    toId: v.string(),
-    relationType: v.string(),
-    metadata: v.optional(v.any()),
-  },
-  returns: v.object({ id: v.id("entityRelations"), existing: v.boolean() }),
-  handler: async (ctx, args) => {
-    const fromEntity = await ctx.db.get(args.fromId as Id<"entities">)
-    const toEntity = await ctx.db.get(args.toId as Id<"entities">)
-
-    if (!fromEntity || fromEntity.organizationId !== args.organizationId) {
-      throw new Error("Source entity not found")
-    }
-    if (!toEntity || toEntity.organizationId !== args.organizationId) {
-      throw new Error("Target entity not found")
-    }
-
-    const fromType = await ctx.db.get(fromEntity.entityTypeId)
-    const toType = await ctx.db.get(toEntity.entityTypeId)
-
-    if (!fromType || !toType) {
-      throw new Error("Entity type not found")
-    }
-
-    const actor = await buildActorContext(ctx, {
-      organizationId: args.organizationId,
-      actorType: args.actorType as ActorType,
-      actorId: args.actorId,
-      environment: args.environment,
-    })
-
-    await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
-    await assertCanPerform(ctx, actor, "read", toType.slug, toEntity as unknown as Record<string, unknown>)
-
-    const existing = await ctx.db
-      .query("entityRelations")
-      .withIndex("by_from", (q) =>
-        q
-          .eq("fromEntityId", args.fromId as Id<"entities">)
-          .eq("relationType", args.relationType)
-          .eq("environment", args.environment)
-      )
-      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
-      .first()
-
-    if (existing) {
-      return { id: existing._id, existing: true }
-    }
-
-    const now = Date.now()
-    const relationId = await ctx.db.insert("entityRelations", {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      fromEntityId: args.fromId as Id<"entities">,
-      toEntityId: args.toId as Id<"entities">,
-      relationType: args.relationType,
-      metadata: args.metadata,
-      createdAt: now,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityId: args.fromId as Id<"entities">,
-      entityTypeSlug: fromType.slug,
-      eventType: "entity.linked",
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: {
-        toEntityId: args.toId,
-        relationType: args.relationType,
-      },
-      timestamp: now,
-    })
-
-    return { id: relationId, existing: false }
-  },
-})
-
-export const entityUnlink = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    actorId: v.string(),
-    actorType: v.union(
-      v.literal("user"),
-      v.literal("agent"),
-      v.literal("system"),
-      v.literal("webhook")
-    ),
-    environment: environmentValidator,
-    fromId: v.string(),
-    toId: v.string(),
-    relationType: v.string(),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    const fromEntity = await ctx.db.get(args.fromId as Id<"entities">)
-    const toEntity = await ctx.db.get(args.toId as Id<"entities">)
-
-    if (!fromEntity || fromEntity.organizationId !== args.organizationId) {
-      throw new Error("Source entity not found")
-    }
-    if (!toEntity || toEntity.organizationId !== args.organizationId) {
-      throw new Error("Target entity not found")
-    }
-
-    const fromType = await ctx.db.get(fromEntity.entityTypeId)
-    const toType = await ctx.db.get(toEntity.entityTypeId)
-
-    if (!fromType || !toType) {
-      throw new Error("Entity type not found")
-    }
-
-    const actor = await buildActorContext(ctx, {
-      organizationId: args.organizationId,
-      actorType: args.actorType as ActorType,
-      actorId: args.actorId,
-      environment: args.environment,
-    })
-
-    await assertCanPerform(ctx, actor, "update", fromType.slug, fromEntity as unknown as Record<string, unknown>)
-    await assertCanPerform(ctx, actor, "read", toType.slug, toEntity as unknown as Record<string, unknown>)
-
-    const relation = await ctx.db
-      .query("entityRelations")
-      .withIndex("by_from", (q) =>
-        q
-          .eq("fromEntityId", args.fromId as Id<"entities">)
-          .eq("relationType", args.relationType)
-          .eq("environment", args.environment)
-      )
-      .filter((q) => q.eq(q.field("toEntityId"), args.toId))
-      .first()
-
-    if (!relation || relation.organizationId !== args.organizationId) {
-      throw new Error("Relation not found")
-    }
-
-    const now = Date.now()
-    await ctx.db.delete(relation._id)
-
-    await ctx.db.insert("events", {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityId: args.fromId as Id<"entities">,
-      entityTypeSlug: fromType.slug,
-      eventType: "entity.unlinked",
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: {
-        toEntityId: args.toId,
-        relationType: args.relationType,
-      },
-      timestamp: now,
-    })
-
-    return { success: true }
-  },
-})
