@@ -18,8 +18,6 @@ const entityGetRef = makeFunctionReference<"query">("tools/entities:entityGet")
 const entityQueryRef = makeFunctionReference<"query">("tools/entities:entityQuery")
 const entityUpdateRef = makeFunctionReference<"mutation">("tools/entities:entityUpdate")
 const entityDeleteRef = makeFunctionReference<"mutation">("tools/entities:entityDelete")
-const entityLinkRef = makeFunctionReference<"mutation">("tools/entities:entityLink")
-const entityUnlinkRef = makeFunctionReference<"mutation">("tools/entities:entityUnlink")
 const eventEmitRef = makeFunctionReference<"mutation">("tools/events:eventEmit")
 const eventQueryRef = makeFunctionReference<"query">("tools/events:eventQuery")
 const calendarListRef = makeFunctionReference<"action">("tools/calendar:calendarList")
@@ -45,8 +43,6 @@ const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref
   "entity.query": { type: "query", ref: "entityQuery" },
   "entity.update": { type: "mutation", ref: "entityUpdate" },
   "entity.delete": { type: "mutation", ref: "entityDelete" },
-  "entity.link": { type: "mutation", ref: "entityLink" },
-  "entity.unlink": { type: "mutation", ref: "entityUnlink" },
   "calendar.list": { type: "action", ref: "calendarList" },
   "calendar.create": { type: "action", ref: "calendarCreate" },
   "calendar.update": { type: "action", ref: "calendarUpdate" },
@@ -550,23 +546,6 @@ async function executeToolAction(
       return await ctx.runMutation(entityDeleteRef, {
         organizationId, actorId, actorType, environment,
         id: args.id as string,
-      })
-
-    case "entity.link":
-      return await ctx.runMutation(entityLinkRef, {
-        organizationId, actorId, actorType, environment,
-        fromId: args.fromId as string,
-        toId: args.toId as string,
-        relationType: args.relationType as string,
-        metadata: args.metadata,
-      })
-
-    case "entity.unlink":
-      return await ctx.runMutation(entityUnlinkRef, {
-        organizationId, actorId, actorType, environment,
-        fromId: args.fromId as string,
-        toId: args.toId as string,
-        relationType: args.relationType as string,
       })
 
     case "event.emit":
