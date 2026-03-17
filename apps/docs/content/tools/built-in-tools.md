@@ -22,6 +22,8 @@ Built-in tools fall into two categories:
 | `entity.update` | Data | Update an existing record's data |
 | `entity.delete` | Data | Soft-delete a record |
 | `agent.chat` | Agent | Send a message to another agent and get its response |
+| `web.search` | Web | Search the web and return relevant results |
+| `web.fetch` | Web | Fetch a web page and return clean markdown content |
 
 ## Integration Tools
 
@@ -302,6 +304,83 @@ Soft-deletes a record by setting its status to `"deleted"` and recording a `dele
 
 ```typescript
 { success: boolean }
+```
+
+---
+
+## Web Tools
+
+Web tools allow agents to search the web and fetch page content. These are core tools — no external integration setup required. Powered by Jina AI.
+
+### web.search
+
+Searches the web and returns relevant results with titles, URLs, and content snippets.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | `string` | Yes | Search query |
+| `maxResults` | `number` | No | Maximum results to return (default: 5, max: 20) |
+| `site` | `string[]` | No | Only include results from these domains |
+| `gl` | `string` | No | Country code for localized results (e.g., `"US"`, `"GB"`) |
+| `hl` | `string` | No | Language code (ISO 639-1, e.g., `"en"`, `"es"`) |
+
+**Returns:**
+
+```typescript
+{
+  results: Array<{
+    title: string
+    url: string
+    content: string
+    description?: string
+  }>
+}
+```
+
+**Example agent usage:**
+
+```json
+{
+  "query": "latest pricing for OpenAI GPT-4",
+  "maxResults": 3
+}
+```
+
+---
+
+### web.fetch
+
+Fetches a web page and returns its content as clean markdown. Useful for reading documentation, articles, or any public web page.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | URL of the page to fetch |
+| `targetSelector` | `string` | No | CSS selector to extract specific content |
+| `removeSelector` | `string` | No | CSS selector to remove elements before extraction |
+| `tokenBudget` | `number` | No | Maximum number of tokens in the response |
+
+**Returns:**
+
+```typescript
+{
+  title: string
+  url: string
+  content: string
+  description?: string
+}
+```
+
+**Example agent usage:**
+
+```json
+{
+  "url": "https://docs.example.com/api/authentication",
+  "targetSelector": "article"
+}
 ```
 
 ---
