@@ -36,6 +36,15 @@ All events are system-generated. The platform automatically emits events when mu
 | `{type}.updated` | An entity's data or status is modified |
 | `{type}.deleted` | An entity is soft-deleted |
 
+### Payment Events
+
+| Event Type | Trigger |
+|------------|---------|
+| `payment.created` | A payment entity is created |
+| `payment.paid` | A payment is confirmed via webhook or reconciliation |
+| `payment.failed` | A payment is rejected or cancelled |
+| `payment.link_created` | A payment link is generated |
+
 ### Trigger Execution Events
 
 | Event Type | Trigger |
@@ -45,13 +54,14 @@ All events are system-generated. The platform automatically emits events when mu
 
 ## Event Sources
 
-Events are emitted automatically from three mutation sources:
+Events are emitted automatically from all mutation sources:
 
 | Source | Description |
 |--------|-------------|
 | Dashboard CRUD | User actions in the admin dashboard |
 | Agent tool calls | Built-in tools like `entity.create`, `entity.update`, `entity.delete` |
 | API mutations | External API calls via HTTP endpoints |
+| Webhooks | External services like payment providers updating entity state |
 
 All sources capture the actor context, so events always record who performed the action.
 

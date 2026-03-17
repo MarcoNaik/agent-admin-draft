@@ -256,8 +256,36 @@ Automations fire from all mutation sources in the platform:
 | **Dashboard CRUD** | Admin creates a session via the UI |
 | **Agent tool calls** | Agent uses `entity.create` to schedule a session |
 | **API mutations** | External system calls the HTTP API |
+| **Webhooks** | Payment provider confirms a payment via webhook |
 
 This ensures that automated workflows execute regardless of how the mutation originated.
+
+## Payment Automations
+
+Payment state changes from webhooks and reconciliation fire automations. Use `entityType: "payment"` with `action: "updated"` and a `condition` to match specific payment states:
+
+```typescript
+export default defineTrigger({
+  name: "Notify Payment Received",
+  slug: "notify-payment-received",
+  on: {
+    entityType: "payment",
+    action: "updated",
+    condition: { "data.status": "paid" },
+  },
+  actions: [
+    {
+      tool: "whatsapp.send",
+      args: {
+        to: "{{trigger.data.customerPhone}}",
+        text: "Payment of {{trigger.data.amount}} {{trigger.data.currency}} received.",
+      },
+    },
+  ],
+})
+```
+
+See [Flow Payments](/integrations/flow-payments) for the full list of payment events and more examples.
 
 ## Events
 
