@@ -78,6 +78,7 @@ interface JSONSchemaProperty {
   items?: JSONSchemaProperty
   properties?: Record<string, JSONSchemaProperty>
   required?: string[]
+  references?: string
 }
 ```
 
@@ -146,6 +147,39 @@ The root schema must always be `type: "object"`. Nested objects must declare the
   },
 }
 ```
+
+## References
+
+Fields with `references` enforce foreign key constraints. When an entity is created or updated, any field with `references` is validated to ensure the referenced entity exists.
+
+```typescript
+import { defineData } from 'struere'
+
+export default defineData({
+  name: "Session",
+  slug: "session",
+  schema: {
+    type: "object",
+    properties: {
+      studentId: { type: "string", references: "student" },
+      teacherId: { type: "string", references: "teacher" },
+      startTime: { type: "number" },
+      duration: { type: "number" },
+      subject: { type: "string" },
+    },
+    required: ["studentId", "teacherId", "startTime", "duration"],
+  },
+})
+```
+
+When the agent calls `entity.create` or `entity.update` with a `studentId` or `teacherId` value, the platform validates that:
+
+- The referenced entity exists
+- The referenced entity is not deleted
+- The referenced entity belongs to the same organization and environment
+- The referenced entity is of the correct entity type (e.g., `studentId` must reference a `student` entity)
+
+If any validation fails, the operation throws an error identifying the invalid reference field.
 
 ## Display Configuration
 
