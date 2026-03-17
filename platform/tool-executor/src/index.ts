@@ -106,6 +106,10 @@ function buildStruereSDK(callbackUrl: string, callbackToken: string, identity: T
     agent: {
       chat: (args: Record<string, unknown>) => callTool("agent.chat", args),
     },
+    web: {
+      search: (args: Record<string, unknown>) => callTool("web.search", args),
+      fetch: (args: Record<string, unknown>) => callTool("web.fetch", args),
+    },
   }
 }
 
