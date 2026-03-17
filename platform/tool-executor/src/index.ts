@@ -66,8 +66,6 @@ function buildStruereSDK(callbackUrl: string, callbackToken: string, identity: T
       query: (args: Record<string, unknown>) => callTool("entity.query", args),
       update: (args: Record<string, unknown>) => callTool("entity.update", args),
       delete: (args: Record<string, unknown>) => callTool("entity.delete", args),
-      link: (args: Record<string, unknown>) => callTool("entity.link", args),
-      unlink: (args: Record<string, unknown>) => callTool("entity.unlink", args),
     },
     event: {
       emit: (args: Record<string, unknown>) => callTool("event.emit", args),
