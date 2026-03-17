@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
-import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
+import { useFadeSlideUp, useScaleIn } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
 const models = [
@@ -14,21 +14,18 @@ const models = [
 
 export function Pricing() {
   const { t } = useI18n()
-  const { ref: headingRef, y: headingY } = useParallaxY()
+  const heading = useFadeSlideUp()
   const { ref, scale, opacity, y } = useScaleIn()
 
   return (
     <section id="pricing" className="bg-stone-deep py-20 md:py-28">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
-        <div ref={headingRef} className="text-center mb-12">
-          <motion.h2
-            className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
-            style={{ y: headingY, willChange: "transform" }}
-          >
+        <motion.div ref={heading.ref} style={{ opacity: heading.opacity, y: heading.y, willChange: "transform, opacity" }} className="text-center mb-12">
+          <h2 className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading">
             {t.pricing.title}
-          </motion.h2>
+          </h2>
           <p className="mt-4 text-base text-charcoal/60 max-w-lg mx-auto">{t.pricing.subtitle}</p>
-        </div>
+        </motion.div>
 
         <motion.div
           ref={ref}
