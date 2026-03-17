@@ -4,6 +4,7 @@ import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { resolveTemplateVars } from "./lib/triggers"
 import { getAuthContext, requireAuth } from "./lib/auth"
+import { coerceTemplateComponents } from "./lib/toolExecution"
 
 const getTriggerRef = makeFunctionReference<"query">("triggers:get")
 const emitTriggerEventRef = makeFunctionReference<"mutation">("triggers:emitTriggerEvent")
@@ -46,8 +47,6 @@ const BUILTIN_TOOLS: Record<string, { type: "mutation" | "query" | "action"; ref
   "entity.delete": { type: "mutation", ref: "entityDelete" },
   "entity.link": { type: "mutation", ref: "entityLink" },
   "entity.unlink": { type: "mutation", ref: "entityUnlink" },
-  "event.emit": { type: "mutation", ref: "eventEmit" },
-  "event.query": { type: "query", ref: "eventQuery" },
   "calendar.list": { type: "action", ref: "calendarList" },
   "calendar.create": { type: "action", ref: "calendarCreate" },
   "calendar.update": { type: "action", ref: "calendarUpdate" },
@@ -648,10 +647,10 @@ async function executeToolAction(
     case "whatsapp.sendTemplate":
       return await ctx.runAction(whatsappSendTemplateRef, {
         organizationId, actorId, actorType, environment,
-        to: args.to as string,
-        templateName: args.templateName as string,
-        language: args.language as string,
-        components: args.components as any,
+        to: String(args.to),
+        templateName: String(args.templateName),
+        language: String(args.language),
+        components: coerceTemplateComponents(args.components),
       })
 
     case "whatsapp.sendInteractive":
