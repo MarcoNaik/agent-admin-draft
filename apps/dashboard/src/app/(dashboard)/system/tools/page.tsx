@@ -90,32 +90,6 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
       required: ["id"],
     },
   },
-  "entity.link": {
-    category: "entity",
-    description: "Create a relation between two entities",
-    parameters: {
-      type: "object",
-      properties: {
-        fromEntityId: { type: "string", description: "Source entity ID" },
-        toEntityId: { type: "string", description: "Target entity ID" },
-        relationType: { type: "string", description: "Relation type (e.g., 'parent', 'assigned_to')" },
-      },
-      required: ["fromEntityId", "toEntityId", "relationType"],
-    },
-  },
-  "entity.unlink": {
-    category: "entity",
-    description: "Remove a relation between two entities",
-    parameters: {
-      type: "object",
-      properties: {
-        fromEntityId: { type: "string", description: "Source entity ID" },
-        toEntityId: { type: "string", description: "Target entity ID" },
-        relationType: { type: "string", description: "Relation type to remove" },
-      },
-      required: ["fromEntityId", "toEntityId", "relationType"],
-    },
-  },
   "event.emit": {
     category: "event",
     description: "Emit a custom event for audit logging",
