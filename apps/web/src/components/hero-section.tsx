@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
-import { motion, useTransform } from "motion/react"
-import { usePageParallax } from "@/hooks/use-scroll-animation"
+import { motion } from "motion/react"
 import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
@@ -68,9 +67,6 @@ export function HeroSection() {
   const promptPillsRef = useRef<HTMLDivElement>(null)
   const promptRevealedRef = useRef(false)
 
-  const { scrollY } = usePageParallax()
-  const bgY = useTransform(scrollY, (v) => v * 0.08)
-
   useEffect(() => {
     function revealPrompt() {
       if (promptRevealedRef.current) return
@@ -126,7 +122,7 @@ export function HeroSection() {
           WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
         }}
       >
-        <motion.div className="absolute inset-0 overflow-hidden" style={{ y: bgY }}>
+        <div className="absolute inset-0 overflow-hidden">
           <Image
             src="/hero-bg.png"
             alt=""
@@ -137,7 +133,7 @@ export function HeroSection() {
             style={{ objectPosition: "center center" }}
             sizes="100vw"
           />
-        </motion.div>
+        </div>
       </div>
 
       <div className="absolute top-[8%] md:top-[10%] left-0 right-0 text-center px-6 md:px-12">
@@ -147,7 +143,7 @@ export function HeroSection() {
             style={{ transitionProperty: "opacity", transitionDuration: "900ms" }}
           >
             <h1
-              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
+              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.2] pb-2 ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
               onAnimationEnd={(e) => {
                 if (e.animationName === "hero-gradient-flow") setHeroLooping(true)
               }}
