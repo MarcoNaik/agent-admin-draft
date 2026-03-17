@@ -122,12 +122,20 @@ export const whatsappSendTemplate = internalAction({
   handler: async (ctx, args) => {
     const connection = await resolveConnection(ctx, args)
 
+    const coercedComponents = args.components?.map((c) => ({
+      ...c,
+      parameters: c.parameters.map((p) => ({
+        ...p,
+        text: p.text != null ? String(p.text) : p.text,
+      })),
+    }))
+
     const result = await sendTemplateMessage(
       connection.kapsoPhoneNumberId,
       args.to,
       args.templateName,
       args.language,
-      args.components as any
+      coercedComponents as any
     )
 
     await ctx.runMutation(storeOutboundMessageRef, {
