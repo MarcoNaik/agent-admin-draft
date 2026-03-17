@@ -27,12 +27,12 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://struere.dev"),
-  title: "Struere — Think. Write. Build.",
+  title: "Struere — AI agents for business",
   description:
     "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "Struere — Think. Write. Build.",
+    title: "Struere — AI agents for business",
     description:
       "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
     url: "https://struere.dev",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Struere — Think. Write. Build.",
+    title: "Struere — AI agents for business",
     description:
       "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
   },
