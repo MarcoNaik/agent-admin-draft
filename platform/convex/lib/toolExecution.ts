@@ -164,35 +164,6 @@ export async function executeBuiltinTool(
         id: args.id as string,
       })
 
-    case "entity.link":
-      if (!args.fromId) throw new Error("entity.link requires 'fromId' parameter")
-      if (!args.toId) throw new Error("entity.link requires 'toId' parameter")
-      if (!args.relationType) throw new Error("entity.link requires 'relationType' parameter")
-      return await ctx.runMutation(ref("tools/entities:entityLink"), {
-        organizationId,
-        actorId,
-        actorType,
-        environment,
-        fromId: args.fromId as string,
-        toId: args.toId as string,
-        relationType: args.relationType as string,
-        metadata: args.metadata,
-      })
-
-    case "entity.unlink":
-      if (!args.fromId) throw new Error("entity.unlink requires 'fromId' parameter")
-      if (!args.toId) throw new Error("entity.unlink requires 'toId' parameter")
-      if (!args.relationType) throw new Error("entity.unlink requires 'relationType' parameter")
-      return await ctx.runMutation(ref("tools/entities:entityUnlink"), {
-        organizationId,
-        actorId,
-        actorType,
-        environment,
-        fromId: args.fromId as string,
-        toId: args.toId as string,
-        relationType: args.relationType as string,
-      })
-
     case "event.emit":
       return { deprecated: true, message: "event.emit is deprecated and will be removed in a future release. Events are now managed automatically by the platform." }
 
