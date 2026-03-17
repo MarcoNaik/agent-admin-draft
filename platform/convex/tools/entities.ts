@@ -1,6 +1,5 @@
 import { v } from "convex/values"
 import { internalMutation, internalQuery } from "../_generated/server"
-import { buildSearchText } from "../lib/utils"
 import { Id } from "../_generated/dataModel"
 import {
   buildActorContext,
@@ -15,7 +14,7 @@ import {
   Environment,
 } from "../lib/permissions"
 import { getNestedValue } from "../lib/permissions/scope"
-import { checkAndScheduleTriggers } from "../lib/triggers"
+import { createEntityMutation, updateEntityMutation, deleteEntityMutation } from "../lib/entityMutations"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -131,40 +130,15 @@ export const entityCreate = internalMutation({
       await validateReferences(ctx, entityType.schema, args.data, args.organizationId, args.environment)
     }
 
-    const now = Date.now()
-    const searchText = buildSearchText(args.data, entityType.searchFields ?? undefined)
-
-    const entityId = await ctx.db.insert("entities", {
+    const entityId = await createEntityMutation(ctx, {
       organizationId: args.organizationId,
+      environment: args.environment,
       entityTypeId: entityType._id,
-      environment: args.environment,
-      status: args.status ?? "active",
-      data: args.data,
-      searchText,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityId,
       entityTypeSlug: args.type,
-      eventType: `${args.type}.created`,
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: { data: args.data },
-      timestamp: now,
-    })
-
-    await checkAndScheduleTriggers(ctx, {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityTypeSlug: args.type,
-      action: "created",
-      entityId,
       data: args.data,
+      status: args.status,
+      searchFields: entityType.searchFields ?? undefined,
+      actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
     return { id: entityId }
@@ -539,42 +513,16 @@ export const entityUpdate = internalMutation({
       await validateReferences(ctx, entityType.schema, allowedData, args.organizationId, args.environment)
     }
 
-    const mergedData = { ...entity.data, ...allowedData }
-    const now = Date.now()
-
-    const updates: Record<string, unknown> = {
-      data: mergedData,
-      searchText: buildSearchText(mergedData, entityType.searchFields ?? undefined),
-      updatedAt: now,
-    }
-
-    if (args.status !== undefined) {
-      updates.status = args.status
-    }
-
-    await ctx.db.patch(entity._id, updates)
-
-    await ctx.db.insert("events", {
+    await updateEntityMutation(ctx, {
       organizationId: args.organizationId,
       environment: args.environment,
       entityId: entity._id,
       entityTypeSlug: entityType.slug,
-      eventType: `${entityType.slug}.updated`,
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: { changes: allowedData, previousData: entity.data },
-      timestamp: now,
-    })
-
-    await checkAndScheduleTriggers(ctx, {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityTypeSlug: entityType.slug,
-      action: "updated",
-      entityId: entity._id,
-      data: mergedData,
+      data: allowedData,
       previousData: entity.data,
+      status: args.status,
+      searchFields: entityType.searchFields ?? undefined,
+      actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
     return { success: true }
@@ -630,34 +578,13 @@ export const entityDelete = internalMutation({
       )
     }
 
-    const now = Date.now()
-    await ctx.db.patch(entity._id, {
-      status: "deleted",
-      deletedAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
+    await deleteEntityMutation(ctx, {
       organizationId: args.organizationId,
       environment: args.environment,
       entityId: entity._id,
       entityTypeSlug: entityType.slug,
-      eventType: `${entityType.slug}.deleted`,
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: { previousData: entity.data },
-      timestamp: now,
-    })
-
-    await checkAndScheduleTriggers(ctx, {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityTypeSlug: entityType.slug,
-      action: "deleted",
-      entityId: entity._id,
-      data: entity.data,
       previousData: entity.data,
+      actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
     return { success: true }
