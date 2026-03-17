@@ -7,7 +7,7 @@ order: 4
 
 # Events
 
-Events provide a complete audit trail of all mutations in the Struere platform. The platform automatically emits events whenever entities are created, updated, deleted, or linked. Every mutation is recorded with full actor context, enabling compliance tracking, debugging, and event-driven automation.
+Events provide a complete audit trail of all mutations in the Struere platform. The platform automatically emits events whenever entities are created, updated, or deleted. Every mutation is recorded with full actor context, enabling compliance tracking, debugging, and event-driven automation.
 
 ## Event Structure
 
@@ -35,8 +35,6 @@ All events are system-generated. The platform automatically emits events when mu
 | `{type}.created` | An entity of the given type is created (e.g., `session.created`, `teacher.created`) |
 | `{type}.updated` | An entity's data or status is modified |
 | `{type}.deleted` | An entity is soft-deleted |
-| `entity.linked` | A relation is created between two entities |
-| `entity.unlinked` | A relation is removed between two entities |
 
 ### Trigger Execution Events
 
