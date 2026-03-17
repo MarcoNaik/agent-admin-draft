@@ -73,7 +73,7 @@ Dynamic data injection into agent system prompts:
 
 ### System Events
 
-Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` events. Relation events: `entity.linked`, `entity.unlinked`. Trigger events: `trigger.executed`, `trigger.failed`.
+Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` events. Trigger events: `trigger.executed`, `trigger.failed`.
 
 ## Database Schema (43 tables)
 
@@ -126,11 +126,11 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 | /webhook/polar | POST | Polar payment webhook |
 | /webhook/resend | POST | Resend email status |
 
-## Built-in Tools (32)
+## Built-in Tools (30)
 
 | Tool | Category |
 |------|----------|
-| entity.create, entity.get, entity.query, entity.update, entity.delete, entity.link, entity.unlink | Entity (7) |
+| entity.create, entity.get, entity.query, entity.update, entity.delete | Entity (5) |
 | event.emit, event.query | Event (2) |
 | calendar.list, calendar.create, calendar.update, calendar.delete, calendar.freeBusy | Calendar (5) |
 | whatsapp.send, whatsapp.sendTemplate, whatsapp.sendInteractive, whatsapp.sendMedia, whatsapp.listTemplates, whatsapp.getConversation, whatsapp.getStatus | WhatsApp (7) |
@@ -239,7 +239,7 @@ Key files:
 - `chat.ts` — Authenticated chat actions
 - `sync.ts` — CLI sync mechanism
 - `entities.ts`, `events.ts`, `triggers.ts`, `roles.ts`, `threads.ts` — Domain logic
-- `tools/` — 32 built-in tool implementations
+- `tools/` — 30 built-in tool implementations
 - `lib/permissions/` — Permission engine
 - `lib/integrations/` — Kapso, Flow, Google Calendar, Resend, Airtable
 - `lib/templateEngine.ts` — System prompt template processing
