@@ -65,6 +65,8 @@ export const BUILTIN_TOOLS = [
   "email.send",
   "payment.create",
   "payment.getStatus",
+  "web.search",
+  "web.fetch",
 ] as const
 
 export type BuiltinToolName = (typeof BUILTIN_TOOLS)[number]
