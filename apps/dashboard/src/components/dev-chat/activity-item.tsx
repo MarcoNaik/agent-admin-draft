@@ -9,8 +9,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Link,
-  Unlink,
   Send,
   Calendar,
   CreditCard,
@@ -55,8 +53,6 @@ function ToolIcon({ name }: { name: string }) {
   if (name.startsWith("entity.create")) return <Plus className={cn(cls, "text-success")} />
   if (name.startsWith("entity.update")) return <Pencil className={cn(cls, "text-ocean")} />
   if (name.startsWith("entity.delete")) return <Trash2 className={cn(cls, "text-destructive")} />
-  if (name.startsWith("entity.link")) return <Link className={cn(cls, "text-ocean")} />
-  if (name.startsWith("entity.unlink")) return <Unlink className={cn(cls, "text-content-tertiary")} />
   if (name.startsWith("whatsapp.") || name.startsWith("email.")) return <Send className={cn(cls, "text-ocean")} />
   if (name.startsWith("calendar.")) return <Calendar className={cn(cls, "text-amber")} />
   if (name.startsWith("payment.")) return <CreditCard className={cn(cls, "text-success")} />
@@ -92,8 +88,6 @@ function humanizeToolCall(name: string, args: any): string {
     const type = a.entityType ?? a.type ?? "record"
     return `Retrieved ${type}`
   }
-  if (name === "entity.link") return "Linked records"
-  if (name === "entity.unlink") return "Unlinked records"
   if (name === "event.emit") return `Emitted ${a.eventType ?? "event"}`
   if (name === "event.query") return "Queried events"
   if (name === "whatsapp.send") return `Sent WhatsApp message`
