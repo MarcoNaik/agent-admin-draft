@@ -5,6 +5,19 @@ import { ToolExecutor } from "./templateEngine"
 
 const ref = (name: string) => makeFunctionReference<"mutation" | "query" | "action">(name as any)
 
+export function coerceTemplateComponents(components: any): any {
+  if (!Array.isArray(components)) return components
+  return components.map((c: any) => ({
+    ...c,
+    parameters: Array.isArray(c.parameters)
+      ? c.parameters.map((p: any) => ({
+          ...p,
+          text: p.text != null ? String(p.text) : p.text,
+        }))
+      : c.parameters,
+  }))
+}
+
 const getToolIdentityRef = makeFunctionReference<"query">("permissions:getToolIdentityQuery" as any)
 const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool" as any)
 
@@ -181,27 +194,10 @@ export async function executeBuiltinTool(
       })
 
     case "event.emit":
-      if (!args.eventType) throw new Error("event.emit requires 'eventType' parameter")
-      return await ctx.runMutation(ref("tools/events:eventEmit"), {
-        organizationId,
-        actorId,
-        actorType,
-        environment,
-        entityId: args.entityId as string | undefined,
-        entityTypeSlug: args.entityTypeSlug as string | undefined,
-        eventType: args.eventType as string,
-        payload: args.payload,
-      })
+      return { deprecated: true, message: "event.emit is deprecated and will be removed in a future release. Events are now managed automatically by the platform." }
 
     case "event.query":
-      return await ctx.runQuery(ref("tools/events:eventQuery"), {
-        organizationId,
-        environment,
-        entityId: args.entityId as string | undefined,
-        eventType: args.eventType as string | undefined,
-        since: args.since as number | undefined,
-        limit: args.limit as number | undefined,
-      })
+      return { deprecated: true, message: "event.query is deprecated and will be removed in a future release. Events are now managed automatically by the platform." }
 
     case "calendar.list":
       if (!args.userId) throw new Error("calendar.list requires 'userId' parameter")
@@ -283,10 +279,10 @@ export async function executeBuiltinTool(
       return await ctx.runAction(ref("tools/whatsapp:whatsappSendTemplate"), {
         organizationId, actorId, actorType, environment,
         agentId: params.agentId as Id<"agents"> | undefined,
-        to: args.to as string,
-        templateName: args.templateName as string,
-        language: args.language as string,
-        components: args.components as any,
+        to: String(args.to),
+        templateName: String(args.templateName),
+        language: String(args.language),
+        components: coerceTemplateComponents(args.components),
       })
 
     case "whatsapp.sendInteractive":
