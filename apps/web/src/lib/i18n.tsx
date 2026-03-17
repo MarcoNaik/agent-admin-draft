@@ -11,25 +11,25 @@ const translations = {
     cta: "Start free",
   },
   hero: {
-    tagline: "JUST DESCRIBE WHAT YOU NEED",
-    headline: "AI agents for business automation",
+    tagline: "BUILT FOR AI TO BUILD",
+    headline: "AI agents for business",
     subheadline:
-      "Tell Struere what your business needs in plain language. It creates AI agents that handle customer support, appointments, and payments \u2014 no flows, no drag-and-drop.",
+      "Describe what your business needs. AI builds the agents, the database, the integrations — all of it.",
     placeholders: [
-      "A WhatsApp agent that answers my customers about shipping and returns...",
-      "Book appointments on Google Calendar when patients message me on WhatsApp...",
-      "Send payment reminders via WhatsApp 3 days before the due date...",
-      "Take restaurant orders and reservations through WhatsApp...",
+      "A WhatsApp agent that handles bookings, payments, and calendar for a tutoring business...",
+      "A customer support system with product database, order tracking, and escalation rules...",
+      "A two-agent team — one takes restaurant orders, the other manages inventory...",
+      "Payment collection with automatic reminders, retry logic, and role-based audit trail...",
     ],
     suggestions: [
-      { label: "Customer support", prompt: "A WhatsApp agent for my online store that queries the orders and products database to answer about shipping status, return policies, and available sizes. If the customer asks for a human or the case is complex, escalate based on the agent's assigned role." },
-      { label: "Appointments", prompt: "An agent for my dental practice that when a patient messages on WhatsApp, checks availability on Google Calendar, books the appointment, creates the patient record in the database with treatment type and notes, and sends a WhatsApp reminder 24 hours before the appointment." },
-      { label: "Collections", prompt: "A trigger that when an invoice in my database changes to 'overdue' status, sends a payment reminder via WhatsApp with the amount and payment link. If unpaid after 3 days, automatically retry. Log each attempt as an event and only let admins see the full history." },
-      { label: "Orders", prompt: "A two-agent team for my restaurant: the first takes orders and reservations via WhatsApp, queries the menu database, and confirms availability. The second manages inventory and updates sold-out dishes. When a dish runs out, the second agent notifies the first to stop offering it." },
+      { label: "Client support", prompt: "A support agent for an online store that queries the product and order database, answers about shipping status, return policies, and available sizes. If the case is complex, escalate based on the agent's assigned role." },
+      { label: "Bookings", prompt: "An agent for a dental practice that when a patient messages on WhatsApp, checks availability on Google Calendar, books the appointment, creates the patient record in the database, and sends a WhatsApp reminder 24 hours before." },
+      { label: "Collections", prompt: "A trigger that when an invoice changes to 'overdue' status, sends a payment reminder via WhatsApp with the amount and payment link. If unpaid after 3 days, automatically retry. Track each attempt in the database." },
+      { label: "Multi-agent", prompt: "A two-agent team for a restaurant: the first takes orders and reservations via WhatsApp, queries the menu database, and confirms availability. The second manages inventory and updates sold-out dishes. When a dish runs out, the second agent notifies the first." },
     ],
     createButton: "Try it free",
-    focusPlaceholder: "Describe what your business needs...",
-    ariaLabel: "Describe what your business needs",
+    focusPlaceholder: "What do you need to build...",
+    ariaLabel: "What do you need to build",
     proofLine: "Free to start \u00b7 No credit card required",
   },
   howItWorks: {
@@ -39,45 +39,45 @@ const translations = {
         number: "01",
         title: "Describe what you need",
         description:
-          "Write it like you'd tell a colleague: \"I need an agent that books appointments and checks my calendar.\" No code. No flowcharts.",
+          "Tell Claude what your client needs: \"I need a WhatsApp agent that handles bookings and checks the calendar.\" Plain English. No flowcharts.",
       },
       {
         number: "02",
-        title: "Your agent is ready",
+        title: "AI builds the system",
         description:
-          "Struere creates a working agent that already knows your business \u2014 your products, your schedule, your rules. Adjust anything you want from the browser.",
+          "Claude creates the agent, defines its tools, sets up the database, and writes tests. You review everything from the dashboard.",
       },
       {
         number: "03",
-        title: "It goes live",
+        title: "Deploy and monitor",
         description:
-          "Deploy on WhatsApp, your website, or via API. Your agent replies to customers 24/7. You see every conversation in real time and step in when you want.",
+          "Push to WhatsApp, web, or API. See every conversation in real time. Step in when you want.",
       },
     ],
   },
   useCases: {
-    title: "No more flowcharts. Just results.",
+    title: "Build any of these in minutes.",
     cases: [
       {
         icon: "\uD83D\uDCAC",
-        title: "Customer support",
+        title: "Client support",
         description:
-          "Stop answering the same questions every day. Your agent handles FAQs, order status, and returns \u2014 you step in when it matters.",
+          "Your client answers the same 50 questions a day. Build an agent that handles FAQs, order status, and returns \u2014 connected to their product database.",
         prompt:
-          "An agent that answers questions about shipping and returns",
+          "A support agent for an online store with product and order lookup",
       },
       {
         icon: "\uD83D\uDCC5",
-        title: "Appointments",
+        title: "Booking systems",
         description:
-          "Patients or clients book directly on WhatsApp. Your agent checks Google Calendar, confirms the slot, and sends a reminder the day before.",
-        prompt: "A booking system for my dental practice",
+          "Dental practice, tutoring business, salon \u2014 build a booking agent that checks Google Calendar, confirms slots, and sends WhatsApp reminders.",
+        prompt: "A booking system for a dental practice with calendar sync",
       },
       {
         icon: "\uD83D\uDCB0",
-        title: "Collections",
+        title: "Payment collection",
         description:
-          "Overdue invoice? Your agent sends a reminder with the amount and payment link. If unpaid, it follows up automatically.",
+          "Overdue invoices pile up. Build an agent that sends reminders with payment links and follows up automatically.",
         prompt:
           "Payment reminders via WhatsApp 3 days before the due date",
       },
@@ -85,27 +85,27 @@ const translations = {
         icon: "\uD83D\uDED2",
         title: "E-commerce",
         description:
-          "Customers ask about products, sizes, or stock. Your agent answers from your catalog and helps them buy \u2014 no manual replies.",
+          "Connect an agent to your client's catalog. It answers product questions, checks stock, and helps customers buy.",
         prompt:
-          "An agent that helps my customers pick the right size",
+          "A product advisor that queries inventory and helps with sizing",
       },
       {
         icon: "\uD83D\uDCCB",
-        title: "Notifications & updates",
+        title: "Notifications",
         description:
-          "When an order changes status, your agent notifies the customer, updates your database, and schedules the next step.",
-        prompt: "Send a WhatsApp to the team when an order changes to 'ready'",
+          "When an order status changes, the agent notifies the customer and updates the database. No manual step.",
+        prompt: "Notify the team on WhatsApp when an order is ready",
       },
       {
-        icon: "\uD83C\uDF7D\uFE0F",
-        title: "Restaurants",
+        icon: "\uD83E\uDD1D",
+        title: "Multi-agent teams",
         description:
-          "Take orders, confirm reservations, and answer menu questions \u2014 all handled by your agent, around the clock.",
+          "One agent takes orders. Another manages inventory. When a dish runs out, they coordinate automatically.",
         prompt:
-          "A WhatsApp agent for my restaurant that takes orders",
+          "A two-agent restaurant system for orders and inventory",
       },
     ],
-    createAgent: "Try this \u2192",
+    createAgent: "Build this \u2192",
   },
   integrations: {
     title: "Connects to what you already use.",
@@ -133,9 +133,9 @@ const translations = {
     note: "No credit card \u00b7 Cancel anytime",
   },
   pricing: {
-    title: "Free to start. Scale when you're ready.",
-    subtitle: "Use your own AI provider keys for free, or buy credits to work from the browser.",
-    freeBadge: "For developers",
+    title: "Always free with your own keys.",
+    subtitle: "Bring your own API keys, or buy credits to skip the setup.",
+    freeBadge: "For builders",
     freePrice: "$0",
     freePriceNote: "platform fee, forever",
     freeFeatures: [
@@ -146,11 +146,11 @@ const translations = {
       "See every conversation and action",
       "No platform fees",
     ],
-    freeHow: "Connect your own AI provider (OpenAI, Anthropic, or xAI) and use the developer toolkit. You pay your provider directly \u2014 Struere charges nothing.",
+    freeHow: "Use your own provider keys. You get the full toolkit \u2014 CLI, SDK, multi-agent, permissions. We don't charge anything.",
     freeCta: "Start for free",
     freeNote: "No credit card \u00b7 No commitment",
-    managedTitle: "Prefer the browser?",
-    managedNote: "Buy credits and use Studio to create, test, and deploy agents \u2014 no setup needed. AI rates + 10%. No subscriptions.",
+    managedTitle: "Not a developer?",
+    managedNote: "Buy credits and use Studio from the browser. AI rates + 10%. No subscriptions.",
     tableInput: "Input",
     tableOutput: "Output",
     tableDefault: "Default",
@@ -158,11 +158,11 @@ const translations = {
     tableFooter: "40+ models supported.",
   },
   cta: {
-    title: "Your next hire works 24/7.",
-    subtitle: "Describe what you need. Your agent goes live in minutes.",
+    title: "Build your first agent.",
+    subtitle: "Describe what you need. It gets built.",
     createButton: "Try it free",
-    focusPlaceholder: "Describe what your business needs...",
-    ariaLabel: "Describe what your business needs",
+    focusPlaceholder: "What do you need to build...",
+    ariaLabel: "What do you need to build",
   },
   footer: {
     columns: [
