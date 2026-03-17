@@ -148,53 +148,74 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
 }
 
 export async function createSandbox(config: SandboxConfig): Promise<SandboxResult> {
+  console.log("[studio/e2b] createSandbox: starting sandbox creation")
   const sandbox = await Sandbox.create({
     timeoutMs: SANDBOX_TIMEOUT_MS,
     envs: config.envVars,
     allowInternetAccess: true,
   })
+  console.log(`[studio/e2b] createSandbox: sandbox created, id=${sandbox.sandboxId}`)
 
   try {
+    console.log("[studio/e2b] createSandbox: writing bootstrap files")
     const bootstrapFiles = generateBootstrapFiles(config)
     for (const file of bootstrapFiles) {
       await sandbox.files.write(file.path, file.content)
     }
+    console.log("[studio/e2b] createSandbox: bootstrap files written")
 
+    console.log("[studio/e2b] createSandbox: step install-sandbox-agent start")
     await runCmd(
       sandbox,
       "install-sandbox-agent",
       `curl -fsSL https://releases.rivet.dev/sandbox-agent/${SANDBOX_AGENT_VERSION}/install.sh | sh`,
       { timeoutMs: 60_000 }
     )
+    console.log("[studio/e2b] createSandbox: step install-sandbox-agent end")
 
+    console.log("[studio/e2b] createSandbox: step install-agent start")
     await runCmd(sandbox, "install-agent", "sandbox-agent install-agent opencode", {
       timeoutMs: 120_000,
     })
+    console.log("[studio/e2b] createSandbox: step install-agent end")
 
+    console.log("[studio/e2b] createSandbox: step install-bun start")
     await runCmd(sandbox, "install-bun", "curl -fsSL https://bun.sh/install | bash && ln -sf $HOME/.bun/bin/bun /usr/local/bin/bun && ln -sf $HOME/.bun/bin/bunx /usr/local/bin/bunx", {
       timeoutMs: 30_000,
     })
+    console.log("[studio/e2b] createSandbox: step install-bun end")
 
+    console.log("[studio/e2b] createSandbox: step install-struere start")
     await runCmd(sandbox, "install-struere", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && sudo npm install -g struere@0.9.7', {
       timeoutMs: 60_000,
     })
+    console.log("[studio/e2b] createSandbox: step install-struere end")
 
+    console.log("[studio/e2b] createSandbox: step struere-pull start")
     await runCmd(sandbox, "struere-pull", 'export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:/usr/local/bin:$PATH" && cd /workspace && struere pull --force', {
       timeoutMs: 60_000,
     })
+    console.log("[studio/e2b] createSandbox: step struere-pull end")
 
+    console.log("[studio/e2b] createSandbox: starting sandbox-agent server")
     await sandbox.commands.run(
       `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT}`,
       { background: true, timeoutMs: 0 }
     )
 
+    console.log("[studio/e2b] createSandbox: waiting for server to be ready")
     await waitForServer(sandbox, SANDBOX_AGENT_PORT)
+    console.log("[studio/e2b] createSandbox: server is ready")
   } catch (error) {
-    await Sandbox.kill(sandbox.sandboxId).catch(() => {})
+    console.error("[studio/e2b] createSandbox: bootstrap failed, killing sandbox", sandbox.sandboxId, error)
+    await Sandbox.kill(sandbox.sandboxId).catch((killError) => {
+      console.error("[studio/e2b] createSandbox: failed to kill sandbox after error", sandbox.sandboxId, killError)
+    })
     throw error
   }
 
   const sandboxUrl = `https://${sandbox.getHost(SANDBOX_AGENT_PORT)}`
+  console.log(`[studio/e2b] createSandbox: complete, id=${sandbox.sandboxId}, url=${sandboxUrl}`)
 
   return {
     sandboxId: sandbox.sandboxId,
@@ -205,12 +226,13 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
 async function waitForServer(sandbox: Sandbox, port: number, maxAttempts = 20) {
   for (let i = 0; i < maxAttempts; i++) {
     try {
+      console.log(`[studio/e2b] waitForServer: attempt ${i + 1}/${maxAttempts}`)
       const result = await sandbox.commands.run(`curl -sf http://127.0.0.1:${port}/v1/health`, {
         timeoutMs: 3000,
       })
       if (result.exitCode === 0) return
-    } catch {
-      // retry
+    } catch (error) {
+      console.error(`[studio/e2b] waitForServer: attempt ${i + 1} failed`, error)
     }
     await new Promise((r) => setTimeout(r, 500))
   }
@@ -222,5 +244,11 @@ export async function extendSandboxTimeout(sandboxId: string) {
 }
 
 export async function destroySandbox(sandboxId: string) {
-  await Sandbox.kill(sandboxId)
+  try {
+    await Sandbox.kill(sandboxId)
+    console.log(`[studio/e2b] destroySandbox: successfully killed sandbox ${sandboxId}`)
+  } catch (error) {
+    console.error(`[studio/e2b] destroySandbox: failed to kill sandbox ${sandboxId}`, error)
+    throw error
+  }
 }

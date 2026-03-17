@@ -19,14 +19,18 @@ async function acpPost(
       url.searchParams.set(k, v)
     }
   }
+  console.log(`[studio/sessions] acpPost url=${url.toString()} method=${body.method}`)
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(body),
   })
   const text = await res.text()
+  console.log(`[studio/sessions] acpPost response status=${res.status} body=${text.slice(0, 500)}`)
   let json: Record<string, unknown> | null = null
-  try { json = JSON.parse(text) } catch {}
+  try { json = JSON.parse(text) } catch (e) {
+    console.error(`[studio/sessions] acpPost JSON parse failed:`, e)
+  }
   if (!res.ok) {
     throw new Error(`ACP ${body.method} failed: ${res.status} ${text.slice(0, 300)}`)
   }
@@ -82,11 +86,14 @@ export async function POST(request: Request) {
   const { getToken } = await auth()
   const token = await getToken({ template: "convex" })
   if (!token) {
+    console.error("[studio/sessions] POST auth failed: no token")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  console.log("[studio/sessions] POST auth success")
   const convex = getConvexClient(token)
 
   const body = await request.json()
+  console.log("[studio/sessions] POST request body:", JSON.stringify(body))
   const {
     environment = "development",
     provider = "anthropic" as StudioProvider,
@@ -103,6 +110,7 @@ export async function POST(request: Request) {
     if (keySource === "custom") {
       const resolved = await convex.query(api.providers.resolveStudioKey, { provider })
       if (!resolved) {
+        console.error(`[studio/sessions] No custom API key for provider=${provider}`)
         return NextResponse.json(
           { error: `No custom API key configured for ${provider}. Add one in Settings > Providers.` },
           { status: 400 }
@@ -111,7 +119,9 @@ export async function POST(request: Request) {
       llmApiKey = resolved.apiKey
     } else {
       const { balance } = await convex.query(api.billing.getBalance, {})
+      console.log(`[studio/sessions] Credits balance=${balance}`)
       if (balance <= 0) {
+        console.error("[studio/sessions] Insufficient credits")
         return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
       }
       const { platformVar } = PROVIDER_ENV_VARS[provider as StudioProvider]
@@ -125,18 +135,21 @@ export async function POST(request: Request) {
       provider,
       keySource,
     })
+    console.log(`[studio/sessions] Session created sessionId=${sessionId}`)
 
     const apiKeyResult = await convex.mutation(api.apiKeys.create, {
       name: `sandbox-${sessionId}`,
       permissions: ["*"],
       environment,
     })
+    console.log(`[studio/sessions] API key created id=${apiKeyResult.id}`)
 
     await convex.mutation(api.sandboxSessions.updateStatus, {
       id: sessionId,
       status: "provisioning",
       apiKeyId: apiKeyResult.id,
     })
+    console.log(`[studio/sessions] Status updated to provisioning`)
 
     const org = await convex.query(api.organizations.getCurrent, {})
     if (!org) {
@@ -166,11 +179,13 @@ export async function POST(request: Request) {
       model,
     })
     sandboxId = sandbox.sandboxId
+    console.log(`[studio/sessions] Sandbox created sandboxId=${sandbox.sandboxId} url=${sandbox.sandboxUrl}`)
 
     const { serverId, agentSessionId } = await createAcpSession(
       sandbox.sandboxUrl,
       "/workspace",
     )
+    console.log(`[studio/sessions] ACP session created serverId=${serverId} agentSessionId=${agentSessionId}`)
 
     await convex.mutation(api.sandboxSessions.updateStatus, {
       id: sessionId,
@@ -180,6 +195,7 @@ export async function POST(request: Request) {
       agentSessionId,
       acpServerId: serverId,
     })
+    console.log(`[studio/sessions] Status updated to ready`)
 
     return NextResponse.json({ sessionId })
   } catch (error) {
@@ -190,7 +206,8 @@ export async function POST(request: Request) {
       try {
         const { destroySandbox } = await import("@/lib/studio/e2b")
         await destroySandbox(sandboxId)
-      } catch {
+      } catch (e) {
+        console.error("[studio/sessions] Cleanup: failed to destroy sandbox:", e)
       }
     }
 
@@ -201,7 +218,8 @@ export async function POST(request: Request) {
           status: "error",
           errorMessage: message,
         })
-      } catch {
+      } catch (e) {
+        console.error("[studio/sessions] Cleanup: failed to update session status:", e)
       }
     }
 

@@ -21,10 +21,14 @@ export async function GET(
   const { id } = await params
   const sessionId = id as Id<"sandboxSessions">
 
+  console.log(`[studio/events] GET sessionId=${sessionId}`)
+
   let session
   try {
     session = await getSessionForRequest(convex, sessionId)
-  } catch {
+    console.log(`[studio/events] Session retrieved successfully sessionId=${sessionId}`)
+  } catch (error) {
+    console.error(`[studio/events] Session retrieval failed sessionId=${sessionId}`, error)
     return new Response("Session not found or not ready", { status: 404 })
   }
 
@@ -33,6 +37,8 @@ export async function GET(
   }
 
   const upstreamUrl = `${session.sandboxUrl}/v1/acp/${session.acpServerId}`
+
+  console.log(`[studio/events] Fetching upstream url=${upstreamUrl}`)
 
   let upstream: Response
   try {
@@ -43,6 +49,8 @@ export async function GET(
   } catch {
     return new Response("Failed to connect to sandbox", { status: 502 })
   }
+
+  console.log(`[studio/events] Upstream response status=${upstream.status}`)
 
   if (!upstream.ok || !upstream.body) {
     return new Response("Failed to connect to sandbox event stream", { status: 502 })
@@ -64,7 +72,8 @@ export async function GET(
           if (closed) return
           try {
             controller.enqueue(keepaliveComment)
-          } catch {
+          } catch (error) {
+            console.error(`[studio/events] Keepalive enqueue failed sessionId=${sessionId}`, error)
             closed = true
             return
           }
@@ -77,12 +86,16 @@ export async function GET(
       try {
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            console.log(`[studio/events] Stream done sessionId=${sessionId}`)
+            break
+          }
           controller.enqueue(value)
           scheduleKeepalive()
         }
         controller.close()
-      } catch {
+      } catch (error) {
+        console.error(`[studio/events] Stream read error sessionId=${sessionId}`, error)
         controller.close()
       } finally {
         closed = true
@@ -90,6 +103,7 @@ export async function GET(
       }
     },
     cancel() {
+      console.log(`[studio/events] Stream cancelled sessionId=${sessionId}`)
       upstream.body!.cancel()
     },
   })

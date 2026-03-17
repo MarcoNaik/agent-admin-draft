@@ -27,6 +27,7 @@ export function useStudioSession() {
     setError(null)
 
     try {
+      console.log("[studio/session] startSession: creating session", { environment, provider: config.provider, model: config.model })
       const response = await fetch("/api/studio/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,6 +38,7 @@ export function useStudioSession() {
           keySource: config.keySource,
         }),
       })
+      console.log("[studio/session] startSession: response", response.status)
 
       if (!response.ok) {
         const data = await response.json()
@@ -67,10 +69,12 @@ export function useStudioSession() {
       await fetch(`/api/studio/sessions/${activeSession._id}`, {
         method: "DELETE",
       })
-    } catch {
+    } catch (err) {
+      console.error("[studio/session] stopSession fetch failed:", err)
       try {
         await cleanup({ id: activeSession._id })
-      } catch {
+      } catch (cleanupErr) {
+        console.error("[studio/session] stopSession cleanup failed:", cleanupErr)
       }
     } finally {
       setIsStopping(false)
@@ -84,7 +88,8 @@ export function useStudioSession() {
       await fetch(`/api/studio/sessions/${activeSession._id}/keepalive`, {
         method: "POST",
       })
-    } catch {
+    } catch (err) {
+      console.error("[studio/session] sendKeepalive failed:", err)
     }
   }, [activeSession])
 

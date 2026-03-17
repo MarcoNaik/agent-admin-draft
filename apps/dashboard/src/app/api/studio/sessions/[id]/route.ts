@@ -18,6 +18,7 @@ export async function DELETE(
 
   const { id } = await params
   const sessionId = id as Id<"sandboxSessions">
+  console.log(`[studio/delete] Starting cleanup for session ${sessionId}`)
 
   try {
     const session = await convex.query(api.sandboxSessions.getById, {
@@ -34,18 +35,21 @@ export async function DELETE(
         const sdk = new SandboxAgent({ baseUrl: session.sandboxUrl })
         await sdk.destroySession(session.agentSessionId)
         await sdk.dispose().catch(() => {})
-      } catch {
+      } catch (e) {
+        console.error(`[studio/delete] SDK cleanup failed for session ${sessionId}:`, e)
       }
     }
 
     if (session.sandboxId) {
       try {
         await destroySandbox(session.sandboxId)
-      } catch {
+      } catch (e) {
+        console.error(`[studio/delete] Sandbox destroy failed for session ${sessionId} (sandbox: ${session.sandboxId}):`, e)
       }
     }
 
     await convex.mutation(api.sandboxSessions.cleanup, { id: sessionId })
+    console.log(`[studio/delete] Successfully cleaned up session ${sessionId}`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

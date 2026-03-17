@@ -13,6 +13,14 @@ export async function getSessionForRequest(
   sessionId: Id<"sandboxSessions">
 ) {
   const session = await convex.query(api.sandboxSessions.getById, { id: sessionId })
+  console.log("[studio/client] getSessionForRequest", {
+    sessionId,
+    found: !!session,
+    sandboxUrl: session?.sandboxUrl,
+    agentSessionId: session?.agentSessionId,
+    acpServerId: session?.acpServerId,
+    status: session?.status,
+  })
   if (!session) {
     throw new Error("Session not found")
   }
@@ -40,16 +48,35 @@ export async function postMessageToSandbox(
     },
   }
 
-  const res = await fetch(`${sandboxUrl}/v1/acp/${acpServerId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  const url = `${sandboxUrl}/v1/acp/${acpServerId}`
+  console.log("[studio/client] postMessageToSandbox request", { url, body })
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.error("[studio/client] postMessageToSandbox fetch error", err)
+    throw err
+  }
+
+  console.log("[studio/client] postMessageToSandbox response status", res.status)
+
   if (!res.ok) {
-    const detail = await res.text().catch(() => "")
+    const detail = await res.text().catch((err) => {
+      console.error("[studio/client] postMessageToSandbox failed to read error body", err)
+      return ""
+    })
+    console.error("[studio/client] postMessageToSandbox error detail", { status: res.status, detail })
     throw new Error(`Failed to send message to sandbox: ${res.status} ${detail}`)
   }
-  return res.json()
+
+  const parsed = await res.json()
+  console.log("[studio/client] postMessageToSandbox parsed response", parsed)
+  return parsed
 }
 
 export async function replyPermissionToSandbox(
@@ -65,12 +92,25 @@ export async function replyPermissionToSandbox(
     params: { permissionId, reply },
   }
 
-  const res = await fetch(`${sandboxUrl}/v1/acp/${acpServerId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  const url = `${sandboxUrl}/v1/acp/${acpServerId}`
+  console.log("[studio/client] replyPermissionToSandbox request", { url, body })
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.error("[studio/client] replyPermissionToSandbox fetch error", err)
+    throw err
+  }
+
+  console.log("[studio/client] replyPermissionToSandbox response status", res.status)
+
   if (!res.ok) {
+    console.error("[studio/client] replyPermissionToSandbox failed", { status: res.status })
     throw new Error("Failed to reply to permission request")
   }
 }
@@ -88,12 +128,25 @@ export async function replyQuestionToSandbox(
     params: { questionId, answers },
   }
 
-  const res = await fetch(`${sandboxUrl}/v1/acp/${acpServerId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  const url = `${sandboxUrl}/v1/acp/${acpServerId}`
+  console.log("[studio/client] replyQuestionToSandbox request", { url, body })
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.error("[studio/client] replyQuestionToSandbox fetch error", err)
+    throw err
+  }
+
+  console.log("[studio/client] replyQuestionToSandbox response status", res.status)
+
   if (!res.ok) {
+    console.error("[studio/client] replyQuestionToSandbox failed", { status: res.status })
     throw new Error("Failed to reply to question")
   }
 }
@@ -110,12 +163,25 @@ export async function rejectQuestionFromSandbox(
     params: { questionId, reject: true },
   }
 
-  const res = await fetch(`${sandboxUrl}/v1/acp/${acpServerId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  const url = `${sandboxUrl}/v1/acp/${acpServerId}`
+  console.log("[studio/client] rejectQuestionFromSandbox request", { url, body })
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.error("[studio/client] rejectQuestionFromSandbox fetch error", err)
+    throw err
+  }
+
+  console.log("[studio/client] rejectQuestionFromSandbox response status", res.status)
+
   if (!res.ok) {
+    console.error("[studio/client] rejectQuestionFromSandbox failed", { status: res.status })
     throw new Error("Failed to reject question")
   }
 }

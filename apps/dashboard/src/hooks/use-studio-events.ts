@@ -153,6 +153,7 @@ export function useStudioEvents(
       eventSourceRef.current = es
 
       es.onopen = () => {
+        console.log("[studio/events] EventSource connected")
         setIsConnected(true)
         setError(null)
         reconnectAttemptsRef.current = 0
@@ -172,6 +173,8 @@ export function useStudioEvents(
           const params = payload.params as Record<string, unknown> | undefined
           const update = params?.update as Record<string, unknown> | undefined
           const sessionUpdate = update?.sessionUpdate as string | undefined
+
+          console.log("[studio/events] event:", sessionUpdate ?? method ?? "unknown")
 
           const studioEvent: StudioEvent = {
             sequence: eventIndex || Date.now(),
@@ -302,8 +305,11 @@ export function useStudioEvents(
               payload: studioEvent.data,
               createdAt: studioEvent.createdAt,
             }],
-          }).catch(() => {})
-        } catch {
+          }).catch((err: unknown) => {
+            console.error("[studio/events] appendEvents failed:", err)
+          })
+        } catch (err) {
+          console.error("[studio/events] onmessage error:", err)
         }
       }
 
@@ -311,6 +317,7 @@ export function useStudioEvents(
         setIsConnected(false)
         es.close()
         reconnectAttemptsRef.current += 1
+        console.log(`[studio/events] EventSource error, reconnecting attempt ${reconnectAttemptsRef.current}`)
 
         fetch(`/api/studio/sessions/${sessionId}/keepalive`, { method: "POST" })
           .then((res) => {
@@ -330,7 +337,8 @@ export function useStudioEvents(
             )
             setTimeout(connect, delay)
           })
-          .catch(() => {
+          .catch((err: unknown) => {
+            console.error("[studio/events] keepalive failed:", err)
             setSessionEnded(true)
             setError("Session is no longer available.")
             setTurnInProgress(false)
@@ -417,12 +425,15 @@ export function useStudioEvents(
     })
 
     try {
-      await fetch(`/api/studio/sessions/${sessionId}/message`, {
+      console.log("[studio/events] sendMessage: sending", { sessionId, text: text.slice(0, 100) })
+      const res = await fetch(`/api/studio/sessions/${sessionId}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
       })
+      console.log("[studio/events] sendMessage: response", res.status)
     } catch (err) {
+      console.error("[studio/events] sendMessage error:", err)
       setError(err instanceof Error ? err.message : "Failed to send message")
       setTurnInProgress(false)
     }

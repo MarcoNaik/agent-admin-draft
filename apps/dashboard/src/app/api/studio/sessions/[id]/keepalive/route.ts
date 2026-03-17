@@ -18,10 +18,12 @@ export async function POST(
 
   const { id } = await params
   const sessionId = id as Id<"sandboxSessions">
+  console.log(`[studio/keepalive] Keepalive request for session ${sessionId}`)
 
   try {
     const session = await convex.query(api.sandboxSessions.getById, { id: sessionId })
     if (!session) {
+      console.log(`[studio/keepalive] Session ${sessionId} not found`)
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
@@ -31,8 +33,10 @@ export async function POST(
       await extendSandboxTimeout(session.sandboxId)
     }
 
+    console.log(`[studio/keepalive] Successfully extended session ${sessionId}`)
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error(`[studio/keepalive] Failed for session ${sessionId}:`, error)
     const message = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json({ error: message }, { status: 500 })
   }
