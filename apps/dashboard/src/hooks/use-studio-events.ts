@@ -129,6 +129,8 @@ export function useStudioEvents(
     for (const event of restored) {
       processAcpEvent(event, restoredItems, turnTrackingRef, restoredPermissions, restoredQuestions)
     }
+    const restoredUserItems = Array.from(restoredItems.values()).filter((i) => i.role === "user")
+    console.log("[studio/events] restoring from stored events:", { totalEvents: restored.length, restoredItems: restoredItems.size, restoredUserItems: restoredUserItems.length })
     setItems(restoredItems)
     setPendingPermissions(restoredPermissions)
     setPendingQuestions(restoredQuestions)
@@ -390,9 +392,12 @@ export function useStudioEvents(
       }),
   [items])
 
-  const allItems: ItemState[] = useMemo(() =>
-    Array.from(items.values()).sort((a, b) => a.createdAt - b.createdAt),
-  [items])
+  const allItems: ItemState[] = useMemo(() => {
+    const sorted = Array.from(items.values()).sort((a, b) => a.createdAt - b.createdAt)
+    const userItems = sorted.filter((i) => i.role === "user")
+    console.log("[studio/events] allItems computed:", { total: sorted.length, userItems: userItems.length, userItemIds: userItems.map((i) => i.itemId) })
+    return sorted
+  }, [items])
 
   const sendMessage = useCallback(async (text: string) => {
     if (!sessionId) return
@@ -410,6 +415,7 @@ export function useStudioEvents(
       subIdx: 0,
     }
     setTurnInProgress(true)
+    console.log("[studio/events] adding optimistic user item:", { userItemId, text: text.slice(0, 100), createdAt: now })
     setItems((prev) => {
       const next = new Map(prev)
       next.set(userItemId, {
@@ -421,6 +427,7 @@ export function useStudioEvents(
         status: "completed",
         createdAt: now,
       })
+      console.log("[studio/events] items Map after adding user item:", { size: next.size, keys: Array.from(next.keys()) })
       return next
     })
 
