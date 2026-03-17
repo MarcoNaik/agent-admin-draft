@@ -7,6 +7,8 @@ const BUILTIN_TOOLS = [
   'entity.update',
   'entity.delete',
   'agent.chat',
+  'web.search',
+  'web.fetch',
 ]
 
 function escapeTemplateLiteral(str: string): string {

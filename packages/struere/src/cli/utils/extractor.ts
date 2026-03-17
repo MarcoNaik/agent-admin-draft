@@ -37,6 +37,8 @@ const BUILTIN_TOOLS = [
   'email.send',
   'payment.create',
   'payment.getStatus',
+  'web.search',
+  'web.fetch',
 ]
 
 export interface SyncPayload {
@@ -371,6 +373,8 @@ function getBuiltinToolDescription(name: string): string {
     'email.send': 'Send an email via Resend',
     'payment.create': 'Create a payment link via Flow.cl and return the URL',
     'payment.getStatus': 'Check the current status of a payment',
+    'web.search': 'Search the web and return relevant results with snippets',
+    'web.fetch': 'Fetch a web page and return its content as clean markdown',
   }
   return descriptions[name] || name
 }
@@ -659,6 +663,27 @@ function getBuiltinToolParameters(name: string): unknown {
         entityId: { type: 'string', description: 'Payment entity ID to check status for' },
       },
       required: ['entityId'],
+    },
+    'web.search': {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+        maxResults: { type: 'number', description: 'Maximum number of results (default: 5, max: 20)' },
+        site: { type: 'array', items: { type: 'string' }, description: 'Only include results from these domains' },
+        gl: { type: 'string', description: 'Country code for localized results (e.g., "US", "GB")' },
+        hl: { type: 'string', description: 'Language code (ISO 639-1, e.g., "en", "es")' },
+      },
+      required: ['query'],
+    },
+    'web.fetch': {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the page to fetch' },
+        targetSelector: { type: 'string', description: 'CSS selector to extract specific content from the page' },
+        removeSelector: { type: 'string', description: 'CSS selector to remove elements from the page before extraction' },
+        tokenBudget: { type: 'number', description: 'Maximum number of tokens in the response content' },
+      },
+      required: ['url'],
     },
   }
   return schemas[name] || { type: 'object', properties: {} }

@@ -72,6 +72,10 @@ export interface StruereSDK {
   agent: {
     chat: (args: Record<string, unknown>) => Promise<any>
   }
+  web: {
+    search: (args: Record<string, unknown>) => Promise<any>
+    fetch: (args: Record<string, unknown>) => Promise<any>
+  }
 }
 
 export type ToolHandler = (params: Record<string, unknown>, context: ToolContext, struere: StruereSDK, fetch: typeof globalThis.fetch) => Promise<any>
