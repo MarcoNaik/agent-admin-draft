@@ -42,8 +42,6 @@ export const BUILTIN_TOOLS = [
   "entity.query",
   "entity.update",
   "entity.delete",
-  "entity.link",
-  "entity.unlink",
   "calendar.list",
   "calendar.create",
   "calendar.update",
