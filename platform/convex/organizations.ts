@@ -55,10 +55,12 @@ export const listMyOrganizations = query({
       throw new Error(`User not found for subject: ${identity.subject}`)
     }
 
-    const memberships = await ctx.db
+    const allMemberships = await ctx.db
       .query("userOrganizations")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect()
+
+    const memberships = allMemberships.filter((m) => m.clerkMembershipId)
 
     const orgs = await Promise.all(
       memberships.map(async (m) => {
