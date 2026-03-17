@@ -36,8 +36,6 @@ export interface StruereSDK {
     query: (args: Record<string, unknown>) => Promise<any>
     update: (args: Record<string, unknown>) => Promise<any>
     delete: (args: Record<string, unknown>) => Promise<any>
-    link: (args: Record<string, unknown>) => Promise<any>
-    unlink: (args: Record<string, unknown>) => Promise<any>
   }
   whatsapp: {
     send: (args: Record<string, unknown>) => Promise<any>
@@ -204,6 +202,7 @@ export interface JSONSchemaProperty {
   items?: JSONSchemaProperty
   properties?: Record<string, JSONSchemaProperty>
   required?: string[]
+  references?: string
 }
 
 export interface RoleConfig {

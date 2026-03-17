@@ -17,6 +17,19 @@ function validateObjectProperties(
     }
   }
 
+  if (schema.references !== undefined) {
+    if (schema.references === '') {
+      throw new Error(
+        `Schema field "${path}" has an empty "references" value.`
+      )
+    }
+    if (schema.type !== 'string') {
+      throw new Error(
+        `Schema field "${path}" has "references" but is not type "string". References can only be used on string fields.`
+      )
+    }
+  }
+
   if (schema.items) {
     validateObjectProperties(schema.items, `${path}[]`)
   }
