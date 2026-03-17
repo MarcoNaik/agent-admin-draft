@@ -16,7 +16,7 @@
     "@kapso/whatsapp-cloud-api": "^0.1.1",
     "@polar-sh/sdk": "^0.43.1",
     "ai": "^6.0.77",
-    "convex": "^1.17.4",
+    "convex": "^1.33.1",
     "convex-helpers": "^0.1.114",
     "nanoid": "^5.0.0"
   },
