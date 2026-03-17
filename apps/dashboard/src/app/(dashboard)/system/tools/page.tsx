@@ -16,11 +16,12 @@ import {
   Table,
   Mail,
   CreditCard,
+  Globe,
 } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 const BUILTIN_TOOL_DEFINITIONS: Record<string, {
-  category: "entity" | "event" | "agent" | "calendar" | "whatsapp" | "airtable" | "email" | "payment"
+  category: "entity" | "event" | "agent" | "calendar" | "whatsapp" | "airtable" | "email" | "payment" | "web"
   description: string
   parameters: {
     type: string
@@ -419,9 +420,38 @@ const BUILTIN_TOOL_DEFINITIONS: Record<string, {
       required: ["agent", "message"],
     },
   },
+  "web.search": {
+    category: "web",
+    description: "Search the web and return relevant results with snippets",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query" },
+        maxResults: { type: "number", description: "Maximum number of results (default: 5, max: 20)" },
+        site: { type: "array", description: "Only include results from these domains" },
+        gl: { type: "string", description: "Country code for localized results (e.g., \"US\")" },
+        hl: { type: "string", description: "Language code (ISO 639-1, e.g., \"en\")" },
+      },
+      required: ["query"],
+    },
+  },
+  "web.fetch": {
+    category: "web",
+    description: "Fetch a web page and return its content as clean markdown",
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL of the page to fetch" },
+        targetSelector: { type: "string", description: "CSS selector to extract specific content" },
+        removeSelector: { type: "string", description: "CSS selector to remove elements before extraction" },
+        tokenBudget: { type: "number", description: "Maximum tokens in the response content" },
+      },
+      required: ["url"],
+    },
+  },
 }
 
-const CATEGORY_ORDER = ["entity", "event", "calendar", "whatsapp", "airtable", "email", "payment", "agent"] as const
+const CATEGORY_ORDER = ["entity", "event", "web", "calendar", "whatsapp", "airtable", "email", "payment", "agent"] as const
 
 const CATEGORY_INFO: Record<string, {
   label: string
@@ -467,6 +497,11 @@ const CATEGORY_INFO: Record<string, {
     label: "Agent Tools",
     description: "Multi-agent communication",
     icon: Code,
+  },
+  web: {
+    label: "Web Tools",
+    description: "Web search and page fetching via Jina",
+    icon: Globe,
   },
 }
 
@@ -615,7 +650,7 @@ function ToolsPageContent() {
     flow: "payment",
   }
 
-  const CORE_CATEGORIES = new Set(["entity", "event", "agent"])
+  const CORE_CATEGORIES = new Set(["entity", "event", "agent", "web"])
 
   const activeCategories = new Set(CORE_CATEGORIES)
   for (const [provider, category] of Object.entries(PROVIDER_TO_CATEGORY)) {
