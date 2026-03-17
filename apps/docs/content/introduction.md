@@ -63,7 +63,7 @@ Current time: {{currentTime}}
 Available data types: {{entityTypes}}
 
 Recent tickets: {{entity.query({"type": "ticket", "limit": 10})}}`,
-  tools: ["entity.query", "entity.update", "event.emit"],
+  tools: ["entity.query", "entity.update"],
 })
 ```
 
@@ -176,10 +176,10 @@ Agents receive messages via API: POST /v1/agents/:slug/chat
 System prompt assembled with live data (template variables + embedded queries)
     │
     ▼
-Agents use built-in tools to read/write entities, emit events, send messages
+Agents use built-in tools to read/write entities, send messages
     │
     ▼
-Automations fire actions, events log audit trail
+Automations fire on data changes, platform logs audit trail automatically
 ```
 
 ## Tech Stack

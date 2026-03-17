@@ -92,13 +92,13 @@ export default defineAgent({
     provider: "xai",
     name: "grok-4-1-fast",
   },
-  tools: ["entity.query", "event.emit"],
+  tools: ["entity.query"],
 })
 ```
 
 This defines an agent that:
 - Uses Grok 4.1 Fast as its LLM
-- Has access to query entities and emit events
+- Has access to query entities
 - Receives the organization name and current time in its system prompt via template variables
 
 ## Define a Data Type

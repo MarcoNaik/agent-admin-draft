@@ -27,11 +27,10 @@ export default defineTrigger({
       as: "teacher",
     },
     {
-      tool: "event.emit",
+      tool: "whatsapp.send",
       args: {
-        eventType: "session.notification",
-        entityId: "{{trigger.entityId}}",
-        payload: { teacher: "{{steps.teacher.data.name}}" },
+        to: "{{steps.teacher.data.phone}}",
+        text: "New session scheduled: {{trigger.data.subject}}",
       },
     },
   ],
@@ -92,7 +91,6 @@ Actions execute in order. If any action fails, the automation stops (fail-fast b
 | Category | Tools |
 |----------|-------|
 | Entity | `entity.create`, `entity.get`, `entity.query`, `entity.update`, `entity.delete`, `entity.link`, `entity.unlink` |
-| Event | `event.emit`, `event.query` |
 | Calendar | `calendar.list`, `calendar.create`, `calendar.update`, `calendar.delete`, `calendar.freeBusy` |
 | WhatsApp | `whatsapp.send`, `whatsapp.sendTemplate`, `whatsapp.sendInteractive`, `whatsapp.sendMedia`, `whatsapp.listTemplates`, `whatsapp.getConversation`, `whatsapp.getStatus` |
 | Agent | `agent.chat` |
@@ -133,14 +131,10 @@ actions: [
     as: "guardian",
   },
   {
-    tool: "event.emit",
+    tool: "whatsapp.send",
     args: {
-      eventType: "session.booked",
-      entityId: "{{trigger.entityId}}",
-      payload: {
-        teacherName: "{{steps.teacher.data.name}}",
-        guardianName: "{{steps.guardian.data.name}}",
-      },
+      to: "{{steps.guardian.data.phone}}",
+      text: "Session booked with {{steps.teacher.data.name}} for {{trigger.data.subject}}",
     },
   },
 ]
@@ -207,11 +201,10 @@ export default defineTrigger({
       as: "guardian",
     },
     {
-      tool: "event.emit",
+      tool: "whatsapp.send",
       args: {
-        eventType: "session.reminder",
-        entityId: "{{trigger.entityId}}",
-        payload: { guardianName: "{{steps.guardian.data.name}}" },
+        to: "{{steps.guardian.data.phone}}",
+        text: "Reminder: session starting in 1 hour for {{trigger.data.subject}}",
       },
     },
   ],
@@ -294,14 +287,10 @@ export default defineTrigger({
       as: "guardian",
     },
     {
-      tool: "event.emit",
+      tool: "whatsapp.send",
       args: {
-        eventType: "session.completed",
-        entityId: "{{trigger.entityId}}",
-        payload: {
-          guardianName: "{{steps.guardian.data.name}}",
-          subject: "{{trigger.data.subject}}",
-        },
+        to: "{{steps.guardian.data.phone}}",
+        text: "Session completed: {{trigger.data.subject}}",
       },
     },
   ],
@@ -336,13 +325,10 @@ export default defineTrigger({
       as: "entitlements",
     },
     {
-      tool: "event.emit",
+      tool: "entity.update",
       args: {
-        eventType: "credits.deducted",
-        entityId: "{{trigger.entityId}}",
-        payload: {
-          studentId: "{{trigger.data.studentId}}",
-        },
+        id: "{{trigger.entityId}}",
+        data: { creditsDeducted: true },
       },
     },
   ],
@@ -371,11 +357,11 @@ export default defineTrigger({
   },
   actions: [
     {
-      tool: "event.emit",
+      tool: "agent.chat",
       args: {
-        eventType: "session.followup",
-        entityId: "{{trigger.entityId}}",
-        payload: {
+        agent: "followup",
+        message: "Send a follow-up for session {{trigger.entityId}}",
+        context: {
           teacherId: "{{trigger.data.teacherId}}",
           studentId: "{{trigger.data.studentId}}",
         },

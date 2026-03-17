@@ -25,7 +25,6 @@ export default defineAgent({
     "entity.create",
     "entity.query",
     "entity.update",
-    "event.emit",
     "agent.chat",
   ],
 })
@@ -75,7 +74,7 @@ export default defineAgent({
     temperature: 0.3,
     maxTokens: 8192,
   },
-  tools: ["entity.query", "event.query"],
+  tools: ["entity.query"],
 })
 ```
 
@@ -89,7 +88,6 @@ The `tools` field is an array of tool name strings referencing both [built-in to
 tools: [
   "entity.create",
   "entity.query",
-  "event.emit",
   "send_email",
 ]
 ```
