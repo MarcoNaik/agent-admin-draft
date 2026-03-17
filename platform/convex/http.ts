@@ -38,6 +38,14 @@ const internalDeleteTemplateRef = makeFunctionReference<"action">("whatsappActio
 const internalGetTemplateStatusRef = makeFunctionReference<"action">("whatsappActions:internalGetTemplateStatus")
 const compileSystemPromptBySlugRef = makeFunctionReference<"action">("agents:compileSystemPromptBySlug")
 const executeToolCallbackRef = makeFunctionReference<"action">("agent:executeToolCallback")
+const checkDataRateLimitRef = makeFunctionReference<"mutation">("rateLimits:checkDataRateLimit")
+const listEntityTypesInternalRef = makeFunctionReference<"query">("entityTypes:listInternal")
+const entityCreateRef = makeFunctionReference<"mutation">("tools/entities:entityCreate")
+const entityGetRef = makeFunctionReference<"query">("tools/entities:entityGet")
+const entityQueryRef = makeFunctionReference<"query">("tools/entities:entityQuery")
+const entitySearchRef = makeFunctionReference<"query">("tools/entities:entitySearch")
+const entityUpdateRef = makeFunctionReference<"mutation">("tools/entities:entityUpdate")
+const entityDeleteRef = makeFunctionReference<"mutation">("tools/entities:entityDelete")
 
 async function hashApiKey(key: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -47,7 +55,7 @@ async function hashApiKey(key: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-async function authenticateApiKey(ctx: any, request: Request): Promise<{ organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | Response> {
+async function authenticateApiKey(ctx: any, request: Request): Promise<{ organizationId: Id<"organizations">; environment: "development" | "production" | "eval"; permissions: string[]; keyHash: string } | Response> {
   const apiKey = request.headers.get("Authorization")?.replace("Bearer ", "")
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -66,7 +74,7 @@ async function authenticateApiKey(ctx: any, request: Request): Promise<{ organiz
     })
   }
 
-  return { organizationId: auth.organizationId, environment: auth.environment }
+  return { organizationId: auth.organizationId, environment: auth.environment, permissions: auth.permissions, keyHash }
 }
 
 function base64Encode(bytes: Uint8Array): string {
@@ -75,6 +83,57 @@ function base64Encode(bytes: Uint8Array): string {
     binary += String.fromCharCode(bytes[i])
   }
   return btoa(binary)
+}
+
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
+function sanitizeFiltersForDataApi(filters: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(filters)) {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const ops = value as Record<string, unknown>
+      const translated: Record<string, unknown> = {}
+      for (const [op, opVal] of Object.entries(ops)) {
+        if (op.startsWith("$")) {
+          translated[`_op_${op.slice(1)}`] = opVal
+        } else {
+          translated[op] = opVal
+        }
+      }
+      result[key] = translated
+    } else {
+      result[key] = value
+    }
+  }
+  return result
+}
+
+async function authenticateDataApi(ctx: any, request: Request): Promise<{ organizationId: Id<"organizations">; environment: "development" | "production" | "eval"; keyHash: string } | Response> {
+  const authResult = await authenticateApiKey(ctx, request)
+  if (authResult instanceof Response) return authResult
+
+  if (!authResult.permissions.includes("data")) {
+    return jsonResponse({ error: "API key does not have data permission" }, 403)
+  }
+
+  const rateLimitResult = await ctx.runMutation(checkDataRateLimitRef, {
+    key: authResult.keyHash,
+    organizationId: authResult.organizationId,
+  })
+  if (!rateLimitResult.ok) {
+    const retryAfter = Math.ceil((rateLimitResult.retryAt! - Date.now()) / 1000)
+    return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAt: rateLimitResult.retryAt }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Retry-After": String(Math.max(1, retryAfter)) },
+    })
+  }
+
+  return { organizationId: authResult.organizationId, environment: authResult.environment, keyHash: authResult.keyHash }
 }
 
 const http = httpRouter()
@@ -147,8 +206,8 @@ http.route({
         apiKey,
         agentId: agentId as Id<"agents">,
         message,
-        threadId: threadId as Id<"threads"> | undefined,
-        externalThreadId,
+        threadId: threadId ?? undefined,
+        externalThreadId: externalThreadId ?? undefined,
         channel: "api" as const,
         channelParams: threadContext?.params,
       })
@@ -230,8 +289,8 @@ http.route({
         apiKey,
         slug,
         message,
-        threadId: threadId as Id<"threads"> | undefined,
-        externalThreadId,
+        threadId: threadId ?? undefined,
+        externalThreadId: externalThreadId ?? undefined,
         channel: "api" as const,
         channelParams: threadContext?.params,
       })
@@ -1323,6 +1382,315 @@ http.route({
         status: 500,
         headers: { "Content-Type": "application/json" },
       })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/entity-types",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const auth = await authenticateDataApi(ctx, request)
+    if (auth instanceof Response) return auth
+
+    try {
+      const types = await ctx.runQuery(listEntityTypesInternalRef, {
+        organizationId: auth.organizationId,
+        environment: auth.environment,
+      })
+
+      return jsonResponse({
+        data: types.map((t: any) => ({
+          slug: t.slug,
+          name: t.name,
+          schema: t.schema ?? null,
+          searchFields: t.searchFields ?? [],
+        })),
+      })
+    } catch (error) {
+      return jsonResponse({ error: error instanceof Error ? error.message : "Internal error" }, 500)
+    }
+  }),
+})
+
+http.route({
+  pathPrefix: "/v1/data/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const auth = await authenticateDataApi(ctx, request)
+    if (auth instanceof Response) return auth
+
+    const url = new URL(request.url)
+    const pathAfterData = url.pathname.replace(/^\/v1\/data\//, "")
+    const segments = pathAfterData.split("/").filter(Boolean)
+
+    if (segments.length === 0) {
+      return jsonResponse({ error: "Entity type is required in path" }, 400)
+    }
+
+    const type = segments[0]
+    const actorArgs = {
+      organizationId: auth.organizationId,
+      actorId: "api-key",
+      actorType: "system" as const,
+      environment: auth.environment,
+    }
+
+    try {
+      if (segments.length === 1) {
+        const limit = parseInt(url.searchParams.get("limit") ?? "50")
+        const cursor = url.searchParams.get("cursor")
+        const status = url.searchParams.get("status") ?? undefined
+
+        const fetchLimit = Math.min(limit, 100) + 1
+        const results = await ctx.runQuery(entityQueryRef, {
+          ...actorArgs,
+          type,
+          status,
+          limit: fetchLimit,
+        })
+
+        let data = results
+        if (cursor) {
+          const cursorIndex = data.findIndex((e: any) => e.id === cursor)
+          if (cursorIndex >= 0) {
+            data = data.slice(cursorIndex + 1)
+          }
+        }
+
+        const hasMore = data.length > Math.min(limit, 100)
+        if (hasMore) data = data.slice(0, Math.min(limit, 100))
+
+        return jsonResponse({
+          data,
+          cursor: hasMore && data.length > 0 ? data[data.length - 1].id : null,
+          hasMore,
+        })
+      }
+
+      if (segments.length === 2) {
+        const entity = await ctx.runQuery(entityGetRef, {
+          ...actorArgs,
+          id: segments[1],
+        })
+        return jsonResponse(entity)
+      }
+
+      return jsonResponse({ error: "Invalid path" }, 400)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Internal error"
+      if (message.includes("not found")) return jsonResponse({ error: message }, 404)
+      if (message.includes("permission") || message.includes("scope")) return jsonResponse({ error: message }, 403)
+      if (message.includes("deleted")) return jsonResponse({ error: message }, 404)
+      return jsonResponse({ error: message }, 500)
+    }
+  }),
+})
+
+http.route({
+  pathPrefix: "/v1/data/",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const auth = await authenticateDataApi(ctx, request)
+    if (auth instanceof Response) return auth
+
+    const url = new URL(request.url)
+    const pathAfterData = url.pathname.replace(/^\/v1\/data\//, "")
+    const segments = pathAfterData.split("/").filter(Boolean)
+
+    if (segments.length === 0) {
+      return jsonResponse({ error: "Entity type is required in path" }, 400)
+    }
+
+    const type = segments[0]
+    const actorArgs = {
+      organizationId: auth.organizationId,
+      actorId: "api-key",
+      actorType: "system" as const,
+      environment: auth.environment,
+    }
+
+    try {
+      if (segments.length === 2 && segments[1] === "query") {
+        const body = await request.json()
+        const { filters, status, limit, cursor } = body as {
+          filters?: Record<string, unknown>
+          status?: string
+          limit?: number
+          cursor?: string
+        }
+
+        const fetchLimit = Math.min(limit ?? 50, 100) + 1
+        const translatedFilters = filters ? sanitizeFiltersForDataApi(filters) : undefined
+
+        const results = await ctx.runQuery(entityQueryRef, {
+          ...actorArgs,
+          type,
+          filters: translatedFilters,
+          status,
+          limit: fetchLimit,
+        })
+
+        let data = results
+        if (cursor) {
+          const cursorIndex = data.findIndex((e: any) => e.id === cursor)
+          if (cursorIndex >= 0) {
+            data = data.slice(cursorIndex + 1)
+          }
+        }
+
+        const effectiveLimit = Math.min(limit ?? 50, 100)
+        const hasMore = data.length > effectiveLimit
+        if (hasMore) data = data.slice(0, effectiveLimit)
+
+        return jsonResponse({
+          data,
+          cursor: hasMore && data.length > 0 ? data[data.length - 1].id : null,
+          hasMore,
+        })
+      }
+
+      if (segments.length === 2 && segments[1] === "search") {
+        const body = await request.json()
+        const { query, limit } = body as { query: string; limit?: number }
+
+        if (!query) {
+          return jsonResponse({ error: "query is required" }, 400)
+        }
+
+        const results = await ctx.runQuery(entitySearchRef, {
+          ...actorArgs,
+          type,
+          query,
+          limit: Math.min(limit ?? 20, 100),
+        })
+
+        return jsonResponse({ data: results })
+      }
+
+      if (segments.length === 1) {
+        const body = await request.json()
+        const { data, status } = body as { data: Record<string, unknown>; status?: string }
+
+        if (!data || typeof data !== "object") {
+          return jsonResponse({ error: "data object is required" }, 400)
+        }
+
+        const { id } = await ctx.runMutation(entityCreateRef, {
+          ...actorArgs,
+          type,
+          data,
+          status,
+        })
+
+        const entity = await ctx.runQuery(entityGetRef, {
+          ...actorArgs,
+          id: id as string,
+        })
+
+        return jsonResponse(entity, 201)
+      }
+
+      return jsonResponse({ error: "Invalid path" }, 400)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Internal error"
+      if (message.includes("not found")) return jsonResponse({ error: message }, 404)
+      if (message.includes("permission") || message.includes("scope")) return jsonResponse({ error: message }, 403)
+      return jsonResponse({ error: message }, 500)
+    }
+  }),
+})
+
+http.route({
+  pathPrefix: "/v1/data/",
+  method: "PATCH",
+  handler: httpAction(async (ctx, request) => {
+    const auth = await authenticateDataApi(ctx, request)
+    if (auth instanceof Response) return auth
+
+    const url = new URL(request.url)
+    const pathAfterData = url.pathname.replace(/^\/v1\/data\//, "")
+    const segments = pathAfterData.split("/").filter(Boolean)
+
+    if (segments.length !== 2) {
+      return jsonResponse({ error: "Path must be /v1/data/:type/:id" }, 400)
+    }
+
+    const [type, id] = segments
+    const actorArgs = {
+      organizationId: auth.organizationId,
+      actorId: "api-key",
+      actorType: "system" as const,
+      environment: auth.environment,
+    }
+
+    try {
+      const body = await request.json()
+      const { data, status } = body as { data: Record<string, unknown>; status?: string }
+
+      if (!data || typeof data !== "object") {
+        return jsonResponse({ error: "data object is required" }, 400)
+      }
+
+      await ctx.runMutation(entityUpdateRef, {
+        ...actorArgs,
+        id,
+        type,
+        data,
+        status,
+      })
+
+      const entity = await ctx.runQuery(entityGetRef, {
+        ...actorArgs,
+        id,
+      })
+
+      return jsonResponse(entity)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Internal error"
+      if (message.includes("not found")) return jsonResponse({ error: message }, 404)
+      if (message.includes("permission") || message.includes("scope")) return jsonResponse({ error: message }, 403)
+      if (message.includes("deleted")) return jsonResponse({ error: message }, 404)
+      return jsonResponse({ error: message }, 500)
+    }
+  }),
+})
+
+http.route({
+  pathPrefix: "/v1/data/",
+  method: "DELETE",
+  handler: httpAction(async (ctx, request) => {
+    const auth = await authenticateDataApi(ctx, request)
+    if (auth instanceof Response) return auth
+
+    const url = new URL(request.url)
+    const pathAfterData = url.pathname.replace(/^\/v1\/data\//, "")
+    const segments = pathAfterData.split("/").filter(Boolean)
+
+    if (segments.length !== 2) {
+      return jsonResponse({ error: "Path must be /v1/data/:type/:id" }, 400)
+    }
+
+    const [type, id] = segments
+    const actorArgs = {
+      organizationId: auth.organizationId,
+      actorId: "api-key",
+      actorType: "system" as const,
+      environment: auth.environment,
+    }
+
+    try {
+      await ctx.runMutation(entityDeleteRef, {
+        ...actorArgs,
+        id,
+      })
+
+      return jsonResponse({ success: true })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Internal error"
+      if (message.includes("not found")) return jsonResponse({ error: message }, 404)
+      if (message.includes("permission") || message.includes("scope")) return jsonResponse({ error: message }, 403)
+      return jsonResponse({ error: message }, 500)
     }
   }),
 })
