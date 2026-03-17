@@ -1,4 +1,5 @@
 import { internalMutation, internalQuery } from "./_generated/server"
+import { generateApiKey, hashApiKey } from "./lib/utils"
 
 export const debugState = internalQuery({
   args: {},
@@ -196,6 +197,93 @@ export const removePlanFromOrganizations = internalMutation({
     }
 
     return { updated }
+  },
+})
+
+export const cleanupOrphanedMemberships = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const memberships = await ctx.db.query("userOrganizations").collect()
+    const deleted: string[] = []
+
+    for (const membership of memberships) {
+      if (!membership.clerkMembershipId) {
+        const org = await ctx.db.get(membership.organizationId)
+        const user = await ctx.db.get(membership.userId)
+        await ctx.db.delete(membership._id)
+        deleted.push(
+          `${user?.email ?? "unknown"} -> ${org?.name ?? "unknown"}`
+        )
+      }
+    }
+
+    return { deleted, count: deleted.length }
+  },
+})
+
+export const cleanupDuplicateUsers = internalMutation({
+  args: {
+    duplicateUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.duplicateUserId)
+    if (!user) return { error: "User not found" }
+
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", args.duplicateUserId))
+      .collect()
+
+    if (memberships.length > 0) {
+      return {
+        error: "User still has memberships — clean those up first",
+        memberships: memberships.length,
+      }
+    }
+
+    await ctx.db.delete(args.duplicateUserId)
+    return { deleted: user.email }
+  },
+})
+
+export const createApiKeyForOrg = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+    permissions: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { key, prefix } = generateApiKey()
+    const keyHash = await hashApiKey(key)
+    const now = Date.now()
+    const id = await ctx.db.insert("apiKeys", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      name: args.name,
+      keyHash,
+      keyPrefix: prefix,
+      permissions: args.permissions,
+      createdAt: now,
+    })
+    return { id, key, keyPrefix: prefix }
+  },
+})
+
+export const addDataPermissionToApiKeys = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const keys = await ctx.db.query("apiKeys").collect()
+    let updated = 0
+    for (const key of keys) {
+      if (!key.permissions.includes("data")) {
+        await ctx.db.patch(key._id, {
+          permissions: [...key.permissions, "data"],
+        })
+        updated++
+      }
+    }
+    return { total: keys.length, updated }
   },
 })
 
