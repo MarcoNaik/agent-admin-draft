@@ -2,7 +2,6 @@ import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
 import { query, mutation } from "./_generated/server"
 import { getAuthContextForOrg, requireAuth } from "./lib/auth"
-import { buildSearchText } from "./lib/utils"
 import {
   buildActorContext,
   queryEntitiesAsActor,
@@ -18,7 +17,7 @@ import {
   FieldMaskResult,
 } from "./lib/permissions"
 import { Environment } from "./lib/permissions/types"
-import { checkAndScheduleTriggers } from "./lib/triggers"
+import { createEntityMutation, updateEntityMutation, deleteEntityMutation } from "./lib/entityMutations"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -317,40 +316,15 @@ export const create = mutation({
       throw new Error(`Entity type not found: ${args.entityTypeSlug}`)
     }
 
-    const now = Date.now()
-    const searchText = buildSearchText(args.data, entityType.searchFields ?? undefined)
-
-    const entityId = await ctx.db.insert("entities", {
+    const entityId = await createEntityMutation(ctx, {
       organizationId: auth.organizationId,
       environment,
       entityTypeId: entityType._id,
-      status: args.status ?? "active",
-      data: args.data,
-      searchText,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: auth.organizationId,
-      environment,
-      entityId,
       entityTypeSlug: args.entityTypeSlug,
-      eventType: `${args.entityTypeSlug}.created`,
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: { data: args.data },
-      timestamp: now,
-    })
-
-    await checkAndScheduleTriggers(ctx, {
-      organizationId: auth.organizationId,
-      environment,
-      entityTypeSlug: args.entityTypeSlug,
-      action: "created",
-      entityId,
       data: args.data,
+      status: args.status,
+      searchFields: entityType.searchFields ?? undefined,
+      actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
     return entityId
@@ -410,42 +384,16 @@ export const update = mutation({
     const fieldMask = await getFieldMask(ctx, actor, entityType.slug)
     const allowedData = filterDataByMask(args.data, fieldMask)
 
-    const now = Date.now()
-    const mergedData = { ...entity.data, ...allowedData }
-
-    const updates: Record<string, unknown> = {
-      data: mergedData,
-      searchText: buildSearchText(mergedData, entityType.searchFields ?? undefined),
-      updatedAt: now,
-    }
-
-    if (args.status !== undefined) {
-      updates.status = args.status
-    }
-
-    await ctx.db.patch(args.id, updates)
-
-    await ctx.db.insert("events", {
+    await updateEntityMutation(ctx, {
       organizationId: auth.organizationId,
       environment,
       entityId: args.id,
       entityTypeSlug: entityType.slug,
-      eventType: `${entityType.slug}.updated`,
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: { changes: allowedData, previousData: entity.data },
-      timestamp: now,
-    })
-
-    await checkAndScheduleTriggers(ctx, {
-      organizationId: auth.organizationId,
-      environment,
-      entityTypeSlug: entityType.slug,
-      action: "updated",
-      entityId: args.id,
-      data: mergedData,
+      data: allowedData,
       previousData: entity.data,
+      status: args.status,
+      searchFields: entityType.searchFields ?? undefined,
+      actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
     return await ctx.db.get(args.id)
@@ -496,34 +444,13 @@ export const remove = mutation({
       )
     }
 
-    const now = Date.now()
-    await ctx.db.patch(args.id, {
-      status: "deleted",
-      deletedAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
+    await deleteEntityMutation(ctx, {
       organizationId: auth.organizationId,
       environment,
       entityId: args.id,
       entityTypeSlug: entityType.slug,
-      eventType: `${entityType.slug}.deleted`,
-      schemaVersion: 1,
-      actorId: actor.actorId,
-      actorType: actor.actorType,
-      payload: { previousData: entity.data },
-      timestamp: now,
-    })
-
-    await checkAndScheduleTriggers(ctx, {
-      organizationId: auth.organizationId,
-      environment,
-      entityTypeSlug: entityType.slug,
-      action: "deleted",
-      entityId: args.id,
-      data: entity.data,
       previousData: entity.data,
+      actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
     return { success: true }
