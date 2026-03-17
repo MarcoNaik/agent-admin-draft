@@ -39,10 +39,6 @@ export interface StruereSDK {
     link: (args: Record<string, unknown>) => Promise<any>
     unlink: (args: Record<string, unknown>) => Promise<any>
   }
-  event: {
-    emit: (args: Record<string, unknown>) => Promise<any>
-    query: (args: Record<string, unknown>) => Promise<any>
-  }
   whatsapp: {
     send: (args: Record<string, unknown>) => Promise<any>
     sendTemplate: (args: Record<string, unknown>) => Promise<any>

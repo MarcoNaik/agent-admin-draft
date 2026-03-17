@@ -8,8 +8,6 @@ const BUILTIN_TOOLS = [
   'entity.delete',
   'entity.link',
   'entity.unlink',
-  'event.emit',
-  'event.query',
   'agent.chat',
 ]
 

@@ -214,7 +214,7 @@ Your capabilities:
 - Maintain conversation context
 
 Always be concise, accurate, and helpful.\`,
-  tools: ["entity.query", "entity.get", "event.emit"],
+  tools: ["entity.query", "entity.get"],
 })
 `
 }
@@ -363,11 +363,10 @@ export default defineTrigger({
   },
   actions: [
     {
-      tool: "event.emit",
+      tool: "entity.query",
       args: {
-        eventType: "trigger.${slug}.fired",
-        entityId: "{{trigger.entityId}}",
-        payload: { triggeredBy: "${slug}" },
+        type: "{{trigger.entityType}}",
+        filters: { "data.id": "{{trigger.entityId}}" },
       },
     },
   ],

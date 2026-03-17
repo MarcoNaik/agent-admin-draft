@@ -16,8 +16,6 @@ const BUILTIN_TOOLS = [
   'entity.delete',
   'entity.link',
   'entity.unlink',
-  'event.emit',
-  'event.query',
   'calendar.list',
   'calendar.create',
   'calendar.update',
@@ -354,8 +352,6 @@ function getBuiltinToolDescription(name: string): string {
     'entity.delete': 'Delete an entity by ID',
     'entity.link': 'Create a relation between two entities',
     'entity.unlink': 'Remove a relation between two entities',
-    'event.emit': 'Emit a custom event for audit logging',
-    'event.query': 'Query historical events with optional filters',
     'calendar.list': 'List Google Calendar events for a user within a time range',
     'calendar.create': 'Create a Google Calendar event on a user\'s calendar',
     'calendar.update': 'Update an existing Google Calendar event',
@@ -446,25 +442,6 @@ function getBuiltinToolParameters(name: string): unknown {
         relationType: { type: 'string', description: 'Type of relation to remove' },
       },
       required: ['fromId', 'toId', 'relationType'],
-    },
-    'event.emit': {
-      type: 'object',
-      properties: {
-        eventType: { type: 'string', description: 'Event type (e.g., "order.placed", "user.signup")' },
-        entityId: { type: 'string', description: 'Optional entity ID this event relates to' },
-        entityTypeSlug: { type: 'string', description: 'Optional entity type slug' },
-        payload: { type: 'object', description: 'Optional event payload data' },
-      },
-      required: ['eventType'],
-    },
-    'event.query': {
-      type: 'object',
-      properties: {
-        eventType: { type: 'string', description: 'Filter by event type' },
-        entityId: { type: 'string', description: 'Filter by entity ID' },
-        since: { type: 'number', description: 'Unix timestamp to filter events after' },
-        limit: { type: 'number', description: 'Maximum number of results' },
-      },
     },
     'calendar.list': {
       type: 'object',
