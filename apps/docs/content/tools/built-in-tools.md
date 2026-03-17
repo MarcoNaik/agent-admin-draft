@@ -21,10 +21,6 @@ Built-in tools fall into two categories:
 | `entity.query` | Data | Query records by type with optional filters |
 | `entity.update` | Data | Update an existing record's data |
 | `entity.delete` | Data | Soft-delete a record |
-| `entity.link` | Data | Create a relation between two records |
-| `entity.unlink` | Data | Remove a relation between two records |
-| `event.emit` | Event | Emit a custom event for audit logging |
-| `event.query` | Event | Query historical events with filters |
 | `agent.chat` | Agent | Send a message to another agent and get its response |
 
 ## Integration Tools
@@ -88,7 +84,6 @@ export default defineAgent({
     "entity.create",
     "entity.query",
     "entity.update",
-    "event.emit",
     "agent.chat",
   ],
 })
@@ -134,6 +129,8 @@ Creates a new record of a specified data type. Emits a `{type}.created` event an
 ```typescript
 { id: string }
 ```
+
+Fields with `references` in the data type schema are validated at creation time. The referenced entity must exist, be active, and belong to the same organization and environment. If validation fails, the tool throws an error with details about which reference field failed.
 
 **Example agent usage:**
 
@@ -308,140 +305,6 @@ Soft-deletes a record by setting its status to `"deleted"` and recording a `dele
 ```
 
 ---
-
-### entity.link
-
-Creates a typed relation between two records. Requires `update` permission on the source record and `read` permission on the target record. Emits an `entity.linked` event.
-
-**Parameters:**
-
-```typescript
-{
-  fromId: string
-  toId: string
-  relationType: string
-  metadata?: object
-}
-```
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `fromId` | `string` | Yes | The source record ID |
-| `toId` | `string` | Yes | The target record ID |
-| `relationType` | `string` | Yes | The relation type label (e.g., `"teaches"`, `"guardian_of"`) |
-| `metadata` | `object` | No | Arbitrary metadata to attach to the relation |
-
-If the relation already exists, the existing relation ID is returned with `existing: true`.
-
-**Returns:**
-
-```typescript
-{
-  id: string
-  existing: boolean
-}
-```
-
----
-
-### entity.unlink
-
-Removes a relation between two records. Requires `update` permission on the source record and `read` permission on the target record. Emits an `entity.unlinked` event.
-
-**Parameters:**
-
-```typescript
-{
-  fromId: string
-  toId: string
-  relationType: string
-}
-```
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `fromId` | `string` | Yes | The source record ID |
-| `toId` | `string` | Yes | The target record ID |
-| `relationType` | `string` | Yes | The relation type to remove |
-
-**Returns:**
-
-```typescript
-{ success: boolean }
-```
-
-## Event Tools
-
-### event.emit
-
-Emits a custom event for audit logging and tracking. Events are scoped to the current environment.
-
-**Parameters:**
-
-```typescript
-{
-  eventType: string
-  entityId?: string
-  entityTypeSlug?: string
-  payload?: object
-}
-```
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `eventType` | `string` | Yes | The event type identifier (e.g., `"session.notification"`, `"payment.reminder"`) |
-| `entityId` | `string` | No | The related record ID, if applicable |
-| `entityTypeSlug` | `string` | No | The data type slug, used for visibility filtering |
-| `payload` | `object` | No | Arbitrary event data |
-
-**Returns:**
-
-```typescript
-{ id: string }
-```
-
----
-
-### event.query
-
-Queries historical events with optional filters. Results are visibility-filtered based on the actor's permissions on related records.
-
-**Parameters:**
-
-```typescript
-{
-  eventType?: string
-  entityId?: string
-  entityTypeSlug?: string
-  since?: number
-  limit?: number
-}
-```
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `eventType` | `string` | No | Filter by event type |
-| `entityId` | `string` | No | Filter by related record ID |
-| `entityTypeSlug` | `string` | No | Filter by data type slug |
-| `since` | `number` | No | Unix timestamp in milliseconds; only return events after this time |
-| `limit` | `number` | No | Maximum number of results. Defaults to `50` |
-
-When an `entityId` is specified, the actor must have `read` permission on that record and the record must be within the actor's scope. When querying by `eventType` or without filters, events associated with records outside the actor's scope are automatically excluded.
-
-**Returns:**
-
-```typescript
-Array<{
-  _id: string
-  eventType: string
-  entityId?: string
-  entityTypeSlug?: string
-  actorId: string
-  actorType: string
-  payload: object
-  timestamp: number
-}>
-```
 
 ## Calendar Tools
 
@@ -1228,7 +1091,7 @@ Checks the current status of a payment entity. If the payment has a Flow provide
 
 ## Using Built-in Tools from Custom Tools
 
-Custom tool handlers receive a `struere` SDK parameter that provides access to all built-in tools. This lets custom tools compose platform operations — create entities, emit events, query data, send messages — without going through the LLM loop.
+Custom tool handlers receive a `struere` SDK parameter that provides access to all built-in tools. This lets custom tools compose platform operations — create entities, query data, send messages — without going through the LLM loop.
 
 ```typescript
 import { defineTools } from 'struere'
@@ -1250,10 +1113,6 @@ export default defineTools([
       const customer = await struere.entity.create({
         type: "customer",
         data: { name: args.name, email: args.email },
-      })
-      await struere.event.emit({
-        eventType: "customer.onboarded",
-        entityId: customer.id,
       })
       if (args.phone) {
         await struere.whatsapp.send({
