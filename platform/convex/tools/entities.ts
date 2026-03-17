@@ -340,6 +340,92 @@ export const entityQuery = internalQuery({
   },
 })
 
+export const entitySearch = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    actorId: v.string(),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("webhook")
+    ),
+    environment: environmentValidator,
+    type: v.string(),
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.object({
+    id: v.any(),
+    type: v.string(),
+    status: v.any(),
+    data: v.any(),
+    createdAt: v.any(),
+    updatedAt: v.any(),
+  })),
+  handler: async (ctx, args) => {
+    const actor = await buildActorContext(ctx, {
+      organizationId: args.organizationId,
+      actorType: args.actorType as ActorType,
+      actorId: args.actorId,
+      environment: args.environment,
+    })
+
+    await assertCanPerform(ctx, actor, "list", args.type)
+
+    const entityType = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env_slug", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("environment", args.environment)
+          .eq("slug", args.type)
+      )
+      .first()
+
+    if (!entityType) {
+      return []
+    }
+
+    const results = await ctx.db
+      .query("entities")
+      .withSearchIndex("search_text", (q) =>
+        q.search("searchText", args.query)
+      )
+      .collect()
+
+    const filtered = results.filter(
+      (e) =>
+        e.organizationId === args.organizationId &&
+        e.environment === args.environment &&
+        e.entityTypeId === entityType._id &&
+        !e.deletedAt
+    )
+
+    const scopeFilters = await getScopeFilters(ctx, actor, args.type)
+    const scopedEntities = applyScopeFiltersToQuery(
+      filtered as unknown as Record<string, unknown>[],
+      scopeFilters
+    )
+
+    const fieldMask = await getFieldMask(ctx, actor, args.type)
+    const maskedEntities = scopedEntities.map((e) =>
+      applyFieldMask(e, fieldMask)
+    )
+
+    const limited = maskedEntities.slice(0, args.limit ?? 20)
+
+    return limited.map((e) => ({
+      id: e._id,
+      type: args.type,
+      status: e.status,
+      data: JSON.parse(JSON.stringify(e.data)),
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    }))
+  },
+})
+
 export const entityUpdate = internalMutation({
   args: {
     organizationId: v.id("organizations"),
