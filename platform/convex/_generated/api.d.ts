@@ -27,6 +27,7 @@ import type * as integrations from "../integrations.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_cleanup from "../lib/cleanup.js";
 import type * as lib_creditPricing from "../lib/creditPricing.js";
+import type * as lib_entityMutations from "../lib/entityMutations.js";
 import type * as lib_integrations_airtable from "../lib/integrations/airtable.js";
 import type * as lib_integrations_flow from "../lib/integrations/flow.js";
 import type * as lib_integrations_googleCalendar from "../lib/integrations/googleCalendar.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/cleanup": typeof lib_cleanup;
   "lib/creditPricing": typeof lib_creditPricing;
+  "lib/entityMutations": typeof lib_entityMutations;
   "lib/integrations/airtable": typeof lib_integrations_airtable;
   "lib/integrations/flow": typeof lib_integrations_flow;
   "lib/integrations/googleCalendar": typeof lib_integrations_googleCalendar;

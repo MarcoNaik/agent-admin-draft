@@ -13,9 +13,24 @@ interface StudioMessageListProps {
 
 export function StudioMessageList({ items, turnInProgress }: StudioMessageListProps) {
   const endRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" })
+    const container = containerRef.current
+    if (!container) return
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container
+      isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 80
+    }
+    container.addEventListener("scroll", handleScroll, { passive: true })
+    return () => container.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [items, turnInProgress])
 
   if (items.length === 0 && !turnInProgress) {
@@ -32,7 +47,7 @@ export function StudioMessageList({ items, turnInProgress }: StudioMessageListPr
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 font-mono text-sm">
+    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2 font-mono text-sm">
       {items.map((item) => (
         <ItemRenderer key={item.itemId} item={item} />
       ))}
