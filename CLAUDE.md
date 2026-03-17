@@ -126,7 +126,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 | /webhook/polar | POST | Polar payment webhook |
 | /webhook/resend | POST | Resend email status |
 
-## Built-in Tools (30)
+## Built-in Tools (32)
 
 | Tool | Category |
 |------|----------|
@@ -138,6 +138,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 | email.send | Email (1) |
 | payment.create, payment.getStatus | Payment (2) |
 | agent.chat | Agent (1) |
+| web.search, web.fetch | Web (2) |
 
 ## Integrations (6 providers)
 
