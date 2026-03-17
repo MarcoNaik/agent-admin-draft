@@ -421,6 +421,33 @@ export async function executeBuiltinTool(
         entityId: args.entityId as string,
       })
 
+    case "web.search":
+      if (!args.query) throw new Error("web.search requires 'query' parameter")
+      return await ctx.runAction(ref("tools/web:webSearch"), {
+        organizationId,
+        actorId,
+        actorType,
+        environment,
+        query: args.query as string,
+        maxResults: args.maxResults as number | undefined,
+        site: args.site as string[] | undefined,
+        gl: args.gl as string | undefined,
+        hl: args.hl as string | undefined,
+      })
+
+    case "web.fetch":
+      if (!args.url) throw new Error("web.fetch requires 'url' parameter")
+      return await ctx.runAction(ref("tools/web:webFetch"), {
+        organizationId,
+        actorId,
+        actorType,
+        environment,
+        url: args.url as string,
+        targetSelector: args.targetSelector as string | undefined,
+        removeSelector: args.removeSelector as string | undefined,
+        tokenBudget: args.tokenBudget as number | undefined,
+      })
+
     default:
       throw new Error(`Unknown builtin tool: ${toolName}`)
   }
