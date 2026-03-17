@@ -177,6 +177,70 @@ Payments are stored as entities of type `payment`:
 | `paidAt` | `number?` | Timestamp when payment was confirmed |
 | `failureReason` | `string?` | Reason for payment failure |
 
+## Payment Automations
+
+Payment state changes fire automations just like any other entity mutation. When a payment is marked as paid or failed (via webhook or reconciliation), the automation engine checks for matching automations with `entityType: "payment"` and `action: "updated"`.
+
+### Example: Notify Customer on Payment
+
+```typescript
+export default defineTrigger({
+  name: "Notify Payment Received",
+  slug: "notify-payment-received",
+  on: {
+    entityType: "payment",
+    action: "updated",
+    condition: { "data.status": "paid" },
+  },
+  actions: [
+    {
+      tool: "whatsapp.send",
+      args: {
+        to: "{{trigger.data.customerPhone}}",
+        text: "Your payment of {{trigger.data.amount}} {{trigger.data.currency}} has been received.",
+      },
+    },
+  ],
+})
+```
+
+### Example: Handle Failed Payment
+
+```typescript
+export default defineTrigger({
+  name: "Handle Failed Payment",
+  slug: "handle-failed-payment",
+  on: {
+    entityType: "payment",
+    action: "updated",
+    condition: { "data.status": "failed" },
+  },
+  actions: [
+    {
+      tool: "email.send",
+      args: {
+        to: "{{trigger.data.customerEmail}}",
+        subject: "Payment failed",
+        text: "Your payment could not be processed. Please try again.",
+      },
+    },
+  ],
+})
+```
+
+### Payment Events
+
+The following events are emitted during the payment lifecycle:
+
+| Event Type | When |
+|------------|------|
+| `payment.created` | Payment entity is created |
+| `payment.paid` | Payment is confirmed via webhook or reconciliation |
+| `payment.failed` | Payment is rejected or cancelled |
+| `payment.link_created` | Payment link is generated via Flow API |
+
+Automations match on entity lifecycle actions (`created`, `updated`, `deleted`), not on custom event types. Use `condition` to filter by payment status.
+
 ## Configuration Storage
 
 Flow credentials are stored in the `integrationConfigs` table rather than as environment variables. The configuration is loaded at runtime from the database for each organization and environment. No Convex environment variables are required specifically for Flow.
