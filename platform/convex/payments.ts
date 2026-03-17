@@ -4,6 +4,7 @@ import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth } from "./lib/auth"
 import { log } from "./lib/logger"
+import { createEntityMutation, updateEntityMutation } from "./lib/entityMutations"
 
 const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
 const getPendingPaymentsRef = makeFunctionReference<"query">("payments:getPendingPayments")
@@ -22,9 +23,8 @@ import {
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
-type ActorType = "user" | "system" | "agent" | "webhook"
-
 interface PaymentData {
+  [key: string]: unknown
   amount: number
   currency: string
   description: string
@@ -165,31 +165,20 @@ export const markAsPaid = internalMutation({
       return null
     }
 
-    const now = Date.now()
-    await ctx.db.patch(payment._id, {
-      data: {
-        ...paymentData,
-        status: "paid",
-        paidAt: args.paidAt,
-      },
-      status: "paid",
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
+    await updateEntityMutation(ctx, {
       organizationId: payment.organizationId,
-      environment: payment.environment,
+      environment: payment.environment as "development" | "production" | "eval",
       entityId: payment._id,
       entityTypeSlug: "payment",
+      data: { ...paymentData, status: "paid", paidAt: args.paidAt },
+      previousData: paymentData,
+      status: "paid",
+      actor: { actorId: "system", actorType: "webhook" },
       eventType: "payment.paid",
-      schemaVersion: 1,
-      actorId: "system",
-      actorType: "webhook" as ActorType,
-      payload: {
+      eventPayload: {
         providerReference: args.providerReference,
         paidAt: args.paidAt,
       },
-      timestamp: now,
     })
 
     return null
@@ -224,31 +213,21 @@ export const markAsFailed = internalMutation({
     }
 
     const now = Date.now()
-    await ctx.db.patch(payment._id, {
-      data: {
-        ...paymentData,
-        status: "failed",
-        failedAt: now,
-        failureReason: args.reason,
-      },
-      status: "failed",
-      updatedAt: now,
-    })
 
-    await ctx.db.insert("events", {
+    await updateEntityMutation(ctx, {
       organizationId: payment.organizationId,
-      environment: payment.environment,
+      environment: payment.environment as "development" | "production" | "eval",
       entityId: payment._id,
       entityTypeSlug: "payment",
+      data: { ...paymentData, status: "failed", failedAt: now, failureReason: args.reason },
+      previousData: paymentData,
+      status: "failed",
+      actor: { actorId: "system", actorType: "webhook" },
       eventType: "payment.failed",
-      schemaVersion: 1,
-      actorId: "system",
-      actorType: "webhook" as ActorType,
-      payload: {
+      eventPayload: {
         providerReference: args.providerReference,
         reason: args.reason,
       },
-      timestamp: now,
     })
 
     return null
@@ -268,18 +247,28 @@ export const storePaymentLink = internalMutation({
     if (!payment) return null
 
     const paymentData = payment.data as PaymentData
-    await ctx.db.patch(args.paymentId, {
+
+    await updateEntityMutation(ctx, {
+      organizationId: payment.organizationId,
+      environment: payment.environment as "development" | "production" | "eval",
+      entityId: args.paymentId,
+      entityTypeSlug: "payment",
       data: {
         ...paymentData,
         paymentLinkUrl: args.paymentLinkUrl,
         providerReference: args.providerReference,
         status: "pending",
       },
+      previousData: paymentData,
       status: "pending",
-      providerReference: args.providerReference,
-      flowToken: args.flowToken,
-      updatedAt: Date.now(),
+      actor: { actorId: "system", actorType: "system" },
+      extraFields: {
+        providerReference: args.providerReference,
+        flowToken: args.flowToken,
+      },
+      skipTriggers: true,
     })
+
     return null
   },
 })
@@ -451,31 +440,17 @@ export const createPaymentEntity = internalMutation({
   },
   returns: v.id("entities"),
   handler: async (ctx, args) => {
-    const now = Date.now()
-    const paymentId = await ctx.db.insert("entities", {
+    return await createEntityMutation(ctx, {
       organizationId: args.organizationId,
       environment: args.environment,
       entityTypeId: args.entityTypeId,
-      status: "draft",
-      data: args.data,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: args.organizationId,
-      environment: args.environment,
-      entityId: paymentId,
       entityTypeSlug: "payment",
+      data: args.data,
+      status: "draft",
+      actor: { actorId: args.actorId, actorType: args.actorType as "user" | "agent" | "system" | "webhook" },
       eventType: "payment.created",
-      schemaVersion: 1,
-      actorId: args.actorId,
-      actorType: args.actorType as ActorType,
-      payload: args.data,
-      timestamp: now,
+      eventPayload: args.data,
     })
-
-    return paymentId
   },
 })
 
@@ -667,39 +642,27 @@ export const createPayment = mutation({
       throw new Error("Payment entity type not found")
     }
 
-    const now = Date.now()
-    const paymentId = await ctx.db.insert("entities", {
+    const data = {
+      amount: args.amount,
+      currency: args.currency,
+      description: args.description,
+      status: "draft",
+    }
+
+    return await createEntityMutation(ctx, {
       organizationId: auth.organizationId,
       environment: args.environment,
       entityTypeId: paymentType._id,
-      status: "draft",
-      data: {
-        amount: args.amount,
-        currency: args.currency,
-        description: args.description,
-        status: "draft",
-      },
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert("events", {
-      organizationId: auth.organizationId,
-      environment: args.environment,
-      entityId: paymentId,
       entityTypeSlug: "payment",
+      data,
+      status: "draft",
+      actor: { actorId: auth.userId as unknown as string, actorType: auth.actorType as "user" | "agent" | "system" | "webhook" },
       eventType: "payment.created",
-      schemaVersion: 1,
-      actorId: auth.userId as unknown as string,
-      actorType: auth.actorType as ActorType,
-      payload: {
+      eventPayload: {
         amount: args.amount,
         currency: args.currency,
         description: args.description,
       },
-      timestamp: now,
     })
-
-    return paymentId
   },
 })
