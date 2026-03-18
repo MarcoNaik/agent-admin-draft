@@ -8,6 +8,8 @@ const cleanupOldMessagesRef = makeFunctionReference<"mutation">("lib/cleanup:cle
 const cleanupOldExecutionsRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldExecutions")
 const cleanupOldEventsRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldEvents")
 const cleanupStuckRunsRef = makeFunctionReference<"mutation">("evals:cleanupStuckRuns")
+const cleanupOldTransactionsRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldTransactions")
+const compactOldExecutionsRef = makeFunctionReference<"mutation">("lib/cleanup:compactOldExecutions")
 
 const crons = cronJobs()
 
@@ -52,6 +54,18 @@ crons.interval(
   "cleanup stuck eval runs",
   { minutes: 5 },
   cleanupStuckRunsRef,
+)
+
+crons.interval(
+  "cleanup old credit transactions",
+  { hours: 24 },
+  cleanupOldTransactionsRef,
+)
+
+crons.interval(
+  "compact old executions",
+  { hours: 12 },
+  compactOldExecutionsRef,
 )
 
 export default crons

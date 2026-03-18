@@ -113,12 +113,12 @@ export const getStats = query({
       executions = await ctx.db
         .query("executions")
         .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
-        .take(5000)
+        .take(200)
     } else {
       executions = await ctx.db
         .query("executions")
         .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
-        .take(5000)
+        .take(200)
     }
 
     executions = executions.filter((e) => e.createdAt >= since)
@@ -167,7 +167,7 @@ export const getUsageByAgent = query({
     let executions = await ctx.db
       .query("executions")
       .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
-      .take(5000)
+      .take(200)
 
     executions = executions.filter((e) => e.createdAt >= since)
 
@@ -224,7 +224,7 @@ export const getUsageByModel = query({
     let executions = await ctx.db
       .query("executions")
       .withIndex("by_org_env", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment))
-      .take(5000)
+      .take(200)
 
     executions = executions.filter((e) => e.createdAt >= since)
 

@@ -182,18 +182,23 @@ app.post("/execute", async (c) => {
       ? buildStruereSDK(callbackUrl, callbackToken, identity)
       : {}
 
-    const result = await handler(args, context ?? {}, struereSDK, sandboxedFetch)
+    const startTime = Date.now()
+    try {
+      const result = await handler(args, context ?? {}, struereSDK, sandboxedFetch)
+      return c.json({ result, _meta: { durationMs: Date.now() - startTime } })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
 
-    return c.json({ result })
+      console.error("Tool execution error:", {
+        message,
+        stack: error instanceof Error ? error.stack : undefined,
+        handlerCode,
+      })
+
+      return c.json({ error: message, _meta: { durationMs: Date.now() - startTime } }, 500)
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
-
-    console.error("Tool execution error:", {
-      message,
-      stack: error instanceof Error ? error.stack : undefined,
-      handlerCode,
-    })
-
     return c.json({ error: message }, 500)
   }
 })

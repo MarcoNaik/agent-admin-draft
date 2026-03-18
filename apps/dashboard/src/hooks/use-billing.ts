@@ -22,3 +22,11 @@ export function useAdjustBalance() {
 export function useCreateCheckoutSession() {
   return useAction(api.billing.createCheckoutSession)
 }
+
+export function useCostRollup(periodType: "day" | "month", period: string) {
+  return useQuery(api.billing.getCostRollup, { periodType, period })
+}
+
+export function useCostTrend(periodType: "day" | "month", periods: string[]) {
+  return useQuery(api.billing.getCostTrend, { periodType, periods })
+}

@@ -1,6 +1,7 @@
 "use node"
 
 import { WhatsAppClient } from "@kapso/whatsapp-cloud-api"
+import { log } from "../logger"
 
 const KAPSO_BASE_URL = "https://api.kapso.ai"
 const KAPSO_META_PROXY_URL = "https://api.kapso.ai/meta/whatsapp"
@@ -31,6 +32,7 @@ async function kapsoPlatformRequest(
   body?: Record<string, unknown>
 ): Promise<Response> {
   const url = `${PLATFORM_API_BASE}${path}`
+  const startTime = Date.now()
   const response = await fetch(url, {
     method,
     headers: {
@@ -38,6 +40,13 @@ async function kapsoPlatformRequest(
       "X-API-Key": getKapsoApiKey(),
     },
     body: body ? JSON.stringify(body) : undefined,
+  })
+  log.info("External API call", {
+    integration: "kapso",
+    endpoint: url,
+    method,
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
   if (!response.ok) {
     const text = await response.text()
@@ -50,10 +59,18 @@ export async function findKapsoCustomer(
   externalId: string
 ): Promise<{ id: string } | null> {
   const url = `${PLATFORM_API_BASE}/customers?external_customer_id=${encodeURIComponent(externalId)}`
+  const startTime = Date.now()
   const response = await fetch(url, {
     headers: {
       "X-API-Key": getKapsoApiKey(),
     },
+  })
+  log.info("External API call", {
+    integration: "kapso",
+    endpoint: url,
+    method: "GET",
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
   if (!response.ok) return null
   const json = (await response.json()) as { data: Array<{ id: string }> }
@@ -235,6 +252,7 @@ async function metaProxyFetch(
   body?: Record<string, unknown>
 ): Promise<Response> {
   const url = `${KAPSO_META_PROXY_URL}/v24.0/${path}`
+  const startTime = Date.now()
   const response = await fetch(url, {
     method,
     headers: {
@@ -242,6 +260,13 @@ async function metaProxyFetch(
       "X-API-Key": getKapsoApiKey(),
     },
     body: body ? JSON.stringify(body) : undefined,
+  })
+  log.info("External API call", {
+    integration: "kapso",
+    endpoint: url,
+    method,
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
   if (!response.ok) {
     const text = await response.text()
@@ -291,11 +316,19 @@ export async function deletePhoneTemplate(
 ): Promise<{ success: boolean }> {
   const wabaId = await resolveWabaId(phoneNumberId)
   const url = `${KAPSO_META_PROXY_URL}/v24.0/${wabaId}/message_templates?name=${encodeURIComponent(name)}`
+  const startTime = Date.now()
   const response = await fetch(url, {
     method: "DELETE",
     headers: {
       "X-API-Key": getKapsoApiKey(),
     },
+  })
+  log.info("External API call", {
+    integration: "kapso",
+    endpoint: url,
+    method: "DELETE",
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
   if (!response.ok) {
     const text = await response.text()
@@ -311,11 +344,19 @@ export async function getPhoneTemplateStatus(
 ): Promise<unknown> {
   const wabaId = await resolveWabaId(phoneNumberId)
   const url = `${KAPSO_META_PROXY_URL}/v24.0/${wabaId}/message_templates?name=${encodeURIComponent(name)}&fields=name,status,category,language,components`
+  const startTime = Date.now()
   const response = await fetch(url, {
     method: "GET",
     headers: {
       "X-API-Key": getKapsoApiKey(),
     },
+  })
+  log.info("External API call", {
+    integration: "kapso",
+    endpoint: url,
+    method: "GET",
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
   if (!response.ok) {
     const text = await response.text()
@@ -399,10 +440,19 @@ export async function uploadMedia(
 }
 
 export async function validateKapsoApiKey(): Promise<boolean> {
-  const response = await fetch(`${PLATFORM_API_BASE}/customers?per_page=1`, {
+  const url = `${PLATFORM_API_BASE}/customers?per_page=1`
+  const startTime = Date.now()
+  const response = await fetch(url, {
     headers: {
       "X-API-Key": getKapsoApiKey(),
     },
+  })
+  log.info("External API call", {
+    integration: "kapso",
+    endpoint: url,
+    method: "GET",
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
   return response.ok
 }

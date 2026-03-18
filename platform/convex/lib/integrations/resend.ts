@@ -1,5 +1,7 @@
 "use node"
 
+import { log } from "../logger"
+
 const RESEND_API_BASE = "https://api.resend.com"
 
 export function getResendApiKey(): string {
@@ -27,13 +29,22 @@ export async function sendEmail(params: {
   if (params.text) body.text = params.text
   if (params.replyTo) body.reply_to = params.replyTo
 
-  const response = await fetch(`${RESEND_API_BASE}/emails`, {
+  const url = `${RESEND_API_BASE}/emails`
+  const startTime = Date.now()
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+  })
+  log.info("External API call", {
+    integration: "resend",
+    endpoint: url,
+    method: "POST",
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
 
   if (!response.ok) {
@@ -48,10 +59,19 @@ export async function sendEmail(params: {
 export async function validateResendApiKey(): Promise<boolean> {
   const apiKey = getResendApiKey()
 
-  const response = await fetch(`${RESEND_API_BASE}/domains`, {
+  const url = `${RESEND_API_BASE}/domains`
+  const startTime = Date.now()
+  const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
+  })
+  log.info("External API call", {
+    integration: "resend",
+    endpoint: url,
+    method: "GET",
+    status: response.status,
+    durationMs: Date.now() - startTime,
   })
 
   return response.ok
