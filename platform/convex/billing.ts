@@ -160,6 +160,11 @@ export const deductCredits = internalMutation({
     description: v.string(),
     executionId: v.optional(v.id("executions")),
     metadata: v.optional(v.any()),
+    costDriver: v.optional(v.string()),
+    agentId: v.optional(v.string()),
+    channel: v.optional(v.string()),
+    actorId: v.optional(v.string()),
+    model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
@@ -175,22 +180,89 @@ export const deductCredits = internalMutation({
       type: "deduction",
       amount: args.amount,
       balanceAfter: newBalance,
+      reconciled: true,
       description: args.description,
       executionId: args.executionId,
       metadata: args.metadata,
       createdAt: Date.now(),
     })
+
+    if (args.costDriver) {
+      const now = new Date()
+      const dayKey = now.toISOString().slice(0, 10)
+      const monthKey = now.toISOString().slice(0, 7)
+
+      for (const [periodType, period] of [["day", dayKey], ["month", monthKey]] as const) {
+        const existing = await ctx.db
+          .query("costRollups")
+          .withIndex("by_org_period", (q) =>
+            q.eq("organizationId", args.organizationId).eq("periodType", periodType).eq("period", period)
+          )
+          .first()
+
+        if (existing) {
+          const byAgent = (existing.byAgent ?? {}) as Record<string, number>
+          const byChannel = (existing.byChannel ?? {}) as Record<string, number>
+          const byDriver = (existing.byDriver ?? {}) as Record<string, number>
+          const byActor = (existing.byActor ?? {}) as Record<string, number>
+          const byModel = (existing.byModel ?? {}) as Record<string, number>
+
+          if (args.agentId) byAgent[args.agentId] = (byAgent[args.agentId] ?? 0) + args.amount
+          if (args.channel) byChannel[args.channel] = (byChannel[args.channel] ?? 0) + args.amount
+          byDriver[args.costDriver] = (byDriver[args.costDriver] ?? 0) + args.amount
+          if (args.actorId) byActor[args.actorId] = (byActor[args.actorId] ?? 0) + args.amount
+          if (args.model) byModel[args.model] = (byModel[args.model] ?? 0) + args.amount
+
+          await ctx.db.patch(existing._id, {
+            totalCost: existing.totalCost + args.amount,
+            totalCount: existing.totalCount + 1,
+            byAgent,
+            byChannel,
+            byDriver,
+            byActor,
+            byModel,
+            updatedAt: Date.now(),
+          })
+        } else {
+          const byAgent: Record<string, number> = {}
+          const byChannel: Record<string, number> = {}
+          const byDriver: Record<string, number> = {}
+          const byActor: Record<string, number> = {}
+          const byModel: Record<string, number> = {}
+
+          if (args.agentId) byAgent[args.agentId] = args.amount
+          if (args.channel) byChannel[args.channel] = args.amount
+          byDriver[args.costDriver] = args.amount
+          if (args.actorId) byActor[args.actorId] = args.amount
+          if (args.model) byModel[args.model] = args.amount
+
+          await ctx.db.insert("costRollups", {
+            organizationId: args.organizationId,
+            period,
+            periodType,
+            totalCost: args.amount,
+            totalCount: 1,
+            byAgent,
+            byChannel,
+            byDriver,
+            byActor,
+            byModel,
+            updatedAt: Date.now(),
+          })
+        }
+      }
+    }
   },
 })
 
+
 export const reconcileBalances = internalMutation({
   handler: async (ctx) => {
-    const pendingTxs = await ctx.db
+    const unprocessed = await ctx.db
       .query("creditTransactions")
-      .order("asc")
-      .collect()
+      .withIndex("by_reconciled", (q) => q.eq("reconciled", false))
+      .take(100)
 
-    const unprocessed = pendingTxs.filter((tx) => tx.balanceAfter === undefined)
     if (unprocessed.length === 0) return
 
     for (const tx of unprocessed) {
@@ -205,7 +277,7 @@ export const reconcileBalances = internalMutation({
         updatedAt: Date.now(),
       })
 
-      await ctx.db.patch(tx._id, { balanceAfter: newBalance })
+      await ctx.db.patch(tx._id, { balanceAfter: newBalance, reconciled: true })
     }
   },
 })
@@ -236,6 +308,7 @@ export const addCredits = mutation({
       type: "addition",
       amount: args.amount,
       balanceAfter: newBalance,
+      reconciled: true,
       description: args.description ?? "Manual credit addition",
       createdBy: auth.userId,
       createdAt: Date.now(),
@@ -267,6 +340,7 @@ export const adjustBalance = mutation({
       type: "adjustment",
       amount: Math.abs(difference),
       balanceAfter: args.newBalance,
+      reconciled: true,
       description: args.description ?? `Balance adjusted from ${formatMicrodollars(balanceDoc.balance)} to ${formatMicrodollars(args.newBalance)}`,
       createdBy: auth.userId,
       createdAt: Date.now(),
@@ -345,12 +419,12 @@ export const addCreditsFromPolar = internalMutation({
       throw new Error("Organization not found")
     }
 
-    const existing = await ctx.db
+    const recentTxs = await ctx.db
       .query("creditTransactions")
       .withIndex("by_org", (q) => q.eq("organizationId", org._id))
       .order("desc")
-      .collect()
-    const duplicate = existing.find(
+      .take(100)
+    const duplicate = recentTxs.find(
       (tx) => tx.metadata?.polarOrderId === args.polarOrderId
     )
     if (duplicate) {
@@ -371,6 +445,7 @@ export const addCreditsFromPolar = internalMutation({
       type: "purchase",
       amount: microdollars,
       balanceAfter: newBalance,
+      reconciled: true,
       description: `Credit purchase via Polar (${formatMicrodollars(microdollars)})`,
       metadata: { polarOrderId: args.polarOrderId },
       createdAt: Date.now(),
@@ -408,8 +483,46 @@ export const seedWelcomeCredits = internalMutation({
       type: "addition",
       amount: 250_000,
       balanceAfter: newBalance,
+      reconciled: true,
       description: "Welcome credits",
       createdAt: Date.now(),
     })
+  },
+})
+
+export const getCostRollup = query({
+  args: {
+    periodType: v.union(v.literal("day"), v.literal("month")),
+    period: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    return await ctx.db
+      .query("costRollups")
+      .withIndex("by_org_period", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("periodType", args.periodType).eq("period", args.period)
+      )
+      .first()
+  },
+})
+
+export const getCostTrend = query({
+  args: {
+    periodType: v.union(v.literal("day"), v.literal("month")),
+    periods: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const results = []
+    for (const period of args.periods) {
+      const rollup = await ctx.db
+        .query("costRollups")
+        .withIndex("by_org_period", (q) =>
+          q.eq("organizationId", auth.organizationId).eq("periodType", args.periodType).eq("period", period)
+        )
+        .first()
+      results.push({ period, ...(rollup ? { totalCost: rollup.totalCost, totalCount: rollup.totalCount, byAgent: rollup.byAgent, byChannel: rollup.byChannel, byDriver: rollup.byDriver, byActor: rollup.byActor, byModel: rollup.byModel } : { totalCost: 0, totalCount: 0 }) })
+    }
+    return results
   },
 })

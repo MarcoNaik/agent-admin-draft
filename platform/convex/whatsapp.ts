@@ -504,6 +504,8 @@ export const updateMessageStatus = internalMutation({
               amount: cost,
               description: `WhatsApp ${args.pricingCategory} to +${msg.phoneNumber}`,
               metadata: { whatsappMessageId: msg._id, category: args.pricingCategory },
+              costDriver: "whatsapp",
+              channel: "whatsapp",
             } as any)
           }
         }

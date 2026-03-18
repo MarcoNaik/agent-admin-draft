@@ -230,6 +230,8 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   }))
 
   const aiTools: Record<string, any> = {}
+  const toolCallDetails: { name: string; durationMs: number; status: "success" | "error" | "permission_denied"; errorType?: "integration" | "permission" | "validation" | "timeout" | "unknown"; errorMessage?: string }[] = []
+  const permissionDenials: { toolName: string; reason: string }[] = []
   for (const t of config.tools as ToolConfig[]) {
     if (t.templateOnly) continue
     const sanitized = sanitizeToolName(t.name)
@@ -255,17 +257,21 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
             actorType: actor.actorType,
             environment,
           })
+          permissionDenials.push({ toolName: originalName, reason: permissionResult.reason ?? "unknown" })
+          toolCallDetails.push({ name: originalName, durationMs: 0, status: "permission_denied", errorType: "permission", errorMessage: permissionResult.reason })
           return { error: `Permission denied: ${permissionResult.reason}` }
         }
 
+        const toolStart = Date.now()
         try {
           const toolIdentity = await ctx.runQuery(
             getToolIdentityQueryRef,
             { actor: serializeActor(actor), agentId, toolName: originalName }
           )
 
+          let toolResult: unknown
           if (isBuiltinTool(originalName)) {
-            return await executeBuiltinTool(ctx, {
+            toolResult = await executeBuiltinTool(ctx, {
               organizationId: toolIdentity.organizationId,
               actorId: toolIdentity.actorId,
               actorType: toolIdentity.actorType,
@@ -279,7 +285,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
               agentId: agentId as unknown as string,
             })
           } else if (toolConfig?.handlerCode) {
-            return await ctx.runAction(executeCustomToolRef, {
+            toolResult = await ctx.runAction(executeCustomToolRef, {
               toolName: originalName,
               args,
               handlerCode: toolConfig.handlerCode,
@@ -295,10 +301,15 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
               depth,
               callerAgentSlug: agent.slug,
             })
+          } else {
+            toolCallDetails.push({ name: originalName, durationMs: Date.now() - toolStart, status: "error", errorType: "validation", errorMessage: "Tool has no handler" })
+            return { error: "Tool has no handler" }
           }
 
-          return { error: "Tool has no handler" }
+          toolCallDetails.push({ name: originalName, durationMs: Date.now() - toolStart, status: "success" })
+          return toolResult
         } catch (error) {
+          toolCallDetails.push({ name: originalName, durationMs: Date.now() - toolStart, status: "error", errorType: "unknown", errorMessage: error instanceof Error ? error.message : "Tool execution failed" })
           log.error(`Tool execution failed: ${originalName}`, {
             ...log.withOrg(organizationId as string),
             ...log.withAgent(agentId as string),
@@ -370,6 +381,9 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         },
       })
     } catch (error) {
+      const durationMs = Date.now() - startTime
+      const errorMsg = error instanceof Error ? error.message : String(error)
+
       log.error("LLM execution failed", {
         ...log.withOrg(organizationId as string),
         ...log.withAgent(agentId as string),
@@ -380,6 +394,32 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         agentSlug: agent.slug,
         error: error instanceof Error ? error : new Error(String(error)),
       })
+
+      await ctx.runMutation(recordExecutionRef, {
+        organizationId,
+        agentId,
+        threadId,
+        environment,
+        conversationId,
+        inputMessage: message,
+        inputTokens: 0,
+        outputTokens: 0,
+        durationMs,
+        model: config.model.name,
+        status: "error" as const,
+        errorMessage: errorMsg,
+        usedPlatformKey,
+        evalRunId: params.evalRunId,
+        actorId: actor.actorId,
+        actorType: actor.actorType,
+        channel: thread?.channel as string | undefined,
+        agentSlug: agent.slug,
+        provider: config.model.provider,
+        multiAgentDepth: depth,
+        toolCallDetails: toolCallDetails.length > 0 ? toolCallDetails : undefined,
+        permissionDenials: permissionDenials.length > 0 ? permissionDenials : undefined,
+      })
+
       throw error
     }
 
@@ -438,6 +478,15 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       usedPlatformKey,
       creditsConsumed,
       evalRunId: params.evalRunId,
+      actorId: actor.actorId,
+      actorType: actor.actorType,
+      channel: thread?.channel as string | undefined,
+      agentSlug: agent.slug,
+      provider: config.model.provider,
+      iterationCount: result.steps.length,
+      multiAgentDepth: depth,
+      toolCallDetails: toolCallDetails.length > 0 ? toolCallDetails : undefined,
+      permissionDenials: permissionDenials.length > 0 ? permissionDenials : undefined,
     })
 
     if (usedPlatformKey && creditsConsumed > 0) {
@@ -451,6 +500,11 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,
         },
+        costDriver: "llm",
+        agentId: agentId as unknown as string,
+        channel: thread?.channel as string | undefined,
+        actorId: actor.actorId,
+        model: config.model.name,
       })
     }
 

@@ -326,6 +326,31 @@ export default defineSchema({
     usedPlatformKey: v.optional(v.boolean()),
     creditsConsumed: v.optional(v.number()),
     evalRunId: v.optional(v.id("evalRuns")),
+    actorId: v.optional(v.string()),
+    actorType: v.optional(v.union(v.literal("user"), v.literal("agent"), v.literal("system"), v.literal("webhook"))),
+    channel: v.optional(v.string()),
+    agentSlug: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    iterationCount: v.optional(v.number()),
+    parentExecutionId: v.optional(v.id("executions")),
+    multiAgentDepth: v.optional(v.number()),
+    toolCallDetails: v.optional(v.array(v.object({
+      name: v.string(),
+      durationMs: v.number(),
+      status: v.union(v.literal("success"), v.literal("error"), v.literal("permission_denied")),
+      errorType: v.optional(v.union(
+        v.literal("integration"),
+        v.literal("permission"),
+        v.literal("validation"),
+        v.literal("timeout"),
+        v.literal("unknown"),
+      )),
+      errorMessage: v.optional(v.string()),
+    }))),
+    permissionDenials: v.optional(v.array(v.object({
+      toolName: v.string(),
+      reason: v.string(),
+    }))),
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
@@ -334,7 +359,8 @@ export default defineSchema({
     .index("by_agent_env", ["agentId", "environment"])
     .index("by_timestamp", ["createdAt"])
     .index("by_eval_run", ["evalRunId"])
-    .index("by_thread", ["organizationId", "threadId"]),
+    .index("by_thread", ["organizationId", "threadId"])
+    .index("by_org_env_status", ["organizationId", "environment", "status"]),
 
   toolPermissions: defineTable({
     agentId: v.id("agents"),
@@ -632,6 +658,7 @@ export default defineSchema({
     type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment"), v.literal("purchase")),
     amount: v.number(),
     balanceAfter: v.optional(v.number()),
+    reconciled: v.optional(v.boolean()),
     description: v.string(),
     executionId: v.optional(v.id("executions")),
     createdBy: v.optional(v.id("users")),
@@ -639,7 +666,23 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_execution", ["executionId"]),
+    .index("by_execution", ["executionId"])
+    .index("by_reconciled", ["reconciled"]),
+
+  costRollups: defineTable({
+    organizationId: v.id("organizations"),
+    period: v.string(),
+    periodType: v.union(v.literal("day"), v.literal("month")),
+    totalCost: v.number(),
+    totalCount: v.number(),
+    byAgent: v.optional(v.any()),
+    byChannel: v.optional(v.any()),
+    byDriver: v.optional(v.any()),
+    byActor: v.optional(v.any()),
+    byModel: v.optional(v.any()),
+    updatedAt: v.number(),
+  })
+    .index("by_org_period", ["organizationId", "periodType", "period"]),
 
   sandboxSessions: defineTable({
     organizationId: v.id("organizations"),

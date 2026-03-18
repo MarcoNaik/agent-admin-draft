@@ -40,6 +40,7 @@ export const storeOutboundEmail = internalMutation({
       amount: cost,
       description: `Email to ${args.to}`,
       metadata: { emailMessageId: id },
+      costDriver: "email",
     } as any)
 
     return id
