@@ -561,7 +561,8 @@ http.route({
     }
 
     const eventType = request.headers.get("X-Webhook-Event") ?? ""
-    const parsed = JSON.parse(rawBody) as {
+
+    type WebhookItem = {
       message: {
         id: string
         type: string
@@ -581,6 +582,13 @@ http.route({
           media_data?: { url?: string; filename?: string; content_type?: string }
           content?: string
           transcript?: { text?: string }
+          statuses?: Array<{
+            pricing?: {
+              billable?: boolean
+              pricing_model?: string
+              category?: string
+            }
+          }>
         }
       }
       conversation?: {
@@ -595,129 +603,125 @@ http.route({
       is_new_conversation?: boolean
     }
 
-    const message = parsed.message
-    const phoneNumberId = parsed.phone_number_id ?? parsed.conversation?.phone_number_id ?? ""
+    const raw = JSON.parse(rawBody)
+    const items: WebhookItem[] = Array.isArray(raw.data) ? raw.data : [raw]
 
-    if (eventType === "whatsapp.message.received") {
-      if (!phoneNumberId) {
-        return new Response("Missing phone_number_id", { status: 400 })
-      }
+    for (const item of items) {
+      const message = item.message
+      const phoneNumberId = item.phone_number_id ?? item.conversation?.phone_number_id ?? ""
 
-      const connection = await ctx.runQuery(getConnectionByKapsoPhoneRef, {
-        kapsoPhoneNumberId: phoneNumberId,
-      }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | null
-
-      if (!connection) {
-        return new Response("Unknown phone number", { status: 404 })
-      }
-
-      const from = parsed.conversation?.phone_number?.replace("+", "") ?? ""
-      const messageId = message.id ?? `kapso_${Date.now()}`
-      const timestamp = Number(message.timestamp) * 1000 || Date.now()
-      const msgType = message.type ?? "text"
-      const contactName = parsed.conversation?.kapso?.contact_name
-      const mediaUrl = message.kapso?.media_url ?? message.kapso?.media_data?.url
-
-      const mediaId = message.image?.id ?? message.audio?.id ?? message.video?.id ?? message.document?.id
-      const mediaCaption = message.image?.caption ?? message.video?.caption ?? message.document?.caption
-      const interactiveData = message.interactive
-
-      let text = message.text?.body
-      if (!text) {
-        if (mediaCaption) {
-          text = mediaCaption
-        } else if (msgType === "audio" && message.kapso?.transcript?.text) {
-          text = message.kapso.transcript.text
-        } else if (msgType === "image") {
-          text = "[Sent an image]"
-        } else if (msgType === "video") {
-          text = "[Sent a video]"
-        } else if (msgType === "audio") {
-          text = "[Sent a voice message]"
-        } else if (msgType === "document") {
-          text = `[Sent a document${message.document?.filename ? `: ${message.document.filename}` : ""}]`
-        } else if (msgType === "interactive" && interactiveData) {
-          text = interactiveData.button_reply?.title ?? interactiveData.list_reply?.title ?? "[Interactive reply]"
-        } else if (msgType === "reaction") {
-          text = message.reaction?.emoji ?? "[Reaction]"
-        } else if (msgType === "location") {
-          text = message.location?.name ?? message.location?.address ?? "[Shared a location]"
+      if (eventType === "whatsapp.message.received") {
+        if (!phoneNumberId) {
+          continue
         }
-      }
 
-      const msgId = await ctx.runMutation(processInboundMessageRef, {
-        organizationId: connection.organizationId,
-        connectionId: connection._id,
-        from,
-        messageId,
-        timestamp,
-        type: msgType,
-        text,
-        contactName,
-        mediaCaption,
-        interactiveData,
-        mediaDirectUrl: mediaUrl,
-      })
-
-      if (msgId && mediaId) {
-        await ctx.runMutation(scheduleMediaDownloadRef, {
-          whatsappMessageId: msgId,
-          mediaId,
+        const connection = await ctx.runQuery(getConnectionByKapsoPhoneRef, {
           kapsoPhoneNumberId: phoneNumberId,
-          mediaUrl,
-        })
-      }
+        }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | null
 
-      if (msgId && text) {
-        await ctx.runMutation(scheduleAgentRoutingRef, {
-          organizationId: connection.organizationId,
-          environment: connection.environment,
-          connectionId: connection._id,
-          phoneNumber: from,
-          text,
-        })
-      }
-    }
+        if (!connection) {
+          continue
+        }
 
-    if (
-      eventType === "whatsapp.message.sent" ||
-      eventType === "whatsapp.message.delivered" ||
-      eventType === "whatsapp.message.read" ||
-      eventType === "whatsapp.message.failed"
-    ) {
-      const messageId = message.id
-      const status = eventType.split(".").pop()!
-      if (messageId) {
-        const updateArgs: {
-          messageId: string
-          status: string
-          pricingBillable?: boolean
-          pricingModel?: string
-          pricingCategory?: string
-        } = { messageId, status }
+        const from = item.conversation?.phone_number?.replace("+", "") ?? ""
+        const messageId = message.id ?? `kapso_${Date.now()}`
+        const timestamp = Number(message.timestamp) * 1000 || Date.now()
+        const msgType = message.type ?? "text"
+        const contactName = item.conversation?.kapso?.contact_name
+        const mediaUrl = message.kapso?.media_url ?? message.kapso?.media_data?.url
 
-        if (status === "sent") {
-          const kapso = message.kapso as {
-            statuses?: Array<{
-              pricing?: {
-                billable?: boolean
-                pricing_model?: string
-                category?: string
-              }
-            }>
-          } | undefined
-          const statuses = kapso?.statuses
-          if (statuses && Array.isArray(statuses)) {
-            const pricingEntry = statuses.find((s) => s.pricing)
-            if (pricingEntry?.pricing) {
-              updateArgs.pricingBillable = pricingEntry.pricing.billable
-              updateArgs.pricingModel = pricingEntry.pricing.pricing_model
-              updateArgs.pricingCategory = pricingEntry.pricing.category
-            }
+        const mediaId = message.image?.id ?? message.audio?.id ?? message.video?.id ?? message.document?.id
+        const mediaCaption = message.image?.caption ?? message.video?.caption ?? message.document?.caption
+        const interactiveData = message.interactive
+
+        let text = message.text?.body
+        if (!text) {
+          if (mediaCaption) {
+            text = mediaCaption
+          } else if (msgType === "audio" && message.kapso?.transcript?.text) {
+            text = message.kapso.transcript.text
+          } else if (msgType === "image") {
+            text = "[Sent an image]"
+          } else if (msgType === "video") {
+            text = "[Sent a video]"
+          } else if (msgType === "audio") {
+            text = "[Sent a voice message]"
+          } else if (msgType === "document") {
+            text = `[Sent a document${message.document?.filename ? `: ${message.document.filename}` : ""}]`
+          } else if (msgType === "interactive" && interactiveData) {
+            text = interactiveData.button_reply?.title ?? interactiveData.list_reply?.title ?? "[Interactive reply]"
+          } else if (msgType === "reaction") {
+            text = message.reaction?.emoji ?? "[Reaction]"
+          } else if (msgType === "location") {
+            text = message.location?.name ?? message.location?.address ?? "[Shared a location]"
           }
         }
 
-        await ctx.runMutation(updateMessageStatusRef, updateArgs)
+        const msgId = await ctx.runMutation(processInboundMessageRef, {
+          organizationId: connection.organizationId,
+          connectionId: connection._id,
+          from,
+          messageId,
+          timestamp,
+          type: msgType,
+          text,
+          contactName,
+          mediaCaption,
+          interactiveData,
+          mediaDirectUrl: mediaUrl,
+        })
+
+        if (msgId && mediaId) {
+          await ctx.runMutation(scheduleMediaDownloadRef, {
+            whatsappMessageId: msgId,
+            mediaId,
+            kapsoPhoneNumberId: phoneNumberId,
+            mediaUrl,
+          })
+        }
+
+        if (msgId && text) {
+          await ctx.runMutation(scheduleAgentRoutingRef, {
+            organizationId: connection.organizationId,
+            environment: connection.environment,
+            connectionId: connection._id,
+            phoneNumber: from,
+            text,
+          })
+        }
+      }
+
+      if (
+        eventType === "whatsapp.message.sent" ||
+        eventType === "whatsapp.message.delivered" ||
+        eventType === "whatsapp.message.read" ||
+        eventType === "whatsapp.message.failed"
+      ) {
+        const messageId = message.id
+        const status = eventType.split(".").pop()!
+        if (messageId) {
+          const updateArgs: {
+            messageId: string
+            status: string
+            pricingBillable?: boolean
+            pricingModel?: string
+            pricingCategory?: string
+          } = { messageId, status }
+
+          if (status === "sent") {
+            const statuses = message.kapso?.statuses
+            if (statuses && Array.isArray(statuses)) {
+              const pricingEntry = statuses.find((s) => s.pricing)
+              if (pricingEntry?.pricing) {
+                updateArgs.pricingBillable = pricingEntry.pricing.billable
+                updateArgs.pricingModel = pricingEntry.pricing.pricing_model
+                updateArgs.pricingCategory = pricingEntry.pricing.category
+              }
+            }
+          }
+
+          await ctx.runMutation(updateMessageStatusRef, updateArgs)
+        }
       }
     }
 
