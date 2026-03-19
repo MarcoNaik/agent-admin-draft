@@ -3,6 +3,7 @@
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
+import { useRoleContext } from "@/contexts/role-context"
 
 type Environment = "development" | "production"
 
@@ -101,4 +102,25 @@ export function useLinkUserToEntity() {
 
 export function useUnlinkUserFromEntity() {
   return useMutation(api.entities.unlinkUserFromEntity)
+}
+
+export function useUserCapabilities(environment?: Environment) {
+  return useQuery(api.entityTypes.getUserCapabilities, { environment })
+}
+
+export function useEntityPermissions(entityTypeSlug: string, environment?: Environment) {
+  const { isAdmin } = useRoleContext()
+  const capabilities = useUserCapabilities(environment)
+
+  if (isAdmin) return { canCreate: true, canRead: true, canUpdate: true, canDelete: true, isLoading: false }
+  if (!capabilities) return { canCreate: false, canRead: false, canUpdate: false, canDelete: false, isLoading: true }
+
+  const cap = capabilities.find((c: any) => c.entityType.slug === entityTypeSlug)
+  return {
+    canCreate: cap?.actions.includes("create") ?? false,
+    canRead: cap?.actions.includes("read") ?? false,
+    canUpdate: cap?.actions.includes("update") ?? false,
+    canDelete: cap?.actions.includes("delete") ?? false,
+    isLoading: false,
+  }
 }
