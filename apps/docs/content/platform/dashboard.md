@@ -32,6 +32,7 @@ Non-admin members see a reduced navigation:
 
 | Tab | Route | Description |
 |-----|-------|-------------|
+| **Team** | `/team` | View organization members and manage team (permission-gated) |
 | **Data** | `/entities` | Data browser (filtered by permissions) |
 | **Conversations** | `/conversations` | Conversations the member has access to |
 | **Profile** | `/profile` | Personal profile settings |
@@ -68,6 +69,14 @@ The root route (`/`) displays an overview of your project in the current environ
 - Data Types count (links to `/entities`)
 - Roles count (links to `/roles`)
 - Automations count (links to `/triggers`)
+
+### Member Home Page
+
+Members see a personalized home page with:
+
+- **My Roles** — Assigned roles with descriptions
+- **Quick Access** — Cards linking to Team, Data, Conversations, and Profile
+- **Recent Conversations** — Latest threads the member has access to
 
 ## Agent Management
 
@@ -248,6 +257,24 @@ Token consumption and execution statistics for the current environment:
 ### Danger Zone
 
 Permanently delete the organization and all associated data. Requires typing the organization name to confirm. This action deletes all agents, data, events, triggers, API keys, integrations, and team member access.
+
+## Team
+
+The `/team` route is available to organization members and displays all users in the organization. It provides the same user management interface as the admin Settings > Users page, but with actions gated by the member's RBAC permissions.
+
+### Permission-Gated Actions
+
+What a member can do on the Team page depends on their role's policies for the `users` resource:
+
+| Action | Required Policy | Description |
+|--------|----------------|-------------|
+| View team members | Default (no policy needed) | All members can see the list of organization users |
+| Change org roles | Admin only | Only organization admins can promote/demote users |
+| Assign internal roles | `resource: "users"`, `actions: ["update"]` | Change a member's RBAC role assignment |
+| Remove members | `resource: "users"`, `actions: ["delete"]` | Remove non-admin members from the organization |
+| Invite members | Admin only | Send organization invitations via Clerk |
+
+Members cannot modify or remove admin users regardless of their permissions.
 
 ## Studio
 
