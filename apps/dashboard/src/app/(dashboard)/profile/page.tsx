@@ -1,12 +1,15 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { Loader2, User, Mail, Shield } from "@/lib/icons"
+import { Loader2, User, Mail, Shield, Database } from "@/lib/icons"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
 import { useCurrentUserRoles } from "@/hooks/use-roles"
 import { useEnvironment } from "@/contexts/environment-context"
 import { CalendarConnectionCard } from "@/components/calendar-connection-card"
+import { useEntityTypes, useLinkedEntity } from "@/hooks/use-entities"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser()
@@ -14,6 +17,23 @@ export default function ProfilePage() {
   const org = useCurrentOrganization()
   const userRoles = useCurrentUserRoles()
   const { environment } = useEnvironment()
+
+  const entityTypes = useEntityTypes(environment)
+
+  const userRole = userRoles?.filter((ur: any) => ur.role && (!ur.role.environment || ur.role.environment === environment))?.[0]
+
+  const boundEntityType = entityTypes?.find((et: any) => et.boundToRole === userRole?.role?.name)
+
+  const linkedEntity = useLinkedEntity(
+    boundEntityType?._id,
+    user?.id,
+    environment
+  )
+
+  const maskedEntity = useQuery(
+    api.entities.get,
+    linkedEntity?._id ? { id: linkedEntity._id, environment } : "skip"
+  )
 
   if (!isLoaded) {
     return (
@@ -65,32 +85,50 @@ export default function ProfilePage() {
             <Shield className="h-4 w-4 text-content-tertiary" />
             <div>
               <p className="text-xs text-content-tertiary">Role</p>
-              <p className="text-sm text-content-primary capitalize">{role}</p>
+              {userRole?.role ? (
+                <>
+                  <p className="text-sm text-content-primary">{userRole.role.name}</p>
+                  {userRole.role.description && (
+                    <p className="text-xs text-content-secondary">{userRole.role.description}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-content-primary capitalize">{role}</p>
+              )}
             </div>
           </div>
+
+          {maskedEntity?.data && Object.keys(maskedEntity.data).length > 0 && (
+            <>
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Database className="h-4 w-4 text-content-tertiary" />
+                  <p className="text-xs font-medium text-content-tertiary uppercase tracking-wider">
+                    {boundEntityType?.name || "Details"}
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {Object.entries(maskedEntity.data as Record<string, any>)
+                    .filter(([key]) => key !== (boundEntityType?.userIdField || "userId"))
+                    .filter(([, value]) => value != null)
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-start gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs text-content-tertiary">
+                            {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                          </p>
+                          <p className="text-sm text-content-primary break-all">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {userRoles && userRoles.length > 0 && (
-        <div className="rounded-lg border bg-background-secondary p-6 space-y-4 mt-6">
-          <h2 className="text-lg font-display font-medium text-content-primary">My Roles</h2>
-          <div className="space-y-3">
-            {userRoles
-              .filter((ur: any) => ur.role && (!ur.role.environment || ur.role.environment === environment))
-              .map((ur: any) => (
-                <div key={ur._id} className="flex items-center gap-3">
-                  <Shield className="h-4 w-4 text-content-tertiary" />
-                  <div>
-                    <p className="text-sm font-medium text-content-primary">{ur.role!.name}</p>
-                    {ur.role!.description && (
-                      <p className="text-xs text-content-secondary">{ur.role!.description}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
 
       <CalendarConnectionCard />
     </div>
