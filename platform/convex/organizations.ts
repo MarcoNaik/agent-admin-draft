@@ -583,6 +583,40 @@ export const removeMembership = internalMutation({
       for (const ur of userRoles) {
         await ctx.db.delete(ur._id)
       }
+
+      if (user.email) {
+        const pendingAssignments = await ctx.db
+          .query("pendingRoleAssignments")
+          .withIndex("by_org_email", (q) =>
+            q.eq("organizationId", org._id).eq("email", user.email!)
+          )
+          .collect()
+        for (const pa of pendingAssignments) {
+          await ctx.db.delete(pa._id)
+        }
+      }
+
+      for (const env of ["development", "production", "eval"] as const) {
+        const calConnections = await ctx.db
+          .query("calendarConnections")
+          .withIndex("by_user_org_env", (q) =>
+            q.eq("userId", user._id).eq("organizationId", org._id).eq("environment", env)
+          )
+          .collect()
+        for (const cc of calConnections) {
+          await ctx.db.delete(cc._id)
+        }
+
+        const sandboxSessions = await ctx.db
+          .query("sandboxSessions")
+          .withIndex("by_org_env_user", (q) =>
+            q.eq("organizationId", org._id).eq("environment", env).eq("userId", user._id)
+          )
+          .collect()
+        for (const ss of sandboxSessions) {
+          await ctx.db.delete(ss._id)
+        }
+      }
     }
   },
 })
