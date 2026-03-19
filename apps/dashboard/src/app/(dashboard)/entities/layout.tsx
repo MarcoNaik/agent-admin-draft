@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -10,10 +10,12 @@ import {
   Layers,
   Shield,
   Loader2,
+  Eye,
   IconComponent,
 } from "@/lib/icons"
-import { useEntityTypes } from "@/hooks/use-convex-data"
+import { useEntityTypes, useUserCapabilities } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
+import { useRoleContext } from "@/contexts/role-context"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Doc } from "@convex/_generated/dataModel"
@@ -22,6 +24,8 @@ function getEntityTypeIcon(_slug: string): IconComponent {
   return Database
 }
 
+const WRITE_ACTIONS = ["create", "update", "delete"]
+
 export default function EntitiesLayout({
   children,
 }: {
@@ -29,15 +33,44 @@ export default function EntitiesLayout({
 }) {
   const pathname = usePathname()
   const { environment } = useEnvironment()
+  const { isAdmin } = useRoleContext()
   const entityTypes = useEntityTypes(environment)
+  const capabilities = useUserCapabilities(environment)
   const [search, setSearch] = useState("")
 
-  const filteredEntityTypes = entityTypes
-    ? entityTypes.filter((et: Doc<"entityTypes">) =>
-        et.name.toLowerCase().includes(search.toLowerCase()) ||
-        et.slug.toLowerCase().includes(search.toLowerCase())
-      )
-    : []
+  const { visibleEntityTypes, readOnlySlugs } = useMemo(() => {
+    if (isAdmin) {
+      return {
+        visibleEntityTypes: entityTypes ?? [],
+        readOnlySlugs: new Set<string>(),
+      }
+    }
+
+    if (!capabilities) {
+      return { visibleEntityTypes: [], readOnlySlugs: new Set<string>() }
+    }
+
+    const slugs = new Set<string>()
+    const types: Doc<"entityTypes">[] = []
+
+    for (const cap of capabilities) {
+      types.push(cap.entityType)
+      const hasWrite = cap.actions.some((a: string) => WRITE_ACTIONS.includes(a))
+      if (!hasWrite) {
+        slugs.add(cap.entityType.slug)
+      }
+    }
+
+    return { visibleEntityTypes: types, readOnlySlugs: slugs }
+  }, [isAdmin, entityTypes, capabilities])
+
+  const isLoading = isAdmin ? entityTypes === undefined : capabilities === undefined
+
+  const filteredEntityTypes = visibleEntityTypes.filter(
+    (et: Doc<"entityTypes">) =>
+      et.name.toLowerCase().includes(search.toLowerCase()) ||
+      et.slug.toLowerCase().includes(search.toLowerCase())
+  )
 
   const currentTypeSlug = pathname.split("/")[2]
 
@@ -59,7 +92,7 @@ export default function EntitiesLayout({
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">
-          {entityTypes === undefined ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
@@ -75,6 +108,7 @@ export default function EntitiesLayout({
               {filteredEntityTypes.map((entityType: Doc<"entityTypes">) => {
                 const Icon = getEntityTypeIcon(entityType.slug)
                 const isActive = currentTypeSlug === entityType.slug
+                const isReadOnly = readOnlySlugs.has(entityType.slug)
                 return (
                   <li key={entityType._id}>
                     <Link
@@ -88,6 +122,11 @@ export default function EntitiesLayout({
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       <span className="truncate">{entityType.name}</span>
+                      {isReadOnly && (
+                        <span title="Read-only access">
+                          <Eye className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        </span>
+                      )}
                       {entityType.boundToRole && (
                         <span title={`Bound to ${entityType.boundToRole} role`}>
                           <Shield className="h-3 w-3 shrink-0 text-muted-foreground" />
