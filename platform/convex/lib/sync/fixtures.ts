@@ -28,6 +28,10 @@ export async function syncFixtures(
   fixtures: FixtureInput[],
   environment: "development" | "production" | "eval"
 ): Promise<{ entitiesCreated: number; relationsCreated: number }> {
+  if (environment !== "eval") {
+    throw new Error("Fixtures can only be synced to the eval environment")
+  }
+
   const now = Date.now()
 
   const existingEntities = await ctx.db
