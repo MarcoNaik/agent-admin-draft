@@ -8,6 +8,7 @@ import {
   Globe,
   Code,
   User,
+  Users,
   Terminal,
   BookOpen,
 } from "@/lib/icons"
@@ -39,6 +40,7 @@ const adminNavigation: NavItem[] = [
 ]
 
 const memberNavigation: NavItem[] = [
+  { name: "Team", href: "/team" },
   { name: "Data", href: "/entities" },
   { name: "Chats", href: "/conversations" },
   { name: "Profile", href: "/profile", icon: User },

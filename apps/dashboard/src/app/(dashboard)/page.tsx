@@ -15,6 +15,7 @@ import {
   Calendar,
   Sparkles,
   User,
+  Users,
 } from "@/lib/icons"
 import { toast } from "sonner"
 import { useAgents, useEntityTypes, useRoles, useThreads, useTriggers } from "@/hooks/use-convex-data"
@@ -221,7 +222,14 @@ function MemberHome() {
 
       <section className="space-y-2">
         <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Quick Access</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link
+            href="/team"
+            className="flex flex-col items-start gap-2 rounded-lg border border-border/30 bg-background-secondary/50 p-4 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
+          >
+            <Users className="h-5 w-5 text-content-tertiary" />
+            <span className="text-sm font-medium text-content-primary">Team</span>
+          </Link>
           <Link
             href="/entities"
             className="flex flex-col items-start gap-2 rounded-lg border border-border/30 bg-background-secondary/50 p-4 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
