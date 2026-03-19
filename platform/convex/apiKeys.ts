@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, requireAuth, requireOrgAdmin } from "./lib/auth"
 import { generateApiKey, hashApiKey } from "./lib/utils"
 
 
@@ -58,6 +58,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const { key, prefix } = generateApiKey()
     const keyHash = await hashApiKey(key)
@@ -95,6 +96,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const apiKey = await ctx.db.get(args.id)
 
     if (!apiKey || apiKey.organizationId !== auth.organizationId) {
@@ -115,6 +117,7 @@ export const remove = mutation({
   args: { id: v.id("apiKeys") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const apiKey = await ctx.db.get(args.id)
 
     if (!apiKey || apiKey.organizationId !== auth.organizationId) {
