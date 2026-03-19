@@ -1221,12 +1221,12 @@ export default function ChatPage() {
             <div className="flex items-center justify-center h-full p-4">
               <EmptyState
                 icon={MessageSquare}
-                title="No conversations yet"
-                description="Start a conversation by chatting with one of your agents."
-                action={{
+                title={isAdmin ? "No conversations yet" : "No conversations available"}
+                description={isAdmin ? "Start a conversation by chatting with one of your agents." : "You don't have access to any conversations. Contact your admin to get agent access."}
+                action={isAdmin ? {
                   label: "Chat with an agent",
                   onClick: () => router.push("/"),
-                }}
+                } : undefined}
               />
             </div>
           ) : (
