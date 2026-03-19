@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { query, mutation, internalQuery } from "./_generated/server"
 import { getAuthContextForOrg, requireAuth } from "./lib/auth"
 import { generateSlug } from "./lib/utils"
-import { buildActorContext, assertCanPerform } from "./lib/permissions"
+import { buildActorContext, assertCanPerform, canPerform, Action } from "./lib/permissions"
 
 export const list = query({
   args: {
@@ -197,6 +197,56 @@ export const remove = mutation({
 
     await ctx.db.delete(args.id)
     return { success: true }
+  },
+})
+
+export const getUserCapabilities = query({
+  args: {
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
+  },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const environment = args.environment ?? "development"
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: auth.organizationId,
+      actorType: auth.actorType,
+      actorId: auth.userId as unknown as string,
+      environment,
+    })
+
+    const entityTypes = await ctx.db
+      .query("entityTypes")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", environment)
+      )
+      .collect()
+
+    if (actor.isOrgAdmin) {
+      return entityTypes.map((entityType) => ({
+        entityType,
+        actions: ["list", "create", "read", "update", "delete"],
+      }))
+    }
+
+    const allActions: Action[] = ["list", "create", "read", "update", "delete"]
+    const results: Array<{ entityType: typeof entityTypes[number]; actions: string[] }> = []
+
+    for (const entityType of entityTypes) {
+      const allowedActions: string[] = []
+      for (const action of allActions) {
+        const result = await canPerform(ctx, actor, action, entityType.slug)
+        if (result.allowed) {
+          allowedActions.push(action)
+        }
+      }
+      if (allowedActions.length > 0) {
+        results.push({ entityType, actions: allowedActions })
+      }
+    }
+
+    return results
   },
 })
 
