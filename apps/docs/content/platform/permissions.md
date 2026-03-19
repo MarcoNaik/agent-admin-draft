@@ -132,6 +132,8 @@ The platform supports 5 action types:
 | `delete` | Soft-delete an entity |
 | `list` | Query multiple entities |
 
+These actions apply to both data type resources and the built-in `users` resource for team management.
+
 ### Evaluation Rules
 
 1. **Collect** all policies from the actor's roles that match the requested resource and action
@@ -161,6 +163,16 @@ assertCanPerform(ctx, actorContext, resource, action)
 ```
 
 Throws a `PermissionError` if access is denied. Used in mutations where denial should halt execution.
+
+### System Resources
+
+In addition to data type slugs, the `resource` field supports the built-in `users` resource for controlling team management access in the dashboard:
+
+```typescript
+{ resource: "users", actions: ["update", "delete"], effect: "allow" }
+```
+
+This grants the role permission to assign internal roles to team members and remove non-admin members from the organization. See [User Management](/platform/users) for details.
 
 ## Scope Rules (Row-Level Security)
 
