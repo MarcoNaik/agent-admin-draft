@@ -199,13 +199,13 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
                   <Label className="text-content-primary">
                     Existing {boundEntityType!.name} records found
                   </Label>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                     {matchingEntities.map((entity: any) => (
                       <div
                         key={entity._id}
                         onClick={() => setEntityChoice(entity._id)}
-                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer bg-zinc-900 ${
-                          entityChoice === entity._id ? "border-blue-500" : "border-zinc-700"
+                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer bg-background-tertiary ${
+                          entityChoice === entity._id ? "border-primary" : "border-border/50"
                         }`}
                       >
                         <div className="flex-1 min-w-0">
@@ -223,8 +223,8 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
                     ))}
                     <div
                       onClick={() => setEntityChoice("create")}
-                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer bg-zinc-900 ${
-                        entityChoice === "create" ? "border-blue-500" : "border-zinc-700"
+                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer bg-background-tertiary ${
+                        entityChoice === "create" ? "border-primary" : "border-border/50"
                       }`}
                     >
                       <span className="text-sm text-content-primary">
