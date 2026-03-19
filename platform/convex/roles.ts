@@ -1,6 +1,8 @@
 import { v } from "convex/values"
 import { query, mutation, internalQuery } from "./_generated/server"
-import { getAuthContext, requireAuth, requireOrgAdmin } from "./lib/auth"
+import { getAuthContext, requireAuth, requireOrgAdmin, isOrgAdmin } from "./lib/auth"
+import { buildActorContext } from "./lib/permissions/context"
+import { assertCanPerform } from "./lib/permissions/evaluate"
 
 export const list = query({
   args: {
@@ -279,7 +281,20 @@ export const assignToUser = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
-    await requireOrgAdmin(ctx, auth)
+
+    const adminStatus = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!adminStatus) {
+      const actor = await buildActorContext(ctx, {
+        organizationId: auth.organizationId,
+        actorType: auth.actorType,
+        actorId: auth.userId,
+        environment: "production",
+      })
+      await assertCanPerform(ctx, actor, "update", "users")
+    }
 
     const user = await ctx.db.get(args.userId)
     if (!user) {
@@ -312,7 +327,10 @@ export const assignToUser = mutation({
       .collect()
 
     for (const ur of existingUserRoles) {
-      await ctx.db.delete(ur._id)
+      const existingRole = await ctx.db.get(ur.roleId)
+      if (existingRole && existingRole.organizationId === auth.organizationId) {
+        await ctx.db.delete(ur._id)
+      }
     }
 
     return await ctx.db.insert("userRoles", {
@@ -333,7 +351,20 @@ export const removeFromUser = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
-    await requireOrgAdmin(ctx, auth)
+
+    const adminStatus = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!adminStatus) {
+      const actor = await buildActorContext(ctx, {
+        organizationId: auth.organizationId,
+        actorType: auth.actorType,
+        actorId: auth.userId,
+        environment: "production",
+      })
+      await assertCanPerform(ctx, actor, "update", "users")
+    }
 
     const user = await ctx.db.get(args.userId)
     if (!user) {
@@ -357,7 +388,10 @@ export const removeFromUser = mutation({
       .collect()
 
     for (const ur of userRoles) {
-      await ctx.db.delete(ur._id)
+      const existingRole = await ctx.db.get(ur.roleId)
+      if (existingRole && existingRole.organizationId === auth.organizationId) {
+        await ctx.db.delete(ur._id)
+      }
     }
 
     return { success: true }
@@ -457,7 +491,20 @@ export const createPendingAssignment = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
-    await requireOrgAdmin(ctx, auth)
+
+    const adminStatus = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!adminStatus) {
+      const actor = await buildActorContext(ctx, {
+        organizationId: auth.organizationId,
+        actorType: auth.actorType,
+        actorId: auth.userId,
+        environment: "production",
+      })
+      await assertCanPerform(ctx, actor, "create", "users")
+    }
 
     const role = await ctx.db.get(args.roleId)
     if (!role || role.organizationId !== auth.organizationId) {
