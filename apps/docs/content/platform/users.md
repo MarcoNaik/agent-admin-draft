@@ -52,6 +52,8 @@ Organization admins have unrestricted access. The permission engine short-circui
 
 Members have no data access by default. They must be assigned an internal role (from the `roles` table) to gain permissions. The assigned role's policies, scope rules, and field masks determine exactly what data they can see and modify. The role's `agentAccess` field controls which agents' conversations are visible in the dashboard — members can only view and reply to threads from agents listed in their role. Members cannot start new conversations.
 
+All members have access to the Team tab in the dashboard where they can view all organization members. Write actions on the Team page — such as assigning roles to other members or removing members — require `resource: "users"` policies on the member's role.
+
 ### Last Admin Protection
 
 The platform prevents demoting the last admin to member. If only one admin remains, attempting to change their organization role to `member` throws an error. This ensures the organization always has at least one admin.
@@ -70,6 +72,8 @@ Roles are assigned via `roles.assignToUser`, which enforces the following:
 2. The target user must not be an admin (admins have full access and cannot hold internal roles)
 3. Any existing role assignment is removed before the new one is created
 4. The assignment tracks who granted it (`grantedBy`) and supports optional expiration (`expiresAt`)
+
+Non-admin members whose role includes `update` permission on the `users` resource can also assign roles to other members from the Team page. Admin-only restrictions still apply: non-admin members cannot modify admin users or promote any user to admin.
 
 ### userRoles Schema
 
@@ -170,9 +174,44 @@ When a user with email `alice@example.com` joins and is assigned the `support-ag
 }
 ```
 
+## Team Management Permissions
+
+Members can manage team members from the Team tab in the dashboard if their role includes policies for the `users` resource. The `users` resource supports the standard CRUD actions:
+
+| Action | Permission | Capability |
+|--------|-----------|------------|
+| View members | Default | All members can view the team list |
+| Assign roles | `update` on `users` | Change internal role assignments for non-admin members |
+| Remove members | `delete` on `users` | Remove non-admin members from the organization |
+| Invite members | Admin only | Sending invitations requires organization admin access |
+
+### Security Guards
+
+Regardless of permissions, non-admin members cannot:
+
+- Promote any user to organization admin
+- Modify or remove users who are organization admins
+- Modify their own organization role
+
+Example role with team management access:
+
+```typescript
+export default defineRole({
+  name: "team-lead",
+  description: "Can manage team members",
+  policies: [
+    { resource: "users", actions: ["update"], effect: "allow" },
+    { resource: "session", actions: ["list", "read"], effect: "allow" },
+  ],
+  agentAccess: ["support-agent"],
+})
+```
+
 ## Removing Users
 
 Removing a user from an organization deletes their `userOrganizations` membership record. The `users.remove` mutation handles this. The user's `users` record is not deleted since they may belong to other organizations.
+
+Non-admin members with `delete` permission on the `users` resource can also remove non-admin members via the Team page.
 
 When a membership is removed via Clerk (the `organizationMembership.deleted` webhook event), the `removeMembership` internal mutation also deletes all `userRoles` records for that user, revoking their internal role assignments.
 
