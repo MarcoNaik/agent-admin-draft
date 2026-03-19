@@ -12,6 +12,8 @@ const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessa
 const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
 const sendTextToPhoneRef = makeFunctionReference<"action">("whatsappActions:sendTextToPhone")
 const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
+const canAccessThreadRef = makeFunctionReference<"query">("threads:canAccessThread")
+const isOrgAdminRef = makeFunctionReference<"query">("chat:isOrgAdminQuery")
 
 interface AuthInfo {
   userId: Id<"users">
@@ -44,6 +46,27 @@ export const send = action({
 
     if (!auth) {
       throw new Error("Not authenticated")
+    }
+
+    const adminCheck = await ctx.runQuery(isOrgAdminRef, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    }) as boolean
+
+    if (!args.threadId && !adminCheck) {
+      throw new Error("Members cannot start new conversations")
+    }
+
+    if (args.threadId && !adminCheck) {
+      const canAccess = await ctx.runQuery(canAccessThreadRef, {
+        userId: auth.userId,
+        organizationId: auth.organizationId,
+        environment: args.environment ?? "development",
+        threadId: args.threadId,
+      }) as boolean
+      if (!canAccess) {
+        throw new Error("Access denied to this conversation")
+      }
     }
 
     return await ctx.runAction(chatAuthenticatedRef, {
@@ -131,6 +154,27 @@ export const replyToThread = action({
 
     if (!thread || thread.organizationId !== auth.organizationId) {
       throw new Error("Thread not found")
+    }
+
+    const adminCheck = await ctx.runQuery(isOrgAdminRef, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    }) as boolean
+
+    if (!adminCheck) {
+      const threadFull = await ctx.runQuery(getThreadInternalRef, {
+        threadId: args.threadId,
+      }) as { environment?: string } | null
+      const env = (threadFull as any)?.environment ?? "development"
+      const canAccess = await ctx.runQuery(canAccessThreadRef, {
+        userId: auth.userId,
+        organizationId: auth.organizationId,
+        environment: env,
+        threadId: args.threadId,
+      }) as boolean
+      if (!canAccess) {
+        throw new Error("Access denied to this conversation")
+      }
     }
 
     await ctx.runMutation(appendMessagesRef, {
@@ -331,5 +375,21 @@ export const getAgentBySlug = query({
       developmentConfig: devConfig,
       productionConfig: prodConfig,
     }
+  },
+})
+
+export const isOrgAdminQuery = internalQuery({
+  args: {
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId)
+      )
+      .first()
+    return membership?.role === "admin"
   },
 })
