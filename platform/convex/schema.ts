@@ -109,6 +109,11 @@ export default defineSchema({
       arguments: v.any(),
     }))),
     toolCallId: v.optional(v.string()),
+    attachments: v.optional(v.array(v.object({
+      type: v.string(),
+      url: v.string(),
+      mimeType: v.string(),
+    }))),
     createdAt: v.number(),
   }).index("by_thread", ["threadId"]),
 

@@ -431,6 +431,11 @@ export const appendMessages = internalMutation({
           arguments: v.any(),
         }))),
         toolCallId: v.optional(v.string()),
+        attachments: v.optional(v.array(v.object({
+          type: v.string(),
+          url: v.string(),
+          mimeType: v.string(),
+        }))),
       })
     ),
   },
@@ -444,6 +449,7 @@ export const appendMessages = internalMutation({
         content: msg.content,
         toolCalls: msg.toolCalls,
         toolCallId: msg.toolCallId,
+        attachments: msg.attachments,
         createdAt: now,
       })
     }
