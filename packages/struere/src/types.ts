@@ -212,6 +212,7 @@ export interface JSONSchemaProperty {
 export interface RoleConfig {
   name: string
   description?: string
+  agentAccess?: string[]
   policies: PolicyConfig[]
   scopeRules?: ScopeRuleConfig[]
   fieldMasks?: FieldMaskConfig[]
