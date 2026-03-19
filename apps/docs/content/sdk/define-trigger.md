@@ -154,6 +154,45 @@ on: {
 
 This automation only fires when a session is updated and its `status` field is `"completed"`.
 
+### Transition Conditions
+
+For `updated` actions, conditions can match against `previousData` to detect state transitions. This prevents automations from re-firing when a record is updated but hasn't actually changed state:
+
+```typescript
+on: {
+  entityType: "session",
+  action: "updated",
+  condition: {
+    "data.status": "scheduled",
+    "previousData.status": "pending_payment",
+  },
+}
+```
+
+This fires only on the transition from `pending_payment` to `scheduled` — not when an already-scheduled session is rescheduled.
+
+| Path prefix | Description | Available for |
+|-------------|-------------|---------------|
+| `data.*` | Current record data (after mutation) | `created`, `updated`, `deleted` |
+| `previousData.*` | Record data before the mutation | `updated` only |
+
+### Trigger Cascading
+
+Entity mutations inside automation actions **do not cascade by default**. To allow an action to fire other automations, pass `cascade: true`:
+
+```typescript
+{
+  tool: "entity.create",
+  args: {
+    type: "notification",
+    data: { message: "Session confirmed" },
+    cascade: true,
+  },
+}
+```
+
+Without `cascade: true`, entity writes from automations are silent. Supported on `entity.create`, `entity.update`, and `entity.delete`.
+
 ## Scheduled Automations
 
 Automations can be scheduled to run at a future time instead of executing immediately.
