@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
-import { getAuthContext, getAuthContextForOrg, requireAuth } from "./lib/auth"
+import { getAuthContext, getAuthContextForOrg, requireAuth, requireOrgAdmin } from "./lib/auth"
 import { estimateMinimumCost } from "./lib/creditPricing"
 
 const executeCaseRef = makeFunctionReference<"action">("evalRunner:executeCase")
@@ -220,6 +220,7 @@ export const createSuite = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const environment = args.environment ?? "development"
 
     const agent = await ctx.db.get(args.agentId)
@@ -272,6 +273,7 @@ export const updateSuite = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const suite = await ctx.db.get(args.id)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")
@@ -294,6 +296,7 @@ export const deleteSuite = mutation({
   args: { id: v.id("evalSuites") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const suite = await ctx.db.get(args.id)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")
@@ -320,6 +323,7 @@ export const createCase = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const suite = await ctx.db.get(args.suiteId)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")
@@ -371,6 +375,7 @@ export const updateCase = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const evalCase = await ctx.db.get(args.id)
     if (!evalCase || evalCase.organizationId !== auth.organizationId) {
       throw new Error("Case not found")
@@ -399,6 +404,7 @@ export const deleteCase = mutation({
   args: { id: v.id("evalCases") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const evalCase = await ctx.db.get(args.id)
     if (!evalCase || evalCase.organizationId !== auth.organizationId) {
       throw new Error("Case not found")
@@ -421,6 +427,7 @@ export const reorderCases = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const suite = await ctx.db.get(args.suiteId)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")
@@ -450,6 +457,7 @@ export const startRun = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
+    await requireOrgAdmin(ctx, auth)
     const suite = await ctx.db.get(args.suiteId)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")
@@ -546,6 +554,7 @@ export const cancelRun = mutation({
   args: { id: v.id("evalRuns") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const run = await ctx.db.get(args.id)
     if (!run || run.organizationId !== auth.organizationId) {
       throw new Error("Run not found")
@@ -925,6 +934,7 @@ export const deleteCasesBySuite = mutation({
   args: { suiteId: v.id("evalSuites") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const suite = await ctx.db.get(args.suiteId)
     if (!suite || suite.organizationId !== auth.organizationId) {
       throw new Error("Suite not found")
