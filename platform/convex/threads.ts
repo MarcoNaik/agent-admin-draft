@@ -113,7 +113,7 @@ export const listWithPreviews = query({
       if (agentCache.has(agentKey)) {
         agentName = agentCache.get(agentKey)!
       } else {
-        const agent = await ctx.db.get(thread.agentId)
+        const agent = await ctx.db.get(thread.agentId) as { name: string } | null
         if (agent) {
           agentName = agent.name
           agentCache.set(agentKey, agent.name)
@@ -133,7 +133,7 @@ export const listWithPreviews = query({
           participantName = cached.name || cached.email
           participantType = "user"
         } else {
-          const user = await ctx.db.get(thread.userId)
+          const user = await ctx.db.get(thread.userId) as { name?: string; email: string } | null
           if (user) {
             userCache.set(userKey, { name: user.name, email: user.email })
             participantName = user.name || user.email
