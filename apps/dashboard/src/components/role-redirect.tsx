@@ -14,7 +14,7 @@ interface RoleRedirectProps {
 
 const roleDefaultRoutes: Record<UserRole, string> = {
   admin: "/",
-  member: "/conversations",
+  member: "/",
 }
 
 export function RoleRedirect({ allowedRoles, redirectTo, children }: RoleRedirectProps) {

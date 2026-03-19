@@ -39,7 +39,6 @@ const adminNavigation: NavItem[] = [
 ]
 
 const memberNavigation: NavItem[] = [
-  { name: "System", href: "/system" },
   { name: "Data", href: "/entities" },
   { name: "Chats", href: "/conversations" },
   { name: "Profile", href: "/profile", icon: User },
