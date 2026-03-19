@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Shield, User, UserPlus, Link, Unlink, Plus } from "@/lib/icons"
+import { Loader2, Shield, User, UserPlus, Link, Unlink, Plus, Trash2 } from "@/lib/icons"
+import { useUser } from "@clerk/nextjs"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes, useCreateEntity } from "@/hooks/use-convex-data"
+import { useRemoveUser } from "@/hooks/use-users"
 import { useEntitiesByEmail, useLinkedEntity, useLinkUserToEntity, useUnlinkUserFromEntity } from "@/hooks/use-entities"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
@@ -162,12 +164,13 @@ function UnlinkEntityDialog({
   )
 }
 
-function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[] }) {
+function UserRow({ user, roles, entityTypes, currentClerkUserId }: { user: UserWithRole; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[]; currentClerkUserId: string | undefined }) {
   const { environment } = useEnvironment()
   const updateUser = useUpdateUser()
   const assignRole = useAssignRoleToUser()
   const removeRole = useRemoveRoleFromUser()
   const createEntity = useCreateEntity()
+  const { removeUser, isRemoving } = useRemoveUser()
   const userRoles = useUserRoles(user._id)
   const [isUpdating, setIsUpdating] = useState(false)
   const [pendingEntityCreation, setPendingEntityCreation] = useState<Doc<"entityTypes"> | null>(null)
@@ -250,6 +253,19 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
     setLinkEntityType(et)
     setLinkDialogOpen(true)
   }
+
+  const handleRemoveUser = async () => {
+    if (!window.confirm(`Remove ${user.name || user.email} from the organization? This action cannot be undone.`)) return
+    try {
+      await removeUser(user.clerkUserId)
+      toast.success(`${user.name || user.email} has been removed from the organization`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove user")
+    }
+  }
+
+  const isSelf = currentClerkUserId === user.clerkUserId
+  const canRemove = !isSelf && user.role !== "admin"
 
   const roleIcon = user.role === "admin" ? Shield : User
 
@@ -351,6 +367,17 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
           )}
         </div>
         {isUpdating && <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />}
+        {canRemove && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            onClick={handleRemoveUser}
+            disabled={isRemoving}
+          >
+            {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        )}
       </div>
 
       <Dialog open={!!pendingEntityCreation} onOpenChange={(open) => !open && setPendingEntityCreation(null)}>
@@ -402,6 +429,7 @@ function UserRow({ user, roles, entityTypes }: { user: UserWithRole; roles: Doc<
 
 export default function UsersPage() {
   const { environment } = useEnvironment()
+  const { user: clerkUser } = useUser()
   const users = useUsers()
   const roles = useRoles(environment)
   const entityTypes = useEntityTypes(environment)
@@ -455,7 +483,7 @@ export default function UsersPage() {
             <div className="py-8 text-center text-content-secondary">No users found</div>
           ) : (
             users.map((user: UserWithRole) => (
-              <UserRow key={user._id} user={user} roles={assignableRoles} entityTypes={entityTypes ?? []} />
+              <UserRow key={user._id} user={user} roles={assignableRoles} entityTypes={entityTypes ?? []} currentClerkUserId={clerkUser?.id} />
             ))
           )}
         </CardContent>
