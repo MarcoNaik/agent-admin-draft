@@ -160,6 +160,7 @@ interface ExecuteChatParams {
   conversationId?: string
   depth?: number
   evalRunId?: Id<"evalRuns">
+  attachments?: Array<{ type: string; url: string; mimeType: string }>
 }
 
 async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
@@ -351,7 +352,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
   await ctx.runMutation(appendMessagesRef, {
     threadId,
-    messages: [{ role: "user", content: message }],
+    messages: [{ role: "user", content: message, attachments: params.attachments }],
   })
 
   let llmSucceeded = false
@@ -363,7 +364,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         system: processedSystemPrompt,
         messages: toAIMessages([
           ...historyMessages,
-          { role: "user", content: message },
+          { role: "user", content: message, attachments: params.attachments },
         ]),
         tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
         stopWhen: stepCountIs(10),
@@ -558,6 +559,7 @@ export const executeChatAction = internalAction({
     userId: v.optional(v.id("users")),
     conversationId: v.optional(v.string()),
     depth: v.optional(v.number()),
+    attachments: v.optional(v.array(v.object({ type: v.string(), url: v.string(), mimeType: v.string() }))),
   },
   returns: v.object({
     message: v.string(),
@@ -583,6 +585,7 @@ export const executeChatAction = internalAction({
       userId: args.userId,
       conversationId: args.conversationId,
       depth: args.depth,
+      attachments: args.attachments,
     })
   },
 })
@@ -727,6 +730,7 @@ export const chatAuthenticated = internalAction({
     channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
     channelParams: v.optional(v.any()),
     evalRunId: v.optional(v.id("evalRuns")),
+    attachments: v.optional(v.array(v.object({ type: v.string(), url: v.string(), mimeType: v.string() }))),
   },
   returns: v.object({
     message: v.string(),
@@ -793,6 +797,7 @@ export const chatAuthenticated = internalAction({
       thread: thread as ThreadDocument | null,
       userId: args.userId,
       evalRunId: args.evalRunId,
+      attachments: args.attachments,
     })
   },
 })
