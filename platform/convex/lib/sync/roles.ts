@@ -24,6 +24,7 @@ export interface FieldMaskInput {
 export interface RoleInput {
   name: string
   description?: string
+  agentAccess?: string[]
   policies: PolicyInput[]
   scopeRules?: ScopeRuleInput[]
   fieldMasks?: FieldMaskInput[]
@@ -62,6 +63,7 @@ export async function syncRoles(
     if (existing) {
       await ctx.db.patch(existing._id, {
         description: role.description,
+        agentAccess: role.agentAccess,
         updatedAt: now,
       })
 
@@ -73,6 +75,7 @@ export async function syncRoles(
         environment,
         name: role.name,
         description: role.description,
+        agentAccess: role.agentAccess,
         isSystem: false,
         createdAt: now,
         updatedAt: now,

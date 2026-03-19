@@ -56,6 +56,7 @@ const entityTypeValidator = v.object({
 const roleValidator = v.object({
   name: v.string(),
   description: v.optional(v.string()),
+  agentAccess: v.optional(v.array(v.string())),
   policies: v.array(
     v.object({
       resource: v.string(),
