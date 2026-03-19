@@ -161,6 +161,7 @@ export const routeInboundToAgent = internalAction({
     environment: environmentValidator,
     agentId: v.id("agents"),
     connectionId: v.id("whatsappConnections"),
+    attachments: v.optional(v.array(v.object({ type: v.string(), url: v.string(), mimeType: v.string() }))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -182,6 +183,7 @@ export const routeInboundToAgent = internalAction({
       threadId,
       channel: "whatsapp",
       environment: args.environment,
+      attachments: args.attachments,
     })
 
     const responseText = result.message

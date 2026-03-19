@@ -687,6 +687,8 @@ http.route({
             connectionId: connection._id,
             phoneNumber: from,
             text,
+            mediaDirectUrl: mediaUrl,
+            mediaType: msgType,
           })
         }
       }

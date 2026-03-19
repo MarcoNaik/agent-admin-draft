@@ -635,12 +635,17 @@ export const scheduleAgentRouting = internalMutation({
     connectionId: v.id("whatsappConnections"),
     phoneNumber: v.string(),
     text: v.string(),
+    mediaDirectUrl: v.optional(v.string()),
+    mediaType: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId)
 
     if (connection?.agentId && connection.status === "connected") {
+      const attachments = args.mediaDirectUrl && args.mediaType === "image"
+        ? [{ type: "image" as const, url: args.mediaDirectUrl, mimeType: "image/jpeg" }]
+        : undefined
       await ctx.scheduler.runAfter(0, routeInboundToAgentRef, {
         organizationId: args.organizationId,
         phoneNumber: args.phoneNumber,
@@ -648,6 +653,7 @@ export const scheduleAgentRouting = internalMutation({
         environment: args.environment,
         agentId: connection.agentId,
         connectionId: args.connectionId,
+        attachments,
       } as any)
     }
 
