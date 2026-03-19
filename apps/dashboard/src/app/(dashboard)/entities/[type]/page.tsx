@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, Filter, Plus, Layers, Loader2, ChevronLeft, ChevronRight, ClipboardCopy, Check, Shield } from "@/lib/icons"
-import { useEntityTypeBySlug, useEntitiesPaginated, useSearchEntities } from "@/hooks/use-convex-data"
+import { useEntityTypeBySlug, useEntitiesPaginated, useSearchEntities, useEntityPermissions } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +48,7 @@ export default function EntityListPage({ params }: EntityListPageProps) {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { environment } = useEnvironment()
 
+  const { canCreate } = useEntityPermissions(typeSlug, environment)
   const entityType = useEntityTypeBySlug(typeSlug, environment)
   const { results: entities, status: paginationStatus, loadMore } = useEntitiesPaginated(
     typeSlug,
@@ -275,14 +276,16 @@ export default function EntityListPage({ params }: EntityListPageProps) {
             )}
             {csvCopied ? "Copied" : "CSV"}
           </Button>
-          <Button
-            size="sm"
-            className="h-8"
-            onClick={() => router.push(`/entities/${typeSlug}/new`)}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add
-          </Button>
+          {canCreate && (
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => router.push(`/entities/${typeSlug}/new`)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add
+            </Button>
+          )}
         </div>
       </div>
 
