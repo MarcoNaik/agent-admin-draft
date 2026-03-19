@@ -519,6 +519,7 @@ async function executeToolAction(
         type: args.type as string,
         data: args.data,
         status: args.status as string | undefined,
+        skipTriggers: args.cascade === true ? false : true,
       })
 
     case "entity.get":
@@ -542,12 +543,14 @@ async function executeToolAction(
         id: args.id as string,
         data: args.data,
         status: args.status as string | undefined,
+        skipTriggers: args.cascade === true ? false : true,
       })
 
     case "entity.delete":
       return await ctx.runMutation(entityDeleteRef, {
         organizationId, actorId, actorType, environment,
         id: args.id as string,
+        skipTriggers: args.cascade === true ? false : true,
       })
 
     case "event.emit":
