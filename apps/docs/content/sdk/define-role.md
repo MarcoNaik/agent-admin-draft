@@ -65,7 +65,7 @@ interface PolicyConfig {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `resource` | `string` | Data type slug the policy applies to |
+| `resource` | `string` | Data type slug or built-in resource (`users`) the policy applies to |
 | `actions` | `string[]` | Allowed values: `"create"`, `"read"`, `"update"`, `"delete"`, `"list"`, or `"*"` for all |
 | `effect` | `'allow' \| 'deny'` | Whether to allow or deny the specified actions |
 
@@ -307,3 +307,25 @@ export default defineRole({
   ],
 })
 ```
+
+### Team Lead Role
+
+```typescript
+import { defineRole } from 'struere'
+
+export default defineRole({
+  name: "team-lead",
+  description: "Team lead with member management access",
+  agentAccess: ["support-agent", "sales-agent"],
+  policies: [
+    { resource: "users", actions: ["update", "delete"], effect: "allow" },
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
+    { resource: "customer", actions: ["list", "read"], effect: "allow" },
+  ],
+  scopeRules: [
+    { entityType: "session", field: "data.teamLeadId", operator: "eq", value: "actor.userId" },
+  ],
+})
+```
+
+The `resource: "users"` policies grant this role permission to assign internal roles to team members (`update`) and remove non-admin members (`delete`) from the Team page in the dashboard. Team leads cannot promote users to admin or modify admin users.
