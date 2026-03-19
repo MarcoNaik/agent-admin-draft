@@ -20,9 +20,21 @@ export function defineRole(config: RoleConfig): RoleConfig {
     }
   }
 
+  if (config.agentAccess !== undefined) {
+    if (!Array.isArray(config.agentAccess)) {
+      throw new Error('agentAccess must be an array')
+    }
+    for (const slug of config.agentAccess) {
+      if (typeof slug !== 'string' || slug.length === 0) {
+        throw new Error('Each agentAccess entry must be a non-empty string')
+      }
+    }
+  }
+
   return {
     ...config,
     scopeRules: config.scopeRules || [],
     fieldMasks: config.fieldMasks || [],
+    agentAccess: config.agentAccess || [],
   }
 }
