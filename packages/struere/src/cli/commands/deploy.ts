@@ -210,7 +210,10 @@ export const deployCommand = new Command('deploy')
 
     try {
       const syncResult = await syncOrganization({
-        ...payload,
+        agents: payload.agents,
+        entityTypes: payload.entityTypes,
+        roles: payload.roles,
+        triggers: payload.triggers,
         organizationId: project.organization.id,
         environment: 'production',
       })
@@ -281,10 +284,13 @@ export const deployCommand = new Command('deploy')
         if (!jsonMode) spinner.start('Deploying to production')
         try {
           const syncResult = await syncOrganization({
-            ...payload,
+            agents: payload.agents,
+            entityTypes: payload.entityTypes,
+            roles: payload.roles,
+            triggers: payload.triggers,
             organizationId: project.organization.id,
             environment: 'production',
-              })
+          })
           if (!syncResult.success) {
             throw new Error(syncResult.error || 'Deploy failed')
           }
