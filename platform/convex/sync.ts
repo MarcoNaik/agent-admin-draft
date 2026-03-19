@@ -200,6 +200,39 @@ export const syncOrganization = mutation({
     const auth = await getAuthContextForOrg(ctx, args.organizationId)
     const operation = args.environment === "production" ? "deploy" : "sync"
 
+    console.log(`[SYNC] === START ${operation} to ${args.environment} ===`)
+    console.log(`[SYNC] orgId=${auth.organizationId}`)
+
+    const entitiesBefore = await ctx.db
+      .query("entities")
+      .withIndex("by_org_env_type", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+      .collect()
+    const activeEntitiesBefore = entitiesBefore.filter((e) => !e.deletedAt)
+    console.log(`[SYNC] entities BEFORE: ${activeEntitiesBefore.length} active`)
+    for (const e of activeEntitiesBefore) {
+      const et = await ctx.db.get(e.entityTypeId)
+      console.log(`[SYNC]   entity ${e._id} type=${et?.slug} data=${JSON.stringify(e.data)}`)
+    }
+
+    const relationsBefore = await ctx.db
+      .query("entityRelations")
+      .withIndex("by_from", (q) => q)
+      .collect()
+      .then((r) => r.filter((rel) => (rel as any).organizationId === auth.organizationId))
+    console.log(`[SYNC] entityRelations BEFORE: ${relationsBefore.length}`)
+    for (const r of relationsBefore) {
+      console.log(`[SYNC]   relation ${r._id} from=${r.fromEntityId} to=${r.toEntityId} type=${r.relationType}`)
+    }
+
+    const userRolesBefore = await ctx.db
+      .query("userRoles")
+      .collect()
+    console.log(`[SYNC] userRoles BEFORE: ${userRolesBefore.length}`)
+    for (const ur of userRolesBefore) {
+      const role = await ctx.db.get(ur.roleId)
+      console.log(`[SYNC]   userRole ${ur._id} userId=${ur.userId} role=${role?.name} env=${role?.environment}`)
+    }
+
     try {
       const entityTypeResult = await syncEntityTypes(
         ctx,
@@ -207,6 +240,7 @@ export const syncOrganization = mutation({
         args.entityTypes,
         args.environment
       )
+      console.log(`[SYNC] entityTypes result: created=${entityTypeResult.created} updated=${entityTypeResult.updated} deleted=${entityTypeResult.deleted}`)
 
       const roleResult = await syncRoles(
         ctx,
@@ -214,6 +248,7 @@ export const syncOrganization = mutation({
         args.roles,
         args.environment
       )
+      console.log(`[SYNC] roles result: created=${roleResult.created} updated=${roleResult.updated} deleted=${roleResult.deleted}`)
 
       const agentResult = await syncAgents(
         ctx,
@@ -222,6 +257,7 @@ export const syncOrganization = mutation({
         args.environment,
         auth.userId
       )
+      console.log(`[SYNC] agents result: created=${agentResult.created} updated=${agentResult.updated} deleted=${agentResult.deleted}`)
 
       let evalSuitesResult
       if (args.evalSuites && args.evalSuites.length > 0) {
@@ -244,7 +280,7 @@ export const syncOrganization = mutation({
       }
 
       let fixturesResult
-      if (args.fixtures && args.fixtures.length > 0) {
+      if (args.fixtures && args.fixtures.length > 0 && args.environment === "eval") {
         fixturesResult = await syncFixtures(
           ctx,
           auth.organizationId,
@@ -252,6 +288,38 @@ export const syncOrganization = mutation({
           args.environment
         )
       }
+
+      const entitiesAfter = await ctx.db
+        .query("entities")
+        .withIndex("by_org_env_type", (q) => q.eq("organizationId", auth.organizationId).eq("environment", args.environment))
+        .collect()
+      const activeEntitiesAfter = entitiesAfter.filter((e) => !e.deletedAt)
+      console.log(`[SYNC] entities AFTER: ${activeEntitiesAfter.length} active`)
+      for (const e of activeEntitiesAfter) {
+        const et = await ctx.db.get(e.entityTypeId)
+        console.log(`[SYNC]   entity ${e._id} type=${et?.slug ?? "MISSING"} data=${JSON.stringify(e.data)}`)
+      }
+
+      const relationsAfter = await ctx.db
+        .query("entityRelations")
+        .withIndex("by_from", (q) => q)
+        .collect()
+        .then((r) => r.filter((rel) => (rel as any).organizationId === auth.organizationId))
+      console.log(`[SYNC] entityRelations AFTER: ${relationsAfter.length}`)
+      for (const r of relationsAfter) {
+        console.log(`[SYNC]   relation ${r._id} from=${r.fromEntityId} to=${r.toEntityId} type=${r.relationType}`)
+      }
+
+      const userRolesAfter = await ctx.db
+        .query("userRoles")
+        .collect()
+      console.log(`[SYNC] userRoles AFTER: ${userRolesAfter.length}`)
+      for (const ur of userRolesAfter) {
+        const role = await ctx.db.get(ur.roleId)
+        console.log(`[SYNC]   userRole ${ur._id} userId=${ur.userId} role=${role?.name ?? "MISSING"} env=${role?.environment ?? "MISSING"}`)
+      }
+
+      console.log(`[SYNC] === END ${operation} to ${args.environment} ===`)
 
       await ctx.db.insert("events", {
         organizationId: auth.organizationId,
@@ -616,7 +684,7 @@ export const internalSyncOrganization = internalMutation({
       }
 
       let fixturesResult
-      if (args.fixtures && args.fixtures.length > 0) {
+      if (args.fixtures && args.fixtures.length > 0 && args.environment === "eval") {
         fixturesResult = await syncFixtures(
           ctx,
           args.organizationId,
