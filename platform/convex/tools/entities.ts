@@ -103,6 +103,7 @@ export const entityCreate = internalMutation({
     type: v.string(),
     data: v.any(),
     status: v.optional(v.string()),
+    skipTriggers: v.optional(v.boolean()),
   },
   returns: v.object({ id: v.id("entities") }),
   handler: async (ctx, args) => {
@@ -139,6 +140,7 @@ export const entityCreate = internalMutation({
       status: args.status,
       searchFields: entityType.searchFields ?? undefined,
       actor: { actorId: actor.actorId, actorType: actor.actorType },
+      skipTriggers: args.skipTriggers,
     })
 
     return { id: entityId }
@@ -461,6 +463,7 @@ export const entityUpdate = internalMutation({
     type: v.optional(v.string()),
     data: v.any(),
     status: v.optional(v.string()),
+    skipTriggers: v.optional(v.boolean()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -522,6 +525,7 @@ export const entityUpdate = internalMutation({
       previousData: entity.data,
       status: args.status,
       searchFields: entityType.searchFields ?? undefined,
+      skipTriggers: args.skipTriggers,
       actor: { actorId: actor.actorId, actorType: actor.actorType },
     })
 
@@ -541,6 +545,7 @@ export const entityDelete = internalMutation({
     ),
     environment: environmentValidator,
     id: v.string(),
+    skipTriggers: v.optional(v.boolean()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -585,6 +590,7 @@ export const entityDelete = internalMutation({
       entityTypeSlug: entityType.slug,
       previousData: entity.data,
       actor: { actorId: actor.actorId, actorType: actor.actorType },
+      skipTriggers: args.skipTriggers,
     })
 
     return { success: true }
