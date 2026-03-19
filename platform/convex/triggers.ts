@@ -3,7 +3,7 @@ import { internalAction, internalMutation, internalQuery, mutation, query } from
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { resolveTemplateVars } from "./lib/triggers"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, requireAuth, requireOrgAdmin } from "./lib/auth"
 import { coerceTemplateComponents } from "./lib/toolExecution"
 
 const getTriggerRef = makeFunctionReference<"query">("triggers:get")
@@ -377,6 +377,7 @@ export const cancelRun = mutation({
   args: { runId: v.id("triggerRuns") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const run = await ctx.db.get(args.runId)
 
     if (!run || run.organizationId !== auth.organizationId) {
@@ -401,6 +402,7 @@ export const retryRun = mutation({
   args: { runId: v.id("triggerRuns") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const run = await ctx.db.get(args.runId)
 
     if (!run || run.organizationId !== auth.organizationId) {
