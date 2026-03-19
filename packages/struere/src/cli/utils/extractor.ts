@@ -81,6 +81,7 @@ export interface SyncPayload {
   roles: Array<{
     name: string
     description?: string
+    agentAccess?: string[]
     policies: Array<{
       resource: string
       actions: string[]
@@ -196,6 +197,7 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
   const roles = resources.roles.map((role) => ({
     name: role.name,
     description: role.description,
+    agentAccess: role.agentAccess,
     policies: role.policies.map((p) => ({
       resource: p.resource,
       actions: p.actions,
