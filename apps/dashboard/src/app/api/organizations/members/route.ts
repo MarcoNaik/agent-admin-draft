@@ -1,14 +1,12 @@
 import { auth, clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
+import { ConvexHttpClient } from "convex/browser"
+import { api } from "@convex/_generated/api"
 
 export async function DELETE(req: Request) {
   const session = await auth()
   if (!session.userId || !session.orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  if (session.orgRole !== "org:admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 })
   }
 
   const { userId } = await req.json()
@@ -34,10 +32,39 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "User not found in organization" }, { status: 404 })
   }
 
+  if (membership.role === "org:admin") {
+    return NextResponse.json({ error: "Only admins can remove admin users" }, { status: 403 })
+  }
+
+  if (session.orgRole !== "org:admin") {
+    const token = await session.getToken({ template: "convex" })
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+    convex.setAuth(token)
+    const permissions = await convex.query(api.users.checkPermissions, { environment: "production" })
+    if (!permissions.canDelete) {
+      return NextResponse.json({ error: "You do not have permission to remove users" }, { status: 403 })
+    }
+  }
+
   await client.organizations.deleteOrganizationMembership({
     organizationId: session.orgId,
     userId,
   })
+
+  try {
+    const token = await session.getToken({ template: "convex" })
+    if (token) {
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+      convex.setAuth(token)
+      const convexUser = await convex.query(api.users.getByClerkId, { clerkUserId: userId })
+      if (convexUser) {
+        await convex.mutation(api.users.remove, { id: convexUser._id })
+      }
+    }
+  } catch (_) {}
 
   return NextResponse.json({ success: true })
 }
