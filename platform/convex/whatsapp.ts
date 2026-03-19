@@ -225,7 +225,6 @@ export const listConnections = query({
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
-    await requireOrgAdmin(ctx, auth)
 
     const connections = await ctx.db
       .query("whatsappConnections")
