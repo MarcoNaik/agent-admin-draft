@@ -1,6 +1,10 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, requireAuth, isOrgAdmin } from "./lib/auth"
+import { buildActorContext } from "./lib/permissions/context"
+import { canPerform, assertCanPerform } from "./lib/permissions/evaluate"
+
+const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
 export const get = query({
   args: { id: v.id("users") },
@@ -110,6 +114,21 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+
+    const adminStatus = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!adminStatus) {
+      const actor = await buildActorContext(ctx, {
+        organizationId: auth.organizationId,
+        actorType: auth.actorType,
+        actorId: auth.userId,
+        environment: "production",
+      })
+      await assertCanPerform(ctx, actor, "update", "users")
+    }
+
     const user = await ctx.db.get(args.id)
 
     if (!user) {
@@ -125,6 +144,15 @@ export const update = mutation({
 
     if (!membership) {
       throw new Error("User not found in organization")
+    }
+
+    if (!adminStatus) {
+      if (args.role === "admin") {
+        throw new Error("Only admins can promote users to admin")
+      }
+      if (membership.role === "admin") {
+        throw new Error("Only admins can modify admin users")
+      }
     }
 
     if (args.role !== undefined) {
@@ -174,6 +202,21 @@ export const remove = mutation({
   args: { id: v.id("users") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+
+    const adminStatus = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!adminStatus) {
+      const actor = await buildActorContext(ctx, {
+        organizationId: auth.organizationId,
+        actorType: auth.actorType,
+        actorId: auth.userId,
+        environment: "production",
+      })
+      await assertCanPerform(ctx, actor, "delete", "users")
+    }
+
     const user = await ctx.db.get(args.id)
 
     if (!user) {
@@ -189,6 +232,10 @@ export const remove = mutation({
 
     if (!membership) {
       throw new Error("User not found in organization")
+    }
+
+    if (!adminStatus && membership.role === "admin") {
+      throw new Error("Only admins can remove admin users")
     }
 
     await ctx.db.delete(membership._id)
@@ -260,5 +307,43 @@ export const ensureUser = mutation({
     })
 
     return { userId, created: true }
+  },
+})
+
+export const checkPermissions = query({
+  args: {
+    environment: environmentValidator,
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+
+    const admin = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+
+    if (admin) {
+      return { canCreate: true, canUpdate: true, canDelete: true, isAdmin: true }
+    }
+
+    const actor = await buildActorContext(ctx, {
+      organizationId: auth.organizationId,
+      actorType: auth.actorType,
+      actorId: auth.userId,
+      environment: args.environment,
+    })
+
+    const [createResult, updateResult, deleteResult] = await Promise.all([
+      canPerform(ctx, actor, "create", "users"),
+      canPerform(ctx, actor, "update", "users"),
+      canPerform(ctx, actor, "delete", "users"),
+    ])
+
+    return {
+      canCreate: createResult.allowed,
+      canUpdate: updateResult.allowed,
+      canDelete: deleteResult.allowed,
+      isAdmin: false,
+    }
   },
 })
