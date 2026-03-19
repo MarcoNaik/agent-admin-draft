@@ -28,13 +28,37 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
   const isNewEntity = !isValidConvexId(id)
   const { environment } = useEnvironment()
 
-  const { canUpdate, canDelete: canDeletePerm } = useEntityPermissions(type, environment)
+  const { canCreate, canUpdate, canDelete: canDeletePerm, isLoading } = useEntityPermissions(type, environment)
   const entityData = useEntityWithType(isNewEntity ? undefined : id as Id<"entities">, environment)
   const relatedEntities = useRelatedEntities(isNewEntity ? undefined : id as Id<"entities">, environment)
   const events = useEntityEvents(isNewEntity ? undefined : id as Id<"entities">, environment)
   const deleteEntity = useDeleteEntity()
 
   if (isNewEntity) {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-content-secondary" />
+        </div>
+      )
+    }
+
+    if (!canCreate) {
+      return (
+        <div className="space-y-6">
+          <Link href={`/entities/${type}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Back to {type}
+          </Link>
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">You don&apos;t have permission to create this type</p>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
     return (
       <div className="space-y-6">
         <Link href={`/entities/${type}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
