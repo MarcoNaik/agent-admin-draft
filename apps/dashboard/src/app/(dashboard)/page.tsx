@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import {
   Bot,
   MessageSquare,
@@ -13,11 +14,14 @@ import {
   ChevronRight,
   Calendar,
   Sparkles,
+  User,
 } from "@/lib/icons"
 import { toast } from "sonner"
 import { useAgents, useEntityTypes, useRoles, useThreads, useTriggers } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useStudio } from "@/contexts/studio-context"
+import { useRoleContext } from "@/contexts/role-context"
+import { useCurrentUserRoles } from "@/hooks/use-roles"
 import { AGENT_TEMPLATES } from "@/lib/agent-templates"
 import { Doc } from "@convex/_generated/dataModel"
 import { OnboardingChecklist } from "@/components/onboarding-checklist"
@@ -73,7 +77,7 @@ function AgentRow({ agent }: { agent: Doc<"agents"> }) {
   )
 }
 
-function HomeContent() {
+function AdminHome() {
   const { environment } = useEnvironment()
   const { openStudio } = useStudio()
   const searchParams = useSearchParams()
@@ -166,6 +170,130 @@ function HomeContent() {
   )
 }
 
+function MemberHome() {
+  const { user } = useUser()
+  const { environment } = useEnvironment()
+  const userRoles = useCurrentUserRoles()
+  const threads = useThreads(undefined, environment)
+
+  const recentThreads = threads?.slice(0, 5)
+
+  return (
+    <div className="mx-auto w-full max-w-2xl p-6 space-y-8">
+      <section>
+        <h1 className="text-xl font-display font-medium text-content-primary">
+          Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
+        </h1>
+        <p className="text-sm text-content-secondary mt-1">
+          Here's your workspace overview.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">My Roles</h2>
+        <div className="space-y-1.5">
+          {userRoles === undefined ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-content-tertiary" />
+            </div>
+          ) : userRoles.length === 0 ? (
+            <div className="rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3">
+              <p className="text-sm text-content-tertiary">No roles assigned yet.</p>
+            </div>
+          ) : (
+            userRoles.map((ur: { _id: string; role: { name: string; description?: string } | null }) => ur.role && (
+              <div
+                key={ur._id}
+                className="flex items-center gap-3 rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3"
+              >
+                <Shield className="h-4 w-4 text-content-tertiary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-content-primary">{ur.role.name}</span>
+                  {ur.role.description && (
+                    <p className="text-xs text-content-tertiary mt-0.5 line-clamp-1">{ur.role.description}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Quick Access</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Link
+            href="/entities"
+            className="flex flex-col items-start gap-2 rounded-lg border border-border/30 bg-background-secondary/50 p-4 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
+          >
+            <Database className="h-5 w-5 text-content-tertiary" />
+            <span className="text-sm font-medium text-content-primary">Data</span>
+          </Link>
+          <Link
+            href="/conversations"
+            className="flex flex-col items-start gap-2 rounded-lg border border-border/30 bg-background-secondary/50 p-4 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
+          >
+            <MessageSquare className="h-5 w-5 text-content-tertiary" />
+            <span className="text-sm font-medium text-content-primary">Chats</span>
+          </Link>
+          <Link
+            href="/profile"
+            className="flex flex-col items-start gap-2 rounded-lg border border-border/30 bg-background-secondary/50 p-4 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
+          >
+            <User className="h-5 w-5 text-content-tertiary" />
+            <span className="text-sm font-medium text-content-primary">Profile</span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xs font-display font-medium text-content-tertiary uppercase tracking-wider">Recent Conversations</h2>
+        <div className="space-y-1.5">
+          {recentThreads === undefined ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-content-tertiary" />
+            </div>
+          ) : recentThreads.length === 0 ? (
+            <div className="rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3">
+              <p className="text-sm text-content-tertiary">No conversations yet.</p>
+            </div>
+          ) : (
+            recentThreads.map((thread: Doc<"threads">) => (
+              <Link
+                key={thread._id}
+                href="/conversations"
+                className="flex items-center gap-3 rounded-lg border border-border/30 bg-background-secondary/50 px-4 py-3 hover:bg-background-secondary/80 hover:border-border/50 transition-colors ease-out-soft"
+              >
+                <MessageSquare className="h-4 w-4 text-content-tertiary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-content-primary line-clamp-1">
+                    {new Date(thread.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
+              </Link>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export default function DashboardHomePage() {
-  return <HomeContent />
+  const { role, isLoading } = useRoleContext()
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
+      </div>
+    )
+  }
+
+  if (role === "admin") {
+    return <AdminHome />
+  }
+
+  return <MemberHome />
 }
