@@ -4,12 +4,16 @@ import { useUser } from "@clerk/nextjs"
 import { Loader2, User, Mail, Shield } from "@/lib/icons"
 import { useCurrentRole } from "@/hooks/use-current-role"
 import { useCurrentOrganization } from "@/hooks/use-convex-data"
+import { useCurrentUserRoles } from "@/hooks/use-roles"
+import { useEnvironment } from "@/contexts/environment-context"
 import { CalendarConnectionCard } from "@/components/calendar-connection-card"
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser()
   const { role } = useCurrentRole()
   const org = useCurrentOrganization()
+  const userRoles = useCurrentUserRoles()
+  const { environment } = useEnvironment()
 
   if (!isLoaded) {
     return (
@@ -66,6 +70,27 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {userRoles && userRoles.length > 0 && (
+        <div className="rounded-lg border bg-background-secondary p-6 space-y-4 mt-6">
+          <h2 className="text-lg font-display font-medium text-content-primary">My Roles</h2>
+          <div className="space-y-3">
+            {userRoles
+              .filter((ur: any) => ur.role && (!ur.role.environment || ur.role.environment === environment))
+              .map((ur: any) => (
+                <div key={ur._id} className="flex items-center gap-3">
+                  <Shield className="h-4 w-4 text-content-tertiary" />
+                  <div>
+                    <p className="text-sm font-medium text-content-primary">{ur.role!.name}</p>
+                    {ur.role!.description && (
+                      <p className="text-xs text-content-secondary">{ur.role!.description}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <CalendarConnectionCard />
     </div>
