@@ -44,6 +44,7 @@ export async function syncEntityTypes(
     const existing = existingBySlug.get(entityType.slug)
 
     if (existing) {
+      console.log(`[SYNC:entityTypes] PATCHING "${entityType.slug}" (${existing._id}) boundToRole=${entityType.boundToRole} userIdField=${entityType.userIdField}`)
       await ctx.db.patch(existing._id, {
         name: entityType.name,
         schema: entityType.schema,
@@ -74,6 +75,17 @@ export async function syncEntityTypes(
 
   for (const existing of existingTypes) {
     if (!inputSlugs.has(existing.slug)) {
+      const entities = await ctx.db
+        .query("entities")
+        .withIndex("by_org_env_type", (q) =>
+          q.eq("organizationId", organizationId).eq("environment", environment).eq("entityTypeId", existing._id)
+        )
+        .collect()
+      const active = entities.filter((e) => !e.deletedAt)
+      console.log(`[SYNC:entityTypes] DELETING entityType "${existing.slug}" (${existing._id}) — ${active.length} active entities reference it`)
+      for (const e of active) {
+        console.log(`[SYNC:entityTypes]   orphaned entity ${e._id} data=${JSON.stringify(e.data)}`)
+      }
       await ctx.db.delete(existing._id)
       result.deleted.push(existing.slug)
     }
