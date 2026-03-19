@@ -62,6 +62,7 @@ interface InternalMessage {
   content: string
   toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>
   toolCallId?: string
+  attachments?: Array<{ type: string; url: string; mimeType: string }>
 }
 
 export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
@@ -118,7 +119,20 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
     }
 
     if (m.role === "user") {
-      result.push({ role: "user", content: m.content } as ModelMessage)
+      if (m.attachments && m.attachments.length > 0) {
+        const parts: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = []
+        if (m.content) {
+          parts.push({ type: "text", text: m.content })
+        }
+        for (const att of m.attachments) {
+          if (att.type === "image") {
+            parts.push({ type: "image", image: new URL(att.url) })
+          }
+        }
+        result.push({ role: "user", content: parts } as ModelMessage)
+      } else {
+        result.push({ role: "user", content: m.content } as ModelMessage)
+      }
     }
   }
 
