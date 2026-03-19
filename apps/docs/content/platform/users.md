@@ -50,7 +50,7 @@ Membership records are indexed by `by_user_org` for fast lookups and by `by_org`
 
 Organization admins have unrestricted access. The permission engine short-circuits for admins, granting full read/write access to all data types in all environments. Because of this, admins cannot be assigned internal RBAC roles. Promoting a member to admin automatically deletes all their `userRoles` records.
 
-Members have no data access by default. They must be assigned an internal role (from the `roles` table) to gain permissions. The assigned role's policies, scope rules, and field masks determine exactly what data they can see and modify.
+Members have no data access by default. They must be assigned an internal role (from the `roles` table) to gain permissions. The assigned role's policies, scope rules, and field masks determine exactly what data they can see and modify. The role's `agentAccess` field controls which agents' conversations are visible in the dashboard — members can only view and reply to threads from agents listed in their role. Members cannot start new conversations.
 
 ### Last Admin Protection
 

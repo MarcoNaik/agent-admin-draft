@@ -249,6 +249,33 @@ canUseTool(ctx, actorContext, toolName)
 
 Checks if the actor is allowed to use the specified tool based on their role's tool permissions.
 
+## Agent Access (Conversation Filtering)
+
+Roles can define an `agentAccess` field — an array of agent slugs — that controls which conversations members can see in the dashboard.
+
+### How It Works
+
+1. When a member queries threads, the platform loads their role assignments
+2. All `agentAccess` slugs across the member's roles are collected into a union set
+3. Slugs are resolved to agent IDs via the `agents.by_org_slug` index
+4. Only threads belonging to those agents are returned
+
+### Access Rules
+
+| Actor | Behavior |
+|-------|----------|
+| Admin | Sees all conversations (bypasses `agentAccess`) |
+| Member with `agentAccess` | Sees only threads from listed agents |
+| Member without `agentAccess` | Sees no conversations |
+
+### Conversation Permissions
+
+Members can only **view and reply** to conversations. Starting new conversations is restricted to admins. This is enforced at both the query level (thread filtering) and the mutation level (chat actions).
+
+### Slug Resolution
+
+Agent slugs are resolved at query time against the `agents` table. If a slug doesn't match an existing agent, it is silently skipped. This means roles can reference agents before they are created — access is granted automatically when the agent is deployed.
+
 ## Security Properties
 
 The permission engine guarantees the following security properties:

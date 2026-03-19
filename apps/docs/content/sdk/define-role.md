@@ -15,6 +15,7 @@ import { defineRole } from 'struere'
 export default defineRole({
   name: "teacher",
   description: "Tutors who conduct sessions",
+  agentAccess: ["scheduling-agent", "student-portal"],
   policies: [
     { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
     { resource: "student", actions: ["list", "read"], effect: "allow" },
@@ -36,6 +37,7 @@ export default defineRole({
 |-------|------|----------|-------------|
 | `name` | `string` | Yes | Unique role identifier |
 | `description` | `string` | No | Human-readable description |
+| `agentAccess` | `string[]` | No | Agent slugs this role can access conversations for (defaults to `[]`) |
 | `policies` | `PolicyConfig[]` | Yes | Access control rules (at least one required) |
 | `scopeRules` | `ScopeRuleConfig[]` | No | Row-level security filters (defaults to `[]`) |
 | `fieldMasks` | `FieldMaskConfig[]` | No | Column-level security masks (defaults to `[]`) |
@@ -47,6 +49,7 @@ export default defineRole({
 - `name` is missing
 - `policies` is empty or missing
 - Any policy is missing `resource`, `actions`, or `effect`
+- `agentAccess` contains empty strings
 
 ## PolicyConfig
 
@@ -210,6 +213,25 @@ interface FieldMaskConfig {
 
 Field masks use an **allowlist strategy**, which means new fields added to a data type are hidden by default until explicitly allowed. This is a fail-safe approach that prevents accidental data exposure.
 
+## Agent Access
+
+The `agentAccess` field controls which agents' conversations a role can see in the dashboard. Members with a role can only view and reply to threads belonging to the listed agents. Admins bypass this restriction and see all conversations.
+
+```typescript
+agentAccess: ["sales-agent", "support-agent"]
+```
+
+| Behavior | Description |
+|----------|-------------|
+| Not set or empty | Role has no conversation access |
+| List of slugs | Role can view threads for those agents |
+| Multiple roles | Access is the union of all assigned roles' `agentAccess` slugs |
+| Admin users | Bypass `agentAccess` entirely — see all conversations |
+
+Agent slugs are resolved at query time. If a slug doesn't match an existing agent, it is silently skipped. When the agent is created later, access is automatically granted.
+
+Members cannot start new conversations — they can only view and reply to existing threads for their allowed agents.
+
 ## Full Examples
 
 ### Admin Role
@@ -239,6 +261,7 @@ import { defineRole } from 'struere'
 export default defineRole({
   name: "teacher",
   description: "Tutors who conduct sessions",
+  agentAccess: ["scheduling-agent", "student-portal"],
   policies: [
     { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
     { resource: "student", actions: ["list", "read"], effect: "allow" },
@@ -265,6 +288,7 @@ import { defineRole } from 'struere'
 export default defineRole({
   name: "guardian",
   description: "Parents or guardians of students",
+  agentAccess: ["parent-portal"],
   policies: [
     { resource: "student", actions: ["list", "read", "update"], effect: "allow" },
     { resource: "session", actions: ["list", "read"], effect: "allow" },

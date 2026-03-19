@@ -83,12 +83,24 @@ Roles are environment-scoped. A role that exists in development may not exist in
 npx struere status
 ```
 
+### 7. Check agent access
+
+If a member cannot see any conversations in the dashboard, check their role's `agentAccess` field. This field controls which agents' threads are visible:
+
+```typescript
+agentAccess: ["support-agent", "sales-agent"]
+```
+
+If `agentAccess` is missing or empty, the member has no conversation access. If a member gets "Members cannot start new conversations", this is by design — only admins can initiate new conversations from the dashboard.
+
 ## Common Mistakes
 
 - **Wrong environment.** A role synced to development does not exist in production until you run `struere deploy`.
 - **Missing list permission.** `entity.query` requires the `list` action, not `read`. The `read` action is for `entity.get` (single record by ID).
 - **Deny on wildcard.** `{ resource: "payment", actions: ["*"], effect: "deny" }` blocks all five actions on payments, including `list` and `read`.
 - **System actor bypass.** System actors (automations, webhooks) bypass all permission checks. If an automation works but a user cannot perform the same action, it is a permission issue on the user's role.
+- **Missing `agentAccess` on role.** Members see no conversations unless their role has `agentAccess` with valid agent slugs. This is separate from data policies.
+- **Member trying to start a conversation.** Only admins can start new conversations from the dashboard. Members can only reply to existing threads.
 
 ## Related
 

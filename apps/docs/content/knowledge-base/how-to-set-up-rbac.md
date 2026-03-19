@@ -79,7 +79,30 @@ export default defineRole({
 
 Field masks use an allowlist strategy — new fields are hidden by default until explicitly allowed.
 
-### 5. Sync and test
+### 5. Add agent access (conversation visibility)
+
+Control which agents' conversations each role can see in the dashboard:
+
+```typescript
+export default defineRole({
+  name: "teacher",
+  description: "Tutors who conduct sessions",
+  agentAccess: ["scheduling-agent", "student-portal"],
+  policies: [
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
+  ],
+  scopeRules: [
+    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
+  ],
+  fieldMasks: [
+    { entityType: "session", fieldPath: "data.paymentId", maskType: "hide" },
+  ],
+})
+```
+
+Members with this role can only see conversations from `scheduling-agent` and `student-portal`. Admins see all conversations regardless. If `agentAccess` is not set or empty, the role has no conversation access.
+
+### 6. Sync and test
 
 ```bash
 npx struere dev
@@ -93,6 +116,7 @@ The permission engine evaluates in order: deny overrides allow, then scope rules
 - **Using `ne` instead of `neq`.** The correct operator is `neq` for "not equal."
 - **Adding a `priority` field to policies.** Policies do not have a priority field. Deny always overrides allow regardless of order.
 - **Not syncing after changes.** Run `struere dev` to push role updates to the platform.
+- **Role has no `agentAccess`.** Members with a role that omits `agentAccess` cannot see any conversations. Add agent slugs to grant dashboard conversation access.
 
 ## Related
 

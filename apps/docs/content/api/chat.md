@@ -188,6 +188,10 @@ print(data["message"])
 
 ## Thread Management
 
+### Dashboard Access Control
+
+When using the dashboard (not the API), conversation access is controlled by the user's role. Admins see all threads. Members can only see threads belonging to agents listed in their role's `agentAccess` field. Members can reply to visible threads but cannot start new conversations. See [Permissions](/platform/permissions#agent-access-conversation-filtering) for details.
+
 ### Creating New Threads
 
 If neither `threadId` nor `externalThreadId` is provided, a new thread is created automatically. The response includes the `threadId` which you should store for subsequent messages.

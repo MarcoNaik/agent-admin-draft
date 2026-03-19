@@ -147,6 +147,7 @@ import { defineRole } from 'struere'
 export default defineRole({
   name: "teacher",
   description: "Tutors who conduct sessions",
+  agentAccess: ["scheduling-agent"],
   policies: [
     { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
     { resource: "payment", actions: ["*"], effect: "deny" },

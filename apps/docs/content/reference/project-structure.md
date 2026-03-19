@@ -84,7 +84,7 @@ export default defineData({
 
 ### roles/
 
-Each file exports a single role definition using `defineRole`. Roles include policies (allow/deny rules), scope rules (row-level security), and field masks (column-level security).
+Each file exports a single role definition using `defineRole`. Roles include policies (allow/deny rules), scope rules (row-level security), field masks (column-level security), and agent access (conversation visibility).
 
 ```typescript
 import { defineRole } from 'struere'
@@ -92,6 +92,7 @@ import { defineRole } from 'struere'
 export default defineRole({
   name: "teacher",
   description: "Tutors who conduct sessions",
+  agentAccess: ["scheduling-agent", "student-portal"],
   policies: [
     { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
     { resource: "student", actions: ["list", "read"], effect: "allow" },
