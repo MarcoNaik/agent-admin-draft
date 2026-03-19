@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { query, mutation, internalQuery } from "./_generated/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, requireAuth, requireOrgAdmin } from "./lib/auth"
 
 export const list = query({
   args: {
@@ -102,6 +102,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const existing = await ctx.db
       .query("roles")
@@ -135,6 +136,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const role = await ctx.db.get(args.id)
 
     if (!role || role.organizationId !== auth.organizationId) {
@@ -158,6 +160,7 @@ export const remove = mutation({
   args: { id: v.id("roles") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const role = await ctx.db.get(args.id)
 
     if (!role || role.organizationId !== auth.organizationId) {
@@ -216,6 +219,7 @@ export const addPolicy = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const role = await ctx.db.get(args.roleId)
 
     if (!role || role.organizationId !== auth.organizationId) {
@@ -237,6 +241,7 @@ export const removePolicy = mutation({
   args: { policyId: v.id("policies") },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
     const policy = await ctx.db.get(args.policyId)
 
     if (!policy || policy.organizationId !== auth.organizationId) {
@@ -274,6 +279,7 @@ export const assignToUser = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const user = await ctx.db.get(args.userId)
     if (!user) {
@@ -327,6 +333,7 @@ export const removeFromUser = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const user = await ctx.db.get(args.userId)
     if (!user) {
@@ -450,6 +457,7 @@ export const createPendingAssignment = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    await requireOrgAdmin(ctx, auth)
 
     const role = await ctx.db.get(args.roleId)
     if (!role || role.organizationId !== auth.organizationId) {
