@@ -98,8 +98,17 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {maskedEntity?.data && Object.keys(maskedEntity.data).length > 0 && (
-            <>
+          {maskedEntity?.data && Object.keys(maskedEntity.data).length > 0 && (() => {
+            const skipFields = new Set([
+              boundEntityType?.userIdField || "userId",
+              "name",
+              "email",
+            ])
+            const entries = Object.entries(maskedEntity.data as Record<string, any>)
+              .filter(([key]) => !skipFields.has(key))
+              .filter(([, value]) => value != null)
+            if (entries.length === 0) return null
+            return (
               <div className="border-t border-border pt-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Database className="h-4 w-4 text-content-tertiary" />
@@ -107,26 +116,43 @@ export default function ProfilePage() {
                     {boundEntityType?.name || "Details"}
                   </p>
                 </div>
-                <div className="space-y-3">
-                  {Object.entries(maskedEntity.data as Record<string, any>)
-                    .filter(([key]) => key !== (boundEntityType?.userIdField || "userId"))
-                    .filter(([, value]) => value != null)
-                    .map(([key, value]) => (
-                      <div key={key} className="flex items-start gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs text-content-tertiary">
-                            {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                          </p>
-                          <p className="text-sm text-content-primary break-all">
-                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                          </p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  {entries.map(([key, value]) => (
+                    <div key={key} className={`min-w-0 ${typeof value === "object" && !Array.isArray(value) ? "col-span-2" : ""}`}>
+                      <p className="text-xs text-content-tertiary mb-0.5">
+                        {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </p>
+                      {Array.isArray(value) ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {value.map((item, i) => (
+                            <span key={i} className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                              {String(item)}
+                            </span>
+                          ))}
                         </div>
-                      </div>
-                    ))}
+                      ) : typeof value === "object" && value !== null ? (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {Object.entries(value as Record<string, any>).map(([day, hours]) => (
+                            <span key={day} className="text-sm text-content-primary">
+                              <span className="capitalize">{day}</span>
+                              <span className="text-content-tertiary">: </span>
+                              {Array.isArray(hours) && hours.length > 0
+                                ? `${hours[0]}:00 - ${hours[hours.length - 1] + 1}:00`
+                                : String(hours)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-content-primary break-all">
+                          {String(value)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-            </>
-          )}
+            )
+          })()}
         </div>
       </div>
 
