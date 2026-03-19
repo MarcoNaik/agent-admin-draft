@@ -102,7 +102,28 @@ export default defineRole({
 
 Members with this role can only see conversations from `scheduling-agent` and `student-portal`. Admins see all conversations regardless. If `agentAccess` is not set or empty, the role has no conversation access.
 
-### 6. Sync and test
+### 6. Add team management permissions (optional)
+
+Grant roles the ability to manage team members from the dashboard Team tab:
+
+```typescript
+export default defineRole({
+  name: "team-lead",
+  description: "Can manage team members and view sessions",
+  agentAccess: ["scheduling-agent"],
+  policies: [
+    { resource: "users", actions: ["update", "delete"], effect: "allow" },
+    { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
+  ],
+  scopeRules: [
+    { entityType: "session", field: "data.teacherId", operator: "eq", value: "actor.userId" },
+  ],
+})
+```
+
+The `users` resource controls access to team management actions. `update` allows assigning roles, `delete` allows removing non-admin members. All members can view the team list regardless of permissions. Only organization admins can invite new members or change organization roles.
+
+### 7. Sync and test
 
 ```bash
 npx struere dev
