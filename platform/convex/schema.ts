@@ -228,6 +228,7 @@ export default defineSchema({
     environment: environmentValidator,
     name: v.string(),
     description: v.optional(v.string()),
+    agentAccess: v.optional(v.array(v.string())),
     isSystem: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
