@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ChevronLeft, Edit, Trash2, Link2, Clock, Loader2 } from "@/lib/icons"
-import { useEntityWithType, useRelatedEntities, useEntityEvents, useDeleteEntity } from "@/hooks/use-convex-data"
+import { useEntityWithType, useRelatedEntities, useEntityEvents, useDeleteEntity, useEntityPermissions } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
   const isNewEntity = !isValidConvexId(id)
   const { environment } = useEnvironment()
 
+  const { canUpdate, canDelete: canDeletePerm } = useEntityPermissions(type, environment)
   const entityData = useEntityWithType(isNewEntity ? undefined : id as Id<"entities">, environment)
   const relatedEntities = useRelatedEntities(isNewEntity ? undefined : id as Id<"entities">, environment)
   const events = useEntityEvents(isNewEntity ? undefined : id as Id<"entities">, environment)
@@ -144,16 +145,20 @@ export default function EntityDetailPage({ params }: EntityDetailPageProps) {
           Back to {entityType.name}
         </Link>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/entities/${type}/${id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
+          {canUpdate && (
+            <Button variant="outline" asChild>
+              <Link href={`/entities/${type}/${id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          )}
+          {canDeletePerm && (
+            <Button variant="destructive" onClick={handleDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
