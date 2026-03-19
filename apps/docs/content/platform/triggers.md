@@ -247,6 +247,78 @@ condition: {
 }
 ```
 
+### Transition Conditions
+
+For `updated` actions, conditions can also match against `previousData` — the record's data **before** the update. This enables transition-based automations that only fire when a field changes from one value to another:
+
+```typescript
+condition: {
+  "data.status": "scheduled",
+  "previousData.status": "pending_payment",
+}
+```
+
+This automation fires only when a session transitions **from** `pending_payment` **to** `scheduled` — not when an already-scheduled session is updated (e.g., rescheduled).
+
+#### Example: Separate Confirmation and Reschedule Automations
+
+Fire on initial activation (payment confirmed):
+
+```typescript
+on: {
+  entityType: "session",
+  action: "updated",
+  condition: {
+    "data.status": "scheduled",
+    "previousData.status": "pending_payment",
+  },
+}
+```
+
+Fire only on reschedule (already scheduled, time changed):
+
+```typescript
+on: {
+  entityType: "session",
+  action: "updated",
+  condition: {
+    "data.status": "scheduled",
+    "previousData.status": "scheduled",
+  },
+}
+```
+
+#### Available Condition Paths
+
+| Path prefix | Description | Available for |
+|-------------|-------------|---------------|
+| `data.*` | Current record data (after mutation) | `created`, `updated`, `deleted` |
+| `previousData.*` | Record data before the mutation | `updated` only |
+
+For `created` and `deleted` actions, `previousData` is undefined — any condition referencing `previousData.*` will not match.
+
+### Trigger Cascading
+
+Entity mutations inside automation actions **do not cascade by default** — they will not fire other automations. This prevents infinite loops and unexpected side effects.
+
+To explicitly allow cascading, pass `cascade: true` in the tool args:
+
+```typescript
+{
+  tool: "entity.create",
+  args: {
+    type: "notification",
+    data: { message: "Session confirmed" },
+    cascade: true,
+  },
+}
+```
+
+Without `cascade: true`, entity mutations from automation actions are silent — they modify data but do not activate other automations. This is the safe default for common patterns like writing data back to the triggering entity (e.g., saving a calendar event ID after creation).
+
+`cascade` is supported on `entity.create`, `entity.update`, and `entity.delete` tool calls within automations
+```
+
 ## Mutation Sources
 
 Automations fire from all mutation sources in the platform:
