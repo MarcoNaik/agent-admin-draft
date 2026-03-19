@@ -1,7 +1,53 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, requireAuth, isOrgAdmin } from "./lib/auth"
+
+async function resolveAllowedAgentIds(
+  ctx: any,
+  auth: { userId: Id<"users">; organizationId: Id<"organizations"> },
+  environment: "development" | "production" | "eval"
+): Promise<Id<"agents">[] | null> {
+  if (await isOrgAdmin(ctx, auth)) {
+    return null
+  }
+
+  const userRoleAssignments = await ctx.db
+    .query("userRoles")
+    .withIndex("by_user", (q: any) => q.eq("userId", auth.userId))
+    .collect()
+
+  if (userRoleAssignments.length === 0) {
+    return []
+  }
+
+  const slugs = new Set<string>()
+  for (const assignment of userRoleAssignments) {
+    const role = await ctx.db.get(assignment.roleId)
+    if (role && role.environment === environment && role.organizationId === auth.organizationId && role.agentAccess) {
+      for (const slug of role.agentAccess) {
+        slugs.add(slug)
+      }
+    }
+  }
+
+  if (slugs.size === 0) {
+    return []
+  }
+
+  const agentIds: Id<"agents">[] = []
+  for (const slug of slugs) {
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_org_slug", (q: any) => q.eq("organizationId", auth.organizationId).eq("slug", slug))
+      .first()
+    if (agent) {
+      agentIds.push(agent._id)
+    }
+  }
+
+  return agentIds
+}
 
 export const listWithPreviews = query({
   args: {
@@ -13,8 +59,36 @@ export const listWithPreviews = query({
     const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
 
+    const allowedAgentIds = await resolveAllowedAgentIds(ctx, auth, environment)
+    if (allowedAgentIds !== null && allowedAgentIds.length === 0) {
+      return []
+    }
+
     let threads
-    if (args.agentId) {
+    if (allowedAgentIds !== null) {
+      if (args.agentId) {
+        if (!allowedAgentIds.some((id) => id === args.agentId)) {
+          return []
+        }
+        threads = await ctx.db
+          .query("threads")
+          .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
+          .order("desc")
+          .take(args.limit ?? 50)
+      } else {
+        const allThreads: any[] = []
+        for (const agentId of allowedAgentIds) {
+          const agentThreads = await ctx.db
+            .query("threads")
+            .withIndex("by_agent_env", (q) => q.eq("agentId", agentId).eq("environment", environment))
+            .order("desc")
+            .take(args.limit ?? 50)
+          allThreads.push(...agentThreads)
+        }
+        allThreads.sort((a, b) => (b.updatedAt ?? b._creationTime) - (a.updatedAt ?? a._creationTime))
+        threads = allThreads.slice(0, args.limit ?? 50)
+      }
+    } else if (args.agentId) {
       threads = await ctx.db
         .query("threads")
         .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
@@ -139,6 +213,34 @@ export const list = query({
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx)
     const environment = args.environment ?? "development"
+    const allowedAgentIds = await resolveAllowedAgentIds(ctx, auth, environment)
+    if (allowedAgentIds !== null && allowedAgentIds.length === 0) {
+      return []
+    }
+
+    if (allowedAgentIds !== null) {
+      if (args.agentId) {
+        if (!allowedAgentIds.some((id) => id === args.agentId)) {
+          return []
+        }
+        return await ctx.db
+          .query("threads")
+          .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
+          .order("desc")
+          .take(args.limit ?? 50)
+      }
+      const allThreads: any[] = []
+      for (const agentId of allowedAgentIds) {
+        const agentThreads = await ctx.db
+          .query("threads")
+          .withIndex("by_agent_env", (q) => q.eq("agentId", agentId).eq("environment", environment))
+          .order("desc")
+          .take(args.limit ?? 50)
+        allThreads.push(...agentThreads)
+      }
+      allThreads.sort((a, b) => (b.updatedAt ?? b._creationTime) - (a.updatedAt ?? a._creationTime))
+      return allThreads.slice(0, args.limit ?? 50)
+    }
 
     if (args.agentId) {
       return await ctx.db
@@ -163,6 +265,11 @@ export const get = query({
     const thread = await ctx.db.get(args.id)
 
     if (!thread || thread.organizationId !== auth.organizationId) {
+      return null
+    }
+
+    const allowedAgentIds = await resolveAllowedAgentIds(ctx, auth, thread.environment)
+    if (allowedAgentIds !== null && !allowedAgentIds.some((id) => id === thread.agentId)) {
       return null
     }
 
@@ -198,6 +305,11 @@ export const getWithMessages = query({
     const thread = await ctx.db.get(args.id)
 
     if (!thread || thread.organizationId !== auth.organizationId) {
+      return null
+    }
+
+    const allowedAgentIds = await resolveAllowedAgentIds(ctx, auth, thread.environment)
+    if (allowedAgentIds !== null && !allowedAgentIds.some((id) => id === thread.agentId)) {
       return null
     }
 
@@ -347,6 +459,11 @@ export const getMessages = query({
       throw new Error("Thread not found")
     }
 
+    const allowedAgentIds = await resolveAllowedAgentIds(ctx, auth, thread.environment)
+    if (allowedAgentIds !== null && !allowedAgentIds.some((id) => id === thread.agentId)) {
+      throw new Error("Thread not found")
+    }
+
     let messages = await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
@@ -365,6 +482,67 @@ export const getThreadInternal = internalQuery({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.threadId)
+  },
+})
+
+export const canAccessThread = internalQuery({
+  args: {
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+    threadId: v.id("threads"),
+  },
+  handler: async (ctx, args) => {
+    const thread = await ctx.db.get(args.threadId)
+    if (!thread || thread.organizationId !== args.organizationId) {
+      return false
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId)
+      )
+      .first()
+
+    if (membership?.role === "admin") {
+      return true
+    }
+
+    const userRoleAssignments = await ctx.db
+      .query("userRoles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect()
+
+    if (userRoleAssignments.length === 0) {
+      return false
+    }
+
+    const slugs = new Set<string>()
+    for (const assignment of userRoleAssignments) {
+      const role = await ctx.db.get(assignment.roleId)
+      if (role && role.environment === args.environment && role.organizationId === args.organizationId && role.agentAccess) {
+        for (const slug of role.agentAccess) {
+          slugs.add(slug)
+        }
+      }
+    }
+
+    if (slugs.size === 0) {
+      return false
+    }
+
+    for (const slug of slugs) {
+      const agent = await ctx.db
+        .query("agents")
+        .withIndex("by_org_slug", (q) => q.eq("organizationId", args.organizationId).eq("slug", slug))
+        .first()
+      if (agent && agent._id === thread.agentId) {
+        return true
+      }
+    }
+
+    return false
   },
 })
 
