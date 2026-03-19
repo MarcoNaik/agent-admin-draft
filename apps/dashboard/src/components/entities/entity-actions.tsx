@@ -3,9 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Pencil, Trash2, MoreHorizontal, Eye } from "@/lib/icons"
-import { useRoleContext } from "@/contexts/role-context"
 import { useEnvironment } from "@/contexts/environment-context"
-import { useDeleteEntity } from "@/hooks/use-convex-data"
+import { useDeleteEntity, useEntityPermissions } from "@/hooks/use-convex-data"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -34,16 +33,15 @@ interface EntityActionsProps {
 
 export function EntityActions({ entityId, entityType, ownerId, onView, onEdit }: EntityActionsProps) {
   const router = useRouter()
-  const { userId, isAdmin } = useRoleContext()
   const { environment } = useEnvironment()
+  const perms = useEntityPermissions(entityType, environment)
   const deleteEntity = useDeleteEntity()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const isOwner = ownerId && userId ? ownerId === String(userId) : false
   const canView = true
-  const canEdit = isAdmin || isOwner
-  const canDelete = isAdmin
+  const canEdit = perms.canUpdate
+  const canDelete = perms.canDelete
 
   const handleView = () => {
     if (onView) {
