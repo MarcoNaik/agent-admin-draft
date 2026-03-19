@@ -88,6 +88,7 @@ export async function syncRoles(
 
   for (const existing of nonSystemRoles) {
     if (!inputNames.has(existing.name)) {
+      console.log(`[SYNC:roles] DELETING role "${existing.name}" (${existing._id}) env=${existing.environment}`)
       await deleteRoleWithRelations(ctx, existing._id)
       result.deleted.push(existing.name)
     }
@@ -266,6 +267,9 @@ async function duplicateUserRolesForProduction(
       .withIndex("by_role", (q) => q.eq("roleId", devRole._id))
       .collect()
 
+    console.log(`[SYNC:roles] duplicateUserRoles: role "${roleInput.name}" devRole=${devRole._id} prodRole=${prodRole._id}`)
+    console.log(`[SYNC:roles] duplicateUserRoles: ${devUserRoles.length} dev userRoles to copy`)
+
     for (const devUR of devUserRoles) {
       const existingProdUserRoles = await ctx.db
         .query("userRoles")
@@ -280,10 +284,14 @@ async function duplicateUserRolesForProduction(
         }
       }
 
+      console.log(`[SYNC:roles] duplicateUserRoles: user=${devUR.userId} deleting ${prodAssignments.length} existing prod assignments`)
       for (const stale of prodAssignments) {
+        const staleRole = await ctx.db.get(stale.roleId)
+        console.log(`[SYNC:roles]   DELETING userRole ${stale._id} role=${staleRole?.name} resourceType=${stale.resourceType} resourceId=${stale.resourceId}`)
         await ctx.db.delete(stale._id)
       }
 
+      console.log(`[SYNC:roles]   INSERTING userRole userId=${devUR.userId} prodRole=${prodRole._id} resourceType=${devUR.resourceType} resourceId=${devUR.resourceId}`)
       await ctx.db.insert("userRoles", {
         userId: devUR.userId,
         roleId: prodRole._id,
