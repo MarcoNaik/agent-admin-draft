@@ -20,6 +20,10 @@ export function useEnsureUser() {
   return useMutation(api.users.ensureUser)
 }
 
+export function useUserPermissions(environment?: string) {
+  return useQuery(api.users.checkPermissions, environment ? { environment } : "skip")
+}
+
 export function useCurrentOrganization() {
   return useQuery(api.organizations.getCurrent, {})
 }
