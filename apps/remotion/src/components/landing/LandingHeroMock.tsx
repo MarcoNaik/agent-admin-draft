@@ -1,7 +1,7 @@
 import React from "react";
-import { useVideoConfig, interpolate } from "remotion";
+import { useVideoConfig, interpolate, spring } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../../lib/dashboard-theme";
-import { fadeIn, slideUp, blinkingCursor } from "../../lib/animations";
+import { fadeIn, blinkingCursor } from "../../lib/animations";
 import { useSectionFrame } from "../../lib/SectionContext";
 
 interface Suggestion {
@@ -18,25 +18,36 @@ interface LandingHeroMockProps {
 export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
   headline,
   tagline,
-  suggestions,
 }) => {
   const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
-  const headlineOpacity = fadeIn(frame, 0, 15);
-  const taglineOpacity = fadeIn(frame, 8);
-  const taglineSlide = slideUp(frame, 8, 15);
+  const headlineDelay = 190;
+  const headlineSpring = spring({
+    frame: Math.max(0, frame - headlineDelay),
+    fps,
+    config: { damping: 14, stiffness: 180, mass: 0.45 },
+  });
+  const headlineOpacity = headlineSpring;
+  const headlineSlideUp = (1 - headlineSpring) * 30;
+  const headlineScale = 0.94 + 0.06 * headlineSpring;
 
-  const gradientPosition = interpolate(frame, [0, 90], [100, 0], {
+  const taglineSpring = spring({
+    frame: Math.max(0, frame - headlineDelay - 10),
+    fps,
+    config: { damping: 14, stiffness: 200, mass: 0.35 },
+  });
+  const taglineOpacity = taglineSpring;
+  const taglineSlide = (1 - taglineSpring) * 20;
+
+  const gradientPosition = interpolate(frame, [headlineDelay, headlineDelay + 90], [100, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const promptOpacity = fadeIn(frame, 20);
-  const promptSlide = interpolate(frame, [20, 40], [40, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const promptAppearFrame = 40;
+  const promptOpacity = fadeIn(frame, promptAppearFrame, 8);
+  const promptSlide = 0;
 
   const promptPrefix = "Build a receptionist for my ";
   const promptSuffix = "";
@@ -44,7 +55,7 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
   const fullText = promptPrefix + businessName + promptSuffix;
   const CYCLE_ITEMS = ["car detailing shop", "law firm", "real estate agency", "dental clinic"];
 
-  const typeStartFrame = 45;
+  const typeStartFrame = 70;
   const typeSpeed = 1.0;
   const typingDoneFrame = typeStartFrame + Math.ceil(fullText.length / typeSpeed);
 
@@ -56,7 +67,6 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
 
   const isTyping = frame >= typeStartFrame && frame < typingDoneFrame;
   const isCycling = frame >= cycleStartFrame && frame < cycleEndFrame;
-  const isDone = frame >= cycleEndFrame;
 
   const typedChars = isTyping
     ? Math.min(fullText.length, Math.floor((frame - typeStartFrame) / typeSpeed))
@@ -84,7 +94,6 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
 
   const cursorOpacity = (isTyping || isCycling) ? blinkingCursor(frame, fps) : 0;
   const sendOpacity = fadeIn(frame, cycleEndFrame);
-  const pillsStartFrame = 30;
 
   const businessStyle: React.CSSProperties = {
     color: "#D4A853",
@@ -174,7 +183,7 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
 
       <div
         style={{
-          marginTop: 140,
+          marginTop: 300,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -189,6 +198,7 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
             fontSize: 88,
             fontWeight: 600,
             opacity: headlineOpacity,
+            transform: `translateY(${headlineSlideUp}px) scale(${headlineScale})`,
             background:
               "linear-gradient(-90deg, #98a8b0, #7898b0, #5880a8, #5880a8, #4878a8, #4870a0, #5078a0, #6890a8, #90a8b8, #b8c0c8 56%, #d8d0c0 58%, #f0e8d8 59%, #e8e8e0 60%, #a0c0e0 62%, #80a8d0, #6888a8, #8898a8)",
             backgroundSize: "300% 100%",
@@ -314,49 +324,6 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: 8,
-              marginTop: 16,
-            }}
-          >
-            {suggestions.map((s, i) => {
-              const pillStart = pillsStartFrame + i * 5;
-              const pillOpacity = fadeIn(frame, pillStart);
-              const pillSlide = interpolate(
-                frame,
-                [pillStart, pillStart + 15],
-                [12, 0],
-                {
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              );
-
-              return (
-                <div
-                  key={i}
-                  style={{
-                    opacity: pillOpacity,
-                    transform: `translateY(${pillSlide}px)`,
-                    background: "rgba(20, 22, 28, 0.55)",
-                    borderRadius: 9999,
-                    padding: "8px 16px",
-                    fontFamily: FONTS.sans,
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.9)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                  }}
-                >
-                  {s.label}
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     </div>
