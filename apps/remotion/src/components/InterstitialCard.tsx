@@ -1,53 +1,30 @@
 import React from "react";
 import { spring, useVideoConfig } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../lib/dashboard-theme";
-import { fadeIn, slideUp, springScale } from "../lib/animations";
+import { fadeIn, slideUp } from "../lib/animations";
 import { useSectionFrame } from "../lib/SectionContext";
 
 interface InterstitialCardProps {
   headline: string;
   subtext: string;
   accentColor?: string;
-  variant?: 1 | 2 | 3 | 4;
 }
 
 export const InterstitialCard: React.FC<InterstitialCardProps> = ({
   headline,
   subtext,
   accentColor = LANDING_LIGHT.ocean,
-  variant,
 }) => {
   const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
-  const springProgress = spring({
-    frame,
-    fps,
-    config: { damping: 14, stiffness: 180, mass: 0.5 },
-  });
-
-  const remaining = 1 - springProgress;
-  let contentTransform = "none";
-  if (variant === 1) {
-    contentTransform = `rotateX(${-15 * remaining}deg) translateZ(${-100 * remaining}px)`;
-  } else if (variant === 2) {
-    contentTransform = `rotateY(${12 * remaining}deg) translateZ(${-80 * remaining}px)`;
-  } else if (variant === 3) {
-    contentTransform = `translateZ(${-200 * remaining}px) scale(${0.7 + 0.3 * springProgress})`;
-  } else if (variant === 4) {
-    contentTransform = `rotateY(${-8 * remaining}deg) rotateX(${5 * remaining}deg) translateZ(${-60 * remaining}px)`;
-  }
-
-  const headlineScale = springScale(frame, fps, {
-    damping: 14,
-    stiffness: 180,
-    mass: 0.5,
-  });
+  const words = headline.split(" ");
 
   const subtextOpacity = fadeIn(frame, 20);
   const subtextSlide = slideUp(frame, 20, 20);
 
-  const accentOpacity = fadeIn(frame, 12, 15);
+  const lastWordDelay = (words.length - 1) * 5;
+  const accentOpacity = fadeIn(frame, lastWordDelay + 10, 8);
 
   return (
     <div
@@ -61,8 +38,6 @@ export const InterstitialCard: React.FC<InterstitialCardProps> = ({
         background: LANDING_LIGHT.stoneBase,
         position: "relative",
         overflow: "hidden",
-        opacity: 1,
-        perspective: 1200,
       }}
     >
       <div
@@ -81,8 +56,6 @@ export const InterstitialCard: React.FC<InterstitialCardProps> = ({
           flexDirection: "column",
           alignItems: "center",
           gap: 0,
-          transformStyle: "preserve-3d" as const,
-          transform: contentTransform,
         }}
       >
         <div
@@ -90,14 +63,37 @@ export const InterstitialCard: React.FC<InterstitialCardProps> = ({
             fontFamily: FONTS.display,
             fontSize: 80,
             fontWeight: 700,
-            color: "#1A1815",
-            transform: `scale(${headlineScale})`,
             lineHeight: 1.1,
             textAlign: "center",
             maxWidth: 1200,
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: "0 24px",
           }}
         >
-          {headline}
+          {words.map((word, i) => {
+            const wordDelay = i * 5;
+            const wordSpring = spring({
+              frame: Math.max(0, frame - wordDelay),
+              fps,
+              config: { damping: 12, stiffness: 180, mass: 0.45 },
+            });
+            const wordY = (1 - wordSpring) * 40;
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  color: "#1A1815",
+                  opacity: wordSpring,
+                  transform: `translateY(${wordY}px) scale(${0.8 + 0.2 * wordSpring})`,
+                }}
+              >
+                {word}
+              </span>
+            );
+          })}
         </div>
 
         <div
@@ -109,6 +105,7 @@ export const InterstitialCard: React.FC<InterstitialCardProps> = ({
             marginTop: 32,
             marginBottom: 32,
             opacity: accentOpacity,
+            transform: `scaleX(${accentOpacity})`,
           }}
         />
 
