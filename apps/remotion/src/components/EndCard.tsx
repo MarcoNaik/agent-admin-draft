@@ -1,46 +1,69 @@
 import React from "react";
 import { interpolate, spring, useVideoConfig } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../lib/dashboard-theme";
-import { fadeIn, slideUp } from "../lib/animations";
 import { useSectionFrame } from "../lib/SectionContext";
 
 export const EndCard: React.FC = () => {
   const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
-  const scale = spring({
+  const logoSpring = spring({
     frame,
     fps,
-    config: { damping: 80, stiffness: 150, mass: 0.5 },
+    config: { damping: 16, stiffness: 120, mass: 0.6 },
   });
+  const scale = 0.88 + 0.12 * logoSpring;
 
-  const opacity = interpolate(frame, [0, 20], [0, 1], {
+  const opacity = interpolate(frame, [0, 18], [0, 1], {
     extrapolateRight: "clamp",
   });
 
-  const taglineOpacity = fadeIn(frame, 15);
-  const taglineSlide = slideUp(frame, 15, 20);
-
-  const subtitleOpacity = interpolate(frame, [35, 55], [0, 1], {
-    extrapolateRight: "clamp",
+  const taglineSpring = spring({
+    frame: Math.max(0, frame - 12),
+    fps,
+    config: { damping: 14, stiffness: 220, mass: 0.35 },
   });
-  const subtitleSlide = interpolate(frame, [35, 60], [20, 0], {
-    extrapolateRight: "clamp",
+  const taglineOpacity = taglineSpring;
+  const taglineSlide = (1 - taglineSpring) * 30;
+
+  const dividerSpring = spring({
+    frame: Math.max(0, frame - 18),
+    fps,
+    config: { damping: 16, stiffness: 200, mass: 0.3 },
   });
 
-  const gradientPosition = interpolate(frame, [0, 120], [100, 0], {
+  const subtitleSpring = spring({
+    frame: Math.max(0, frame - 24),
+    fps,
+    config: { damping: 14, stiffness: 200, mass: 0.35 },
+  });
+  const subtitleOpacity = subtitleSpring;
+  const subtitleSlide = (1 - subtitleSpring) * 25;
+
+  const gradientPosition = interpolate(frame, [15, 100], [100, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const urlOpacity = interpolate(frame, [70, 90], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  const ctaSpring = spring({
+    frame: Math.max(0, frame - 5),
+    fps,
+    config: { damping: 10, stiffness: 200, mass: 0.4 },
   });
-  const urlSlide = interpolate(frame, [70, 90], [10, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  const ctaOpacity = ctaSpring;
+  const ctaSlide = (1 - ctaSpring) * 30;
+  const ctaPulse = frame > 55 ? 1 + 0.03 * Math.sin((frame - 55) * 0.12) : 1;
+  const ctaGlow = frame > 55
+    ? 0.15 + 0.1 * Math.sin((frame - 55) * 0.1)
+    : 0;
+
+  const urlSpring = spring({
+    frame: Math.max(0, frame - 50),
+    fps,
+    config: { damping: 14, stiffness: 180, mass: 0.35 },
   });
+  const urlOpacity = urlSpring;
+  const urlSlide = (1 - urlSpring) * 15;
 
   return (
     <div
@@ -144,6 +167,8 @@ export const EndCard: React.FC = () => {
             marginTop: 8,
             background: `linear-gradient(90deg, #D4A853 ${gradientPosition % 200}%, #1B4F72 ${(gradientPosition + 50) % 200}%, #2C7DA0 ${(gradientPosition + 100) % 200}%, #E8C468 ${(gradientPosition + 150) % 200}%, #D4A853 ${(gradientPosition + 200) % 200}%)`,
             backgroundSize: "200% 100%",
+            transform: `scaleX(${dividerSpring})`,
+            opacity: dividerSpring,
           }}
         />
 
@@ -160,6 +185,24 @@ export const EndCard: React.FC = () => {
         >
           Build, deploy, and manage AI agents at scale.
         </p>
+
+        <div
+          style={{
+            fontFamily: FONTS.sans,
+            fontSize: 22,
+            fontWeight: 600,
+            color: "#ffffff",
+            opacity: ctaOpacity,
+            transform: `translateY(${ctaSlide}px) scale(${ctaPulse})`,
+            marginTop: 16,
+            padding: "14px 40px",
+            background: "linear-gradient(135deg, #1B4F72, #2C7DA0)",
+            borderRadius: 10,
+            boxShadow: `0 4px 20px rgba(27, 79, 114, ${0.3 + ctaGlow}), 0 0 ${ctaGlow * 40}px rgba(44, 125, 160, ${ctaGlow})`,
+          }}
+        >
+          Start building for free
+        </div>
 
         <div
           style={{
