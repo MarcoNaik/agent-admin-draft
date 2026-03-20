@@ -177,11 +177,15 @@ export const listWithPreviews = query({
         participantName = thread.externalId
       }
 
-      const lastMessageDoc = await ctx.db
+      const recentMessages = await ctx.db
         .query("messages")
         .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
         .order("desc")
-        .first()
+        .take(10)
+
+      const lastMessageDoc = recentMessages.find(
+        (m) => m.role === "user" || (m.role === "assistant" && !m.toolCalls?.length)
+      ) ?? recentMessages[0]
 
       const lastMessage = lastMessageDoc
         ? { content: lastMessageDoc.content, role: lastMessageDoc.role, createdAt: lastMessageDoc.createdAt }

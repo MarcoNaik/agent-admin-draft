@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery, QueryCtx, MutationCtx } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 import { makeFunctionReference } from "convex/server"
-import { requireAuth, requireOrgAdmin } from "./lib/auth"
+import { requireAuth, requireOrgAdmin, isOrgAdmin } from "./lib/auth"
 import { calculateWhatsAppCost } from "./lib/whatsappPricing"
 
 const createKapsoSetupRef = makeFunctionReference<"action">("whatsappActions:createKapsoSetup")
@@ -964,15 +964,42 @@ export const getWhatsAppTimeline = query({
     if (!thread || thread.organizationId !== auth.organizationId) return []
     if (!thread.externalId?.startsWith("whatsapp:")) return []
 
+    const admin = await isOrgAdmin(ctx, auth)
+    if (!admin) {
+      const userRoles = await ctx.db
+        .query("userRoles")
+        .withIndex("by_user", (q: any) => q.eq("userId", auth.userId))
+        .collect()
+      const slugs = new Set<string>()
+      for (const ur of userRoles) {
+        const role = await ctx.db.get(ur.roleId)
+        if (role && role.environment === thread.environment && role.organizationId === auth.organizationId && (role as any).agentAccess) {
+          for (const slug of (role as any).agentAccess) slugs.add(slug)
+        }
+      }
+      if (slugs.size > 0) {
+        const agent = await ctx.db.get(thread.agentId)
+        if (!agent || !slugs.has(agent.slug)) return []
+      } else {
+        return []
+      }
+    }
+
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("asc")
-      .take(200)
+      .collect()
 
+    const seen = new Set<string>()
     const timeline = []
     for (const msg of messages) {
       if (msg.role === "system") continue
+      if (msg.externalMessageId) {
+        const dedupKey = `${msg.externalMessageId}:${msg.role}`
+        if (seen.has(dedupKey)) continue
+        seen.add(dedupKey)
+      }
       const cd = (msg.channelData ?? {}) as Record<string, unknown>
       let mediaUrl: string | null = null
       if (cd.mediaStorageId) {
@@ -991,6 +1018,7 @@ export const getWhatsAppTimeline = query({
         status: msg.status,
         createdAt: msg.createdAt,
         toolCalls: msg.toolCalls,
+        toolCallId: msg.toolCallId,
         role: msg.role,
       })
     }

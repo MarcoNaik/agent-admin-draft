@@ -358,9 +358,10 @@ type TimelineEntry = {
   mediaCaption?: string
   mediaFileName?: string
   interactiveData?: any
-  status: string
+  status?: string
   createdAt: number
   toolCalls?: Array<{ id: string; name: string; arguments: unknown }>
+  toolCallId?: string
   role?: string
 }
 
@@ -943,6 +944,7 @@ function ThreadView({
                 status: m.status ?? (m.role === "user" ? "received" : "sent"),
                 createdAt: m.createdAt,
                 toolCalls: m.toolCalls,
+                toolCallId: m.toolCallId,
                 role: m.role,
               }))
 
@@ -954,14 +956,22 @@ function ThreadView({
             )
           }
 
+          const allItemsForToolLookup = items.map((e: TimelineEntry) => ({
+            _id: e.id,
+            role: e.role ?? "user",
+            content: e.text ?? "",
+            toolCalls: e.toolCalls,
+            toolCallId: e.toolCallId,
+          }))
+
           return items.map((entry: TimelineEntry) => {
             if (entry.role === "tool") {
               return (
                 <ToolResultBubble
                   key={entry.id}
-                  toolCallId=""
+                  toolCallId={entry.toolCallId ?? ""}
                   content={entry.text ?? ""}
-                  allMessages={visibleMessages}
+                  allMessages={allItemsForToolLookup}
                 />
               )
             }

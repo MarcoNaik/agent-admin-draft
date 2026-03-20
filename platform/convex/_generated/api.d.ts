@@ -66,6 +66,8 @@ import type * as migrations_cleanupAllWhatsApp from "../migrations/cleanupAllWha
 import type * as migrations_clearStaleReservations from "../migrations/clearStaleReservations.js";
 import type * as migrations_debugTemplateOnly from "../migrations/debugTemplateOnly.js";
 import type * as migrations_debugTemplates from "../migrations/debugTemplates.js";
+import type * as migrations_debugThread from "../migrations/debugThread.js";
+import type * as migrations_dedupBackfilledMessages from "../migrations/dedupBackfilledMessages.js";
 import type * as migrations_deleteBaileysConnections from "../migrations/deleteBaileysConnections.js";
 import type * as migrations_initReservedCredits from "../migrations/initReservedCredits.js";
 import type * as migrations_migrateOwnedTemplates from "../migrations/migrateOwnedTemplates.js";
@@ -164,6 +166,8 @@ declare const fullApi: ApiFromModules<{
   "migrations/clearStaleReservations": typeof migrations_clearStaleReservations;
   "migrations/debugTemplateOnly": typeof migrations_debugTemplateOnly;
   "migrations/debugTemplates": typeof migrations_debugTemplates;
+  "migrations/debugThread": typeof migrations_debugThread;
+  "migrations/dedupBackfilledMessages": typeof migrations_dedupBackfilledMessages;
   "migrations/deleteBaileysConnections": typeof migrations_deleteBaileysConnections;
   "migrations/initReservedCredits": typeof migrations_initReservedCredits;
   "migrations/migrateOwnedTemplates": typeof migrations_migrateOwnedTemplates;
