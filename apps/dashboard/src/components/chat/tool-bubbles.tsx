@@ -81,8 +81,8 @@ export function ToolResultBubble({
         </button>
       </div>
       {expanded && (
-        <pre className="mt-2 text-xs bg-background-tertiary rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
-          {truncateText(parsed, 500)}
+        <pre className="mt-2 text-xs bg-background-tertiary rounded p-2 overflow-x-auto max-h-96 overflow-y-auto">
+          {parsed}
         </pre>
       )}
     </div>
