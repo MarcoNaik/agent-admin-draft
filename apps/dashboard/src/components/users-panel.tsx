@@ -462,7 +462,7 @@ export function UsersPanel({ permissions }: { permissions: UserPermissions }) {
             <h1 className="text-xl font-display font-semibold text-content-primary">Users</h1>
             <p className="text-sm text-content-secondary">Manage team members and their roles</p>
           </div>
-          {permissions.isAdmin && (
+          {permissions.canCreate && (
             <Button onClick={() => setInviteOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
               Invite User
@@ -472,7 +472,7 @@ export function UsersPanel({ permissions }: { permissions: UserPermissions }) {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-        <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+        <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} isAdmin={permissions.isAdmin} />
       </div>
     )
   }
@@ -486,7 +486,7 @@ export function UsersPanel({ permissions }: { permissions: UserPermissions }) {
           <h1 className="text-xl font-display font-semibold text-content-primary">Users</h1>
           <p className="text-sm text-content-secondary">Manage team members and their roles</p>
         </div>
-        {permissions.isAdmin && (
+        {permissions.canCreate && (
           <Button onClick={() => setInviteOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Invite User
@@ -534,7 +534,7 @@ export function UsersPanel({ permissions }: { permissions: UserPermissions }) {
         </CardContent>
       </Card>
 
-      <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} roles={assignableRoles} environment={environment} />
+      <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} roles={assignableRoles} environment={environment} isAdmin={permissions.isAdmin} />
     </div>
   )
 }
