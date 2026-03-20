@@ -1,47 +1,41 @@
-import { v } from "convex/values"
-import { internalQuery } from "../_generated/server"
+"use node"
 
-export const inspect = internalQuery({
-  args: { phoneNumber: v.string() },
+import { v } from "convex/values"
+import { internalAction } from "../_generated/server"
+import { makeFunctionReference } from "convex/server"
+
+const allConnectionsRef = makeFunctionReference<"query">("migrations/syncKapsoTemplatesHelper:allConnections")
+
+export const inspectContacts = internalAction({
+  args: {},
   returns: v.any(),
-  handler: async (ctx, args) => {
-    const allThreads = await ctx.db.query("threads").collect()
-    const matchingThreads = allThreads.filter((t) =>
-      t.externalId?.includes(args.phoneNumber)
-    )
+  handler: async (ctx) => {
+    const apiKey = process.env.KAPSO_API_KEY
+    if (!apiKey) return { error: "KAPSO_API_KEY not set" }
+
+    const connections = await ctx.runQuery(allConnectionsRef, {}) as any[]
 
     const results = []
-    for (const thread of matchingThreads) {
-      const messages = await ctx.db
-        .query("messages")
-        .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
-        .order("asc")
-        .collect()
-
-      const summary = messages.map((m) => ({
-        id: m._id,
-        role: m.role,
-        content: m.content?.substring(0, 80),
-        direction: m.direction,
-        status: m.status,
-        externalMessageId: m.externalMessageId,
-        hasChannelData: !!m.channelData,
-        hasToolCalls: !!m.toolCalls?.length,
-        toolCallId: m.toolCallId,
-        createdAt: m.createdAt,
-      }))
+    for (const conn of connections) {
+      const url = `https://api.kapso.ai/meta/whatsapp/v24.0/${conn.kapsoPhoneNumberId}/contacts?limit=50`
+      const response = await fetch(url, {
+        headers: { "X-API-Key": apiKey },
+      })
+      const data = await response.json() as any
 
       results.push({
-        threadId: thread._id,
-        externalId: thread.externalId,
-        channel: thread.channel,
-        environment: thread.environment,
-        agentId: thread.agentId,
-        totalMessages: messages.length,
-        messages: summary,
+        connectionId: conn._id,
+        phoneNumber: conn.phoneNumber,
+        kapsoPhoneNumberId: conn.kapsoPhoneNumberId,
+        environment: conn.environment,
+        contacts: (data.data || []).map((c: any) => ({
+          wa_id: c.wa_id,
+          profile_name: c.profile_name,
+        })),
+        error: data.error,
       })
     }
 
-    return { threadCount: results.length, threads: results }
+    return results
   },
 })
