@@ -1,6 +1,10 @@
-"use client"
-
+import type { Metadata } from "next"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "Terms of Service — Struere",
+  description: "Terms and conditions for using the Struere platform.",
+}
 
 export default function TermsOfService() {
   return (
@@ -34,7 +38,7 @@ export default function TermsOfService() {
 
         <h1 className="text-sm tracking-tight mb-2">Terms of Service</h1>
         <p className="text-[10px] tracking-wider opacity-50 mb-16">
-          Last updated: February 15, 2026
+          Last updated: March 20, 2026
         </p>
 
         <div className="space-y-12">
@@ -165,11 +169,32 @@ export default function TermsOfService() {
           <Section title="7. Third-Party Services">
             <p>
               The Service integrates with third-party providers including
-              Anthropic (AI models), Clerk (authentication), Convex (database),
-              Fly.io (tool execution), and Flow (payments). Your use of
-              these services through our platform is subject to their respective
-              terms. We are not liable for outages or changes in third-party
-              services.
+              Google (Calendar API), Anthropic (AI models), Clerk
+              (authentication), Convex (database), Fly.io (tool execution),
+              and Flow (payments). Your use of these services through our
+              platform is subject to their respective terms. We are not liable
+              for outages or changes in third-party services.
+            </p>
+          </Section>
+
+          <Section title="7a. Google API Services">
+            <p>
+              When you connect Google Calendar through the Service, you
+              authorize Struere to access your Google Calendar data via
+              OAuth 2.0. Struere&rsquo;s use and transfer of information
+              received from Google APIs to any other app adheres to the{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+                style={{ color: "#1B4332" }}
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements. You may revoke access
+              at any time through the Struere dashboard or your Google Account
+              permissions.
             </p>
           </Section>
 
