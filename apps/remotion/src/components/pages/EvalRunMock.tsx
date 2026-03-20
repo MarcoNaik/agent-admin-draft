@@ -1,7 +1,7 @@
 import React from "react";
 import { useVideoConfig, spring, interpolate } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
-import { pulsingDot, glowPulse } from "../../lib/animations";
+import { pulsingDot, glowPulse, animatedCounter } from "../../lib/animations";
 import { PassRateMeter } from "../visualizations/PassRateMeter";
 import { WarningFlash } from "../effects/WarningFlash";
 import { useSectionFrame } from "../../lib/SectionContext";
@@ -210,10 +210,11 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
     const nameSpring = spring({
       frame: frame - nameFrame,
       fps: 30,
-      config: { damping: 12, stiffness: 200, mass: 0.4 },
+      config: { damping: 10, stiffness: 350, mass: 0.25 },
     });
-    const animOpacity = Math.min(1, nameSpring * 2);
-    const animTranslateY = (1 - nameSpring) * 12;
+    const animOpacity = Math.min(1, nameSpring * 3);
+    const animTranslateY = (1 - nameSpring) * 24;
+    const animScale = 0.92 + 0.08 * nameSpring;
 
     const pass = allPass ? true : c.pass;
     const showResult = resultVisible;
@@ -232,11 +233,23 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
       ? spring({
           frame: frame - resultFrame,
           fps: 30,
-          config: { damping: 10, stiffness: 180, mass: 0.3 },
+          config: { damping: 8, stiffness: 400, mass: 0.2 },
         })
       : 0;
-    const resultScale = showResult ? interpolate(resultSpring, [0, 1], [0.5, 1]) : 1;
-    const resultOpacity = showResult ? Math.min(1, resultSpring * 2) : 0;
+    const resultScale = showResult ? interpolate(resultSpring, [0, 1], [0, 1.15]) : 1;
+    const resultSettleScale = showResult && resultSpring > 0.85
+      ? spring({
+          frame: Math.max(0, frame - resultFrame - 4),
+          fps: 30,
+          config: { damping: 15, stiffness: 300, mass: 0.3 },
+        })
+      : 0;
+    const finalResultScale = showResult
+      ? resultSpring > 0.85
+        ? 1 + 0.15 * (1 - resultSettleScale)
+        : resultScale
+      : 1;
+    const resultOpacity = showResult ? Math.min(1, resultSpring * 4) : 0;
 
     const showFailDetail =
       showResult &&
@@ -247,7 +260,7 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
       c.expected !== undefined;
 
     return (
-      <div key={`${index}-${allPass}`} style={{ opacity: animOpacity, transform: `translateY(${animTranslateY}px) translateX(${impactShake}px) scale(${impactScale})` }}>
+      <div key={`${index}-${allPass}`} style={{ opacity: animOpacity, transform: `translateY(${animTranslateY}px) translateX(${impactShake}px) scale(${impactScale * animScale})` }}>
         <div
           style={{
             display: "flex",
@@ -272,9 +285,9 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
               color: !showResult
                 ? DASHBOARD.contentTertiary
                 : pass
-                  ? "#22c55e"
-                  : "#ef4444",
-              transform: showResult ? `scale(${resultScale})` : undefined,
+                  ? DASHBOARD.success
+                  : DASHBOARD.destructive,
+              transform: showResult ? `scale(${finalResultScale})` : undefined,
               opacity: showResult ? resultOpacity : 0.5,
             }}
           >
@@ -377,14 +390,33 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
     : "--";
   const run1Duration = allChecked ? "12.4s" : "--";
 
-  const celebrationGlow = rerunAllStreamed
-    ? glowPulse(frame, rerunStartFrame! + cases.length * (rerunSpeed ?? streamSpeed), 2, 30)
+  const rerunCompletionFrame = rerunStartFrame !== undefined
+    ? rerunStartFrame + cases.length * (rerunSpeed ?? streamSpeed)
     : 0;
+  const celebrationTrigger = rerunCompletionFrame + 5;
+
+  const celebrationGlow = rerunAllStreamed
+    ? glowPulse(frame, celebrationTrigger, 2, 30)
+    : 0;
+
+  const celebrationScaleBounce = rerunAllStreamed
+    ? (() => {
+        const s = spring({
+          frame: Math.max(0, frame - celebrationTrigger),
+          fps,
+          config: { damping: 8, stiffness: 300, mass: 0.4 },
+        });
+        return 1 + 0.08 * Math.sin(s * Math.PI);
+      })()
+    : 1;
 
   const rerunPassRate = rerunAllStreamed
     ? `${cases.length}/${cases.length}`
     : `${rerunVisibleCount}/${rerunVisibleCount}`;
-  const rerunScore = rerunAllStreamed ? "100%" : "--";
+  const rerunAnimatedScore = rerunAllStreamed
+    ? `${animatedCounter(frame, celebrationTrigger, celebrationTrigger + 15, 95, 100)}%`
+    : "--";
+  const rerunScore = rerunAnimatedScore;
   const rerunDuration = rerunAllStreamed ? "8.2s" : "--";
 
   const run1SettleFrame = streamStartFrame + cases.length * streamSpeed;
@@ -411,6 +443,12 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
           top: 24,
           right: 24,
           zIndex: 10,
+          transform: `scale(${celebrationScaleBounce})`,
+          boxShadow: celebrationGlow > 0
+            ? `0 0 ${celebrationGlow * 24}px rgba(34, 197, 94, ${celebrationGlow * 0.4})`
+            : "none",
+          borderRadius: "50%",
+          backgroundColor: DASHBOARD.backgroundPrimary,
         }}
       >
         <PassRateMeter
@@ -484,71 +522,6 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
             {tab}
           </div>
         ))}
-      </div>
-
-      <div
-        style={{
-          marginTop: 16,
-          backgroundColor: DASHBOARD.backgroundSecondary,
-          border: `1px solid ${DASHBOARD.border}`,
-          borderRadius: 8,
-          overflow: "hidden",
-          boxShadow: celebrationGlow > 0 ? `0 0 ${celebrationGlow * 20}px rgba(34, 197, 94, ${celebrationGlow * 0.3})` : "none",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            height: 44,
-            padding: "0 16px",
-            borderBottom: `1px solid ${DASHBOARD.border}`,
-            backgroundColor: DASHBOARD.backgroundSecondary,
-          }}
-        >
-          {["Status", "Suite", "Started", "Pass Rate", "Score", "Duration"].map(
-            (header) => (
-              <div
-                key={header}
-                style={{
-                  width:
-                    header === "Suite"
-                      ? undefined
-                      : header === "Status"
-                        ? 80
-                        : header === "Started"
-                          ? 100
-                          : 80,
-                  flex: header === "Suite" ? 1 : undefined,
-                  fontSize: 12,
-                  color: DASHBOARD.contentTertiary,
-                  textTransform: "uppercase" as const,
-                  letterSpacing: 0.5,
-                  fontFamily: FONTS.sans,
-                }}
-              >
-                {header}
-              </div>
-            )
-          )}
-        </div>
-
-        {renderTableRow(
-          run1Status,
-          animatedRun1PassRate,
-          run1Score,
-          run1Duration,
-          run1Status === "done" && failCount === 0
-        )}
-
-        {isRerunning &&
-          renderTableRow(
-            run2Status!,
-            animatedRerunPassRate,
-            rerunScore,
-            rerunDuration,
-            rerunAllStreamed
-          )}
       </div>
 
       {frame >= namesStartFrame && (
