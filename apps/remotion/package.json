@@ -8,18 +8,23 @@
     "preview": "remotion preview"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.5.0",
     "@remotion/bundler": "^4.0.0",
     "@remotion/cli": "^4.0.0",
+    "@remotion/studio": "4.0.436",
+    "@remotion/three": "4.0.438",
     "@remotion/transitions": "^4.0.436",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "@types/three": "^0.183.1",
+    "react": "19",
+    "react-dom": "19",
     "remotion": "^4.0.0",
-    "tailwindcss": "^4.0.0"
+    "tailwindcss": "^4.0.0",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
+    "@types/react": "19",
+    "@types/react-dom": "19",
     "autoprefixer": "^10.0.0",
     "postcss": "^8.0.0",
     "typescript": "^5.0.0"
