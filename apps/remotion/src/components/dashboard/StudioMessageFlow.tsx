@@ -1,7 +1,7 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig } from "remotion";
 import { feedIn, typewriter, pulsingDot } from "../../lib/animations";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 export type TimelineItem =
   | { type: "user"; startFrame: number; text: string }
@@ -348,7 +348,7 @@ function AssistantMessage({
 }
 
 export const StudioMessageFlow: React.FC<StudioMessageFlowProps> = ({ timeline }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
 
   const visibleItems = timeline.filter((item) => frame >= item.startFrame);
   const scrollOffset = visibleItems.length > 6 ? (visibleItems.length - 6) * 40 : 0;

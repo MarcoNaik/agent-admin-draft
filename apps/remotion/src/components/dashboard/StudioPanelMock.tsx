@@ -1,7 +1,7 @@
 import React from "react";
-import { useCurrentFrame } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import { StudioProgressBar } from "./StudioProgressBar";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface StudioPanelMockProps {
   children?: React.ReactNode;
@@ -16,7 +16,7 @@ export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
   inputText,
   progressActive = false,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const activeGlow = Math.abs(Math.sin((frame / 25) * Math.PI)) * 0.6 + 0.4;
   return (
     <div

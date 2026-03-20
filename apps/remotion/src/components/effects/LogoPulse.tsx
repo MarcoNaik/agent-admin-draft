@@ -1,9 +1,10 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
+import { useVideoConfig, spring, interpolate } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 export const LogoPulse: React.FC = () => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const scale = spring({

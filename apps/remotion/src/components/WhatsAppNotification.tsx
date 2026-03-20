@@ -1,6 +1,7 @@
 import React from "react";
-import { useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
+import { interpolate, spring, useVideoConfig } from "remotion";
 import { fadeIn } from "../lib/animations";
+import { useSectionFrame } from "../lib/SectionContext";
 
 interface WhatsAppNotificationProps {
   message: string;
@@ -13,7 +14,7 @@ export const WhatsAppNotification: React.FC<WhatsAppNotificationProps> = ({
   sender,
   dimBackground = false,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const phoneSlide = spring({

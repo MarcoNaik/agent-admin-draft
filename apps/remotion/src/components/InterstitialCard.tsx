@@ -1,38 +1,42 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import { spring, useVideoConfig } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../lib/dashboard-theme";
-import { fadeIn, fadeOut, slideUp, springScale } from "../lib/animations";
+import { fadeIn, slideUp, springScale } from "../lib/animations";
+import { useSectionFrame } from "../lib/SectionContext";
 
 interface InterstitialCardProps {
   headline: string;
   subtext: string;
   accentColor?: string;
+  variant?: 1 | 2 | 3 | 4;
 }
 
 export const InterstitialCard: React.FC<InterstitialCardProps> = ({
   headline,
   subtext,
   accentColor = LANDING_LIGHT.ocean,
+  variant,
 }) => {
-  const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+  const frame = useSectionFrame();
+  const { fps } = useVideoConfig();
 
-  const enterOpacity = interpolate(frame, [0, 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  const springProgress = spring({
+    frame,
+    fps,
+    config: { damping: 14, stiffness: 180, mass: 0.5 },
   });
 
-  const exitOpacity = interpolate(
-    frame,
-    [durationInFrames - 15, durationInFrames],
-    [1, 0],
-    {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    },
-  );
-
-  const opacity = Math.min(enterOpacity, exitOpacity);
+  const remaining = 1 - springProgress;
+  let contentTransform = "none";
+  if (variant === 1) {
+    contentTransform = `rotateX(${-15 * remaining}deg) translateZ(${-100 * remaining}px)`;
+  } else if (variant === 2) {
+    contentTransform = `rotateY(${12 * remaining}deg) translateZ(${-80 * remaining}px)`;
+  } else if (variant === 3) {
+    contentTransform = `translateZ(${-200 * remaining}px) scale(${0.7 + 0.3 * springProgress})`;
+  } else if (variant === 4) {
+    contentTransform = `rotateY(${-8 * remaining}deg) rotateX(${5 * remaining}deg) translateZ(${-60 * remaining}px)`;
+  }
 
   const headlineScale = springScale(frame, fps, {
     damping: 14,
@@ -57,7 +61,8 @@ export const InterstitialCard: React.FC<InterstitialCardProps> = ({
         background: LANDING_LIGHT.stoneBase,
         position: "relative",
         overflow: "hidden",
-        opacity,
+        opacity: 1,
+        perspective: 1200,
       }}
     >
       <div
@@ -76,6 +81,8 @@ export const InterstitialCard: React.FC<InterstitialCardProps> = ({
           flexDirection: "column",
           alignItems: "center",
           gap: 0,
+          transformStyle: "preserve-3d" as const,
+          transform: contentTransform,
         }}
       >
         <div

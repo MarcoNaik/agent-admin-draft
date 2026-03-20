@@ -1,5 +1,6 @@
 import React from "react";
-import { useCurrentFrame, interpolate } from "remotion";
+import { interpolate } from "remotion";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface WarningFlashProps {
   triggerFrame: number;
@@ -7,7 +8,7 @@ interface WarningFlashProps {
 }
 
 export const WarningFlash: React.FC<WarningFlashProps> = ({ triggerFrame, children }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
 
   const flashOpacity = interpolate(
     frame,

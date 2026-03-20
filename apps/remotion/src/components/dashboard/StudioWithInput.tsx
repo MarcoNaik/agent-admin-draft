@@ -1,7 +1,7 @@
 import React from "react";
-import { useCurrentFrame } from "remotion";
 import { StudioPanelMock } from "./StudioPanelMock";
 import { StudioMessageFlow, type TimelineItem } from "./StudioMessageFlow";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface StudioWithInputProps {
   promptText: string;
@@ -18,7 +18,7 @@ export const StudioWithInput: React.FC<StudioWithInputProps> = ({
   sendFrame,
   timeline,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
 
   const typingFrame = Math.max(0, frame - promptStartFrame);
   const typedChars = Math.floor(typingFrame / promptSpeed);

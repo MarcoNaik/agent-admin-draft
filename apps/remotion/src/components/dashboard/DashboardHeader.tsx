@@ -1,6 +1,7 @@
 import React from "react";
-import { useCurrentFrame, interpolate } from "remotion";
+import { interpolate } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface DashboardHeaderProps {
   activeTab?: "system" | "data" | "chats";
@@ -19,7 +20,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   studioOpen = false,
   environment = "development",
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const sweepWidth = environment === "production"
     ? interpolate(frame, [0, 15], [0, 100], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
     : 0;

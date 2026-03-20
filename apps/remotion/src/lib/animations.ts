@@ -173,3 +173,70 @@ export function glowPulse(
   const decay = 1 - progress;
   return Math.abs(Math.sin(progress * Math.PI * pulses)) * decay;
 }
+
+export function sectionOpacity(
+  globalFrame: number,
+  enterStart: number,
+  enterEnd: number,
+  exitStart: number,
+  exitEnd: number,
+): number {
+  const enterOp = enterStart === enterEnd
+    ? 1
+    : interpolate(globalFrame, [enterStart, enterEnd], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
+  const exitOp = exitStart === exitEnd
+    ? 1
+    : interpolate(globalFrame, [exitStart, exitEnd], [1, 0], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
+  return Math.min(enterOp, exitOp);
+}
+
+export function scaleTransition(
+  globalFrame: number,
+  startFrame: number,
+  endFrame: number,
+  fromScale: number,
+  toScale: number,
+): number {
+  const progress = interpolate(globalFrame, [startFrame, endFrame], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  return fromScale + (toScale - fromScale) * easeOutSoft(progress);
+}
+
+export function sceneTransform3D(
+  globalFrame: number,
+  startFrame: number,
+  endFrame: number,
+  type: "push" | "pull" | "turnLeft" | "turnRight" | "tiltUp" | "crane" | "deepPush",
+): string {
+  const progress = interpolate(globalFrame, [startFrame, endFrame], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const t = easeOutSoft(progress);
+  const r = 1 - t;
+
+  switch (type) {
+    case "push":
+      return `translateZ(${-300 * r}px) rotateX(${2 * r}deg)`;
+    case "turnLeft":
+      return `rotateY(${8 * r}deg) translateZ(${-150 * r}px)`;
+    case "turnRight":
+      return `rotateY(${-8 * r}deg) translateZ(${-150 * r}px)`;
+    case "pull":
+      return `translateZ(${200 * r}px) scale(${1 + 0.1 * r})`;
+    case "tiltUp":
+      return `rotateX(${-6 * r}deg) translateZ(${-100 * r}px)`;
+    case "crane":
+      return `rotateX(${4 * r}deg) rotateY(${-3 * r}deg) translateZ(${-200 * r}px)`;
+    case "deepPush":
+      return `translateZ(${-400 * r}px)`;
+  }
+}

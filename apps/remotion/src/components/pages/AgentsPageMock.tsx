@@ -1,8 +1,8 @@
 import React from "react";
-import { useCurrentFrame } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import { feedIn, highlightNew } from "../../lib/animations";
 import { ParticleAssembly } from "../effects/ParticleAssembly";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface AgentsPageMockProps {
   agents: Array<{ name: string; description: string; status: "active" | "inactive" }>;
@@ -15,7 +15,7 @@ export const AgentsPageMock: React.FC<AgentsPageMockProps> = ({
   highlightIndex,
   showAt,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
 
   return (
     <div

@@ -1,9 +1,10 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
+import { useVideoConfig, spring, interpolate } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import { pulsingDot, glowPulse } from "../../lib/animations";
 import { PassRateMeter } from "../visualizations/PassRateMeter";
 import { WarningFlash } from "../effects/WarningFlash";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 function odometerValue(frame: number, targetStr: string, settleFrame: number): string {
   if (frame >= settleFrame + 10) return targetStr;
@@ -49,7 +50,7 @@ export const EvalRunMock: React.FC<EvalRunMockProps> = ({
   rerunStartFrame,
   rerunSpeed,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const namesSpeed = 2;

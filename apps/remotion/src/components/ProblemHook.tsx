@@ -1,32 +1,27 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import { interpolate } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../lib/dashboard-theme";
-import { fadeIn, slideUp, springScale } from "../lib/animations";
+import { fadeIn } from "../lib/animations";
+import { useSectionFrame, useSectionDuration } from "../lib/SectionContext";
 
 export const ProblemHook: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+  const frame = useSectionFrame();
+  const durationInFrames = useSectionDuration();
 
-  const exitOpacity = interpolate(
+  const exitStart = durationInFrames - 12;
+  const exitProgress = interpolate(
     frame,
-    [durationInFrames - 15, durationInFrames],
-    [1, 0],
+    [exitStart, durationInFrames],
+    [0, 1],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
 
-  const line1Opacity = fadeIn(frame, 0);
-  const line1Slide = slideUp(frame, 0);
-  const line1Scale = springScale(frame, fps, {
-    damping: 14,
-    stiffness: 180,
-    mass: 0.5,
-  });
+  const exitOpacity = 1 - exitProgress;
+  const exitScale = 1 + exitProgress * 3;
+  const exitBlur = exitProgress * 20;
 
-  const line2Opacity = fadeIn(frame, 20);
-  const line2Slide = slideUp(frame, 20);
-
-  const line3Opacity = fadeIn(frame, 40);
-  const line3Slide = slideUp(frame, 40);
+  const line1Opacity = fadeIn(frame, 0, 8);
+  const line2Opacity = fadeIn(frame, 24, 8);
 
   return (
     <div
@@ -59,6 +54,8 @@ export const ProblemHook: React.FC = () => {
           flexDirection: "column",
           alignItems: "center",
           gap: 24,
+          transform: `scale(${exitScale})`,
+          filter: exitBlur > 0 ? `blur(${exitBlur}px)` : "none",
         }}
       >
         <div
@@ -68,24 +65,10 @@ export const ProblemHook: React.FC = () => {
             fontWeight: 500,
             color: "#574F45",
             opacity: line1Opacity,
-            transform: `translateY(${line1Slide}px) scale(${line1Scale})`,
             textAlign: "center",
           }}
         >
-          You hired 3 developers to build a booking bot.
-        </div>
-        <div
-          style={{
-            fontFamily: FONTS.sans,
-            fontSize: 42,
-            fontWeight: 500,
-            color: "#574F45",
-            opacity: line2Opacity,
-            transform: `translateY(${line2Slide}px)`,
-            textAlign: "center",
-          }}
-        >
-          It took 4 months.
+          Automating your business takes months.
         </div>
         <div
           style={{
@@ -93,13 +76,12 @@ export const ProblemHook: React.FC = () => {
             fontSize: 72,
             fontWeight: 600,
             color: "#1A1815",
-            opacity: line3Opacity,
-            transform: `translateY(${line3Slide}px)`,
+            opacity: line2Opacity,
             textAlign: "center",
             maxWidth: 1200,
           }}
         >
-          What if it took 4 minutes?
+          What if it took minutes?
         </div>
       </div>
     </div>

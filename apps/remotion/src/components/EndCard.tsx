@@ -1,10 +1,11 @@
 import React from "react";
-import { useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
+import { interpolate, spring, useVideoConfig } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../lib/dashboard-theme";
 import { fadeIn, slideUp } from "../lib/animations";
+import { useSectionFrame } from "../lib/SectionContext";
 
 export const EndCard: React.FC = () => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const scale = spring({

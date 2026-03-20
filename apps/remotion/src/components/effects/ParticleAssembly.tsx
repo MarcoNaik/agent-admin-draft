@@ -1,6 +1,7 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
+import { useVideoConfig, interpolate, spring } from "remotion";
 import { DASHBOARD } from "../../lib/dashboard-theme";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface ParticleAssemblyProps {
   triggerFrame: number;
@@ -30,7 +31,7 @@ export const ParticleAssembly: React.FC<ParticleAssemblyProps> = ({
   triggerFrame,
   children,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const convergenceFrame = triggerFrame + 20;

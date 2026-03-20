@@ -1,13 +1,14 @@
 import React from "react";
-import { useCurrentFrame, interpolate } from "remotion";
+import { interpolate } from "remotion";
 import { DASHBOARD } from "../../lib/dashboard-theme";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface StudioProgressBarProps {
   active: boolean;
 }
 
 export const StudioProgressBar: React.FC<StudioProgressBarProps> = ({ active }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
 
   if (!active) return <div style={{ height: 2 }} />;
 

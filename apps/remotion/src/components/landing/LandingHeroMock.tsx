@@ -1,7 +1,8 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import { useVideoConfig, interpolate } from "remotion";
 import { FONTS, LANDING_LIGHT } from "../../lib/dashboard-theme";
 import { fadeIn, slideUp, blinkingCursor } from "../../lib/animations";
+import { useSectionFrame } from "../../lib/SectionContext";
 
 interface Suggestion {
   label: string;
@@ -19,7 +20,7 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
   tagline,
   suggestions,
 }) => {
-  const frame = useCurrentFrame();
+  const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const headlineOpacity = fadeIn(frame, 0, 15);
@@ -68,11 +69,17 @@ export const LandingHeroMock: React.FC<LandingHeroMockProps> = ({
 
   const currentItem = isCycling ? CYCLE_ITEMS[cycleIndex] : CYCLE_ITEMS[totalCycles - 1];
 
+  const isLastCycle = isCycling && cycleIndex === totalCycles - 1;
   const itemOpacity = isCycling
-    ? interpolate(cycleLocalFrame, [0, 4, cycleDuration - 4, cycleDuration], [0, 1, 1, 0], {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-      })
+    ? isLastCycle
+      ? interpolate(cycleLocalFrame, [0, 4], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+      : interpolate(cycleLocalFrame, [0, 4, cycleDuration - 4, cycleDuration], [0, 1, 1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
     : 1;
 
   const cursorOpacity = (isTyping || isCycling) ? blinkingCursor(frame, fps) : 0;
