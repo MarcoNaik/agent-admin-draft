@@ -1,4 +1,5 @@
 import React from "react";
+import { spring, interpolate } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import { StudioProgressBar } from "./StudioProgressBar";
 import { useSectionFrame } from "../../lib/SectionContext";
@@ -8,6 +9,8 @@ interface StudioPanelMockProps {
   showSendButton?: boolean;
   inputText?: string;
   progressActive?: boolean;
+  enterFrame?: number;
+  skipEntrance?: boolean;
 }
 
 export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
@@ -15,9 +18,29 @@ export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
   showSendButton = false,
   inputText,
   progressActive = false,
+  enterFrame = 0,
+  skipEntrance = false,
 }) => {
   const frame = useSectionFrame();
   const activeGlow = Math.abs(Math.sin((frame / 25) * Math.PI)) * 0.6 + 0.4;
+
+  const panelLocalFrame = Math.max(0, frame - enterFrame);
+  const panelSpring = skipEntrance ? 1 : spring({
+    frame: panelLocalFrame,
+    fps: 30,
+    config: { damping: 14, stiffness: 180, mass: 0.5 },
+  });
+  const panelSlideX = (1 - panelSpring) * 480;
+  const panelOpacity = skipEntrance ? 1 : interpolate(panelLocalFrame, [0, 8], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const hasInput = !!inputText;
+  const inputBorderColor = hasInput ? DASHBOARD.oceanLight : DASHBOARD.border;
+  const inputGlow = hasInput
+    ? `0 0 0 2px rgba(44, 125, 160, ${0.15 + 0.1 * Math.sin((frame / 20) * Math.PI * 2)})`
+    : "none";
   return (
     <div
       style={{
@@ -26,6 +49,8 @@ export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
         display: "flex",
         flexDirection: "column",
         fontFamily: FONTS.sans,
+        transform: `translateX(${panelSlideX}px)`,
+        opacity: panelOpacity,
       }}
     >
       <StudioProgressBar active={progressActive} />
@@ -55,8 +80,8 @@ export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
               width: 8,
               height: 8,
               borderRadius: "50%",
-              backgroundColor: "#22c55e",
-              boxShadow: `0 0 ${activeGlow * 8}px rgba(34,197,94,${activeGlow * 0.5})`,
+              backgroundColor: DASHBOARD.success,
+              boxShadow: `0 0 ${activeGlow * 8}px rgba(34,163,82,${activeGlow * 0.5})`,
             }}
           />
           <span
@@ -127,13 +152,15 @@ export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
             flex: 1,
             minHeight: 40,
             backgroundColor: DASHBOARD.backgroundTertiary,
-            border: `1px solid ${DASHBOARD.border}`,
+            border: `1px solid ${inputBorderColor}`,
             borderRadius: 8,
             padding: "8px 12px",
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
             gap: 8,
+            boxShadow: inputGlow,
+            transition: "border-color 0.2s, box-shadow 0.2s",
           }}
         >
           <span
@@ -162,6 +189,8 @@ export const StudioPanelMock: React.FC<StudioPanelMockProps> = ({
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                transform: `scale(${spring({ frame: Math.max(0, frame), fps: 30, config: { damping: 8, stiffness: 400, mass: 0.2 } })})`,
+                boxShadow: `0 0 12px rgba(27, 79, 114, 0.4)`,
               }}
             >
               <span
