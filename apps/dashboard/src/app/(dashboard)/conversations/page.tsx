@@ -1278,7 +1278,7 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col bg-background min-w-0">
+      <main className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
         {!selectedThreadId ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <MessageSquare className="h-16 w-16 text-content-tertiary mb-4" />
