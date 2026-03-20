@@ -77,17 +77,22 @@ export function staggeredAppear(
 export function feedIn(
   frame: number,
   startFrame: number,
-): { opacity: number; translateY: number } {
+): { opacity: number; translateY: number; translateX: number; scale: number } {
+  const localFrame = Math.max(0, frame - startFrame);
   const duration = 10;
   const opacity = interpolate(frame, [startFrame, startFrame + duration], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const translateY = interpolate(frame, [startFrame, startFrame + duration], [20, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  const springVal = spring({
+    frame: localFrame,
+    fps: 30,
+    config: { damping: 11, stiffness: 260, mass: 0.35 },
   });
-  return { opacity, translateY };
+  const translateX = (1 - springVal) * 120;
+  const translateY = (1 - springVal) * 8;
+  const scale = 0.85 + 0.15 * springVal;
+  return { opacity, translateY, translateX, scale };
 }
 
 export function highlightNew(frame: number, startFrame: number): number {
@@ -239,4 +244,68 @@ export function sceneTransform3D(
     case "deepPush":
       return `translateZ(${-400 * r}px)`;
   }
+}
+
+export function dipToDark(
+  globalFrame: number,
+  darkStart: number,
+  darkHold: number,
+  darkEnd: number,
+  holdEnd?: number,
+): number {
+  const fadeOutStart = holdEnd ?? darkHold;
+  if (globalFrame < darkStart) return 0;
+  if (globalFrame >= darkEnd) return 0;
+  if (globalFrame <= darkHold) {
+    return interpolate(globalFrame, [darkStart, darkHold], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+  }
+  if (globalFrame <= fadeOutStart) return 1;
+  return interpolate(globalFrame, [fadeOutStart, darkEnd], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+}
+
+export function lateralSlide(
+  globalFrame: number,
+  transitionStart: number,
+  transitionEnd: number,
+  direction: "left" | "right",
+): number {
+  const progress = interpolate(globalFrame, [transitionStart, transitionEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const t = easeOutSoft(progress);
+  return direction === "left" ? -t * 100 : (1 - t) * 100;
+}
+
+export function scalePunchExit(
+  globalFrame: number,
+  exitStart: number,
+  exitEnd: number,
+): { scale: number; opacity: number } {
+  const progress = interpolate(globalFrame, [exitStart, exitEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const t = easeOutSoft(progress);
+  return {
+    scale: 1 + 0.15 * t,
+    opacity: 1 - t,
+  };
+}
+
+export function wipeProgress(
+  globalFrame: number,
+  wipeStart: number,
+  wipeEnd: number,
+): number {
+  return interpolate(globalFrame, [wipeStart, wipeEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 }
