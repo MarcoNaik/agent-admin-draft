@@ -1,5 +1,5 @@
 import React from "react";
-import { interpolate, Easing } from "remotion";
+import { spring, useVideoConfig } from "remotion";
 import { useSectionFrame } from "../lib/SectionContext";
 
 interface CameraPosition {
@@ -23,13 +23,17 @@ interface CameraContainerProps {
 }
 
 const DEFAULT_POSITION: CameraPosition = { scale: 1, x: 960, y: 540, rotateX: 0, rotateY: 0 };
-const easeOutSoft = Easing.bezier(0.16, 1, 0.3, 1);
+
+function springLerp(from: number, to: number, springVal: number): number {
+  return from + (to - from) * springVal;
+}
 
 export const CameraContainer: React.FC<CameraContainerProps> = ({
   children,
   movements,
 }) => {
   const frame = useSectionFrame();
+  const { fps } = useVideoConfig();
 
   let position = DEFAULT_POSITION;
 
@@ -38,37 +42,19 @@ export const CameraContainer: React.FC<CameraContainerProps> = ({
       break;
     }
 
-    if (frame >= movement.startFrame && frame <= movement.endFrame) {
-      const scale = interpolate(
-        frame,
-        [movement.startFrame, movement.endFrame],
-        [movement.from.scale, movement.to.scale],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOutSoft },
-      );
-      const x = interpolate(
-        frame,
-        [movement.startFrame, movement.endFrame],
-        [movement.from.x, movement.to.x],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOutSoft },
-      );
-      const y = interpolate(
-        frame,
-        [movement.startFrame, movement.endFrame],
-        [movement.from.y, movement.to.y],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOutSoft },
-      );
-      const rotateX = interpolate(
-        frame,
-        [movement.startFrame, movement.endFrame],
-        [movement.from.rotateX ?? 0, movement.to.rotateX ?? 0],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOutSoft },
-      );
-      const rotateY = interpolate(
-        frame,
-        [movement.startFrame, movement.endFrame],
-        [movement.from.rotateY ?? 0, movement.to.rotateY ?? 0],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOutSoft },
-      );
+    if (frame >= movement.startFrame && frame <= movement.endFrame + 15) {
+      const localFrame = Math.max(0, frame - movement.startFrame);
+      const s = spring({
+        frame: localFrame,
+        fps,
+        config: { damping: 40, stiffness: 120, mass: 0.6 },
+        durationInFrames: movement.endFrame - movement.startFrame + 15,
+      });
+      const scale = springLerp(movement.from.scale, movement.to.scale, s);
+      const x = springLerp(movement.from.x, movement.to.x, s);
+      const y = springLerp(movement.from.y, movement.to.y, s);
+      const rotateX = springLerp(movement.from.rotateX ?? 0, movement.to.rotateX ?? 0, s);
+      const rotateY = springLerp(movement.from.rotateY ?? 0, movement.to.rotateY ?? 0, s);
       position = { scale, x, y, rotateX, rotateY };
       break;
     }
