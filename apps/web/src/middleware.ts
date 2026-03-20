@@ -33,6 +33,8 @@ const PASSTHROUGH_PATHS = [
   "/robots.txt",
   "/sitemap.xml",
   "/favicon.svg",
+  "/privacy-policy",
+  "/terms-of-service",
 ]
 
 function isBot(req: NextRequest): boolean {
