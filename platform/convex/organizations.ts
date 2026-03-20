@@ -277,10 +277,6 @@ export const deleteAllOrgData = internalMutation({
     const whatsappConnections = await ctx.db.query("whatsappConnections").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
     for (const wc of whatsappConnections) await ctx.db.delete(wc._id)
 
-    // TODO: Remove after whatsappMessages table is deleted
-    const whatsappMessages = await ctx.db.query("whatsappMessages").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
-    for (const wm of whatsappMessages) await ctx.db.delete(wm._id)
-
     const whatsappOwnedTemplates = await ctx.db.query("whatsappOwnedTemplates").withIndex("by_org", (q) => q.eq("organizationId", orgId)).collect()
     for (const wot of whatsappOwnedTemplates) await ctx.db.delete(wot._id)
 

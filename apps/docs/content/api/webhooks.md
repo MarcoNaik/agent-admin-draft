@@ -158,7 +158,7 @@ Receives inbound WhatsApp messages and message status updates.
 When an inbound message arrives:
 
 1. The phone number ID is used to look up the WhatsApp connection and determine the organization
-2. The message is stored in the `whatsappMessages` table with deduplication by `messageId`
+2. The message is stored in the `messages` table with deduplication by `messageId`
 3. If the message is new and contains text, `scheduleAgentRouting` is called
 4. The agent routing mutation finds the connected agent and schedules `routeInboundToAgent`
 5. The routing action creates or reuses a thread with `externalId` set to `whatsapp:{phoneNumber}`

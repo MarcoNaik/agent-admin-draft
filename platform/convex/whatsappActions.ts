@@ -11,7 +11,6 @@ const patchConfigInternalRef = makeFunctionReference<"mutation">("integrations:p
 const createConnectionRef = makeFunctionReference<"mutation">("whatsapp:createConnection")
 const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenticated")
 const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
-const attachMediaToMessageRef = makeFunctionReference<"mutation">("whatsapp:attachMediaToMessage")
 const patchMessageRef = makeFunctionReference<"mutation">("threads:patchMessage")
 const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
 const getOwnedTemplateNamesRef = makeFunctionReference<"query">("whatsapp:getOwnedTemplateNames")
@@ -241,11 +240,9 @@ export const downloadAndStoreMedia = internalAction({
 
     const blob = new Blob([data], { type: mimeType })
     const storageId = await ctx.storage.store(blob)
-    await ctx.runMutation(attachMediaToMessageRef, {
+    await ctx.runMutation(patchMessageRef, {
       messageId: args.messageId,
-      storageId,
-      mimeType,
-      fileName,
+      channelData: { mediaStorageId: storageId, mediaMimeType: mimeType, mediaFileName: fileName },
     })
     return null
   },

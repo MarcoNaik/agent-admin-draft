@@ -244,7 +244,7 @@ The Convex backend stores all platform data across the following table categorie
 | **Events & Audit** | `events`, `executions` | Event log and agent execution tracking (env-scoped) |
 | **Automations** | `triggers`, `triggerRuns` | Automation rules and execution records (env-scoped) |
 | **RBAC** | `roles`, `policies`, `scopeRules`, `fieldMasks`, `toolPermissions`, `userRoles`, `pendingRoleAssignments` | Access control definitions (roles are env-scoped) |
-| **Integrations** | `integrationConfigs`, `whatsappConnections`, `whatsappMessages`, `providerConfigs`, `calendarConnections` | External service configurations and integration data |
+| **Integrations** | `integrationConfigs`, `whatsappConnections`, `providerConfigs`, `calendarConnections` | External service configurations and integration data |
 | **Billing** | `creditBalances`, `creditTransactions` | Organization credit balances and transaction history |
 | **Evals** | `evalSuites`, `evalCases`, `evalRuns`, `evalResults` | Agent evaluation and testing |
 

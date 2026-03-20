@@ -24,7 +24,7 @@ packages/
   struere      SDK + CLI (ESM)
 
 platform/
-  convex       Backend — 43 tables, 19 HTTP endpoints, real-time subscriptions
+  convex       Backend — 42 tables, 19 HTTP endpoints, real-time subscriptions
   tool-executor  Hono Node.js on Fly.io — sandboxed custom tool execution
 ```
 
@@ -75,7 +75,7 @@ Dynamic data injection into agent system prompts:
 
 Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` events. Trigger events: `trigger.executed`, `trigger.failed`.
 
-## Database Schema (43 tables)
+## Database Schema (42 tables)
 
 | Category | Tables |
 |----------|--------|
@@ -87,7 +87,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 | Events & Audit | events (env-scoped), executions (env-scoped) |
 | Triggers | triggers (env-scoped), triggerRuns (env-scoped) |
 | RBAC | roles (env-scoped), policies, scopeRules, fieldMasks, toolPermissions |
-| Integrations | integrationConfigs (env-scoped), providerConfigs (org-scoped), whatsappConnections (env-scoped), whatsappMessages (org-scoped), whatsappOwnedTemplates (org-scoped), emailMessages (env-scoped), calendarConnections (env-scoped) |
+| Integrations | integrationConfigs (env-scoped), providerConfigs (org-scoped), whatsappConnections (env-scoped), whatsappOwnedTemplates (org-scoped), emailMessages (env-scoped), calendarConnections (env-scoped) |
 | Billing | creditBalances, creditTransactions |
 | Evals | evalSuites, evalCases, evalRuns (env-scoped), evalResults |
 | Sandbox | sandboxSessions (env-scoped), sandboxEvents |
@@ -99,7 +99,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 
 **Scoped per environment:** entityTypes, entities, entityRelations, roles, policies, scopeRules, fieldMasks, agentConfigs, threads, messages, executions, events, apiKeys, integrationConfigs, whatsappConnections, calendarConnections, triggers, triggerRuns, evalSuites, evalCases, evalRuns, sandboxSessions, sandboxEvents, fixtures, emailMessages
 
-**Shared across environments:** agents, users, organizations, userOrganizations, toolPermissions, whatsappOwnedTemplates, whatsappMessages, providerConfigs, creditBalances, creditTransactions
+**Shared across environments:** agents, users, organizations, userOrganizations, toolPermissions, whatsappOwnedTemplates, providerConfigs, creditBalances, creditTransactions
 
 ## HTTP Endpoints (19 routes)
 
@@ -234,7 +234,7 @@ Auto-run behavior: no `struere.json` -> auto-runs `init`; not logged in -> auto-
 ### Convex Backend (platform/convex)
 
 Key files:
-- `schema.ts` — 43 tables
+- `schema.ts` — 42 tables
 - `http.ts` — 19 HTTP endpoints + webhooks
 - `agent.ts` — LLM execution with actor context
 - `chat.ts` — Authenticated chat actions
@@ -315,9 +315,8 @@ cd apps/docs && bun run dev
 2. `roles` `by_org_isSystem` index lacks environment — uses collect + find
 3. Event payloads may contain unmasked historical data
 4. Convex httpActions do NOT have `ctx.scheduler` — must use `ctx.runMutation` to a mutation that calls `ctx.scheduler`
-5. `whatsappMessages` is NOT environment-scoped
-6. `whatsappOwnedTemplates` is org-scoped (NOT env-scoped)
-7. `messages.toolCalls` and `triggers.condition` are fully typed validators (not `v.any()`)
+5. `whatsappOwnedTemplates` is org-scoped (NOT env-scoped)
+6. `messages.toolCalls` and `triggers.condition` are fully typed validators (not `v.any()`)
 
 ## Code Style
 

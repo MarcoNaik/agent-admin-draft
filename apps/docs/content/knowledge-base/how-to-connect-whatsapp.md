@@ -54,7 +54,7 @@ When a WhatsApp message arrives:
 
 ```
 Inbound message → Kapso → POST /webhook/kapso/messages
-    → Store message in whatsappMessages table
+    → Store message in messages table
     → scheduleAgentRouting → routeInboundToAgent
     → Agent processes via chatAuthenticated (system actor)
     → Agent response sent back via Kapso API

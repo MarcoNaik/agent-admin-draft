@@ -55,21 +55,9 @@ Stores the connection state between an organization and a WhatsApp phone number.
 | `lastConnectedAt` | `number?` | Timestamp of last successful connection |
 | `lastDisconnectedAt` | `number?` | Timestamp of last disconnection |
 
-### whatsappMessages
+### messages (WhatsApp)
 
-Stores all inbound and outbound messages with delivery status tracking.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `organizationId` | `Id<"organizations">` | The owning organization |
-| `direction` | `"inbound" \| "outbound"` | Message direction |
-| `phoneNumber` | `string` | The external phone number |
-| `messageId` | `string` | Unique message identifier from Kapso/WhatsApp |
-| `type` | `string` | Message type (e.g., `"text"`) |
-| `text` | `string?` | Message text content |
-| `threadId` | `Id<"threads">?` | Linked conversation thread |
-| `status` | `string` | Delivery status (`"received"`, `"sent"`, `"delivered"`, `"read"`, `"failed"`) |
-| `createdAt` | `number` | Message timestamp |
+WhatsApp messages are stored in the unified `messages` table alongside all other conversation messages. WhatsApp-specific fields (direction, phone number, delivery status, Kapso message ID) are stored in the `channelData` field on each message record.
 
 ## Setup Flow
 
@@ -146,9 +134,6 @@ agent.chatAuthenticated (system actor, no user)
     |
     v
 Send response via Kapso sendTextMessage API
-    |
-    v
-storeOutboundMessage (persist response in whatsappMessages)
 ```
 
 ### Thread Reuse
@@ -165,7 +150,7 @@ Agents send responses back to WhatsApp users through the Kapso API. When the age
 
 1. The response text is extracted from the agent's reply
 2. The `sendTextMessage` function calls the Kapso API with the phone number and text
-3. The outbound message is stored in `whatsappMessages` with its Kapso message ID
+3. The outbound message is stored in the `messages` table with WhatsApp-specific data in `channelData`
 4. Delivery status updates arrive via the status update webhook
 
 ## Message Status Tracking

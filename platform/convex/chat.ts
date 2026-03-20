@@ -11,7 +11,6 @@ const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadIn
 const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
 const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
 const sendTextToPhoneRef = makeFunctionReference<"action">("whatsappActions:sendTextToPhone")
-const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
 const patchMessageRef = makeFunctionReference<"mutation">("threads:patchMessage")
 const canAccessThreadRef = makeFunctionReference<"query">("threads:canAccessThread")
 const isOrgAdminRef = makeFunctionReference<"query">("chat:isOrgAdminQuery")
