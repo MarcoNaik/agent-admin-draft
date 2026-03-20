@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { useOrganization } from "@clerk/nextjs"
 import { Loader2, UserPlus } from "@/lib/icons"
 import {
   Dialog,
@@ -31,16 +30,16 @@ interface InviteUserDialogProps {
   onOpenChange: (open: boolean) => void
   roles?: Doc<"roles">[]
   environment?: Environment
+  isAdmin?: boolean
 }
 
-export function InviteUserDialog({ open, onOpenChange, roles, environment }: InviteUserDialogProps) {
+export function InviteUserDialog({ open, onOpenChange, roles, environment, isAdmin }: InviteUserDialogProps) {
   const [email, setEmail] = useState("")
   const [orgRole, setOrgRole] = useState<string>("org:member")
   const [internalRoleId, setInternalRoleId] = useState<string>("none")
   const [entityChoice, setEntityChoice] = useState<string>("create")
   const [isInviting, setIsInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { organization } = useOrganization()
   const createPendingAssignment = useCreatePendingAssignment()
   const entityTypes = useEntityTypes(environment)
 
@@ -63,12 +62,20 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
   )
 
   const handleInvite = async () => {
-    if (!email.trim() || !organization) return
+    if (!email.trim()) return
 
     setIsInviting(true)
     setError(null)
     try {
-      await organization.inviteMember({ emailAddress: email.trim(), role: orgRole })
+      const res = await fetch("/api/organizations/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailAddress: email.trim(), role: orgRole }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to send invitation")
+      }
 
       if (orgRole === "org:member" && internalRoleId !== "none" && environment) {
         const assignmentArgs: {
@@ -158,18 +165,20 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment }: Inv
               autoFocus
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="role" className="text-content-primary">Organization Role</Label>
-            <Select value={orgRole} onValueChange={handleOrgRoleChange} disabled={isInviting}>
-              <SelectTrigger className="bg-background-tertiary border-border/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="org:member">Member</SelectItem>
-                <SelectItem value="org:admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {isAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-content-primary">Organization Role</Label>
+              <Select value={orgRole} onValueChange={handleOrgRoleChange} disabled={isInviting}>
+                <SelectTrigger className="bg-background-tertiary border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="org:member">Member</SelectItem>
+                  <SelectItem value="org:admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {showInternalRoleSelector && (
             <div className="space-y-2">
               <Label htmlFor="internalRole" className="text-content-primary">Internal Role</Label>
