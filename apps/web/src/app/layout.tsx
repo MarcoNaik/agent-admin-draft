@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { DM_Sans, Fraunces, JetBrains_Mono, IBM_Plex_Mono } from "next/font/google"
-import { Providers } from "@/components/providers"
 import "./globals.css"
 
 const dmSans = DM_Sans({
@@ -57,12 +56,7 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${fraunces.variable} ${jetbrains.variable} ${ibmPlexMono.variable}`}
       >
-        <Providers>{children}</Providers>
-        <script
-          src="https://app.struere.dev/embed/widget.js?org=struere-support-1771842295&agent=struere-customer-service&theme=dark&accent=%231B4F72"
-          async
-          defer
-        />
+        {children}
       </body>
     </html>
   )
