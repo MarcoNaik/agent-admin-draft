@@ -17,8 +17,6 @@ export const ProblemHook: React.FC = () => {
   );
 
   const exitOpacity = 1 - exitProgress;
-  const exitScale = 1 + exitProgress * 3;
-  const exitBlur = exitProgress * 20;
 
   const line1Opacity = fadeIn(frame, 0, 8);
   const line2Opacity = fadeIn(frame, 24, 8);
@@ -54,8 +52,7 @@ export const ProblemHook: React.FC = () => {
           flexDirection: "column",
           alignItems: "center",
           gap: 24,
-          transform: `scale(${exitScale})`,
-          filter: exitBlur > 0 ? `blur(${exitBlur}px)` : "none",
+          transform: "none",
         }}
       >
         <div

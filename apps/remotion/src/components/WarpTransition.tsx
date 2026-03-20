@@ -1,10 +1,18 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import { useVideoConfig, interpolate } from "remotion";
 import { ThreeCanvas } from "@remotion/three";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import { useSectionFrame } from "../lib/SectionContext";
 import { LANDING_LIGHT } from "../lib/dashboard-theme";
+import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json";
+import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json";
+
+const fontLoader = new FontLoader();
+const boldFont = fontLoader.parse(helvetikerBold as any);
+const regularFont = fontLoader.parse(helvetikerRegular as any);
 
 const AnimatedCamera: React.FC = () => {
   const frame = useSectionFrame();
@@ -12,155 +20,153 @@ const AnimatedCamera: React.FC = () => {
 
   const cam = camera as THREE.PerspectiveCamera;
 
-  const z = interpolate(frame, [0, 30], [8, -2], {
+  const z = interpolate(frame, [0, 30], [12, -3], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const y = interpolate(frame, [0, 15, 30], [0, 0.8, 0.3], {
+  const y = interpolate(frame, [0, 15, 30], [0, 1.5, 0.5], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const fov = interpolate(frame, [0, 30], [50, 65], {
+  const x = interpolate(frame, [0, 30], [0, 0.5], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const roll = interpolate(frame, [0, 30], [0, 0.03], {
+  const fov = interpolate(frame, [0, 30], [45, 70], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  cam.position.set(0, y, z);
-  cam.rotation.z = roll;
+  cam.position.set(x, y, z);
+  cam.lookAt(0, 0.5, 0);
   cam.fov = fov;
   cam.updateProjectionMatrix();
 
   return null;
 };
 
-const TextPlane: React.FC<{ frame: number }> = ({ frame }) => {
-  const rotX = interpolate(frame, [0, 30], [0, 0.05], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+const MainText3D: React.FC = () => {
+  const frame = useSectionFrame();
+  const meshRef = useRef<THREE.Mesh>(null);
 
-  const progress = interpolate(frame, [0, 30], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  const opacity = interpolate(progress, [0, 0.1, 0.7, 1], [1, 1, 0.6, 0]);
-
-  const canvas = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 1024;
-    c.height = 256;
-    const ctx = c.getContext("2d")!;
-
-    ctx.clearRect(0, 0, 1024, 256);
-
-    ctx.fillStyle = "#1A1815";
-    ctx.font = "bold 72px serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("What if it took minutes?", 512, 128);
-
-    return c;
+  const geometry = useMemo(() => {
+    const geo = new TextGeometry("What if it took minutes?", {
+      font: boldFont,
+      size: 1.2,
+      depth: 0.3,
+      curveSegments: 6,
+      bevelEnabled: true,
+      bevelThickness: 0.02,
+      bevelSize: 0.02,
+      bevelSegments: 3,
+    });
+    geo.computeBoundingBox();
+    geo.center();
+    return geo;
   }, []);
 
-  const texture = useMemo(() => {
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [canvas]);
+  const material = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: "#1A1815",
+      roughness: 0.4,
+      metalness: 0.1,
+      transparent: true,
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
-      texture.dispose();
+      geometry.dispose();
+      material.dispose();
     };
-  }, [texture]);
+  }, [geometry, material]);
+
+  const rotY = interpolate(frame, [0, 30], [0, 0.08], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const opacity = interpolate(frame, [20, 30], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  material.opacity = opacity;
 
   return (
     <mesh
-      position={[0, 0, 0]}
-      rotation={[rotX, 0, 0]}
-      scale={[1, 1, 1]}
-    >
-      <planeGeometry args={[8, 2]} />
-      <meshBasicMaterial
-        map={texture}
-        transparent
-        opacity={opacity}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+      ref={meshRef}
+      geometry={geometry}
+      material={material}
+      position={[0, -0.5, 0]}
+      rotation={[0, rotY, 0]}
+    />
   );
 };
 
-const SubTextPlane: React.FC<{ frame: number }> = ({ frame }) => {
-  const progress = interpolate(frame, [0, 30], [0, 1], {
+const SubText3D: React.FC = () => {
+  const frame = useSectionFrame();
+
+  const geometry = useMemo(() => {
+    const geo = new TextGeometry("Automating your business takes months.", {
+      font: regularFont,
+      size: 0.5,
+      depth: 0.15,
+      curveSegments: 4,
+      bevelEnabled: true,
+      bevelThickness: 0.01,
+      bevelSize: 0.01,
+      bevelSegments: 2,
+    });
+    geo.computeBoundingBox();
+    geo.center();
+    return geo;
+  }, []);
+
+  const material = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: "#1A1815",
+      roughness: 0.4,
+      metalness: 0.1,
+      transparent: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
+
+  const opacity = interpolate(frame, [15, 30], [0.7, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const opacity = interpolate(progress, [0, 0.1, 0.6, 1], [0.6, 0.6, 0.3, 0]);
-
-  const canvas = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 1024;
-    c.height = 128;
-    const ctx = c.getContext("2d")!;
-
-    ctx.clearRect(0, 0, 1024, 128);
-
-    ctx.fillStyle = "#574F45";
-    ctx.font = "400 42px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Automating your business takes months.", 512, 64);
-
-    return c;
-  }, []);
-
-  const texture = useMemo(() => {
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [canvas]);
-
-  useEffect(() => {
-    return () => {
-      texture.dispose();
-    };
-  }, [texture]);
+  material.opacity = opacity;
 
   return (
     <mesh
-      position={[0, 1.5, -1]}
-      rotation={[0, 0, 0]}
-      scale={[1, 1, 1]}
-    >
-      <planeGeometry args={[8, 1]} />
-      <meshBasicMaterial
-        map={texture}
-        transparent
-        opacity={opacity}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+      geometry={geometry}
+      material={material}
+      position={[0, 1.8, -0.5]}
+    />
   );
 };
 
 const WarpScene: React.FC = () => {
-  const frame = useSectionFrame();
-
   return (
     <>
       <AnimatedCamera />
-      <SubTextPlane frame={frame} />
-      <TextPlane frame={frame} />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[5, 5, 5]} intensity={1} />
+      <directionalLight position={[-3, -2, 4]} intensity={0.3} />
+      <MainText3D />
+      <SubText3D />
     </>
   );
 };
