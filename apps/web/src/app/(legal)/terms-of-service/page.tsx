@@ -8,40 +8,25 @@ export const metadata: Metadata = {
 
 export default function TermsOfService() {
   return (
-    <div
-      className="min-h-screen font-source"
-      style={{ backgroundColor: "#F5F1E8", color: "#1B4332" }}
-    >
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(27, 67, 50, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(27, 67, 50, 0.06) 1px, transparent 1px),
-            linear-gradient(rgba(27, 67, 50, 0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(27, 67, 50, 0.02) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px, 80px 80px, 16px 16px, 16px 16px",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-2xl px-6 md:px-8 py-16">
-        <nav className="mb-16">
+    <div className="min-h-screen bg-stone-base">
+      <div className="mx-auto max-w-3xl px-6 md:px-12 py-20 md:py-28">
+        <nav className="mb-12">
           <Link
             href="/"
-            className="text-[10px] tracking-[0.3em] uppercase opacity-60 hover:opacity-100 transition-opacity"
-            style={{ color: "#2D5A45" }}
+            className="text-sm text-charcoal/50 hover:text-charcoal transition-colors"
           >
             &larr; Struere
           </Link>
         </nav>
 
-        <h1 className="text-sm tracking-tight mb-2">Terms of Service</h1>
-        <p className="text-[10px] tracking-wider opacity-50 mb-16">
+        <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-charcoal-heading mb-2">
+          Terms of Service
+        </h1>
+        <p className="text-sm text-charcoal/40 mb-16">
           Last updated: March 20, 2026
         </p>
 
-        <div className="space-y-12">
+        <div className="space-y-16">
           <Section title="1. Acceptance of Terms">
             <p>
               By accessing or using the Struere platform (&ldquo;Service&rdquo;),
@@ -92,32 +77,32 @@ export default function TermsOfService() {
 
           <Section title="4. Acceptable Use">
             <p className="mb-3">You agree not to:</p>
-            <ul className="list-none space-y-2">
-              <li>
+            <ul className="list-none space-y-3">
+              <li className="text-charcoal/70">
                 — Use the Service to build agents that generate harmful, illegal,
                 or deceptive content
               </li>
-              <li>
+              <li className="text-charcoal/70">
                 — Attempt to bypass permission controls, scope rules, or
                 environment isolation
               </li>
-              <li>
+              <li className="text-charcoal/70">
                 — Use custom tool handlers to access unauthorized external
                 services beyond the sandboxed fetch allowlist
               </li>
-              <li>
+              <li className="text-charcoal/70">
                 — Send spam or unsolicited messages through WhatsApp or other
                 integrations
               </li>
-              <li>
+              <li className="text-charcoal/70">
                 — Reverse engineer, decompile, or attempt to extract source code
                 from the Service
               </li>
-              <li>
+              <li className="text-charcoal/70">
                 — Use the Service in violation of any applicable laws or
                 regulations
               </li>
-              <li>
+              <li className="text-charcoal/70">
                 — Exceed reasonable usage limits or engage in activity that
                 degrades the Service for others
               </li>
@@ -187,8 +172,7 @@ export default function TermsOfService() {
                 href="https://developers.google.com/terms/api-services-user-data-policy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
-                style={{ color: "#1B4332" }}
+                className="text-ocean hover:text-ocean-light underline transition-colors"
               >
                 Google API Services User Data Policy
               </a>
@@ -201,7 +185,7 @@ export default function TermsOfService() {
           <Section title="8. Custom Tools">
             <p>
               Custom tool handler code you provide is executed in sandboxed
-              sandboxed environments on Fly.io with restricted network access. You are
+              environments on Fly.io with restricted network access. You are
               responsible for the code you submit and must ensure it does not
               contain malicious logic, credentials harvesting, or attempts to
               bypass sandbox restrictions. We reserve the right to disable tools
@@ -281,15 +265,14 @@ export default function TermsOfService() {
           </Section>
         </div>
 
-        <footer className="mt-20 pt-8 border-t" style={{ borderColor: "rgba(45, 90, 69, 0.2)" }}>
+        <footer className="mt-20 pt-8 border-t border-charcoal/5">
           <div className="flex justify-between items-center">
-            <p className="text-[10px] opacity-50">
+            <p className="text-sm text-charcoal/40">
               &copy; {new Date().getFullYear()} Struere
             </p>
             <Link
               href="/privacy-policy"
-              className="text-[10px] opacity-50 hover:opacity-100 transition-opacity"
-              style={{ color: "#2D5A45" }}
+              className="text-sm text-charcoal/50 hover:text-charcoal transition-colors"
             >
               Privacy Policy
             </Link>
@@ -309,13 +292,10 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="text-xs tracking-wide mb-4" style={{ color: "#1B4332" }}>
+      <h2 className="font-display text-lg md:text-xl font-medium text-charcoal-heading mb-4">
         {title}
       </h2>
-      <div
-        className="text-[11px] leading-relaxed space-y-3"
-        style={{ color: "#2D5A45" }}
-      >
+      <div className="font-sans text-base leading-relaxed text-charcoal/80 space-y-3">
         {children}
       </div>
     </section>
@@ -331,7 +311,7 @@ function Subsection({
 }) {
   return (
     <div>
-      <h3 className="text-[11px] font-medium mb-1" style={{ color: "#1B4332" }}>
+      <h3 className="text-sm font-medium text-charcoal-heading mb-1">
         {title}
       </h3>
       {children}

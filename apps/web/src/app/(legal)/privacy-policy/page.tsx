@@ -8,40 +8,25 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicy() {
   return (
-    <div
-      className="min-h-screen font-source"
-      style={{ backgroundColor: "#F5F1E8", color: "#1B4332" }}
-    >
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(27, 67, 50, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(27, 67, 50, 0.06) 1px, transparent 1px),
-            linear-gradient(rgba(27, 67, 50, 0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(27, 67, 50, 0.02) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px, 80px 80px, 16px 16px, 16px 16px",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-2xl px-6 md:px-8 py-16">
-        <nav className="mb-16">
+    <div className="min-h-screen bg-stone-base">
+      <div className="mx-auto max-w-3xl px-6 md:px-12 py-20 md:py-28">
+        <nav className="mb-12">
           <Link
             href="/"
-            className="text-[10px] tracking-[0.3em] uppercase opacity-60 hover:opacity-100 transition-opacity"
-            style={{ color: "#2D5A45" }}
+            className="text-sm text-charcoal/50 hover:text-charcoal transition-colors"
           >
             &larr; Struere
           </Link>
         </nav>
 
-        <h1 className="text-sm tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-[10px] tracking-wider opacity-50 mb-16">
+        <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-charcoal-heading mb-2">
+          Privacy Policy
+        </h1>
+        <p className="text-sm text-charcoal/40 mb-16">
           Last updated: March 20, 2026
         </p>
 
-        <div className="space-y-12">
+        <div className="space-y-16">
           <Section title="1. Overview">
             <p>
               Struere (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
@@ -100,12 +85,12 @@ export default function PrivacyPolicy() {
                 If you connect Google Calendar, we request access to the
                 following OAuth scopes via Google&rsquo;s authorization flow:
               </p>
-              <ul className="list-none space-y-2 mt-2">
-                <li>
+              <ul className="list-none space-y-3 mt-3">
+                <li className="text-charcoal/70">
                   — <strong>https://www.googleapis.com/auth/calendar</strong> —
                   Read and write access to your calendar metadata and settings
                 </li>
-                <li>
+                <li className="text-charcoal/70">
                   — <strong>https://www.googleapis.com/auth/calendar.events</strong> —
                   Read and write access to calendar events
                 </li>
@@ -130,8 +115,7 @@ export default function PrivacyPolicy() {
                   href="https://myaccount.google.com/permissions"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline"
-                  style={{ color: "#1B4332" }}
+                  className="text-ocean hover:text-ocean-light underline transition-colors"
                 >
                   Google Account permissions
                 </a>
@@ -141,8 +125,7 @@ export default function PrivacyPolicy() {
                   href="https://developers.google.com/terms/api-services-user-data-policy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline"
-                  style={{ color: "#1B4332" }}
+                  className="text-ocean hover:text-ocean-light underline transition-colors"
                 >
                   Google API Services User Data Policy
                 </a>
@@ -152,14 +135,14 @@ export default function PrivacyPolicy() {
           </Section>
 
           <Section title="3. How We Use Your Information">
-            <ul className="list-none space-y-2">
-              <li>— Provide and operate the Struere platform</li>
-              <li>— Process AI agent conversations via third-party LLM providers</li>
-              <li>— Execute custom tools in sandboxed environments</li>
-              <li>— Enforce role-based access control and permission policies</li>
-              <li>— Send transactional communications (session reminders, follow-ups)</li>
-              <li>— Process payments through our payment provider</li>
-              <li>— Improve our services and debug issues</li>
+            <ul className="list-none space-y-3">
+              <li className="text-charcoal/70">— Provide and operate the Struere platform</li>
+              <li className="text-charcoal/70">— Process AI agent conversations via third-party LLM providers</li>
+              <li className="text-charcoal/70">— Execute custom tools in sandboxed environments</li>
+              <li className="text-charcoal/70">— Enforce role-based access control and permission policies</li>
+              <li className="text-charcoal/70">— Send transactional communications (session reminders, follow-ups)</li>
+              <li className="text-charcoal/70">— Process payments through our payment provider</li>
+              <li className="text-charcoal/70">— Improve our services and debug issues</li>
             </ul>
           </Section>
 
@@ -168,31 +151,31 @@ export default function PrivacyPolicy() {
               We use the following third-party services that may process your
               data:
             </p>
-            <ul className="list-none space-y-2">
-              <li>
-                <strong>Clerk</strong> — Authentication and user management
+            <ul className="list-none space-y-3">
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Clerk</strong> — Authentication and user management
               </li>
-              <li>
-                <strong>Convex</strong> — Real-time database and backend
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Convex</strong> — Real-time database and backend
                 infrastructure
               </li>
-              <li>
-                <strong>Anthropic</strong> — AI language model processing for
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Anthropic</strong> — AI language model processing for
                 agent conversations
               </li>
-              <li>
-                <strong>Google</strong> — Calendar integration via Google
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Google</strong> — Calendar integration via Google
                 Calendar API (OAuth 2.0)
               </li>
-              <li>
-                <strong>Fly.io</strong> — Custom tool execution in sandboxed
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Fly.io</strong> — Custom tool execution in sandboxed
                 environments
               </li>
-              <li>
-                <strong>Vercel</strong> — Website and application hosting
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Vercel</strong> — Website and application hosting
               </li>
-              <li>
-                <strong>Flow</strong> — Payment processing
+              <li className="text-charcoal/70">
+                <strong className="text-charcoal">Flow</strong> — Payment processing
               </li>
             </ul>
             <p className="mt-4">
@@ -222,12 +205,12 @@ export default function PrivacyPolicy() {
           </Section>
 
           <Section title="7. Your Rights">
-            <ul className="list-none space-y-2">
-              <li>— Access the personal data we hold about you</li>
-              <li>— Request correction of inaccurate data</li>
-              <li>— Request deletion of your data</li>
-              <li>— Export your data in a machine-readable format</li>
-              <li>— Object to processing of your data</li>
+            <ul className="list-none space-y-3">
+              <li className="text-charcoal/70">— Access the personal data we hold about you</li>
+              <li className="text-charcoal/70">— Request correction of inaccurate data</li>
+              <li className="text-charcoal/70">— Request deletion of your data</li>
+              <li className="text-charcoal/70">— Export your data in a machine-readable format</li>
+              <li className="text-charcoal/70">— Object to processing of your data</li>
             </ul>
             <p className="mt-4">
               To exercise these rights, contact us at privacy@struere.dev.
@@ -266,15 +249,14 @@ export default function PrivacyPolicy() {
           </Section>
         </div>
 
-        <footer className="mt-20 pt-8 border-t" style={{ borderColor: "rgba(45, 90, 69, 0.2)" }}>
+        <footer className="mt-20 pt-8 border-t border-charcoal/5">
           <div className="flex justify-between items-center">
-            <p className="text-[10px] opacity-50">
+            <p className="text-sm text-charcoal/40">
               &copy; {new Date().getFullYear()} Struere
             </p>
             <Link
               href="/terms-of-service"
-              className="text-[10px] opacity-50 hover:opacity-100 transition-opacity"
-              style={{ color: "#2D5A45" }}
+              className="text-sm text-charcoal/50 hover:text-charcoal transition-colors"
             >
               Terms of Service
             </Link>
@@ -294,13 +276,10 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="text-xs tracking-wide mb-4" style={{ color: "#1B4332" }}>
+      <h2 className="font-display text-lg md:text-xl font-medium text-charcoal-heading mb-4">
         {title}
       </h2>
-      <div
-        className="text-[11px] leading-relaxed space-y-3"
-        style={{ color: "#2D5A45" }}
-      >
+      <div className="font-sans text-base leading-relaxed text-charcoal/80 space-y-3">
         {children}
       </div>
     </section>
@@ -316,7 +295,7 @@ function Subsection({
 }) {
   return (
     <div>
-      <h3 className="text-[11px] font-medium mb-1" style={{ color: "#1B4332" }}>
+      <h3 className="text-sm font-medium text-charcoal-heading mb-1">
         {title}
       </h3>
       {children}
