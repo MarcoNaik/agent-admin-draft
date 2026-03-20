@@ -1146,7 +1146,7 @@ export default function ChatPage() {
   const selectedPreview = threads.find((t: { _id: Id<"threads"> }) => t._id === selectedThreadId)
 
   return (
-    <div className="flex h-[calc(100dvh-49px)]">
+    <div className="flex h-full">
       <aside className="w-80 border-r bg-background-secondary backdrop-blur-sm flex flex-col shrink-0">
         <div className="p-3 border-b space-y-2">
           <Select value={agentFilter} onValueChange={setAgentFilter}>
