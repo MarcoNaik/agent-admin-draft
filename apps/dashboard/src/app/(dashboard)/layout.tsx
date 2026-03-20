@@ -23,7 +23,7 @@ export default function DashboardLayout({
             <EnvironmentProvider>
               <SyncNotifications />
               <StudioProvider>
-                <div className="flex h-screen flex-col bg-background-chrome">
+                <div className="flex h-screen flex-col bg-background-chrome overflow-hidden">
                   <Header />
                   <div className="flex flex-1 overflow-hidden p-3 pt-0">
                     <div className="flex-1 overflow-hidden rounded-xl border border-border/40 bg-background-secondary shadow-lg shadow-black/5 dark:shadow-black/20">
