@@ -5,16 +5,22 @@ import { api } from "@convex/_generated/api"
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (!session.userId || !session.orgId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session.userId) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
-  const { emailAddress, role } = await req.json()
+  const { emailAddress, role, organizationId } = await req.json()
+  const orgId = session.orgId || organizationId
+  if (!orgId) {
+    return NextResponse.json({ error: "No active organization" }, { status: 401 })
+  }
+
   if (!emailAddress) {
     return NextResponse.json({ error: "emailAddress is required" }, { status: 400 })
   }
 
-  if (session.orgRole !== "org:admin" && session.orgRole !== "org:owner") {
+  const orgRole = session.orgRole
+  if (orgRole !== "org:admin" && orgRole !== "org:owner") {
     const token = await session.getToken({ template: "convex" })
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -32,7 +38,7 @@ export async function POST(req: Request) {
 
   const client = await clerkClient()
   await client.organizations.createOrganizationInvitation({
-    organizationId: session.orgId,
+    organizationId: orgId,
     emailAddress,
     role: role || "org:member",
     inviterUserId: session.userId,

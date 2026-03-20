@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useOrganization } from "@clerk/nextjs"
 import { Loader2, UserPlus } from "@/lib/icons"
 import {
   Dialog,
@@ -34,6 +35,7 @@ interface InviteUserDialogProps {
 }
 
 export function InviteUserDialog({ open, onOpenChange, roles, environment, isAdmin }: InviteUserDialogProps) {
+  const { organization } = useOrganization()
   const [email, setEmail] = useState("")
   const [orgRole, setOrgRole] = useState<string>("org:member")
   const [internalRoleId, setInternalRoleId] = useState<string>("none")
@@ -70,7 +72,7 @@ export function InviteUserDialog({ open, onOpenChange, roles, environment, isAdm
       const res = await fetch("/api/organizations/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailAddress: email.trim(), role: orgRole }),
+        body: JSON.stringify({ emailAddress: email.trim(), role: orgRole, organizationId: organization?.id }),
       })
       if (!res.ok) {
         const data = await res.json()
