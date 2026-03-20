@@ -1,0 +1,15 @@
+export const T = {
+  problemHook: { start: 0, end: 75, duration: 75 },
+  warpTransition: { start: 65, end: 95, duration: 30 },
+  landing: { start: 85, end: 340, duration: 255 },
+  interstitial1: { enter: 315, peak: 330, exit: 355 },
+  agentCreation: { start: 335, end: 610, duration: 275 },
+  interstitial2: { enter: 585, peak: 600, exit: 625 },
+  chat: { start: 610, end: 890, duration: 280 },
+  interstitial3: { enter: 865, peak: 880, exit: 910 },
+  evalSuite: { start: 895, end: 1481, duration: 586 },
+  interstitial4: { enter: 1455, peak: 1470, exit: 1500 },
+  multiChannel: { start: 1485, end: 1735, duration: 250 },
+  endCard: { start: 1715, end: 1915, duration: 200 },
+  total: 1915,
+};
