@@ -1,5 +1,5 @@
 import React from "react";
-import { useVideoConfig, interpolate } from "remotion";
+import { useVideoConfig, interpolate, spring } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import {
   fadeOut,
@@ -84,6 +84,28 @@ const ToolCallBubble: React.FC<{
     ? Math.abs(Math.sin((localFrame / 15) * Math.PI)) * (1 - localFrame / 30)
     : 0;
 
+  const expandDelay = 12;
+  const expandLocalFrame = Math.max(0, localFrame - expandDelay);
+  const expandSpring = spring({
+    frame: expandLocalFrame,
+    fps,
+    config: { damping: 14, stiffness: 200, mass: 0.4 },
+  });
+  const argsHeight = expandSpring;
+  const argsOpacity = interpolate(expandLocalFrame, [0, 8], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const checkDelay = expandDelay + 10;
+  const checkLocalFrame = Math.max(0, localFrame - checkDelay);
+  const checkScale = spring({
+    frame: checkLocalFrame,
+    fps,
+    config: { damping: 8, stiffness: 400, mass: 0.2 },
+  });
+  const showCheck = localFrame >= checkDelay;
+
   return (
     <div
       style={{
@@ -123,13 +145,38 @@ const ToolCallBubble: React.FC<{
           >
             {toolCall.name}
           </span>
-          <span style={{ fontSize: 22, color: DASHBOARD.success }}>✓</span>
+          {showCheck && (
+            <span
+              style={{
+                fontSize: 22,
+                color: DASHBOARD.success,
+                transform: `scale(${checkScale})`,
+                display: "inline-block",
+              }}
+            >
+              ✓
+            </span>
+          )}
+          {!showCheck && (
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                backgroundColor: DASHBOARD.oceanLight,
+                transform: `scale(${1 + 0.3 * Math.sin((localFrame / 15) * Math.PI * 2)})`,
+              }}
+            />
+          )}
         </div>
         <div
           style={{
             background: DASHBOARD.backgroundChrome,
-            padding: 14,
             borderRadius: "0 0 6px 6px",
+            maxHeight: argsHeight * 200,
+            opacity: argsOpacity,
+            overflow: "hidden",
+            padding: argsHeight > 0.05 ? `${14 * argsHeight}px 14px` : 0,
           }}
         >
           {Object.entries(toolCall.args).map(([key, value]) => (
@@ -184,6 +231,17 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
   const showUnreadDot =
     firstAgentMessageFrame === undefined || frame < firstAgentMessageFrame;
 
+  const latestMessageFrame = messages
+    .filter((m) => frame >= m.startFrame)
+    .reduce((max, m) => Math.max(max, m.startFrame), 0);
+  const sidebarPulseFrame = Math.max(0, frame - latestMessageFrame);
+  const sidebarHighlight = sidebarPulseFrame < 20
+    ? interpolate(sidebarPulseFrame, [0, 5, 20], [0, 0.15, 0], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      })
+    : 0;
+
   return (
     <div
       style={{
@@ -229,12 +287,13 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
 
         <div
           style={{
-            backgroundColor: "rgba(27, 79, 114, 0.08)",
+            backgroundColor: `rgba(27, 79, 114, ${0.08 + sidebarHighlight})`,
             borderRadius: 8,
             padding: "10px 12px",
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
+            boxShadow: sidebarHighlight > 0.02 ? `0 0 ${sidebarHighlight * 60}px rgba(27, 79, 114, ${sidebarHighlight})` : "none",
           }}
         >
           <div
@@ -366,11 +425,21 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
             if (frame < message.startFrame) return null;
 
             const localFrame = frame - message.startFrame;
-            const msgOpacity = interpolate(localFrame, [0, 12], [0, 1], {
+            const isUser = message.role === "user";
+            const msgSpring = spring({
+              frame: localFrame,
+              fps,
+              config: isUser
+                ? { damping: 13, stiffness: 280, mass: 0.3 }
+                : { damping: 11, stiffness: 220, mass: 0.4 },
+            });
+            const msgOpacity = interpolate(localFrame, [0, 6], [0, 1], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             });
-            const isUser = message.role === "user";
+            const msgSlideY = (1 - msgSpring) * 30;
+            const msgSlideX = isUser ? (1 - msgSpring) * 40 : (1 - msgSpring) * -40;
+            const msgScale = 0.88 + 0.12 * msgSpring;
 
             const showTyping =
               !isUser && frame >= message.startFrame - 20 && frame < message.startFrame;
@@ -404,6 +473,8 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
                   alignSelf: isUser ? "flex-end" : "flex-start",
                   maxWidth: "70%",
                   opacity: msgOpacity,
+                  transform: `translateY(${msgSlideY}px) translateX(${msgSlideX}px) scale(${msgScale})`,
+                  transformOrigin: isUser ? "right bottom" : "left bottom",
                 }}
               >
                 <div
@@ -441,7 +512,6 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
           (() => {
             const waAnim = feedIn(frame, showWhatsAppToastAt);
             const waVisible = frame >= showWhatsAppToastAt;
-            const waOpacity = waAnim.opacity;
 
             if (!waVisible) return null;
 
@@ -458,8 +528,9 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 16,
-                  opacity: waOpacity,
-                  transform: `translateY(${-waAnim.translateY}px)`,
+                  opacity: waAnim.opacity,
+                  transform: `translateX(${waAnim.translateX}px) translateY(${-waAnim.translateY}px) scale(${waAnim.scale})`,
+                  transformOrigin: "right center",
                   boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
                   border: "1px solid rgba(37, 211, 102, 0.15)",
                   zIndex: 2,
@@ -486,7 +557,6 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
           (() => {
             const calAnim = feedIn(frame, showCalendarToastAt);
             const calVisible = frame >= showCalendarToastAt;
-            const calOpacity = calAnim.opacity;
 
             if (!calVisible) return null;
 
@@ -503,8 +573,9 @@ export const ConversationMock: React.FC<ConversationMockProps> = ({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 16,
-                  opacity: calOpacity,
-                  transform: `translateY(${-calAnim.translateY}px)`,
+                  opacity: calAnim.opacity,
+                  transform: `translateX(${calAnim.translateX}px) translateY(${-calAnim.translateY}px) scale(${calAnim.scale})`,
+                  transformOrigin: "right center",
                   boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
                   border: "1px solid rgba(66, 133, 244, 0.15)",
                 }}
