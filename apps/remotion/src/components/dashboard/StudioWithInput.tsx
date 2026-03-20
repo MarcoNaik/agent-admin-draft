@@ -9,6 +9,7 @@ interface StudioWithInputProps {
   promptSpeed?: number;
   sendFrame: number;
   timeline: TimelineItem[];
+  skipEntrance?: boolean;
 }
 
 export const StudioWithInput: React.FC<StudioWithInputProps> = ({
@@ -17,6 +18,7 @@ export const StudioWithInput: React.FC<StudioWithInputProps> = ({
   promptSpeed = 0.8,
   sendFrame,
   timeline,
+  skipEntrance = false,
 }) => {
   const frame = useSectionFrame();
 
@@ -44,7 +46,7 @@ export const StudioWithInput: React.FC<StudioWithInputProps> = ({
   ];
 
   return (
-    <StudioPanelMock inputText={inputWithCursor} showSendButton={showSend}>
+    <StudioPanelMock inputText={inputWithCursor} showSendButton={showSend} skipEntrance={skipEntrance}>
       <StudioMessageFlow timeline={fullTimeline} />
     </StudioPanelMock>
   );
