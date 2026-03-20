@@ -42,6 +42,7 @@ export async function POST(req: Request) {
     emailAddress,
     role: role || "org:member",
     inviterUserId: session.userId,
+    redirectUrl: "https://app.struere.dev/sign-up",
   })
 
   return NextResponse.json({ success: true })
