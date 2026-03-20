@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "emailAddress is required" }, { status: 400 })
   }
 
-  if (session.orgRole !== "org:admin") {
+  if (session.orgRole !== "org:admin" && session.orgRole !== "org:owner") {
     const token = await session.getToken({ template: "convex" })
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

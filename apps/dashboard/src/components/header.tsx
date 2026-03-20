@@ -167,15 +167,17 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 px-3">
-          <a
-            href="https://docs.struere.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft"
-          >
-            <BookOpen className="h-4 w-4" />
-            Docs
-          </a>
+          {isOrgAdmin && (
+            <a
+              href="https://docs.struere.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary hover:bg-background-tertiary rounded-md transition-colors ease-out-soft"
+            >
+              <BookOpen className="h-4 w-4" />
+              Docs
+            </a>
+          )}
           {isOrgAdmin && <StudioToggle />}
           {isOrgAdmin && <EnvironmentSelector />}
           {isOrgAdmin && <NotificationBell />}
