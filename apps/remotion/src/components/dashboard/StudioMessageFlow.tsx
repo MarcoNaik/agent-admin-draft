@@ -1,4 +1,5 @@
 import React from "react";
+import { spring, interpolate } from "remotion";
 import { feedIn, typewriter, pulsingDot } from "../../lib/animations";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import { useSectionFrame } from "../../lib/SectionContext";
@@ -47,7 +48,7 @@ const CheckmarkStroke: React.FC<{ frame: number; startFrame: number }> = ({ fram
       <path
         d="M3 8l3 3 7-7"
         fill="none"
-        stroke="#22c55e"
+        stroke={DASHBOARD.success}
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -80,17 +81,28 @@ function UserMessage({ item, frame }: { item: Extract<TimelineItem, { type: "use
 }
 
 function ThinkingRow({ item, frame }: { item: Extract<TimelineItem, { type: "thinking" }>; frame: number }) {
-  const anim = feedIn(frame, item.startFrame);
+  const localFrame = Math.max(0, frame - item.startFrame);
+  const s = spring({
+    frame: localFrame,
+    fps: 30,
+    config: { damping: 14, stiffness: 200, mass: 0.3 },
+  });
+  const opacity = interpolate(frame, [item.startFrame, item.startFrame + 8], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const slideY = (1 - s) * -20;
+  const scaleVal = 0.92 + 0.08 * s;
   const textFrame = Math.max(0, frame - item.startFrame - 5);
   const displayText = typewriter(textFrame, item.text, 0.5);
-  const localFrame = Math.max(0, frame - item.startFrame);
   const thinkingGlow = Math.abs(Math.sin((localFrame / 20) * Math.PI)) * 0.5;
 
   return (
     <div
       style={{
-        opacity: anim.opacity,
-        transform: `translateY(${anim.translateY}px)`,
+        opacity,
+        transform: `translateY(${slideY}px) scale(${scaleVal})`,
+        transformOrigin: "left top",
         background: "rgba(27, 79, 114, 0.05)",
         borderRadius: 8,
         padding: "8px 12px",
@@ -135,14 +147,26 @@ function ThinkingRow({ item, frame }: { item: Extract<TimelineItem, { type: "thi
 }
 
 function ToolCallRow({ item, frame }: { item: Extract<TimelineItem, { type: "toolCall" }>; frame: number }) {
-  const anim = feedIn(frame, item.startFrame);
+  const localFrame = Math.max(0, frame - item.startFrame);
+  const s = spring({
+    frame: localFrame,
+    fps: 30,
+    config: { damping: 10, stiffness: 320, mass: 0.25 },
+  });
+  const opacity = interpolate(frame, [item.startFrame, item.startFrame + 5], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const scaleVal = s < 1 ? 0.7 + 0.3 * s : 1;
+  const slideX = (1 - s) * -16;
   const dotScale = pulsingDot(frame);
 
   return (
     <div
       style={{
-        opacity: anim.opacity,
-        transform: `translateY(${anim.translateY}px)`,
+        opacity,
+        transform: `translateX(${slideX}px) scale(${scaleVal})`,
+        transformOrigin: "left center",
         height: 36,
         display: "flex",
         flexDirection: "row",
@@ -188,9 +212,9 @@ function ToolCallRow({ item, frame }: { item: Extract<TimelineItem, { type: "too
             borderRadius: 999,
             background:
               item.badge.color === "green"
-                ? "rgba(34, 197, 94, 0.1)"
+                ? "rgba(34, 163, 82, 0.1)"
                 : "rgba(234, 179, 8, 0.1)",
-            color: item.badge.color === "green" ? "#22c55e" : "#eab308",
+            color: item.badge.color === "green" ? DASHBOARD.success : DASHBOARD.warning,
           }}
         >
           {item.badge.text}
@@ -219,14 +243,26 @@ function FileChangeRow({
   item: Extract<TimelineItem, { type: "fileChange" }>;
   frame: number;
 }) {
-  const anim = feedIn(frame, item.startFrame);
+  const localFrame = Math.max(0, frame - item.startFrame);
+  const s = spring({
+    frame: localFrame,
+    fps: 30,
+    config: { damping: 16, stiffness: 180, mass: 0.4 },
+  });
+  const opacity = interpolate(frame, [item.startFrame, item.startFrame + 8], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const scaleY = 0.3 + 0.7 * s;
+  const slideY = (1 - s) * 12;
   const linesVisible = Math.floor(Math.max(0, frame - item.startFrame - 10) / 2);
 
   return (
     <div
       style={{
-        opacity: anim.opacity,
-        transform: `translateY(${anim.translateY}px)`,
+        opacity,
+        transform: `translateY(${slideY}px) scaleY(${scaleY})`,
+        transformOrigin: "left top",
         marginBottom: 8,
       }}
     >
@@ -244,7 +280,7 @@ function FileChangeRow({
         }}
       >
         <span style={{ fontSize: 16 }}>📄</span>
-        <span style={{ fontSize: 14, color: "#22c55e", fontWeight: 700 }}>✓</span>
+        <span style={{ fontSize: 14, color: DASHBOARD.success, fontWeight: 700 }}>✓</span>
         <span
           style={{
             fontFamily: FONTS.mono,
@@ -287,14 +323,14 @@ function FileChangeRow({
                 fontSize: 12,
                 lineHeight: 1.6,
                 color: isAdd
-                  ? "#22c55e"
+                  ? DASHBOARD.success
                   : isRemove
-                    ? "#ef4444"
+                    ? DASHBOARD.destructive
                     : DASHBOARD.contentTertiary,
                 background: isAdd
-                  ? "rgba(34, 197, 94, 0.1)"
+                  ? "rgba(34, 163, 82, 0.1)"
                   : isRemove
-                    ? "rgba(239, 68, 68, 0.1)"
+                    ? "rgba(224, 64, 64, 0.1)"
                     : "transparent",
                 padding: "0 4px",
               }}
@@ -326,15 +362,27 @@ function AssistantMessage({
   item: Extract<TimelineItem, { type: "assistant" }>;
   frame: number;
 }) {
-  const anim = feedIn(frame, item.startFrame);
+  const localFrame = Math.max(0, frame - item.startFrame);
+  const s = spring({
+    frame: localFrame,
+    fps: 30,
+    config: { damping: 12, stiffness: 260, mass: 0.3 },
+  });
+  const opacity = interpolate(frame, [item.startFrame, item.startFrame + 8], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const slideY = (1 - s) * 18;
+  const scaleVal = 0.9 + 0.1 * s;
   const textFrame = Math.max(0, frame - item.startFrame - 5);
   const displayText = typewriter(textFrame, item.text, 0.6);
 
   return (
     <div
       style={{
-        opacity: anim.opacity,
-        transform: `translateY(${anim.translateY}px)`,
+        opacity,
+        transform: `translateY(${slideY}px) scale(${scaleVal})`,
+        transformOrigin: "left top",
         fontFamily: FONTS.sans,
         fontSize: 14,
         color: DASHBOARD.contentPrimary,
