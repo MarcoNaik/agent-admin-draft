@@ -1,10 +1,10 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { sectionOpacity, sceneTransform3D } from "../lib/animations";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
+import { dipToDark, lateralSlide, scalePunchExit, wipeProgress, animatedCounter } from "../lib/animations";
 import { SectionProvider } from "../lib/SectionContext";
 import { T } from "../lib/timeline";
-import { ProblemHook } from "../components/ProblemHook";
 import { InterstitialCard } from "../components/InterstitialCard";
+import { OpeningOverlay } from "../components/landing/OpeningOverlay";
 import { LandingHeroMock } from "../components/landing/LandingHeroMock";
 import { DashboardShell } from "../components/dashboard/DashboardShell";
 import { StudioWithInput } from "../components/dashboard/StudioWithInput";
@@ -13,8 +13,8 @@ import { AgentsPageMock } from "../components/pages/AgentsPageMock";
 import { ConversationMock } from "../components/pages/ConversationMock";
 import { EvalRunMock } from "../components/pages/EvalRunMock";
 import { MultiChannelScene } from "../components/MultiChannelScene";
+import { EvalPromptScene } from "../components/EvalPromptScene";
 import { EndCard } from "../components/EndCard";
-import { WarpTransition } from "../components/WarpTransition";
 
 const evalCases = [
   { name: "Standard cleaning booking", pass: true, duration: "1.2s" },
@@ -45,364 +45,564 @@ const evalCases = [
   { name: "Patient data validation", pass: true, duration: "0.9s" },
 ];
 
+const FeatureCallout: React.FC<{
+  text: React.ReactNode;
+  globalFrame: number;
+  appearAt: number;
+  disappearAt: number;
+  fps: number;
+  position: { x: number; y: number };
+  align?: "left" | "right";
+  fontSize?: number;
+}> = ({ text, globalFrame, appearAt, disappearAt, fps, position, align = "left", fontSize = 24 }) => {
+  if (globalFrame < appearAt || globalFrame > disappearAt) return null;
+  const enterSpring = spring({
+    frame: Math.max(0, globalFrame - appearAt),
+    fps,
+    config: { damping: 12, stiffness: 240, mass: 0.35 },
+  });
+  const exitProgress = globalFrame > disappearAt - 8
+    ? interpolate(globalFrame, [disappearAt - 8, disappearAt], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      })
+    : 0;
+  const opacity = enterSpring * (1 - exitProgress);
+  const slideY = (1 - enterSpring) * 30;
+  const scale = 0.8 + 0.2 * enterSpring;
+  const shimmerPos = interpolate(
+    globalFrame - appearAt,
+    [0, 60],
+    [-100, 200],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  const shimmerGlow = 0.15 + 0.1 * Math.sin(((globalFrame - appearAt) / 30) * Math.PI);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: position.x,
+        top: position.y,
+        opacity,
+        transform: `translateY(${slideY}px) scale(${scale})`,
+        transformOrigin: "center center",
+        zIndex: 20,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      <div
+        style={{
+          background: "linear-gradient(135deg, #1B4F72, #2C7DA0)",
+          borderRadius: 8,
+          padding: "10px 20px",
+          boxShadow: `0 8px 24px rgba(27, 79, 114, ${0.35 + shimmerGlow}), 0 2px 8px rgba(0,0,0,0.1), 0 0 ${shimmerGlow * 30}px rgba(44, 125, 160, ${shimmerGlow})`,
+          position: "relative" as const,
+          overflow: "hidden" as const,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute" as const,
+            top: 0,
+            left: `${shimmerPos}%`,
+            width: "30%",
+            height: "100%",
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+            pointerEvents: "none" as const,
+          }}
+        />
+        <span
+          style={{
+            fontFamily: "'DM Sans', system-ui, sans-serif",
+            fontSize,
+            fontWeight: 600,
+            color: "#ffffff",
+            whiteSpace: "nowrap",
+            position: "relative" as const,
+          }}
+        >
+          {text}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const DemoVideo: React.FC = () => {
   const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  const showProblemHook = f <= T.problemHook.end + 15;
-  const showWarp = f >= T.warpTransition.start && f <= T.warpTransition.end;
-  const showLanding = f >= T.landing.start - 15 && f <= T.landing.end + 15;
-  const showAgentCreation = f >= T.agentCreation.start - 15 && f <= T.agentCreation.end + 15;
-  const showChat = f >= T.chat.start - 15 && f <= T.chat.end + 15;
-  const showEval = f >= T.evalSuite.start - 15 && f <= T.evalSuite.end + 15;
-  const showMultiChannel = f >= T.multiChannel.start - 15 && f <= T.multiChannel.end + 15;
-  const showEndCard = f >= T.endCard.start - 15;
+  const showLanding = f >= T.landing.start && f <= T.landing.end + 5;
+  const showAgentCreation = f >= T.agentCreation.start && f <= T.agentCreation.end + 5;
+  const showChat = f >= T.chat.start && f <= T.chat.end + 5;
+  const showInter3 = f >= T.interstitial3.enter && f <= T.interstitial3.exit;
+  const showEvalPrompt = f >= T.evalPrompt.start && f <= T.evalPrompt.end + 5;
+  const showEval = f >= T.evalSuite.start && f <= T.evalSuite.end + 5;
+  const showInter4 = f >= T.interstitial4.enter && f <= T.interstitial4.exit;
+  const showMultiChannel = f >= T.multiChannel.start && f <= T.multiChannel.end + 5;
+  const showEndCard = f >= T.endCard.start;
 
-  const problemHookOpacity = sectionOpacity(f, 0, 8, T.problemHook.end - 15, T.problemHook.end);
-  const warpOpacity = sectionOpacity(f, T.warpTransition.start, T.warpTransition.start + 3, T.warpTransition.end - 5, T.warpTransition.end);
-  const landingOpacity = sectionOpacity(f, T.landing.start, T.landing.start + 15, T.landing.end - 20, T.landing.end);
-  const agentOpacity = sectionOpacity(f, T.agentCreation.start, T.agentCreation.start + 20, T.agentCreation.end - 20, T.agentCreation.end);
-  const chatOpacity = sectionOpacity(f, T.chat.start, T.chat.start + 15, T.chat.end - 25, T.chat.end);
-  const evalOpacity = sectionOpacity(f, T.evalSuite.start, T.evalSuite.start + 20, T.evalSuite.end - 25, T.evalSuite.end);
-  const multiChannelOpacity = sectionOpacity(f, T.multiChannel.start, T.multiChannel.start + 15, T.multiChannel.end - 20, T.multiChannel.end);
-  const endCardOpacity = sectionOpacity(f, T.endCard.start, T.endCard.start + 20, T.endCard.end, T.endCard.end);
+  const punchIn = (triggerFrame: number) => {
+    const s = spring({
+      frame: Math.max(0, f - triggerFrame),
+      fps,
+      config: { damping: 18, stiffness: 220, mass: 0.4 },
+    });
+    return 1.06 - 0.06 * s;
+  };
 
-  const inter1Opacity = sectionOpacity(f, T.interstitial1.enter, T.interstitial1.enter + 10, T.interstitial1.exit - 10, T.interstitial1.exit);
-  const inter2Opacity = sectionOpacity(f, T.interstitial2.enter, T.interstitial2.enter + 10, T.interstitial2.exit - 10, T.interstitial2.exit);
-  const inter3Opacity = sectionOpacity(f, T.interstitial3.enter, T.interstitial3.enter + 10, T.interstitial3.exit - 10, T.interstitial3.exit);
-  const inter4Opacity = sectionOpacity(f, T.interstitial4.enter, T.interstitial4.enter + 10, T.interstitial4.exit - 10, T.interstitial4.exit);
+  const hardOut = (exitStart: number, exitEnd: number) => {
+    if (f < exitStart) return { opacity: 1, scale: 1 };
+    const progress = interpolate(f, [exitStart, exitEnd], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+    return {
+      opacity: 1 - progress,
+      scale: 1 + 0.08 * progress,
+    };
+  };
 
-  const landingTransform = sceneTransform3D(f, T.landing.start, T.landing.start + 18, "push");
-  const agentTransform = sceneTransform3D(f, T.agentCreation.start, T.agentCreation.start + 20, "turnLeft");
-  const chatTransform = sceneTransform3D(f, T.chat.start, T.chat.start + 20, "pull");
-  const evalTransform = sceneTransform3D(f, T.evalSuite.start, T.evalSuite.start + 20, "tiltUp");
-  const multiChannelTransform = sceneTransform3D(f, T.multiChannel.start, T.multiChannel.start + 20, "crane");
-  const endCardTransform = sceneTransform3D(f, T.endCard.start, T.endCard.start + 20, "deepPush");
+  const landingExitRaw = interpolate(f, [T.landing.end - 10, T.landing.end], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const landingExitY = -100 * (1 - Math.pow(1 - landingExitRaw, 3.5));
+  const agentEnterRaw = interpolate(f, [T.agentCreation.start, T.agentCreation.start + 10], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const agentEnterY = 100 * (1 - (1 - Math.pow(1 - agentEnterRaw, 3.5)));
+  const chatExit = hardOut(T.chat.end - 15, T.chat.end);
+  const agentSlideX = lateralSlide(f, T.agentCreation.end - 8, T.agentCreation.end, "left");
+  const chatSlideX = lateralSlide(f, T.chat.start, T.chat.start + 8, "right");
+  const evalExit = scalePunchExit(f, T.evalSuite.end - 25, T.evalSuite.end);
+  const inter4Exit = hardOut(T.interstitial4.exit - 6, T.interstitial4.exit);
+  const multiChannelExit = {
+    opacity: interpolate(f, [T.multiChannel.end - 20, T.multiChannel.end], [1, 0], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }),
+    scale: interpolate(f, [T.multiChannel.end - 20, T.multiChannel.end], [1, 0.9], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }),
+  };
+
+  const darkOverlay = 0;
+  const wipe = wipeProgress(f, T.interstitial4.exit - 15, T.interstitial4.exit);
+
+  const landingEntrance = 1;
+  const agentScale = punchIn(T.agentCreation.start);
+  const chatScale = punchIn(T.chat.start);
+  const evalScale = 1;
+  const multiChannelScale = punchIn(T.multiChannel.start);
+  const endCardScale = punchIn(T.endCard.start);
 
   return (
     <AbsoluteFill style={{ background: "#F8F6F2" }}>
-      {showProblemHook && (
-        <AbsoluteFill style={{ opacity: problemHookOpacity }}>
-          <SectionProvider sectionStart={T.problemHook.start} sectionDuration={T.problemHook.duration}>
-            <ProblemHook />
-          </SectionProvider>
-        </AbsoluteFill>
-      )}
-
-      {showWarp && (
-        <AbsoluteFill style={{ opacity: warpOpacity, zIndex: 5 }}>
-          <SectionProvider sectionStart={T.warpTransition.start} sectionDuration={T.warpTransition.duration}>
-            <WarpTransition />
-          </SectionProvider>
-        </AbsoluteFill>
-      )}
-
       {showLanding && (
-        <AbsoluteFill style={{ opacity: landingOpacity, perspective: 1200 }}>
-          <div style={{ width: "100%", height: "100%", transform: landingTransform, transformStyle: "preserve-3d" as const }}>
-            <SectionProvider sectionStart={T.landing.start} sectionDuration={T.landing.duration}>
-              <CameraContainer
-                movements={[
-                  { startFrame: 100, endFrame: 130, from: { scale: 1, x: 960, y: 540 }, to: { scale: 2.2, x: 960, y: 750 } },
+        <AbsoluteFill style={{
+          transform: `translateY(${landingExitY}%)`,
+        }}>
+          <SectionProvider sectionStart={T.landing.start} sectionDuration={T.landing.duration}>
+            <CameraContainer
+              movements={[
+                { startFrame: 40, endFrame: 65, from: { scale: 1, x: 960, y: 540 }, to: { scale: 2.2, x: 960, y: 750 } },
+                { startFrame: 180, endFrame: 220, from: { scale: 2.2, x: 960, y: 750 }, to: { scale: 1.4, x: 960, y: 600 } },
+              ]}
+            >
+              <LandingHeroMock
+                headline="AI agents for business"
+                tagline="BUILT FOR AI TO BUILD"
+                promptText="Build a receptionist for my dental clinic"
+                suggestions={[
+                  { label: "Client support" },
+                  { label: "Bookings" },
+                  { label: "Collections" },
+                  { label: "Multi-agent" },
                 ]}
-              >
-                <LandingHeroMock
-                  headline="AI agents for business"
-                  tagline="BUILT FOR AI TO BUILD"
-                  promptText="Build a receptionist for my dental clinic"
-                  suggestions={[
-                    { label: "Client support" },
-                    { label: "Bookings" },
-                    { label: "Collections" },
-                    { label: "Multi-agent" },
-                  ]}
-                />
-              </CameraContainer>
-            </SectionProvider>
-          </div>
-        </AbsoluteFill>
-      )}
-
-      {inter1Opacity > 0 && (
-        <AbsoluteFill style={{ opacity: inter1Opacity, zIndex: 10 }}>
-          <SectionProvider sectionStart={T.interstitial1.enter} sectionDuration={T.interstitial1.exit - T.interstitial1.enter}>
-            <InterstitialCard headline="Describe it. We build it." subtext="" variant={1} />
+              />
+            </CameraContainer>
+            <OpeningOverlay />
           </SectionProvider>
         </AbsoluteFill>
       )}
 
       {showAgentCreation && (
-        <AbsoluteFill style={{ opacity: agentOpacity, perspective: 1200 }}>
-          <div style={{ width: "100%", height: "100%", transform: agentTransform, transformStyle: "preserve-3d" as const }}>
-            <SectionProvider sectionStart={T.agentCreation.start} sectionDuration={T.agentCreation.duration}>
-              <CameraContainer
-                movements={[
-                  { startFrame: 0, endFrame: 1, from: { scale: 2.5, x: 1680, y: 250 }, to: { scale: 2.5, x: 1680, y: 250 } },
-                  { startFrame: 105, endFrame: 130, from: { scale: 2.5, x: 1680, y: 250, rotateX: 0 }, to: { scale: 1.4, x: 1440, y: 400, rotateX: 1.5 } },
-                  { startFrame: 180, endFrame: 210, from: { scale: 1.4, x: 1440, y: 400 }, to: { scale: 1.3, x: 700, y: 500 } },
-                  { startFrame: 240, endFrame: 270, from: { scale: 1.3, x: 700, y: 500, rotateY: -2 }, to: { scale: 1, x: 960, y: 540, rotateY: 0 } },
-                ]}
-              >
-                <DashboardShell
-                  activeTab="system"
-                  environment="development"
-                  studioOpen={true}
-                  studioContent={
-                    <StudioWithInput
-                      promptText="Build a receptionist for my dental clinic"
-                      promptStartFrame={0}
-                      sendFrame={0}
-                      timeline={[
-                        {
-                          type: "thinking",
-                          startFrame: 5,
-                          text: "I'll create a dental receptionist agent with appointment scheduling capabilities...",
-                        },
-                        {
-                          type: "toolCall",
-                          startFrame: 40,
-                          icon: "file",
-                          title: "Write agents/receptionist.ts",
-                          status: "completed",
-                          badge: { text: "write", color: "green" },
-                        },
-                        {
-                          type: "toolCall",
-                          startFrame: 55,
-                          icon: "file",
-                          title: "Write entity-types/appointment.ts",
-                          status: "completed",
-                          badge: { text: "write", color: "green" },
-                        },
-                        {
-                          type: "toolCall",
-                          startFrame: 70,
-                          icon: "search",
-                          title: "Read project config",
-                          status: "completed",
-                          summary: "1 file",
-                        },
-                        {
-                          type: "fileChange",
-                          startFrame: 85,
-                          path: "agents/receptionist.ts",
-                          action: "write",
-                          lines: [
-                            '+ import { defineAgent } from "struere"',
-                            "+",
-                            "+ export default defineAgent({",
-                            '+   name: "Dental Receptionist",',
-                            '+   slug: "dental-receptionist",',
-                            '+   model: { provider: "xai", name: "grok-4-1-fast" },',
-                            '+   tools: ["entity.create", "entity.query", "entity.update"],',
-                            "+ })",
-                          ],
-                        },
-                        {
-                          type: "assistant",
-                          startFrame: 140,
-                          text: "Done. Your agent is live with 3 tools enabled.",
-                        },
-                      ]}
-                    />
-                  }
-                >
-                  <AgentsPageMock
-                    agents={[
+        <AbsoluteFill style={{
+          transform: `translateY(${agentEnterY}%) translateX(${agentSlideX}%) scale(${agentScale})`,
+        }}>
+          <SectionProvider sectionStart={T.agentCreation.start} sectionDuration={T.agentCreation.duration}>
+            <CameraContainer
+              movements={[
+                { startFrame: 0, endFrame: 1, from: { scale: 5.5, x: 1580, y: 185 }, to: { scale: 5.5, x: 1580, y: 185 } },
+                { startFrame: 30, endFrame: 100, from: { scale: 5.5, x: 1580, y: 185 }, to: { scale: 2.5, x: 1580, y: 250 } },
+                { startFrame: 110, endFrame: 160, from: { scale: 2.5, x: 1580, y: 250 }, to: { scale: 1.4, x: 1440, y: 400 } },
+                { startFrame: 195, endFrame: 220, from: { scale: 1.4, x: 1440, y: 400 }, to: { scale: 1, x: 960, y: 540 } },
+              ]}
+            >
+              <DashboardShell
+                activeTab="system"
+                environment="development"
+                studioOpen={true}
+                studioContent={
+                  <StudioWithInput
+                    promptText="Build a receptionist for my dental clinic"
+                    promptStartFrame={0}
+                    sendFrame={0}
+                    skipEntrance
+                    timeline={[
                       {
-                        name: "Dental Receptionist",
-                        description: "Handles cleanings, whitening, and emergencies",
-                        status: "active",
+                        type: "thinking",
+                        startFrame: 5,
+                        text: "I'll create a dental receptionist agent with appointment scheduling capabilities...",
+                      },
+                      {
+                        type: "toolCall",
+                        startFrame: 45,
+                        icon: "file",
+                        title: "Write agents/receptionist.ts",
+                        status: "completed",
+                        badge: { text: "write", color: "green" },
+                      },
+                      {
+                        type: "toolCall",
+                        startFrame: 75,
+                        icon: "file",
+                        title: "Write entity-types/appointment.ts",
+                        status: "completed",
+                        badge: { text: "write", color: "green" },
+                      },
+                      {
+                        type: "toolCall",
+                        startFrame: 100,
+                        icon: "search",
+                        title: "Read project config",
+                        status: "completed",
+                        summary: "1 file",
+                      },
+                      {
+                        type: "fileChange",
+                        startFrame: 115,
+                        path: "agents/receptionist.ts",
+                        action: "write",
+                        lines: [
+                          '+ import { defineAgent } from "struere"',
+                          "+",
+                          "+ export default defineAgent({",
+                          '+   name: "Dental Receptionist",',
+                          '+   slug: "dental-receptionist",',
+                          '+   model: { provider: "xai", name: "grok-4-1-fast" },',
+                          '+   tools: ["entity.create", "entity.query", "entity.update"],',
+                          "+ })",
+                        ],
+                      },
+                      {
+                        type: "assistant",
+                        startFrame: 160,
+                        text: "Done. Your agent is live with 3 tools enabled.",
                       },
                     ]}
-                    highlightIndex={0}
-                    showAt={200}
                   />
-                </DashboardShell>
-              </CameraContainer>
-            </SectionProvider>
-          </div>
-        </AbsoluteFill>
-      )}
-
-      {inter2Opacity > 0 && (
-        <AbsoluteFill style={{ opacity: inter2Opacity, zIndex: 10 }}>
-          <SectionProvider sectionStart={T.interstitial2.enter} sectionDuration={T.interstitial2.exit - T.interstitial2.enter}>
-            <InterstitialCard headline="Watch it work." subtext="" variant={2} />
+                }
+              >
+                <AgentsPageMock
+                  agents={[
+                    {
+                      name: "Dental Receptionist",
+                      description: "Handles cleanings, whitening, and emergencies",
+                      status: "active",
+                    },
+                  ]}
+                  highlightIndex={0}
+                  showAt={220}
+                />
+              </DashboardShell>
+            </CameraContainer>
           </SectionProvider>
         </AbsoluteFill>
       )}
 
       {showChat && (
-        <AbsoluteFill style={{ opacity: chatOpacity, perspective: 1200 }}>
-          <div style={{ width: "100%", height: "100%", transform: chatTransform, transformStyle: "preserve-3d" as const }}>
-            <SectionProvider sectionStart={T.chat.start} sectionDuration={T.chat.duration}>
-              <CameraContainer
-                movements={[
-                  { startFrame: 210, endFrame: 230, from: { scale: 1, x: 960, y: 540, rotateX: 0 }, to: { scale: 2, x: 1500, y: 800, rotateX: 2 } },
-                ]}
-              >
-                <DashboardShell activeTab="chats" environment="development" studioOpen={false}>
-                  <ConversationMock
-                    agentName="Dental Receptionist"
-                    contactName="Claudia Figueroa"
-                    threadPreview="Hi, I need a cleaning on Thursday..."
-                    messages={[
-                      {
-                        role: "user",
-                        text: "Hi, I need a cleaning on Thursday please.",
-                        startFrame: 24,
-                      },
-                      {
-                        role: "agent",
-                        text: "I'd be happy to help! I have availability at 2:00 PM on Thursday. Shall I book that for you?",
-                        startFrame: 58,
-                      },
-                      {
-                        role: "user",
-                        text: "That works perfectly.",
-                        startFrame: 111,
-                      },
-                      {
-                        role: "agent",
-                        text: "\u2713 Booked: Dental Cleaning\nThursday, 2:00 PM\nPatient: Claudia Figueroa\n\nSee you then! Please arrive 10 minutes early.",
-                        startFrame: 155,
-                        toolCalls: [
-                          {
-                            name: "entity.create",
-                            args: {
-                              type: "appointment",
-                              patientName: "Claudia Figueroa",
-                              service: "Dental Cleaning",
-                              date: "Thu 2:00 PM",
-                            },
-                            result: { id: "apt_001", status: "confirmed" },
+        <AbsoluteFill style={{
+          opacity: chatExit.opacity,
+          transform: `translateX(${chatSlideX}%) scale(${chatScale * chatExit.scale})`,
+        }}>
+          <SectionProvider sectionStart={T.chat.start} sectionDuration={T.chat.duration}>
+            <CameraContainer
+              movements={[
+                { startFrame: 260, endFrame: 285, from: { scale: 1, x: 960, y: 540 }, to: { scale: 2, x: 1500, y: 800 } },
+              ]}
+            >
+              <DashboardShell activeTab="chats" environment="development" studioOpen={false}>
+                <ConversationMock
+                  agentName="Dental Receptionist"
+                  contactName="Claudia Figueroa"
+                  threadPreview="Hi, I need a cleaning on Thursday..."
+                  messages={[
+                    {
+                      role: "user",
+                      text: "Hi, I need a cleaning on Thursday please.",
+                      startFrame: 30,
+                    },
+                    {
+                      role: "agent",
+                      text: "I'd be happy to help! I have availability at 2:00 PM on Thursday. Shall I book that for you?",
+                      startFrame: 75,
+                    },
+                    {
+                      role: "user",
+                      text: "That works perfectly.",
+                      startFrame: 125,
+                    },
+                    {
+                      role: "agent",
+                      text: "\u2713 Booked: Dental Cleaning\nThursday, 2:00 PM\nPatient: Claudia Figueroa\n\nSee you then! Please arrive 10 minutes early.",
+                      startFrame: 170,
+                      toolCalls: [
+                        {
+                          name: "entity.create",
+                          args: {
+                            type: "appointment",
+                            patientName: "Claudia Figueroa",
+                            service: "Dental Cleaning",
+                            date: "Thu 2:00 PM",
                           },
-                        ],
-                      },
-                    ]}
-                    showCalendarToastAt={173}
-                    calendarToastText="Calendar event created: Thu 2:00 PM"
-                    showWhatsAppToastAt={195}
-                    whatsAppToastText="WhatsApp sent to Claudia Figueroa"
-                  />
-                </DashboardShell>
-              </CameraContainer>
-            </SectionProvider>
-          </div>
+                          result: { id: "apt_001", status: "confirmed" },
+                        },
+                      ],
+                    },
+                  ]}
+                  showCalendarToastAt={235}
+                  calendarToastText="Calendar event created: Thu 2:00 PM"
+                  showWhatsAppToastAt={260}
+                  whatsAppToastText="WhatsApp sent to Claudia Figueroa"
+                />
+              </DashboardShell>
+            </CameraContainer>
+          </SectionProvider>
         </AbsoluteFill>
       )}
 
-      {inter3Opacity > 0 && (
-        <AbsoluteFill style={{ opacity: inter3Opacity, zIndex: 10 }}>
+      {showInter3 && (
+        <AbsoluteFill style={{
+          opacity: interpolate(f, [T.interstitial3.exit - 2, T.interstitial3.exit], [1, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+          zIndex: 10,
+        }}>
           <SectionProvider sectionStart={T.interstitial3.enter} sectionDuration={T.interstitial3.exit - T.interstitial3.enter}>
-            <InterstitialCard headline="Test and iterate fast." subtext="" variant={3} />
+            <InterstitialCard headline="It tests and fixes itself." subtext="" />
           </SectionProvider>
         </AbsoluteFill>
+      )}
+
+      {showEvalPrompt && (
+        <AbsoluteFill style={{
+          opacity: interpolate(f, [T.evalPrompt.end - 10, T.evalPrompt.end], [1, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+        }}>
+          <SectionProvider sectionStart={T.evalPrompt.start} sectionDuration={T.evalPrompt.duration}>
+            <EvalPromptScene />
+          </SectionProvider>
+        </AbsoluteFill>
+      )}
+
+      {darkOverlay > 0 && (
+        <AbsoluteFill style={{ backgroundColor: "#1A1815", opacity: darkOverlay, zIndex: 15 }} />
       )}
 
       {showEval && (
-        <AbsoluteFill style={{ opacity: evalOpacity, perspective: 1200 }}>
-          <div style={{ width: "100%", height: "100%", transform: evalTransform, transformStyle: "preserve-3d" as const }}>
-            <SectionProvider sectionStart={T.evalSuite.start} sectionDuration={T.evalSuite.duration}>
-              <CameraContainer
-                movements={[
-                  { startFrame: 0, endFrame: 20, from: { scale: 1, x: 960, y: 540, rotateY: 0 }, to: { scale: 4, x: 1680, y: 1010, rotateY: -1 } },
-                  { startFrame: 151, endFrame: 171, from: { scale: 4, x: 1680, y: 1010 }, to: { scale: 1, x: 960, y: 540 } },
-                  { startFrame: 376, endFrame: 406, from: { scale: 1, x: 960, y: 540 }, to: { scale: 3, x: 1680, y: 380 } },
-                  { startFrame: 481, endFrame: 508, from: { scale: 3, x: 1680, y: 380 }, to: { scale: 1, x: 960, y: 540 } },
-                ]}
-              >
-                <DashboardShell
-                  activeTab="system"
-                  environment="development"
-                  studioOpen={true}
-                  studioContent={
-                    <StudioWithInput
-                      promptText="Write 20 eval scenarios for edge cases"
-                      promptStartFrame={15}
-                      sendFrame={151}
-                      timeline={[
-                        {
-                          type: "thinking",
-                          startFrame: 156,
-                          text: "Creating comprehensive eval suite...",
-                        },
-                        {
-                          type: "toolCall",
-                          startFrame: 177,
-                          icon: "file",
-                          title: "Write evals/receptionist-suite.ts",
-                          status: "completed",
-                          badge: { text: "write", color: "green" },
-                        },
-                        {
-                          type: "assistant",
-                          startFrame: 186,
-                          text: "Created 20 eval scenarios. Running the suite now...",
-                        },
-                        {
-                          type: "assistant",
-                          startFrame: 370,
-                          text: "19/20 passed. The agent doesn't recognize Australian public holidays. I'll fix the prompt.",
-                        },
-                        {
-                          type: "toolCall",
-                          startFrame: 428,
-                          icon: "edit",
-                          title: "Patch agents/receptionist.ts",
-                          status: "completed",
-                          badge: { text: "patch", color: "amber" },
-                        },
-                        {
-                          type: "assistant",
-                          startFrame: 437,
-                          text: "Fixed. Rerunning the eval suite...",
-                        },
-                      ]}
-                    />
-                  }
-                >
-                  <EvalRunMock
-                    suiteName="Receptionist Edge Cases"
-                    cases={evalCases}
-                    streamStartFrame={181}
-                    streamSpeed={8}
-                    failHighlightFrame={334}
-                    rerunStartFrame={451}
-                    rerunSpeed={4}
+        <AbsoluteFill style={{
+          opacity: evalExit.opacity,
+          transform: `scale(${evalScale * evalExit.scale})`,
+        }}>
+          <SectionProvider sectionStart={T.evalSuite.start} sectionDuration={T.evalSuite.duration}>
+            <CameraContainer
+              movements={[
+                { startFrame: 0, endFrame: 1, from: { scale: 6.5, x: 1600, y: 180 }, to: { scale: 6.5, x: 1600, y: 180 } },
+                { startFrame: 30, endFrame: 90, from: { scale: 6.5, x: 1600, y: 180 }, to: { scale: 2.5, x: 1580, y: 250 } },
+                { startFrame: 110, endFrame: 140, from: { scale: 2.5, x: 1580, y: 250 }, to: { scale: 1.3, x: 720, y: 500 } },
+                { startFrame: 250, endFrame: 270, from: { scale: 1.3, x: 720, y: 500 }, to: { scale: 2.2, x: 1680, y: 420 } },
+                { startFrame: 340, endFrame: 355, from: { scale: 2.2, x: 1680, y: 420 }, to: { scale: 1.3, x: 720, y: 500 } },
+              ]}
+            >
+              <DashboardShell
+                activeTab="system"
+                environment="development"
+                studioOpen={true}
+                studioContent={
+                  <StudioWithInput
+                    promptText="Write 20 eval scenarios for edge cases"
+                    promptStartFrame={0}
+                    sendFrame={0}
+                    skipEntrance
+                    timeline={[
+                      {
+                        type: "thinking",
+                        startFrame: 8,
+                        text: "Creating comprehensive eval suite...",
+                      },
+                      {
+                        type: "toolCall",
+                        startFrame: 30,
+                        icon: "file",
+                        title: "Write evals/receptionist-suite.ts",
+                        status: "completed",
+                        badge: { text: "write", color: "green" },
+                      },
+                      {
+                        type: "assistant",
+                        startFrame: 50,
+                        text: "Created 20 eval scenarios. Running the suite now...",
+                      },
+                      {
+                        type: "assistant",
+                        startFrame: 275,
+                        text: "19/20 passed. The agent doesn't recognize Australian public holidays. I'll fix the prompt.",
+                      },
+                      {
+                        type: "toolCall",
+                        startFrame: 305,
+                        icon: "edit",
+                        title: "Patch agents/receptionist.ts",
+                        status: "completed",
+                        badge: { text: "patch", color: "amber" },
+                      },
+                      {
+                        type: "assistant",
+                        startFrame: 325,
+                        text: "Fixed. Rerunning the eval suite...",
+                      },
+                    ]}
                   />
-                </DashboardShell>
-              </CameraContainer>
-            </SectionProvider>
-          </div>
-        </AbsoluteFill>
-      )}
-
-      {inter4Opacity > 0 && (
-        <AbsoluteFill style={{ opacity: inter4Opacity, zIndex: 10 }}>
-          <SectionProvider sectionStart={T.interstitial4.enter} sectionDuration={T.interstitial4.exit - T.interstitial4.enter}>
-            <InterstitialCard headline="Deploy to any channel." subtext="" variant={4} />
+                }
+              >
+                <EvalRunMock
+                  suiteName="Receptionist Edge Cases"
+                  cases={evalCases}
+                  streamStartFrame={120}
+                  streamSpeed={5}
+                  failHighlightFrame={225}
+                  rerunStartFrame={350}
+                  rerunSpeed={2}
+                />
+              </DashboardShell>
+            </CameraContainer>
           </SectionProvider>
         </AbsoluteFill>
       )}
 
-      {showMultiChannel && (
-        <AbsoluteFill style={{ opacity: multiChannelOpacity, perspective: 1200 }}>
-          <div style={{ width: "100%", height: "100%", transform: multiChannelTransform, transformStyle: "preserve-3d" as const }}>
-            <SectionProvider sectionStart={T.multiChannel.start} sectionDuration={T.multiChannel.duration}>
-              <MultiChannelScene />
-            </SectionProvider>
-          </div>
+      {showInter4 && (
+        <AbsoluteFill style={{
+          opacity: inter4Exit.opacity,
+          transform: `scale(${inter4Exit.scale})`,
+          zIndex: 10,
+        }}>
+          <SectionProvider sectionStart={T.interstitial4.enter} sectionDuration={T.interstitial4.exit - T.interstitial4.enter}>
+            <InterstitialCard headline="Deploy to any channel." subtext="" />
+          </SectionProvider>
         </AbsoluteFill>
       )}
 
+      {wipe > 0 && wipe < 1 && (
+        <AbsoluteFill style={{
+          backgroundColor: "#F8F6F2",
+          transform: `translateX(${(1 - wipe) * -100}%)`,
+          zIndex: 9,
+        }} />
+      )}
+
+      {showMultiChannel && (
+        <AbsoluteFill style={{
+          opacity: multiChannelExit.opacity,
+          transform: `scale(${multiChannelScale * multiChannelExit.scale})`,
+        }}>
+          <SectionProvider sectionStart={T.multiChannel.start} sectionDuration={T.multiChannel.duration}>
+            <MultiChannelScene />
+          </SectionProvider>
+        </AbsoluteFill>
+      )}
+
+      <FeatureCallout
+        text="No code required"
+        globalFrame={f}
+        appearAt={T.agentCreation.start + 140}
+        disappearAt={T.agentCreation.start + 220}
+        fps={fps}
+        position={{ x: 860, y: 960 }}
+        fontSize={24}
+      />
+      <FeatureCallout
+        text="Agent created. Fully functional."
+        globalFrame={f}
+        appearAt={T.agentCreation.start + 240}
+        disappearAt={T.agentCreation.start + 320}
+        fps={fps}
+        position={{ x: 810, y: 960 }}
+        fontSize={24}
+      />
+      <FeatureCallout
+        text="Real-time conversations"
+        globalFrame={f}
+        appearAt={T.chat.start + 80}
+        disappearAt={T.chat.start + 160}
+        fps={fps}
+        position={{ x: 830, y: 960 }}
+        fontSize={24}
+      />
+      <FeatureCallout
+        text="Automated actions"
+        globalFrame={f}
+        appearAt={T.chat.start + 265}
+        disappearAt={T.chat.end - 30}
+        fps={fps}
+        position={{ x: 850, y: 960 }}
+        fontSize={24}
+      />
+      <FeatureCallout
+        text="19/20 passing"
+        globalFrame={f}
+        appearAt={T.evalSuite.start + 200}
+        disappearAt={T.evalSuite.start + 270}
+        fps={fps}
+        position={{ x: 870, y: 960 }}
+        fontSize={24}
+      />
+      <FeatureCallout
+        text="Self-healing agents"
+        globalFrame={f}
+        appearAt={T.evalSuite.start + 310}
+        disappearAt={T.evalSuite.start + 400}
+        fps={fps}
+        position={{ x: 845, y: 960 }}
+        fontSize={24}
+      />
+      <FeatureCallout
+        text="One agent, every channel"
+        globalFrame={f}
+        appearAt={T.multiChannel.start + 60}
+        disappearAt={T.multiChannel.start + 140}
+        fps={fps}
+        position={{ x: 825, y: 960 }}
+        align="left"
+        fontSize={16}
+      />
+
       {showEndCard && (
-        <AbsoluteFill style={{ opacity: endCardOpacity, perspective: 1200 }}>
-          <div style={{ width: "100%", height: "100%", transform: endCardTransform, transformStyle: "preserve-3d" as const }}>
-            <SectionProvider sectionStart={T.endCard.start} sectionDuration={T.endCard.duration}>
-              <EndCard />
-            </SectionProvider>
-          </div>
+        <AbsoluteFill style={{
+          transform: `scale(${endCardScale})`,
+        }}>
+          <SectionProvider sectionStart={T.endCard.start} sectionDuration={T.endCard.duration}>
+            <EndCard />
+          </SectionProvider>
         </AbsoluteFill>
       )}
     </AbsoluteFill>
