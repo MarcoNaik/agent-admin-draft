@@ -2,42 +2,48 @@ import React from "react";
 import { interpolate, spring, useVideoConfig } from "remotion";
 import { fadeIn } from "../lib/animations";
 import { useSectionFrame } from "../lib/SectionContext";
-import { FONTS, LANDING_LIGHT } from "../lib/dashboard-theme";
+import { FONTS } from "../lib/dashboard-theme";
 
 export const MultiChannelScene: React.FC = () => {
   const frame = useSectionFrame();
   const { fps } = useVideoConfig();
 
   const phoneSlide = spring({
-    frame: Math.max(0, frame - 20),
+    frame: Math.max(0, frame - 15),
     fps,
-    config: { damping: 80, stiffness: 120, mass: 0.6 },
+    config: { damping: 14, stiffness: 160, mass: 0.5 },
   });
 
   const browserSlide = spring({
-    frame: Math.max(0, frame - 40),
+    frame: Math.max(0, frame - 30),
     fps,
-    config: { damping: 80, stiffness: 120, mass: 0.6 },
+    config: { damping: 14, stiffness: 160, mass: 0.5 },
   });
 
-  const messageOpacity = interpolate(frame, [50, 60], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const springMsg = (startAt: number, isRight: boolean) => {
+    const localF = Math.max(0, frame - startAt);
+    const s = spring({
+      frame: localF,
+      fps,
+      config: { damping: 12, stiffness: 240, mass: 0.35 },
+    });
+    const opacity = interpolate(frame, [startAt, startAt + 6], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+    const slideY = (1 - s) * 24;
+    const slideX = isRight ? (1 - s) * 30 : (1 - s) * -30;
+    const scale = 0.9 + 0.1 * s;
+    return { opacity, slideY, slideX, scale, origin: isRight ? "right bottom" : "left bottom" };
+  };
 
-  const messageSlide = spring({
-    frame: Math.max(0, frame - 50),
-    fps,
-    config: { damping: 60, stiffness: 180, mass: 0.4 },
-  });
+  const chatMsg1 = springMsg(55, true);
+  const chatMsg2 = springMsg(75, false);
+  const chatMsg3 = springMsg(95, true);
 
-  const chatMsg1Opacity = fadeIn(frame, 55);
-  const chatMsg2Opacity = fadeIn(frame, 75);
-  const chatMsg3Opacity = fadeIn(frame, 95);
-
-  const waMsg1Opacity = fadeIn(frame, 35);
-  const waMsg2Opacity = fadeIn(frame, 55);
-  const waMsg3Opacity = fadeIn(frame, 75);
+  const waMsg1 = springMsg(35, true);
+  const waMsg2 = springMsg(55, false);
+  const waMsg3 = springMsg(75, true);
 
   const labelOpacity = fadeIn(frame, 100);
 
@@ -74,9 +80,11 @@ export const MultiChannelScene: React.FC = () => {
           gap: "80px",
           position: "relative",
           zIndex: 2,
+          width: "100%",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div
             style={{
               width: "380px",
@@ -87,7 +95,7 @@ export const MultiChannelScene: React.FC = () => {
               position: "relative",
               overflow: "hidden",
               border: "3px solid #2D2A26",
-              transform: `translateY(${(1 - phoneSlide) * 80}px)`,
+              transform: `translateX(${(1 - phoneSlide) * -120}px)`,
               opacity: phoneSlide,
             }}
           >
@@ -122,7 +130,9 @@ export const MultiChannelScene: React.FC = () => {
                     borderRadius: "12px 12px 4px 12px",
                     padding: "12px 16px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                    opacity: waMsg1Opacity,
+                    opacity: waMsg1.opacity,
+                    transform: `translateY(${waMsg1.slideY}px) translateX(${waMsg1.slideX}px) scale(${waMsg1.scale})`,
+                    transformOrigin: waMsg1.origin,
                   }}
                 >
                   <span style={{ fontFamily: FONTS.sans, fontSize: "16px", color: "#1A1815", lineHeight: 1.4 }}>
@@ -138,7 +148,9 @@ export const MultiChannelScene: React.FC = () => {
                     borderRadius: "12px 12px 12px 4px",
                     padding: "12px 16px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                    opacity: waMsg2Opacity,
+                    opacity: waMsg2.opacity,
+                    transform: `translateY(${waMsg2.slideY}px) translateX(${waMsg2.slideX}px) scale(${waMsg2.scale})`,
+                    transformOrigin: waMsg2.origin,
                   }}
                 >
                   <div style={{ fontFamily: FONTS.sans, fontSize: "13px", fontWeight: 700, color: "#075E54", marginBottom: 3 }}>
@@ -157,7 +169,9 @@ export const MultiChannelScene: React.FC = () => {
                     borderRadius: "12px 12px 4px 12px",
                     padding: "12px 16px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                    opacity: waMsg3Opacity,
+                    opacity: waMsg3.opacity,
+                    transform: `translateY(${waMsg3.slideY}px) translateX(${waMsg3.slideX}px) scale(${waMsg3.scale})`,
+                    transformOrigin: waMsg3.origin,
                   }}
                 >
                   <span style={{ fontFamily: FONTS.sans, fontSize: "16px", color: "#1A1815", lineHeight: 1.4 }}>
@@ -178,9 +192,11 @@ export const MultiChannelScene: React.FC = () => {
           >
             WhatsApp
           </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div
             style={{
               width: "660px",
@@ -190,7 +206,7 @@ export const MultiChannelScene: React.FC = () => {
               boxShadow: "0 40px 80px rgba(0,0,0,0.2)",
               overflow: "hidden",
               border: "1px solid #D4CEC2",
-              transform: `translateY(${(1 - browserSlide) * 80}px)`,
+              transform: `translateX(${(1 - browserSlide) * 120}px)`,
               opacity: browserSlide,
               display: "flex",
               flexDirection: "column",
@@ -302,7 +318,9 @@ export const MultiChannelScene: React.FC = () => {
                       borderRadius: "14px 14px 4px 14px",
                       backgroundColor: "rgba(20, 30, 50, 0.45)",
                       border: "1px solid rgba(255, 255, 255, 0.15)",
-                      opacity: chatMsg1Opacity,
+                      opacity: chatMsg1.opacity,
+                      transform: `translateY(${chatMsg1.slideY}px) translateX(${chatMsg1.slideX}px) scale(${chatMsg1.scale})`,
+                      transformOrigin: chatMsg1.origin,
                     }}
                   >
                     <span style={{ fontFamily: FONTS.sans, fontSize: "16px", color: "#fff", lineHeight: 1.4 }}>
@@ -318,7 +336,9 @@ export const MultiChannelScene: React.FC = () => {
                       borderRadius: "14px 14px 14px 4px",
                       backgroundColor: "rgba(20, 30, 50, 0.45)",
                       border: "1px solid rgba(255, 255, 255, 0.15)",
-                      opacity: chatMsg2Opacity,
+                      opacity: chatMsg2.opacity,
+                      transform: `translateY(${chatMsg2.slideY}px) translateX(${chatMsg2.slideX}px) scale(${chatMsg2.scale})`,
+                      transformOrigin: chatMsg2.origin,
                     }}
                   >
                     <span style={{ fontFamily: FONTS.sans, fontSize: "16px", color: "#fff", lineHeight: 1.4 }}>
@@ -334,7 +354,9 @@ export const MultiChannelScene: React.FC = () => {
                       borderRadius: "14px 14px 4px 14px",
                       backgroundColor: "rgba(20, 30, 50, 0.45)",
                       border: "1px solid rgba(255, 255, 255, 0.15)",
-                      opacity: chatMsg3Opacity,
+                      opacity: chatMsg3.opacity,
+                      transform: `translateY(${chatMsg3.slideY}px) translateX(${chatMsg3.slideX}px) scale(${chatMsg3.scale})`,
+                      transformOrigin: chatMsg3.origin,
                     }}
                   >
                     <span style={{ fontFamily: FONTS.sans, fontSize: "16px", color: "#fff", lineHeight: 1.4 }}>
@@ -407,6 +429,7 @@ export const MultiChannelScene: React.FC = () => {
             }}
           >
             Web Widget
+          </div>
           </div>
         </div>
       </div>
