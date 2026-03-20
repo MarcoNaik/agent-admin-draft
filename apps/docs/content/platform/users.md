@@ -183,7 +183,7 @@ Members can manage team members from the Team tab in the dashboard if their role
 | View members | Default | All members can view the team list |
 | Assign roles | `update` on `users` | Change internal role assignments for non-admin members |
 | Remove members | `delete` on `users` | Remove non-admin members from the organization |
-| Invite members | Admin only | Sending invitations requires organization admin access |
+| Invite members | `create` on `users` | Send organization invitations. Non-admins can only invite as `org:member`. |
 
 ### Security Guards
 
@@ -200,7 +200,7 @@ export default defineRole({
   name: "team-lead",
   description: "Can manage team members",
   policies: [
-    { resource: "users", actions: ["update"], effect: "allow" },
+    { resource: "users", actions: ["create", "update"], effect: "allow" },
     { resource: "session", actions: ["list", "read"], effect: "allow" },
   ],
   agentAccess: ["support-agent"],

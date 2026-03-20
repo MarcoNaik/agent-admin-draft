@@ -272,7 +272,7 @@ What a member can do on the Team page depends on their role's policies for the `
 | Change org roles | Admin only | Only organization admins can promote/demote users |
 | Assign internal roles | `resource: "users"`, `actions: ["update"]` | Change a member's RBAC role assignment |
 | Remove members | `resource: "users"`, `actions: ["delete"]` | Remove non-admin members from the organization |
-| Invite members | Admin only | Send organization invitations via Clerk |
+| Invite members | `resource: "users"`, `actions: ["create"]` | Send organization invitations via Clerk. Non-admins can only invite as `org:member` (not as admin). |
 
 Members cannot modify or remove admin users regardless of their permissions.
 

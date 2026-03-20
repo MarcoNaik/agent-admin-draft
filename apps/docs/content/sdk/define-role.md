@@ -318,7 +318,7 @@ export default defineRole({
   description: "Team lead with member management access",
   agentAccess: ["support-agent", "sales-agent"],
   policies: [
-    { resource: "users", actions: ["update", "delete"], effect: "allow" },
+    { resource: "users", actions: ["create", "update", "delete"], effect: "allow" },
     { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
     { resource: "customer", actions: ["list", "read"], effect: "allow" },
   ],
@@ -328,4 +328,4 @@ export default defineRole({
 })
 ```
 
-The `resource: "users"` policies grant this role permission to assign internal roles to team members (`update`) and remove non-admin members (`delete`) from the Team page in the dashboard. Team leads cannot promote users to admin or modify admin users.
+The `resource: "users"` policies grant this role permission to invite new members (`create`), assign internal roles to team members (`update`), and remove non-admin members (`delete`) from the Team page in the dashboard. Non-admins can only invite as `org:member`. Team leads cannot promote users to admin or modify admin users.

@@ -112,7 +112,7 @@ export default defineRole({
   description: "Can manage team members and view sessions",
   agentAccess: ["scheduling-agent"],
   policies: [
-    { resource: "users", actions: ["update", "delete"], effect: "allow" },
+    { resource: "users", actions: ["create", "update", "delete"], effect: "allow" },
     { resource: "session", actions: ["list", "read", "update"], effect: "allow" },
   ],
   scopeRules: [
@@ -121,7 +121,7 @@ export default defineRole({
 })
 ```
 
-The `users` resource controls access to team management actions. `update` allows assigning roles, `delete` allows removing non-admin members. All members can view the team list regardless of permissions. Only organization admins can invite new members or change organization roles.
+The `users` resource controls access to team management actions. `create` allows inviting new members (non-admins can only invite as `org:member`), `update` allows assigning roles, `delete` allows removing non-admin members. All members can view the team list regardless of permissions. Only organization admins can change organization roles.
 
 ### 7. Sync and test
 
