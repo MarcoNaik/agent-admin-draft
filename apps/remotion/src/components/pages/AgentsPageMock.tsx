@@ -1,6 +1,7 @@
 import React from "react";
+import { spring, interpolate, useVideoConfig } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
-import { feedIn, highlightNew } from "../../lib/animations";
+import { feedIn, highlightNew, glowPulse } from "../../lib/animations";
 import { ParticleAssembly } from "../effects/ParticleAssembly";
 import { useSectionFrame } from "../../lib/SectionContext";
 
@@ -16,6 +17,7 @@ export const AgentsPageMock: React.FC<AgentsPageMockProps> = ({
   showAt,
 }) => {
   const frame = useSectionFrame();
+  const { fps } = useVideoConfig();
 
   return (
     <div
@@ -64,7 +66,32 @@ export const AgentsPageMock: React.FC<AgentsPageMockProps> = ({
           const feed =
             isHighlighted && showAt !== undefined
               ? feedIn(frame, showAt)
-              : { opacity: 1, translateY: 0 };
+              : { opacity: 1, translateY: 0, translateX: 0, scale: 1 };
+
+          const borderGlow =
+            isHighlighted && showAt !== undefined
+              ? glowPulse(frame, showAt, 3, 60)
+              : 0;
+
+          const statusFlashOpacity =
+            isHighlighted && showAt !== undefined && agent.status === "active"
+              ? interpolate(frame, [showAt, showAt + 10], [0.3, 1.0], {
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                })
+              : 1;
+
+          const statusDotScale =
+            isHighlighted && showAt !== undefined && agent.status === "active"
+              ? (() => {
+                  const s = spring({
+                    frame: Math.max(0, frame - showAt),
+                    fps,
+                    config: { damping: 6, stiffness: 350, mass: 0.3 },
+                  });
+                  return 1 + 0.5 * Math.sin(s * Math.PI);
+                })()
+              : 1;
 
           const row = (
             <div
@@ -73,11 +100,13 @@ export const AgentsPageMock: React.FC<AgentsPageMockProps> = ({
                 display: "flex",
                 alignItems: "center",
                 padding: "12px 16px",
-                border: `1px solid ${DASHBOARD.border}`,
+                border: `1px solid ${borderGlow > 0 ? `rgba(27, 79, 114, ${0.3 + borderGlow * 0.7})` : DASHBOARD.border}`,
                 borderRadius: 8,
                 backgroundColor: `rgba(27, 79, 114, ${0.08 * highlightOpacity})`,
                 opacity: feed.opacity,
-                transform: `translateY(${feed.translateY}px)`,
+                transform: `translateX(${feed.translateX}px) translateY(${feed.translateY}px) scale(${feed.scale})`,
+                transformOrigin: "left center",
+                boxShadow: borderGlow > 0 ? `0 0 ${borderGlow * 20}px rgba(27, 79, 114, ${borderGlow * 0.25}), 0 0 ${borderGlow * 8}px rgba(44, 125, 160, ${borderGlow * 0.15})` : "none",
               }}
             >
               <div
@@ -130,6 +159,11 @@ export const AgentsPageMock: React.FC<AgentsPageMockProps> = ({
                       agent.status === "active"
                         ? "#22c55e"
                         : DASHBOARD.contentTertiary,
+                    opacity: statusFlashOpacity,
+                    transform: `scale(${statusDotScale})`,
+                    boxShadow: statusFlashOpacity < 1
+                      ? `0 0 ${(1 - statusFlashOpacity) * 12}px rgba(34, 197, 94, ${1 - statusFlashOpacity})`
+                      : "none",
                   }}
                 />
                 <div
