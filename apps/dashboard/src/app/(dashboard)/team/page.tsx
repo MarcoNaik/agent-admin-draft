@@ -17,5 +17,9 @@ export default function TeamPage() {
     )
   }
 
-  return <UsersPanel permissions={permissions} />
+  return (
+    <div className="p-6">
+      <UsersPanel permissions={permissions} />
+    </div>
+  )
 }
