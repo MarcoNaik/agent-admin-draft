@@ -322,31 +322,44 @@ export const getConversationMessagesInternal = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let messages
+    let externalIdPrefix: string | undefined
     if (args.connectionId) {
-      messages = await ctx.db
-        .query("whatsappMessages")
-        .withIndex("by_connection_phone", (q) =>
-          q.eq("connectionId", args.connectionId).eq("phoneNumber", args.phoneNumber)
-        )
-        .order("desc")
-        .take(args.limit ?? 50)
-    } else {
-      messages = await ctx.db
-        .query("whatsappMessages")
-        .withIndex("by_org_phone", (q) =>
-          q.eq("organizationId", args.organizationId).eq("phoneNumber", args.phoneNumber)
-        )
-        .order("desc")
-        .take(args.limit ?? 50)
+      externalIdPrefix = `whatsapp:${args.connectionId}:${args.phoneNumber}`
     }
+
+    let thread
+    if (externalIdPrefix) {
+      thread = await ctx.db
+        .query("threads")
+        .withIndex("by_external", (q) => q.eq("externalId", externalIdPrefix))
+        .first()
+    }
+
+    if (!thread) {
+      const allThreads = await ctx.db
+        .query("threads")
+        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+        .collect()
+      thread = allThreads.find((t) => {
+        if (t.channel !== "whatsapp") return false
+        return t.externalId?.endsWith(`:${args.phoneNumber}`)
+      })
+    }
+
+    if (!thread) return []
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
+      .order("desc")
+      .take(args.limit ?? 50)
 
     return messages.reverse().map((msg) => ({
       id: msg._id,
-      direction: msg.direction,
-      text: msg.text,
-      type: msg.type,
-      status: msg.status,
+      direction: msg.direction ?? (msg.role === "user" ? "inbound" : "outbound"),
+      text: msg.content,
+      type: (msg.channelData as Record<string, unknown>)?.type ?? "text",
+      status: msg.status ?? (msg.role === "user" ? "received" : "sent"),
       timestamp: msg.createdAt,
     }))
   },
@@ -421,48 +434,81 @@ export const processInboundMessage = internalMutation({
     mediaCaption: v.optional(v.string()),
     interactiveData: v.optional(v.any()),
     mediaDirectUrl: v.optional(v.string()),
+    agentId: v.optional(v.id("agents")),
+    environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
   },
-  returns: v.union(v.id("whatsappMessages"), v.null()),
+  returns: v.union(v.object({ messageId: v.id("messages"), threadId: v.id("threads") }), v.null()),
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("whatsappMessages")
-      .withIndex("by_message_id", (q) => q.eq("messageId", args.messageId))
+      .query("messages")
+      .withIndex("by_externalMessageId", (q) => q.eq("externalMessageId", args.messageId))
       .first()
 
     if (existing) {
       return null
     }
 
-    const msgId = await ctx.db.insert("whatsappMessages", {
-      organizationId: args.organizationId,
-      connectionId: args.connectionId,
-      direction: "inbound",
-      phoneNumber: args.from,
-      messageId: args.messageId,
-      type: args.type,
-      text: args.text,
-      mediaCaption: args.mediaCaption,
-      interactiveData: args.interactiveData,
-      mediaDirectUrl: args.mediaDirectUrl,
-      status: "received",
-      createdAt: args.timestamp,
-    })
+    const connection = await ctx.db.get(args.connectionId)
+    if (!connection || !connection.agentId || connection.status !== "connected") {
+      return null
+    }
+
+    const agentId = args.agentId ?? connection.agentId
+    const environment = args.environment ?? connection.environment
 
     const externalId = `whatsapp:${args.connectionId}:${args.from}`
-    const thread = await ctx.db
+    let thread = await ctx.db
       .query("threads")
       .withIndex("by_external", (q) => q.eq("externalId", externalId))
       .first()
 
+    const channelParams: Record<string, unknown> = {
+      phoneNumber: args.from,
+      lastInboundAt: args.timestamp,
+    }
+    if (args.contactName) channelParams.contactName = args.contactName
+
     if (thread && thread.organizationId === args.organizationId) {
       const existingParams = (thread.channelParams ?? {}) as Record<string, unknown>
-      const updatedParams: Record<string, unknown> = { ...existingParams, lastInboundAt: args.timestamp }
-      if (args.contactName) updatedParams.contactName = args.contactName
-      updatedParams.phoneNumber = args.from
-      await ctx.db.patch(thread._id, { channel: "whatsapp", channelParams: updatedParams, updatedAt: args.timestamp })
+      await ctx.db.patch(thread._id, {
+        channel: "whatsapp",
+        channelParams: { ...existingParams, ...channelParams },
+        updatedAt: args.timestamp,
+      })
+    } else {
+      const now = Date.now()
+      const threadId = await ctx.db.insert("threads", {
+        organizationId: args.organizationId,
+        agentId,
+        environment,
+        channel: "whatsapp",
+        channelParams,
+        externalId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      thread = await ctx.db.get(threadId)
     }
 
-    return msgId
+    const msgId = await ctx.db.insert("messages", {
+      threadId: thread!._id,
+      organizationId: args.organizationId,
+      role: "user",
+      content: args.text ?? "",
+      externalMessageId: args.messageId,
+      direction: "inbound",
+      status: "received",
+      channelData: {
+        type: args.type,
+        mediaCaption: args.mediaCaption,
+        interactiveData: args.interactiveData,
+        mediaDirectUrl: args.mediaDirectUrl,
+        connectionId: args.connectionId,
+      },
+      createdAt: args.timestamp,
+    })
+
+    return { messageId: msgId, threadId: thread!._id }
   },
 })
 
@@ -477,8 +523,8 @@ export const updateMessageStatus = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const msg = await ctx.db
-      .query("whatsappMessages")
-      .withIndex("by_message_id", (q) => q.eq("messageId", args.messageId))
+      .query("messages")
+      .withIndex("by_externalMessageId", (q) => q.eq("externalMessageId", args.messageId))
       .first()
 
     if (msg) {
@@ -488,21 +534,30 @@ export const updateMessageStatus = internalMutation({
           status: args.status as "sent" | "delivered" | "read" | "failed",
         }
 
-        if (args.status === "sent" && args.pricingCategory && !msg.creditsConsumed) {
+        const cd = (msg.channelData ?? {}) as Record<string, unknown>
+        if (args.status === "sent" && args.pricingCategory && !cd.creditsConsumed) {
           const billable = args.pricingBillable !== false
-          patch.pricingBillable = billable
-          patch.pricingModel = args.pricingModel
-          patch.pricingCategory = args.pricingCategory
 
-          const cost = calculateWhatsAppCost(msg.phoneNumber, args.pricingCategory, billable)
-          patch.creditsConsumed = cost
+          const thread = await ctx.db.get(msg.threadId)
+          const channelParams = (thread?.channelParams ?? {}) as Record<string, unknown>
+          const phoneNumber = (channelParams.phoneNumber as string) ?? ""
 
-          if (cost > 0) {
+          const cost = calculateWhatsAppCost(phoneNumber, args.pricingCategory, billable)
+
+          patch.channelData = {
+            ...cd,
+            pricingBillable: billable,
+            pricingModel: args.pricingModel,
+            pricingCategory: args.pricingCategory,
+            creditsConsumed: cost,
+          }
+
+          if (cost > 0 && msg.organizationId) {
             await ctx.scheduler.runAfter(0, deductCreditsRef, {
               organizationId: msg.organizationId,
               amount: cost,
-              description: `WhatsApp ${args.pricingCategory} to +${msg.phoneNumber}`,
-              metadata: { whatsappMessageId: msg._id, category: args.pricingCategory },
+              description: `WhatsApp ${args.pricingCategory} to +${phoneNumber}`,
+              metadata: { messageId: msg._id, category: args.pricingCategory },
               costDriver: "whatsapp",
               channel: "whatsapp",
             } as any)
@@ -519,7 +574,7 @@ export const updateMessageStatus = internalMutation({
 
 export const scheduleMediaDownload = internalMutation({
   args: {
-    whatsappMessageId: v.id("whatsappMessages"),
+    messageId: v.id("messages"),
     mediaId: v.string(),
     kapsoPhoneNumberId: v.string(),
     mediaUrl: v.optional(v.string()),
@@ -527,7 +582,7 @@ export const scheduleMediaDownload = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.scheduler.runAfter(0, downloadAndStoreMediaRef, {
-      whatsappMessageId: args.whatsappMessageId,
+      messageId: args.messageId,
       mediaId: args.mediaId,
       kapsoPhoneNumberId: args.kapsoPhoneNumberId,
       mediaUrl: args.mediaUrl,
@@ -538,17 +593,18 @@ export const scheduleMediaDownload = internalMutation({
 
 export const attachMediaToMessage = internalMutation({
   args: {
-    whatsappMessageId: v.id("whatsappMessages"),
+    messageId: v.id("messages"),
     storageId: v.id("_storage"),
     mimeType: v.string(),
     fileName: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.whatsappMessageId, {
-      mediaStorageId: args.storageId,
-      mediaMimeType: args.mimeType,
-      mediaFileName: args.fileName,
+    const msg = await ctx.db.get(args.messageId)
+    if (!msg) return null
+    const existing = (msg.channelData ?? {}) as Record<string, unknown>
+    await ctx.db.patch(args.messageId, {
+      channelData: { ...existing, mediaStorageId: args.storageId, mediaMimeType: args.mimeType, mediaFileName: args.fileName },
     })
     return null
   },
@@ -636,6 +692,7 @@ export const scheduleAgentRouting = internalMutation({
     text: v.string(),
     mediaDirectUrl: v.optional(v.string()),
     mediaType: v.optional(v.string()),
+    threadId: v.optional(v.id("threads")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -653,6 +710,7 @@ export const scheduleAgentRouting = internalMutation({
         agentId: connection.agentId,
         connectionId: args.connectionId,
         attachments,
+        threadId: args.threadId,
       } as any)
     }
 
@@ -671,24 +729,37 @@ export const getConversationMessages = query({
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
 
-    let messages
+    let externalIdPrefix: string | undefined
     if (args.connectionId) {
-      messages = await ctx.db
-        .query("whatsappMessages")
-        .withIndex("by_connection_phone", (q) =>
-          q.eq("connectionId", args.connectionId).eq("phoneNumber", args.phoneNumber)
-        )
-        .order("desc")
-        .take(args.limit ?? 50)
-    } else {
-      messages = await ctx.db
-        .query("whatsappMessages")
-        .withIndex("by_org_phone", (q) =>
-          q.eq("organizationId", auth.organizationId).eq("phoneNumber", args.phoneNumber)
-        )
-        .order("desc")
-        .take(args.limit ?? 50)
+      externalIdPrefix = `whatsapp:${args.connectionId}:${args.phoneNumber}`
     }
+
+    let thread
+    if (externalIdPrefix) {
+      thread = await ctx.db
+        .query("threads")
+        .withIndex("by_external", (q) => q.eq("externalId", externalIdPrefix))
+        .first()
+    }
+
+    if (!thread) {
+      const allThreads = await ctx.db
+        .query("threads")
+        .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+        .collect()
+      thread = allThreads.find((t) => {
+        if (t.channel !== "whatsapp") return false
+        return t.externalId?.endsWith(`:${args.phoneNumber}`)
+      })
+    }
+
+    if (!thread) return []
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
+      .order("desc")
+      .take(args.limit ?? 50)
 
     return messages.reverse()
   },
@@ -704,26 +775,41 @@ export const listConversations = query({
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
 
-    const messages = await ctx.db
-      .query("whatsappMessages")
+    const threads = await ctx.db
+      .query("threads")
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
       .order("desc")
-      .take(500)
+      .take(200)
 
-    const phoneMap = new Map<string, { phoneNumber: string; lastMessage: string | undefined; lastMessageAt: number; direction: string }>()
-    for (const msg of messages) {
-      if (args.connectionId && msg.connectionId !== args.connectionId) continue
-      if (!phoneMap.has(msg.phoneNumber)) {
-        phoneMap.set(msg.phoneNumber, {
-          phoneNumber: msg.phoneNumber,
-          lastMessage: msg.text,
-          lastMessageAt: msg.createdAt,
-          direction: msg.direction,
-        })
+    const whatsappThreads = threads.filter((t) => t.channel === "whatsapp")
+
+    const result = []
+    for (const thread of whatsappThreads) {
+      if (args.connectionId) {
+        const parsed = thread.externalId ? parseWhatsAppExternalId(thread.externalId) : null
+        if (!parsed || parsed.connectionId !== (args.connectionId as string)) continue
       }
+
+      const lastMsg = await ctx.db
+        .query("messages")
+        .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
+        .order("desc")
+        .first()
+
+      const channelParams = (thread.channelParams ?? {}) as Record<string, unknown>
+      const parsed = thread.externalId ? parseWhatsAppExternalId(thread.externalId) : null
+
+      result.push({
+        phoneNumber: (channelParams.phoneNumber as string) ?? parsed?.customerPhone ?? "",
+        lastMessage: lastMsg?.content,
+        lastMessageAt: lastMsg?.createdAt ?? thread.updatedAt,
+        direction: lastMsg?.direction ?? "inbound",
+      })
+
+      if (result.length >= (args.limit ?? 50)) break
     }
 
-    return Array.from(phoneMap.values()).slice(0, args.limit ?? 50)
+    return result
   },
 })
 
@@ -878,37 +964,34 @@ export const getWhatsAppTimeline = query({
     if (!thread || thread.organizationId !== auth.organizationId) return []
     if (!thread.externalId?.startsWith("whatsapp:")) return []
 
-    const parsed = parseWhatsAppExternalId(thread.externalId)
-    if (!parsed) return []
-
-    const { connectionId, customerPhone } = parsed
-
     const messages = await ctx.db
-      .query("whatsappMessages")
-      .withIndex("by_connection_phone", (q) =>
-        q.eq("connectionId", connectionId as Id<"whatsappConnections">).eq("phoneNumber", customerPhone)
-      )
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("asc")
       .take(200)
 
     const timeline = []
     for (const msg of messages) {
+      if (msg.role === "system") continue
+      const cd = (msg.channelData ?? {}) as Record<string, unknown>
       let mediaUrl: string | null = null
-      if (msg.mediaStorageId) {
-        mediaUrl = await ctx.storage.getUrl(msg.mediaStorageId)
+      if (cd.mediaStorageId) {
+        mediaUrl = await ctx.storage.getUrl(cd.mediaStorageId as Id<"_storage">)
       }
       timeline.push({
         id: msg._id,
-        direction: msg.direction,
-        type: msg.type,
-        text: msg.text,
+        direction: msg.direction ?? (msg.role === "user" ? "inbound" : "outbound"),
+        type: cd.type ?? "text",
+        text: msg.content,
         mediaUrl,
-        mediaMimeType: msg.mediaMimeType,
-        mediaCaption: msg.mediaCaption,
-        mediaFileName: msg.mediaFileName,
-        interactiveData: msg.interactiveData,
+        mediaMimeType: cd.mediaMimeType,
+        mediaCaption: cd.mediaCaption,
+        mediaFileName: cd.mediaFileName,
+        interactiveData: cd.interactiveData,
         status: msg.status,
         createdAt: msg.createdAt,
+        toolCalls: msg.toolCalls,
+        role: msg.role,
       })
     }
 
@@ -923,24 +1006,16 @@ export const getMessageStatuses = query({
     const auth = await requireAuth(ctx)
     const thread = await ctx.db.get(args.threadId)
     if (!thread || thread.organizationId !== auth.organizationId) return {}
-    if (!thread.externalId?.startsWith("whatsapp:")) return {}
-
-    const parsed = parseWhatsAppExternalId(thread.externalId)
-    if (!parsed) return {}
-
-    const { connectionId, customerPhone } = parsed
 
     const messages = await ctx.db
-      .query("whatsappMessages")
-      .withIndex("by_connection_phone", (q) =>
-        q.eq("connectionId", connectionId as Id<"whatsappConnections">).eq("phoneNumber", customerPhone)
-      )
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("desc")
       .take(100)
 
     const statusMap: Record<string, string> = {}
     for (const msg of messages) {
-      if (msg.direction === "outbound") {
+      if (msg.direction === "outbound" && msg.status) {
         statusMap[msg.createdAt.toString()] = msg.status
       }
     }

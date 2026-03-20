@@ -1,0 +1,47 @@
+export const DASHBOARD = {
+  background: "#F2EDE4",
+  backgroundPrimary: "#F2EDE4",
+  backgroundSecondary: "#EBE5DA",
+  backgroundTertiary: "#E3DCD0",
+  backgroundChrome: "#E3DCD0",
+  foreground: "#27241E",
+  contentPrimary: "#1A1714",
+  contentSecondary: "#574F45",
+  contentTertiary: "#807A72",
+  card: "#EBE5DA",
+  border: "#D4CEC2",
+  borderSelected: "#1B4F72",
+  primary: "#1B4F72",
+  primaryForeground: "#ffffff",
+  success: "#22a352",
+  successForeground: "#ffffff",
+  warning: "#e5a308",
+  warningForeground: "#ffffff",
+  destructive: "#e04040",
+  destructiveForeground: "#ffffff",
+  ocean: "#1B4F72",
+  oceanLight: "#2C7DA0",
+  amber: "#D4A853",
+  amberLight: "#E8C468",
+  charcoal: "#2D2A26",
+  charcoalHeading: "#1A1815",
+};
+
+export const LANDING_LIGHT = {
+  stoneBase: "#F8F6F2",
+  stoneDeep: "#F1EDE7",
+  stoneCard: "#EEEBE5",
+  ocean: "#1B4F72",
+  oceanLight: "#2C7DA0",
+  amber: "#D4A853",
+  amberLight: "#E8C468",
+  charcoal: "#2D2A26",
+  charcoalHeading: "#1A1815",
+};
+
+export const FONTS = {
+  display: "'Fraunces', Georgia, serif",
+  sans: "'DM Sans', system-ui, sans-serif",
+  mono: "'JetBrains Mono', monospace",
+  input: "'IBM Plex Mono', monospace",
+};

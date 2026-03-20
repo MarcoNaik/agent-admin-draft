@@ -617,7 +617,7 @@ http.route({
 
         const connection = await ctx.runQuery(getConnectionByKapsoPhoneRef, {
           kapsoPhoneNumberId: phoneNumberId,
-        }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" | "eval" } | null
+        }) as { _id: Id<"whatsappConnections">; organizationId: Id<"organizations">; environment: "development" | "production" | "eval"; agentId: Id<"agents"> } | null
 
         if (!connection) {
           continue
@@ -657,7 +657,7 @@ http.route({
           }
         }
 
-        const msgId = await ctx.runMutation(processInboundMessageRef, {
+        const result = await ctx.runMutation(processInboundMessageRef, {
           organizationId: connection.organizationId,
           connectionId: connection._id,
           from,
@@ -669,18 +669,20 @@ http.route({
           mediaCaption,
           interactiveData,
           mediaDirectUrl: mediaUrl,
+          agentId: (connection as any).agentId,
+          environment: connection.environment,
         })
 
-        if (msgId && mediaId) {
+        if (result && mediaId) {
           await ctx.runMutation(scheduleMediaDownloadRef, {
-            whatsappMessageId: msgId,
+            messageId: result.messageId,
             mediaId,
             kapsoPhoneNumberId: phoneNumberId,
             mediaUrl,
           })
         }
 
-        if (msgId && text) {
+        if (result && text) {
           await ctx.runMutation(scheduleAgentRoutingRef, {
             organizationId: connection.organizationId,
             environment: connection.environment,
@@ -689,6 +691,7 @@ http.route({
             text,
             mediaDirectUrl: mediaUrl,
             mediaType: msgType,
+            threadId: result.threadId,
           })
         }
       }

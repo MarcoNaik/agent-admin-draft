@@ -100,6 +100,7 @@ export async function executeBuiltinTool(
     depth?: number
     callerAgentSlug?: string
     agentId?: string
+    threadId?: string
   }
 ): Promise<unknown> {
   const { organizationId, actorId, actorType, isOrgAdmin, environment, toolName, args } = params
@@ -241,6 +242,7 @@ export async function executeBuiltinTool(
         agentId: params.agentId as Id<"agents"> | undefined,
         to: args.to as string,
         text: args.text as string,
+        threadId: params.threadId,
       })
 
     case "whatsapp.sendTemplate":
@@ -254,6 +256,7 @@ export async function executeBuiltinTool(
         templateName: String(args.templateName),
         language: String(args.language),
         components: coerceTemplateComponents(args.components),
+        threadId: params.threadId,
       })
 
     case "whatsapp.sendInteractive":
@@ -267,6 +270,7 @@ export async function executeBuiltinTool(
         bodyText: args.bodyText as string,
         buttons: args.buttons as any,
         footerText: args.footerText as string | undefined,
+        threadId: params.threadId,
       })
 
     case "whatsapp.sendMedia":
@@ -280,6 +284,7 @@ export async function executeBuiltinTool(
         mediaUrl: args.mediaUrl as string,
         mediaType: args.mediaType as "image" | "audio",
         caption: args.caption as string | undefined,
+        threadId: params.threadId,
       })
 
     case "whatsapp.listTemplates":

@@ -360,6 +360,8 @@ type TimelineEntry = {
   interactiveData?: any
   status: string
   createdAt: number
+  toolCalls?: Array<{ id: string; name: string; arguments: unknown }>
+  role?: string
 }
 
 function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
@@ -925,109 +927,71 @@ function ThreadView({
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {isWhatsAppThread && whatsAppTimeline ? (
-          whatsAppTimeline.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-sm text-content-secondary">No messages in this thread</p>
-            </div>
-          ) : (
-            whatsAppTimeline.map((entry: TimelineEntry) => (
-              <WhatsAppBubble key={entry.id} entry={entry} />
-            ))
-          )
-        ) : (
-          visibleMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-sm text-content-secondary">No messages in this thread</p>
-            </div>
-          ) : (
-            visibleMessages.map((message: { _id: string; role: string; content: string; createdAt: number; toolCalls?: Array<{ id: string; name: string; arguments: unknown }>; toolCallId?: string }) => {
-              if (message.role === "tool") {
-                return (
-                  <ToolResultBubble
-                    key={message._id}
-                    toolCallId={message.toolCallId ?? ""}
-                    content={message.content}
-                    allMessages={visibleMessages}
-                  />
-                )
-              }
+        {(() => {
+          const items = isWhatsAppThread && whatsAppTimeline
+            ? whatsAppTimeline
+            : visibleMessages.map((m: any) => ({
+                id: m._id,
+                direction: m.role === "user" ? "inbound" as const : "outbound" as const,
+                type: (m.channelData as any)?.type ?? "text",
+                text: m.content,
+                mediaUrl: null,
+                mediaMimeType: (m.channelData as any)?.mediaMimeType,
+                mediaCaption: (m.channelData as any)?.mediaCaption,
+                mediaFileName: (m.channelData as any)?.mediaFileName,
+                interactiveData: (m.channelData as any)?.interactiveData,
+                status: m.status ?? (m.role === "user" ? "received" : "sent"),
+                createdAt: m.createdAt,
+                toolCalls: m.toolCalls,
+                role: m.role,
+              }))
 
-              if (message.role === "assistant" && message.toolCalls?.length && !message.content) {
-                return (
-                  <div key={message._id} className="space-y-2">
-                    {message.toolCalls.map((tc) => (
-                      <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
-                    ))}
-                  </div>
-                )
-              }
+          if (items.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <p className="text-sm text-content-secondary">No messages in this thread</p>
+              </div>
+            )
+          }
 
-              if (message.role === "assistant" && message.toolCalls?.length && message.content) {
-                return (
-                  <div key={message._id} className="space-y-2">
-                    <div className="flex gap-3 max-w-3xl ml-auto flex-row-reverse">
-                      <div className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                        "bg-primary text-primary-foreground"
-                      )}>
-                        <Bot className="h-4 w-4" />
-                      </div>
-                      <div className={cn(
-                        "rounded-lg px-4 py-2 max-w-[80%]",
-                        "bg-primary text-primary-foreground"
-                      )}>
-                        <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                        <div className="flex items-center justify-end gap-1 mt-1">
-                          <p className="text-[10px] text-primary-foreground/70">
-                            {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    {message.toolCalls.map((tc) => (
-                      <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
-                    ))}
-                  </div>
-                )
-              }
-
-              const isOutbound = message.role === "assistant"
-
+          return items.map((entry: TimelineEntry) => {
+            if (entry.role === "tool") {
               return (
-                <div
-                  key={message._id}
-                  className={cn(
-                    "flex gap-3 max-w-3xl",
-                    isOutbound ? "ml-auto flex-row-reverse" : ""
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                      isOutbound ? "bg-primary text-primary-foreground" : "bg-muted"
-                    )}
-                  >
-                    {isOutbound ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                  </div>
-                  <div
-                    className={cn(
-                      "rounded-lg px-4 py-2 max-w-[80%]",
-                      isOutbound ? "bg-primary text-primary-foreground" : "bg-muted text-content-primary"
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                    <div className={cn("flex items-center gap-1 mt-1", isOutbound ? "justify-end" : "")}>
-                      <p className={cn("text-[10px]", isOutbound ? "text-primary-foreground/70" : "text-content-tertiary")}>
-                        {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </div>
+                <ToolResultBubble
+                  key={entry.id}
+                  toolCallId=""
+                  content={entry.text ?? ""}
+                  allMessages={visibleMessages}
+                />
+              )
+            }
+
+            if (entry.role === "assistant" && entry.toolCalls?.length && !entry.text) {
+              return (
+                <div key={entry.id} className="space-y-2">
+                  {entry.toolCalls.map((tc) => (
+                    <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                  ))}
                 </div>
               )
-            })
-          )
-        )}
+            }
+
+            if (entry.role === "assistant" && entry.toolCalls?.length && entry.text) {
+              return (
+                <div key={entry.id} className="space-y-2">
+                  <WhatsAppBubble entry={entry} />
+                  {entry.toolCalls.map((tc) => (
+                    <ToolCallBubble key={tc.id} name={tc.name} arguments={tc.arguments} />
+                  ))}
+                </div>
+              )
+            }
+
+            if (entry.role === "system") return null
+
+            return <WhatsAppBubble key={entry.id} entry={entry} />
+          })
+        })()}
         <div ref={messagesEndRef} />
       </div>
 

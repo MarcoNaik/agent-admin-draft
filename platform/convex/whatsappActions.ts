@@ -9,16 +9,14 @@ const getOrgInternalRef = makeFunctionReference<"query">("organizations:getInter
 const getIntegrationConfigInternalRef = makeFunctionReference<"query">("integrations:getConfigInternal")
 const patchConfigInternalRef = makeFunctionReference<"mutation">("integrations:patchConfigInternal")
 const createConnectionRef = makeFunctionReference<"mutation">("whatsapp:createConnection")
-const getOrCreateThreadRef = makeFunctionReference<"mutation">("threads:getOrCreate")
 const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenticated")
 const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
-const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
 const attachMediaToMessageRef = makeFunctionReference<"mutation">("whatsapp:attachMediaToMessage")
+const patchMessageRef = makeFunctionReference<"mutation">("threads:patchMessage")
 const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
 const getOwnedTemplateNamesRef = makeFunctionReference<"query">("whatsapp:getOwnedTemplateNames")
 const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadInternal")
 const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
-const storeOutboundMediaMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMediaMessage")
 const registerOwnedTemplateRef = makeFunctionReference<"mutation">("whatsapp:registerOwnedTemplate")
 const unregisterOwnedTemplateRef = makeFunctionReference<"mutation">("whatsapp:unregisterOwnedTemplate")
 import { log } from "./lib/logger"
@@ -161,29 +159,20 @@ export const routeInboundToAgent = internalAction({
     environment: environmentValidator,
     agentId: v.id("agents"),
     connectionId: v.id("whatsappConnections"),
+    threadId: v.id("threads"),
     attachments: v.optional(v.array(v.object({ type: v.string(), url: v.string(), mimeType: v.string() }))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const externalThreadId = `whatsapp:${args.connectionId}:${args.phoneNumber}`
-
-    const threadId = await ctx.runMutation(getOrCreateThreadRef, {
-      organizationId: args.organizationId,
-      agentId: args.agentId,
-      externalId: externalThreadId,
-      channel: "whatsapp",
-      channelParams: { phoneNumber: args.phoneNumber },
-      environment: args.environment,
-    })
-
     const result = await ctx.runAction(chatAuthenticatedRef, {
       organizationId: args.organizationId,
       agentId: args.agentId,
       message: args.text,
-      threadId,
+      threadId: args.threadId,
       channel: "whatsapp",
       environment: args.environment,
       attachments: args.attachments,
+      skipUserMessageStorage: true,
     })
 
     const responseText = result.message
@@ -211,15 +200,15 @@ export const routeInboundToAgent = internalAction({
         status = "failed"
       }
 
-      await ctx.runMutation(storeOutboundMessageRef, {
-        organizationId: args.organizationId,
-        connectionId: args.connectionId,
-        phoneNumber: args.phoneNumber,
-        messageId,
-        text: responseText,
-        threadId: result.threadId,
-        status,
-      })
+      if (result.assistantMessageId) {
+        await ctx.runMutation(patchMessageRef, {
+          messageId: result.assistantMessageId,
+          externalMessageId: messageId,
+          direction: "outbound",
+          status,
+          channelData: { connectionId: args.connectionId },
+        })
+      }
     }
 
     return null
@@ -228,7 +217,7 @@ export const routeInboundToAgent = internalAction({
 
 export const downloadAndStoreMedia = internalAction({
   args: {
-    whatsappMessageId: v.id("whatsappMessages"),
+    messageId: v.id("messages"),
     mediaId: v.string(),
     kapsoPhoneNumberId: v.string(),
     mediaUrl: v.optional(v.string()),
@@ -253,7 +242,7 @@ export const downloadAndStoreMedia = internalAction({
     const blob = new Blob([data], { type: mimeType })
     const storageId = await ctx.storage.store(blob)
     await ctx.runMutation(attachMediaToMessageRef, {
-      whatsappMessageId: args.whatsappMessageId,
+      messageId: args.messageId,
       storageId,
       mimeType,
       fileName,
@@ -345,19 +334,16 @@ export const sendTemplate = action({
       args.components as any
     )
 
-    await ctx.runMutation(storeOutboundMessageRef, {
-      organizationId: auth.organizationId,
-      connectionId: connectionId as Id<"whatsappConnections">,
-      phoneNumber: customerPhone,
-      messageId: result.messageId,
-      text: `[Template: ${args.templateName}]`,
-      threadId: args.threadId,
-      status: "sent",
-    })
-
     await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
-      messages: [{ role: "assistant", content: `[Template: ${args.templateName}]` }],
+      messages: [{
+        role: "assistant",
+        content: `[Template: ${args.templateName}]`,
+        externalMessageId: result.messageId,
+        direction: "outbound",
+        status: "sent",
+        channelData: { type: "template", connectionId: connectionId },
+      }],
     })
 
     return { messageId: result.messageId, status: "sent" }
@@ -420,23 +406,17 @@ export const sendMedia = action({
 
     const displayText = args.caption ?? `[Sent ${args.mediaType}]`
 
-    await ctx.runMutation(storeOutboundMediaMessageRef, {
-      organizationId: auth.organizationId,
-      connectionId: connectionId as Id<"whatsappConnections">,
-      phoneNumber: customerPhone,
-      messageId,
-      type: args.mediaType,
-      text: displayText,
-      threadId: args.threadId,
-      mediaStorageId: args.storageId,
-      mediaMimeType: mimeType,
-      mediaFileName: args.fileName,
-      mediaCaption: args.caption,
-    })
-
     await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
-      messages: [{ role: "assistant", content: displayText }],
+      messages: [{
+        role: "assistant",
+        content: displayText,
+        externalMessageId: messageId,
+        direction: "outbound",
+        status: "sent",
+        channelData: { type: args.mediaType, connectionId: connectionId, mediaStorageId: args.storageId, mediaMimeType: mimeType, mediaFileName: args.fileName, mediaCaption: args.caption },
+        attachments: [{ type: args.mediaType, url: fileUrl, mimeType, storageId: args.storageId }],
+      }],
     })
 
     return { messageId }
@@ -488,19 +468,16 @@ export const sendInteractive = action({
       args.footerText
     )
 
-    await ctx.runMutation(storeOutboundMessageRef, {
-      organizationId: auth.organizationId,
-      connectionId: connectionId as Id<"whatsappConnections">,
-      phoneNumber: customerPhone,
-      messageId: result.messageId,
-      text: args.bodyText,
-      threadId: args.threadId,
-      status: "sent",
-    })
-
     await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
-      messages: [{ role: "assistant", content: args.bodyText }],
+      messages: [{
+        role: "assistant",
+        content: args.bodyText,
+        externalMessageId: result.messageId,
+        direction: "outbound",
+        status: "sent",
+        channelData: { type: "interactive", connectionId: connectionId, interactiveData: { buttons: args.buttons, footerText: args.footerText } },
+      }],
     })
 
     return { messageId: result.messageId }

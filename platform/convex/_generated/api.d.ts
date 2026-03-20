@@ -60,6 +60,7 @@ import type * as migrations_addEnvironment from "../migrations/addEnvironment.js
 import type * as migrations_backfillCostRollups from "../migrations/backfillCostRollups.js";
 import type * as migrations_backfillPhoneNumbers from "../migrations/backfillPhoneNumbers.js";
 import type * as migrations_backfillPhoneNumbersHelper from "../migrations/backfillPhoneNumbersHelper.js";
+import type * as migrations_backfillWhatsAppMessages from "../migrations/backfillWhatsAppMessages.js";
 import type * as migrations_centsToMicrodollars from "../migrations/centsToMicrodollars.js";
 import type * as migrations_cleanupAllWhatsApp from "../migrations/cleanupAllWhatsApp.js";
 import type * as migrations_clearStaleReservations from "../migrations/clearStaleReservations.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillCostRollups": typeof migrations_backfillCostRollups;
   "migrations/backfillPhoneNumbers": typeof migrations_backfillPhoneNumbers;
   "migrations/backfillPhoneNumbersHelper": typeof migrations_backfillPhoneNumbersHelper;
+  "migrations/backfillWhatsAppMessages": typeof migrations_backfillWhatsAppMessages;
   "migrations/centsToMicrodollars": typeof migrations_centsToMicrodollars;
   "migrations/cleanupAllWhatsApp": typeof migrations_cleanupAllWhatsApp;
   "migrations/clearStaleReservations": typeof migrations_clearStaleReservations;

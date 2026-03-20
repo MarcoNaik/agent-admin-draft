@@ -61,6 +61,7 @@ interface ApiKeyAuth {
 interface ChatResponse {
   message: string
   threadId: Id<"threads">
+  assistantMessageId?: Id<"messages">
   usage: {
     inputTokens: number
     outputTokens: number
@@ -161,6 +162,7 @@ interface ExecuteChatParams {
   depth?: number
   evalRunId?: Id<"evalRuns">
   attachments?: Array<{ type: string; url: string; mimeType: string }>
+  skipUserMessageStorage?: boolean
 }
 
 async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
@@ -284,6 +286,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
               depth,
               callerAgentSlug: agent.slug,
               agentId: agentId as unknown as string,
+              threadId: threadId as unknown as string,
             })
           } else if (toolConfig?.handlerCode) {
             toolResult = await ctx.runAction(executeCustomToolRef, {
@@ -350,10 +353,14 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     }
   }
 
-  await ctx.runMutation(appendMessagesRef, {
-    threadId,
-    messages: [{ role: "user", content: message, attachments: params.attachments }],
-  })
+  let lastAssistantMessageId: Id<"messages"> | undefined
+
+  if (!params.skipUserMessageStorage) {
+    await ctx.runMutation(appendMessagesRef, {
+      threadId,
+      messages: [{ role: "user", content: message, attachments: params.attachments }],
+    })
+  }
 
   let llmSucceeded = false
   try {
@@ -374,10 +381,14 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         onStepFinish: async ({ text, toolCalls, toolResults }) => {
           const stepMsgs = fromSteps([{ text, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
           if (stepMsgs.length > 0) {
-            await ctx.runMutation(appendMessagesRef, {
+            const ids = await ctx.runMutation(appendMessagesRef, {
               threadId,
               messages: stepMsgs,
-            })
+            }) as Id<"messages">[]
+            const lastStepMsg = stepMsgs[stepMsgs.length - 1]
+            if (lastStepMsg?.role === "assistant" && !lastStepMsg.toolCalls?.length && ids.length > 0) {
+              lastAssistantMessageId = ids[ids.length - 1]
+            }
           }
         },
       })
@@ -435,10 +446,13 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     const lastIsTextOnly = lastMsg?.role === "assistant" && !lastMsg.toolCalls?.length
 
     if (!lastIsTextOnly && responseText) {
-      await ctx.runMutation(appendMessagesRef, {
+      const ids = await ctx.runMutation(appendMessagesRef, {
         threadId,
         messages: [{ role: "assistant", content: responseText }],
-      })
+      }) as Id<"messages">[]
+      if (ids.length > 0) {
+        lastAssistantMessageId = ids[0]
+      }
     }
 
     const durationMs = Date.now() - startTime
@@ -522,6 +536,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     return {
       threadId,
       message: responseText,
+      assistantMessageId: lastAssistantMessageId,
       usage: {
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,
@@ -564,6 +579,7 @@ export const executeChatAction = internalAction({
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -603,6 +619,7 @@ export const chat = internalAction({
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -684,6 +701,7 @@ export const chatBySlug = internalAction({
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -731,10 +749,12 @@ export const chatAuthenticated = internalAction({
     channelParams: v.optional(v.any()),
     evalRunId: v.optional(v.id("evalRuns")),
     attachments: v.optional(v.array(v.object({ type: v.string(), url: v.string(), mimeType: v.string() }))),
+    skipUserMessageStorage: v.optional(v.boolean()),
   },
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -798,6 +818,7 @@ export const chatAuthenticated = internalAction({
       userId: args.userId,
       evalRunId: args.evalRunId,
       attachments: args.attachments,
+      skipUserMessageStorage: args.skipUserMessageStorage,
     })
   },
 })
@@ -1053,6 +1074,7 @@ export const executeToolCallback = internalAction({
       conversationId: v.optional(v.string()),
       depth: v.optional(v.number()),
       callerAgentSlug: v.optional(v.string()),
+      threadId: v.optional(v.string()),
     }),
   },
   returns: v.any(),
@@ -1076,6 +1098,7 @@ export const executeToolCallback = internalAction({
       conversationId: identity.conversationId,
       depth: identity.depth,
       callerAgentSlug: identity.callerAgentSlug,
+      threadId: identity.threadId,
     })
   },
 })

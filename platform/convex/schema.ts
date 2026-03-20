@@ -92,10 +92,12 @@ export default defineSchema({
     .index("by_external", ["externalId"])
     .index("by_org", ["organizationId"])
     .index("by_org_env", ["organizationId", "environment"])
-    .index("by_conversation", ["conversationId"]),
+    .index("by_conversation", ["conversationId"])
+    .index("by_org_env_channel", ["organizationId", "environment", "channel"]),
 
   messages: defineTable({
     threadId: v.id("threads"),
+    organizationId: v.optional(v.id("organizations")),
     role: v.union(
       v.literal("user"),
       v.literal("assistant"),
@@ -113,9 +115,23 @@ export default defineSchema({
       type: v.string(),
       url: v.string(),
       mimeType: v.string(),
+      storageId: v.optional(v.id("_storage")),
     }))),
+    externalMessageId: v.optional(v.string()),
+    direction: v.optional(v.union(v.literal("inbound"), v.literal("outbound"))),
+    status: v.optional(v.union(
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("read"),
+      v.literal("failed"),
+      v.literal("received")
+    )),
+    channelData: v.optional(v.any()),
     createdAt: v.number(),
-  }).index("by_thread", ["threadId"]),
+  })
+    .index("by_thread", ["threadId"])
+    .index("by_org", ["organizationId"])
+    .index("by_externalMessageId", ["externalMessageId"]),
 
   entityTypes: defineTable({
     organizationId: v.id("organizations"),

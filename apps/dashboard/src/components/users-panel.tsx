@@ -299,7 +299,7 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
             <div className="mt-1 flex items-center gap-2">
               {linkedEntity ? (
                 <>
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                     {boundEntityType.name}: {(linkedEntity as { data?: { name?: string; email?: string } }).data?.name || (linkedEntity as { data?: { name?: string; email?: string } }).data?.email || "Linked"}
                   </span>
                   {permissions.canUpdate && (

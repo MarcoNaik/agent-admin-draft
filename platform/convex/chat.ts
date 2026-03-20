@@ -12,6 +12,7 @@ const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessa
 const getConnectionByIdInternalRef = makeFunctionReference<"query">("whatsapp:getConnectionByIdInternal")
 const sendTextToPhoneRef = makeFunctionReference<"action">("whatsappActions:sendTextToPhone")
 const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
+const patchMessageRef = makeFunctionReference<"mutation">("threads:patchMessage")
 const canAccessThreadRef = makeFunctionReference<"query">("threads:canAccessThread")
 const isOrgAdminRef = makeFunctionReference<"query">("chat:isOrgAdminQuery")
 
@@ -31,6 +32,7 @@ export const send = action({
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -92,6 +94,7 @@ export const sendBySlug = action({
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -177,10 +180,10 @@ export const replyToThread = action({
       }
     }
 
-    await ctx.runMutation(appendMessagesRef, {
+    const ids = await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
-      messages: [{ role: "assistant", content: args.message }],
-    })
+      messages: [{ role: "assistant", content: args.message, direction: "outbound" }],
+    }) as string[]
 
     if (thread.externalId?.startsWith("whatsapp:")) {
       const parsed = parseWhatsAppExternalId(thread.externalId)
@@ -212,15 +215,14 @@ export const replyToThread = action({
         status = "failed"
       }
 
-      await ctx.runMutation(storeOutboundMessageRef, {
-        organizationId: auth.organizationId,
-        connectionId: connectionId as Id<"whatsappConnections">,
-        phoneNumber: customerPhone,
-        messageId,
-        text: args.message,
-        threadId: args.threadId,
-        status,
-      })
+      if (ids.length > 0) {
+        await ctx.runMutation(patchMessageRef, {
+          messageId: ids[0] as any,
+          externalMessageId: messageId,
+          status,
+          channelData: { connectionId: connectionId },
+        })
+      }
 
       return { success: true, whatsappStatus: status }
     }

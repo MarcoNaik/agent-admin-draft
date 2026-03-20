@@ -613,27 +613,95 @@ export const appendMessages = internalMutation({
           type: v.string(),
           url: v.string(),
           mimeType: v.string(),
+          storageId: v.optional(v.id("_storage")),
         }))),
+        externalMessageId: v.optional(v.string()),
+        direction: v.optional(v.union(v.literal("inbound"), v.literal("outbound"))),
+        status: v.optional(v.union(
+          v.literal("sent"),
+          v.literal("delivered"),
+          v.literal("read"),
+          v.literal("failed"),
+          v.literal("received")
+        )),
+        channelData: v.optional(v.any()),
       })
     ),
   },
   handler: async (ctx, args) => {
     const now = Date.now()
+    const thread = await ctx.db.get(args.threadId)
+    const organizationId = thread?.organizationId
 
+    const insertedIds: Id<"messages">[] = []
     for (const msg of args.messages) {
-      await ctx.db.insert("messages", {
+      const id = await ctx.db.insert("messages", {
         threadId: args.threadId,
+        organizationId,
         role: msg.role,
         content: msg.content,
         toolCalls: msg.toolCalls,
         toolCallId: msg.toolCallId,
         attachments: msg.attachments,
+        externalMessageId: msg.externalMessageId,
+        direction: msg.direction,
+        status: msg.status,
+        channelData: msg.channelData,
         createdAt: now,
       })
+      insertedIds.push(id)
     }
 
     await ctx.db.patch(args.threadId, { updatedAt: now })
 
-    return { success: true, count: args.messages.length }
+    return insertedIds
+  },
+})
+
+export const patchMessage = internalMutation({
+  args: {
+    messageId: v.id("messages"),
+    externalMessageId: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("read"),
+      v.literal("failed"),
+      v.literal("received")
+    )),
+    channelData: v.optional(v.any()),
+    attachments: v.optional(v.array(v.object({
+      type: v.string(),
+      url: v.string(),
+      mimeType: v.string(),
+      storageId: v.optional(v.id("_storage")),
+    }))),
+    direction: v.optional(v.union(v.literal("inbound"), v.literal("outbound"))),
+  },
+  handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId)
+    if (!msg) return null
+
+    const patch: Record<string, unknown> = {}
+    if (args.externalMessageId !== undefined) patch.externalMessageId = args.externalMessageId
+    if (args.status !== undefined) patch.status = args.status
+    if (args.direction !== undefined) patch.direction = args.direction
+    if (args.attachments !== undefined) patch.attachments = args.attachments
+
+    if (args.channelData !== undefined) {
+      const existing = (msg.channelData ?? {}) as Record<string, unknown>
+      patch.channelData = { ...existing, ...(args.channelData as Record<string, unknown>) }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.messageId, patch)
+    }
+
+    const thread = await ctx.db.get(msg.threadId)
+    if (thread) {
+      await ctx.db.patch(msg.threadId, { updatedAt: Date.now() })
+    }
+
+    return args.messageId
   },
 })

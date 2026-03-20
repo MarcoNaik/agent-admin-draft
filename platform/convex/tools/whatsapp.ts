@@ -9,6 +9,7 @@ const getConnectionByIdRef = makeFunctionReference<"query">("whatsapp:getConnect
 const getConnectionByAgentRef = makeFunctionReference<"query">("whatsapp:getConnectionByAgentInternal")
 const listConnectionsRef = makeFunctionReference<"query">("whatsapp:listConnectionsInternal")
 const storeOutboundMessageRef = makeFunctionReference<"mutation">("whatsapp:storeOutboundMessage")
+const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
 const getOwnedTemplateNamesRef = makeFunctionReference<"query">("whatsapp:getOwnedTemplateNames")
 const getConversationMessagesRef = makeFunctionReference<"query">("whatsapp:getConversationMessagesInternal")
 import {
@@ -76,6 +77,7 @@ export const whatsappSend = internalAction({
     ...connectionArgs,
     to: v.string(),
     text: v.string(),
+    threadId: v.optional(v.id("threads")),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -87,13 +89,27 @@ export const whatsappSend = internalAction({
       args.text
     )
 
-    await ctx.runMutation(storeOutboundMessageRef, {
-      organizationId: args.organizationId,
-      connectionId: connection._id,
-      phoneNumber: args.to,
-      messageId: result.messageId,
-      text: args.text,
-    })
+    if (args.threadId) {
+      await ctx.runMutation(appendMessagesRef, {
+        threadId: args.threadId,
+        messages: [{
+          role: "assistant" as const,
+          content: args.text,
+          externalMessageId: result.messageId,
+          direction: "outbound" as const,
+          status: "sent" as const,
+          channelData: { type: "text", connectionId: connection._id },
+        }],
+      })
+    } else {
+      await ctx.runMutation(storeOutboundMessageRef, {
+        organizationId: args.organizationId,
+        connectionId: connection._id,
+        phoneNumber: args.to,
+        messageId: result.messageId,
+        text: args.text,
+      })
+    }
 
     return {
       messageId: result.messageId,
@@ -117,6 +133,7 @@ export const whatsappSendTemplate = internalAction({
         parameterName: v.optional(v.string()),
       })),
     }))),
+    threadId: v.optional(v.id("threads")),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -138,14 +155,28 @@ export const whatsappSendTemplate = internalAction({
       coercedComponents as any
     )
 
-    await ctx.runMutation(storeOutboundMessageRef, {
-      organizationId: args.organizationId,
-      connectionId: connection._id,
-      phoneNumber: args.to,
-      messageId: result.messageId,
-      text: `[Template: ${args.templateName}]`,
-      type: "template",
-    })
+    if (args.threadId) {
+      await ctx.runMutation(appendMessagesRef, {
+        threadId: args.threadId,
+        messages: [{
+          role: "assistant" as const,
+          content: `[Template: ${args.templateName}]`,
+          externalMessageId: result.messageId,
+          direction: "outbound" as const,
+          status: "sent" as const,
+          channelData: { type: "template", connectionId: connection._id },
+        }],
+      })
+    } else {
+      await ctx.runMutation(storeOutboundMessageRef, {
+        organizationId: args.organizationId,
+        connectionId: connection._id,
+        phoneNumber: args.to,
+        messageId: result.messageId,
+        text: `[Template: ${args.templateName}]`,
+        type: "template",
+      })
+    }
 
     return {
       messageId: result.messageId,
@@ -166,6 +197,7 @@ export const whatsappSendInteractive = internalAction({
       title: v.string(),
     })),
     footerText: v.optional(v.string()),
+    threadId: v.optional(v.id("threads")),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -188,15 +220,29 @@ export const whatsappSendInteractive = internalAction({
       args.footerText
     )
 
-    await ctx.runMutation(storeOutboundMessageRef, {
-      organizationId: args.organizationId,
-      connectionId: connection._id,
-      phoneNumber: args.to,
-      messageId: result.messageId,
-      text: args.bodyText,
-      type: "interactive",
-      interactiveData: { buttons: args.buttons, footerText: args.footerText },
-    })
+    if (args.threadId) {
+      await ctx.runMutation(appendMessagesRef, {
+        threadId: args.threadId,
+        messages: [{
+          role: "assistant" as const,
+          content: args.bodyText,
+          externalMessageId: result.messageId,
+          direction: "outbound" as const,
+          status: "sent" as const,
+          channelData: { type: "interactive", connectionId: connection._id },
+        }],
+      })
+    } else {
+      await ctx.runMutation(storeOutboundMessageRef, {
+        organizationId: args.organizationId,
+        connectionId: connection._id,
+        phoneNumber: args.to,
+        messageId: result.messageId,
+        text: args.bodyText,
+        type: "interactive",
+        interactiveData: { buttons: args.buttons, footerText: args.footerText },
+      })
+    }
 
     return {
       messageId: result.messageId,
@@ -213,6 +259,7 @@ export const whatsappSendMedia = internalAction({
     mediaUrl: v.string(),
     mediaType: v.union(v.literal("image"), v.literal("audio")),
     caption: v.optional(v.string()),
+    threadId: v.optional(v.id("threads")),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -234,16 +281,30 @@ export const whatsappSendMedia = internalAction({
       )
     }
 
-    await ctx.runMutation(storeOutboundMessageRef, {
-      organizationId: args.organizationId,
-      connectionId: connection._id,
-      phoneNumber: args.to,
-      messageId: result.messageId,
-      text: args.caption ?? `[${args.mediaType}]`,
-      type: args.mediaType,
-      mediaDirectUrl: args.mediaUrl,
-      mediaCaption: args.caption,
-    })
+    if (args.threadId) {
+      await ctx.runMutation(appendMessagesRef, {
+        threadId: args.threadId,
+        messages: [{
+          role: "assistant" as const,
+          content: args.caption ?? `[${args.mediaType}]`,
+          externalMessageId: result.messageId,
+          direction: "outbound" as const,
+          status: "sent" as const,
+          channelData: { type: args.mediaType, connectionId: connection._id },
+        }],
+      })
+    } else {
+      await ctx.runMutation(storeOutboundMessageRef, {
+        organizationId: args.organizationId,
+        connectionId: connection._id,
+        phoneNumber: args.to,
+        messageId: result.messageId,
+        text: args.caption ?? `[${args.mediaType}]`,
+        type: args.mediaType,
+        mediaDirectUrl: args.mediaUrl,
+        mediaCaption: args.caption,
+      })
+    }
 
     return {
       messageId: result.messageId,
