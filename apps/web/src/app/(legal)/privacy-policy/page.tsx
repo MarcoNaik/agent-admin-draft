@@ -1,6 +1,10 @@
-"use client"
-
+import type { Metadata } from "next"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "Privacy Policy — Struere",
+  description: "How Struere collects, uses, and protects your information.",
+}
 
 export default function PrivacyPolicy() {
   return (
@@ -34,7 +38,7 @@ export default function PrivacyPolicy() {
 
         <h1 className="text-sm tracking-tight mb-2">Privacy Policy</h1>
         <p className="text-[10px] tracking-wider opacity-50 mb-16">
-          Last updated: February 15, 2026
+          Last updated: March 20, 2026
         </p>
 
         <div className="space-y-12">
@@ -90,6 +94,61 @@ export default function PrivacyPolicy() {
                 customers.
               </p>
             </Subsection>
+
+            <Subsection title="Google Calendar Data">
+              <p>
+                If you connect Google Calendar, we request access to the
+                following OAuth scopes via Google&rsquo;s authorization flow:
+              </p>
+              <ul className="list-none space-y-2 mt-2">
+                <li>
+                  — <strong>https://www.googleapis.com/auth/calendar</strong> —
+                  Read and write access to your calendar metadata and settings
+                </li>
+                <li>
+                  — <strong>https://www.googleapis.com/auth/calendar.events</strong> —
+                  Read and write access to calendar events
+                </li>
+              </ul>
+              <p className="mt-3">
+                This data is used exclusively to enable your AI agents to list,
+                create, update, and delete calendar events and check free/busy
+                availability on your behalf. We store a reference to your
+                connected calendar (calendar ID and connection state) in our
+                database, scoped to your organization and environment. OAuth
+                tokens are managed by Clerk and are not stored directly by
+                Struere. We do not access calendars beyond the specific account
+                you authorize, and we do not use your calendar data for
+                advertising, profiling, or any purpose unrelated to providing
+                the Struere platform.
+              </p>
+              <p className="mt-3">
+                You can revoke Struere&rsquo;s access to your Google Calendar at
+                any time by disconnecting the integration in the Struere
+                dashboard or by removing access in your{" "}
+                <a
+                  href="https://myaccount.google.com/permissions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                  style={{ color: "#1B4332" }}
+                >
+                  Google Account permissions
+                </a>
+                . Struere&rsquo;s use and transfer of information received from
+                Google APIs adheres to the{" "}
+                <a
+                  href="https://developers.google.com/terms/api-services-user-data-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                  style={{ color: "#1B4332" }}
+                >
+                  Google API Services User Data Policy
+                </a>
+                , including the Limited Use requirements.
+              </p>
+            </Subsection>
           </Section>
 
           <Section title="3. How We Use Your Information">
@@ -120,6 +179,10 @@ export default function PrivacyPolicy() {
               <li>
                 <strong>Anthropic</strong> — AI language model processing for
                 agent conversations
+              </li>
+              <li>
+                <strong>Google</strong> — Calendar integration via Google
+                Calendar API (OAuth 2.0)
               </li>
               <li>
                 <strong>Fly.io</strong> — Custom tool execution in sandboxed
