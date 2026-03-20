@@ -1,5 +1,5 @@
 import React from "react";
-import { interpolate } from "remotion";
+import { interpolate, spring, useVideoConfig } from "remotion";
 import { DASHBOARD, FONTS } from "../../lib/dashboard-theme";
 import { useSectionFrame } from "../../lib/SectionContext";
 
@@ -21,6 +21,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   environment = "development",
 }) => {
   const frame = useSectionFrame();
+  const { fps } = useVideoConfig();
+
+  const envDotPulse = environment === "development"
+    ? 1 + 0.25 * Math.sin((frame / 40) * Math.PI * 2)
+    : 1;
+  const envDotGlow = environment === "development"
+    ? 0.3 + 0.3 * Math.sin((frame / 40) * Math.PI * 2)
+    : 0;
+
   const sweepWidth = environment === "production"
     ? interpolate(frame, [0, 15], [0, 100], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
     : 0;
@@ -217,6 +226,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               height: 7,
               borderRadius: "50%",
               backgroundColor: envDot,
+              transform: `scale(${envDotPulse})`,
+              boxShadow: envDotGlow > 0 ? `0 0 ${envDotGlow * 8}px ${envDot}` : "none",
             }}
           />
           <span
@@ -274,7 +285,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             left: 0,
             height: 2,
             width: `${sweepWidth}%`,
-            backgroundColor: "#22c55e",
+            backgroundColor: DASHBOARD.success,
             zIndex: 10,
           }}
         />
