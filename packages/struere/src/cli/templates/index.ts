@@ -18,7 +18,7 @@ export function getTsConfig(): string {
         },
       },
       include: ['**/*.ts'],
-      exclude: ['node_modules', 'dist', '.struere'],
+      exclude: ['node_modules', 'dist'],
     },
     null,
     2
