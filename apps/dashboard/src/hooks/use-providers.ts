@@ -7,7 +7,7 @@ export function useProviderConfigs() {
   return useQuery(api.providers.listConfigs, {})
 }
 
-export function useProviderConfig(provider: "anthropic" | "openai" | "google" | "xai") {
+export function useProviderConfig(provider: "anthropic" | "openai" | "google" | "xai" | "openrouter") {
   return useQuery(api.providers.getConfig, { provider })
 }
 
