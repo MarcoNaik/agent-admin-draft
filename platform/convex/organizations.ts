@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { query, mutation, action, internalMutation, internalQuery, MutationCtx } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
-import { getAuthContext, requireAuth } from "./lib/auth"
+import { getAuthContext, getAuthContextSafe, requireAuth } from "./lib/auth"
 import { Id } from "./_generated/dataModel"
 
 const deleteAllOrgDataRef = makeFunctionReference<"mutation">("organizations:deleteAllOrgData")
@@ -33,7 +33,8 @@ export const getBySlug = query({
 export const getCurrent = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await getAuthContext(ctx)
+    const auth = await getAuthContextSafe(ctx)
+    if (!auth) return null
     return await ctx.db.get(auth.organizationId)
   },
 })
@@ -80,7 +81,7 @@ export const listMyOrganizations = query({
   },
 })
 
-export const debugListOrgsForUser = query({
+export const debugListOrgsForUser = internalQuery({
   args: { clerkUserId: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -729,6 +730,15 @@ export const ensureOrganization = mutation({
       throw new Error("Not authenticated")
     }
 
+    if (identity.org_id !== args.clerkOrgId) {
+      throw new Error("Not a member of this organization")
+    }
+
+    const role: "admin" | "member" =
+      identity.org_role === "org:admin" || identity.org_role === "org:owner"
+        ? "admin"
+        : "member"
+
     const organizationId = await ensureOrgFromClerk(ctx, {
       clerkOrgId: args.clerkOrgId,
       name: args.name,
@@ -739,7 +749,7 @@ export const ensureOrganization = mutation({
       clerkOrgId: args.clerkOrgId,
       clerkUserId: identity.subject,
       clerkMembershipId: `mem_ensure_${Date.now()}`,
-      role: "admin",
+      role,
       userEmail: identity.email,
       userName: identity.name ?? identity.nickname,
     })
