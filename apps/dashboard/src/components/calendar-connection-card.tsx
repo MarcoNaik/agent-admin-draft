@@ -65,26 +65,11 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
   const [calendars, setCalendars] = useState<Array<{ id: string; summary: string; primary: boolean }>>([])
   const [loadingCalendars, setLoadingCalendars] = useState(false)
-  const [linkingGoogle, setLinkingGoogle] = useState(false)
 
   const googleAccount = clerkUser?.externalAccounts?.find(
     (account) => (account.provider as string) === "google" && account.verification?.status === "verified"
   )
   const hasGoogleOAuth = !!googleAccount
-  const hasCalendarScopes = googleAccount?.approvedScopes
-    ?.split(" ")
-    .some((s) => s.includes("calendar"))
-
-  useEffect(() => {
-    if (!linkingGoogle || hasGoogleOAuth) {
-      setLinkingGoogle(false)
-      return
-    }
-    const interval = setInterval(() => {
-      clerkUser?.reload()
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [linkingGoogle, hasGoogleOAuth, clerkUser])
 
   const status = connection?.status ?? "disconnected"
 
@@ -93,6 +78,28 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
       loadCalendars()
     }
   }, [status])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("calendar_oauth") === "complete" && status === "disconnected" && hasGoogleOAuth) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("calendar_oauth")
+      window.history.replaceState({}, "", url.toString())
+      handleAutoConnect()
+    }
+  }, [status, hasGoogleOAuth])
+
+  const handleAutoConnect = async () => {
+    setConnecting(true)
+    try {
+      await connectCalendar({ environment })
+      await loadCalendars()
+    } catch (err) {
+      console.error("Failed to auto-connect:", err)
+    } finally {
+      setConnecting(false)
+    }
+  }
 
   const loadCalendars = async () => {
     setLoadingCalendars(true)
@@ -106,9 +113,15 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
     }
   }
 
-  const handleLinkGoogle = async () => {
+  const buildRedirectUrl = () => {
+    const url = new URL(window.location.href)
+    url.searchParams.set("calendar_oauth", "complete")
+    return url.toString()
+  }
+
+  const handleConnectCalendar = async () => {
     if (!clerkUser) return
-    setLinkingGoogle(true)
+    setConnecting(true)
 
     const googleAccount = clerkUser.externalAccounts.find(
       (account) => (account.provider as string) === "google"
@@ -117,35 +130,27 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
     if (googleAccount) {
       const reauth = await googleAccount.reauthorize({
         additionalScopes: [
-          "https://www.googleapis.com/auth/calendar",
+          "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
           "https://www.googleapis.com/auth/calendar.events",
         ],
-        redirectUrl: window.location.href,
+        redirectUrl: buildRedirectUrl(),
       })
       if (reauth?.verification?.externalVerificationRedirectURL) {
         window.location.href = reauth.verification.externalVerificationRedirectURL.href
       }
     } else {
-      await clerkUser.createExternalAccount({
+      const externalAccount = await clerkUser.createExternalAccount({
         strategy: "oauth_google",
         additionalScopes: [
-          "https://www.googleapis.com/auth/calendar",
+          "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
           "https://www.googleapis.com/auth/calendar.events",
         ],
-        redirectUrl: window.location.href,
+        redirectUrl: buildRedirectUrl(),
       })
-    }
-  }
-
-  const handleConnect = async () => {
-    setConnecting(true)
-    try {
-      await connectCalendar({ environment })
-      await loadCalendars()
-    } catch (err) {
-      console.error("Failed to connect:", err)
-    } finally {
-      setConnecting(false)
+      const redirectUrl = externalAccount.verification?.externalVerificationRedirectURL
+      if (redirectUrl) {
+        window.location.href = redirectUrl.href
+      }
     }
   }
 
@@ -235,32 +240,12 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
             </div>
           )}
 
-          {status === "disconnected" && !hasGoogleOAuth && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <Calendar className="h-8 w-8 text-content-tertiary" />
-              <p className="text-sm text-content-secondary">Google account not linked</p>
-              <p className="text-xs text-content-tertiary text-center max-w-sm">
-                Link your Google account to grant calendar access. You will be redirected to Google to authorize.
-              </p>
-            </div>
-          )}
-
-          {status === "disconnected" && hasGoogleOAuth && !hasCalendarScopes && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <Calendar className="h-8 w-8 text-content-tertiary" />
-              <p className="text-sm text-content-secondary">Calendar access not granted</p>
-              <p className="text-xs text-content-tertiary text-center max-w-sm">
-                Your Google account is linked but calendar access hasn&apos;t been granted. Grant access to enable calendar sync.
-              </p>
-            </div>
-          )}
-
-          {status === "disconnected" && hasGoogleOAuth && hasCalendarScopes && (
+          {status === "disconnected" && (
             <div className="flex flex-col items-center gap-3 py-6">
               <Calendar className="h-8 w-8 text-content-tertiary" />
               <p className="text-sm text-content-secondary">No Google Calendar connected</p>
               <p className="text-xs text-content-tertiary text-center max-w-sm">
-                Your Google account is linked. Connect your calendar to enable event sync.
+                Connect your Google Calendar to let agents manage your events. You will be redirected to Google to authorize access.
               </p>
             </div>
           )}
@@ -273,36 +258,18 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
           )}
 
           <div className="flex gap-2 pt-2">
-            {status === "disconnected" && !hasGoogleOAuth && (
-              <Button onClick={handleLinkGoogle}>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Link Google Account
-              </Button>
-            )}
-            {status === "disconnected" && hasGoogleOAuth && !hasCalendarScopes && (
-              <Button onClick={handleLinkGoogle} disabled={linkingGoogle}>
-                {linkingGoogle ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Grant Calendar Access
-                  </>
-                )}
-              </Button>
-            )}
-            {status === "disconnected" && hasGoogleOAuth && hasCalendarScopes && (
-              <Button onClick={handleConnect} disabled={connecting}>
+            {status === "disconnected" && (
+              <Button onClick={handleConnectCalendar} disabled={connecting}>
                 {connecting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Connecting...
                   </>
                 ) : (
-                  "Connect Google Calendar"
+                  <>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Connect Google Calendar
+                  </>
                 )}
               </Button>
             )}
