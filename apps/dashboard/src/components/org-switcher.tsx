@@ -67,7 +67,7 @@ export function OrgSwitcher() {
     if (setActive) {
       await setActive({ organization: orgId })
       setOpen(false)
-      window.location.href = "/system/agents"
+      router.push("/system/agents")
     }
   }
 
