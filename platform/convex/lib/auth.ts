@@ -43,22 +43,26 @@ export async function getAuthContext(
       .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", clerkOrgId))
       .first()
 
-    if (clerkOrg) {
-      const clerkMembership = await ctx.db
-        .query("userOrganizations")
-        .withIndex("by_user_org", (q) =>
-          q.eq("userId", user._id).eq("organizationId", clerkOrg._id)
-        )
-        .first()
+    if (!clerkOrg) {
+      throw new Error("Organization not found for the selected Clerk org.")
+    }
 
-      if (clerkMembership) {
-        return {
-          userId: user._id,
-          organizationId: clerkOrg._id,
-          clerkUserId,
-          actorType: "user",
-        }
-      }
+    const clerkMembership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", clerkOrg._id)
+      )
+      .first()
+
+    if (!clerkMembership) {
+      throw new Error("Access denied: you are not a member of this organization.")
+    }
+
+    return {
+      userId: user._id,
+      organizationId: clerkOrg._id,
+      clerkUserId,
+      actorType: "user",
     }
   }
 
@@ -76,6 +80,65 @@ export async function getAuthContext(
   if (!fallbackOrg) {
     throw new Error("Organization not found.")
   }
+
+  return {
+    userId: user._id,
+    organizationId: fallbackOrg._id,
+    clerkUserId,
+    actorType: "user",
+  }
+}
+
+export async function getAuthContextSafe(
+  ctx: QueryCtx | MutationCtx
+): Promise<AuthContext | null> {
+  const identity = await ctx.auth.getUserIdentity() as ClerkIdentity | null
+  if (!identity) return null
+
+  const clerkUserId = identity.subject
+  const clerkOrgId = identity.org_id
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", clerkUserId))
+    .first()
+
+  if (!user) return null
+
+  if (clerkOrgId) {
+    const clerkOrg = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org", (q) => q.eq("clerkOrgId", clerkOrgId))
+      .first()
+
+    if (!clerkOrg) return null
+
+    const clerkMembership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", clerkOrg._id)
+      )
+      .first()
+
+    if (!clerkMembership) return null
+
+    return {
+      userId: user._id,
+      organizationId: clerkOrg._id,
+      clerkUserId,
+      actorType: "user",
+    }
+  }
+
+  const firstMembership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .first()
+
+  if (!firstMembership) return null
+
+  const fallbackOrg = await ctx.db.get(firstMembership.organizationId)
+  if (!fallbackOrg) return null
 
   return {
     userId: user._id,
