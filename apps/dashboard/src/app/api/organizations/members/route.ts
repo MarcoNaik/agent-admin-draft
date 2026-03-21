@@ -65,10 +65,7 @@ export async function DELETE(req: Request) {
     if (token) {
       const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
       convex.setAuth(token)
-      const convexUser = await convex.query(api.users.getByClerkId, { clerkUserId: userId })
-      if (convexUser) {
-        await convex.mutation(api.users.remove, { id: convexUser._id })
-      }
+      await convex.mutation(api.users.removeByClerkId, { clerkUserId: userId })
     }
   } catch (_) {}
 
