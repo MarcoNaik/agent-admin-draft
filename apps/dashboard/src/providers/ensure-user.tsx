@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useState, ReactNode } from "react"
+import { useEffect, useState, useRef, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useUser, useOrganization } from "@clerk/nextjs"
+import { useConvexAuth } from "convex/react"
 import { useCurrentUser, useEnsureUser } from "@/hooks/use-convex-data"
+import { useEnsureOrganization } from "@/hooks/use-organizations"
 import { Loader2 } from "@/lib/icons"
 
 export function EnsureUserProvider({ children }: { children: ReactNode }) {
@@ -13,8 +15,11 @@ export function EnsureUserProvider({ children }: { children: ReactNode }) {
   const { organization: clerkOrg, isLoaded: orgLoaded } = useOrganization()
   const currentUser = useCurrentUser()
   const ensureUser = useEnsureUser()
+  const ensureOrganization = useEnsureOrganization()
+  const { isLoading: isConvexAuthLoading } = useConvexAuth()
   const [isProvisioning, setIsProvisioning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const syncedOrgRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!clerkLoaded || !isSignedIn) return
@@ -36,6 +41,24 @@ export function EnsureUserProvider({ children }: { children: ReactNode }) {
   }, [clerkLoaded, isSignedIn, currentUser, ensureUser, isProvisioning])
 
   useEffect(() => {
+    if (!clerkLoaded || !orgLoaded || !isSignedIn || !clerkOrg || isConvexAuthLoading) return
+    if (syncedOrgRef.current === clerkOrg.id) return
+
+    const syncOrg = async () => {
+      try {
+        await ensureOrganization({
+          clerkOrgId: clerkOrg.id,
+          name: clerkOrg.name,
+          slug: clerkOrg.slug ?? clerkOrg.name.toLowerCase().replace(/\s+/g, "-"),
+        })
+        syncedOrgRef.current = clerkOrg.id
+      } catch {}
+    }
+
+    syncOrg()
+  }, [clerkLoaded, orgLoaded, isSignedIn, clerkOrg, ensureOrganization, isConvexAuthLoading])
+
+  useEffect(() => {
     if (!clerkLoaded || !orgLoaded || !isSignedIn) return
     if (pathname === "/create-organization") return
 
@@ -45,6 +68,14 @@ export function EnsureUserProvider({ children }: { children: ReactNode }) {
   }, [clerkLoaded, orgLoaded, isSignedIn, clerkOrg, pathname, router])
 
   if (!clerkLoaded || !orgLoaded) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (isConvexAuthLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
