@@ -3,12 +3,12 @@ import { query, mutation, internalMutation } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { requireAuth } from "./lib/auth"
 import { calculateCost } from "./lib/creditPricing"
+import { providerValidator } from "./lib/providers"
 
 const processUsageEventRef = makeFunctionReference<"mutation">("sandboxSessions:processUsageEvent")
 const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
-const providerValidator = v.optional(v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai")))
 const keySourceValidator = v.optional(v.union(v.literal("platform"), v.literal("custom")))
 
 export const create = mutation({
@@ -17,7 +17,7 @@ export const create = mutation({
     agentType: v.literal("opencode"),
     idleTimeoutMs: v.optional(v.number()),
     model: v.optional(v.string()),
-    provider: providerValidator,
+    provider: v.optional(providerValidator),
     keySource: keySourceValidator,
   },
   handler: async (ctx, args) => {
