@@ -124,6 +124,7 @@ export const sendPublicChat = action({
   returns: v.object({
     message: v.string(),
     threadId: v.id("threads"),
+    assistantMessageId: v.optional(v.id("messages")),
     usage: v.object({
       inputTokens: v.number(),
       outputTokens: v.number(),
@@ -133,6 +134,7 @@ export const sendPublicChat = action({
   handler: async (ctx, args): Promise<{
     message: string
     threadId: Id<"threads">
+    assistantMessageId?: Id<"messages">
     usage: { inputTokens: number; outputTokens: number; totalTokens: number }
   }> => {
     const resolved = await ctx.runQuery(resolvePublicAgentRef, {
