@@ -87,8 +87,8 @@ export default function PrivacyPolicy() {
               </p>
               <ul className="list-none space-y-3 mt-3">
                 <li className="text-charcoal/70">
-                  — <strong>https://www.googleapis.com/auth/calendar</strong> —
-                  Read and write access to your calendar metadata and settings
+                  — <strong>https://www.googleapis.com/auth/calendar.calendarlist.readonly</strong> —
+                  Read-only access to the list of Google calendars you&rsquo;re subscribed to
                 </li>
                 <li className="text-charcoal/70">
                   — <strong>https://www.googleapis.com/auth/calendar.events</strong> —
