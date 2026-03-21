@@ -3,14 +3,13 @@ import { query, mutation, action, internalQuery, internalMutation } from "./_gen
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth, requireOrgAdmin } from "./lib/auth"
+import { providerValidator, type Provider } from "./lib/providers"
 
 const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
 const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
 const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
 const getConfigInternalRef = makeFunctionReference<"query">("providers:getConfigInternal")
 const patchStatusRef = makeFunctionReference<"mutation">("providers:patchStatus")
-
-const providerValidator = v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai"))
 
 function maskApiKey(key: string): string {
   if (key.length <= 8) return "***"
@@ -96,14 +95,10 @@ export const resolveApiKey = internalQuery({
     v.null()
   ),
   handler: async (ctx, args) => {
-    if (!["anthropic", "openai", "google", "xai"].includes(args.provider)) {
-      return null
-    }
-
     const config = await ctx.db
       .query("providerConfigs")
       .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("provider", args.provider as "anthropic" | "openai" | "google" | "xai")
+        q.eq("organizationId", args.organizationId).eq("provider", args.provider as Provider)
       )
       .first()
 
@@ -284,6 +279,13 @@ export const testConnection = action({
         })
         if (!resp.ok) {
           return { success: false, message: `xAI API error: ${resp.status}` }
+        }
+      } else if (args.provider === "openrouter") {
+        const resp: Response = await fetch("https://openrouter.ai/api/v1/models", {
+          headers: { "Authorization": `Bearer ${apiKey}` },
+        })
+        if (!resp.ok) {
+          return { success: false, message: `OpenRouter API error: ${resp.status}` }
         }
       }
 
