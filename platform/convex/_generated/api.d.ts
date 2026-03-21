@@ -43,6 +43,7 @@ import type * as lib_permissions_mask from "../lib/permissions/mask.js";
 import type * as lib_permissions_scope from "../lib/permissions/scope.js";
 import type * as lib_permissions_tools from "../lib/permissions/tools.js";
 import type * as lib_permissions_types from "../lib/permissions/types.js";
+import type * as lib_providers from "../lib/providers.js";
 import type * as lib_sync_agents from "../lib/sync/agents.js";
 import type * as lib_sync_entityTypes from "../lib/sync/entityTypes.js";
 import type * as lib_sync_evalSuites from "../lib/sync/evalSuites.js";
@@ -140,6 +141,7 @@ declare const fullApi: ApiFromModules<{
   "lib/permissions/scope": typeof lib_permissions_scope;
   "lib/permissions/tools": typeof lib_permissions_tools;
   "lib/permissions/types": typeof lib_permissions_types;
+  "lib/providers": typeof lib_providers;
   "lib/sync/agents": typeof lib_sync_agents;
   "lib/sync/entityTypes": typeof lib_sync_entityTypes;
   "lib/sync/evalSuites": typeof lib_sync_evalSuites;
