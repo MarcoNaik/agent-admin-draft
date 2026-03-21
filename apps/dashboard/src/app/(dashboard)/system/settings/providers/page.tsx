@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
-type ProviderKey = "anthropic" | "openai" | "google" | "xai"
+type ProviderKey = "anthropic" | "openai" | "google" | "xai" | "openrouter"
 
 const PROVIDERS: {
   id: ProviderKey
@@ -62,6 +62,14 @@ const PROVIDERS: {
     color: "text-white",
     bgColor: "bg-white/10",
     keyPrefix: "xai-",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    description: "400+ models via unified API. Use any model from any provider with a single API key.",
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/10",
+    keyPrefix: "sk-or-",
   },
 ]
 
