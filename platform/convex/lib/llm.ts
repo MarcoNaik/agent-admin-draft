@@ -39,6 +39,19 @@ export function createModel(config: ModelConfig, apiKeyOverride?: string): Langu
       const provider = createXai({ apiKey })
       return provider(config.name)
     }
+    case "openrouter": {
+      const apiKey = apiKeyOverride ?? process.env.OPENROUTER_API_KEY
+      if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured")
+      const provider = createOpenAI({
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey,
+        headers: {
+          "HTTP-Referer": "https://struere.dev",
+          "X-OpenRouter-Title": "Struere",
+        },
+      })
+      return provider(config.name)
+    }
     default:
       throw new Error(`Unsupported model provider: ${config.provider}`)
   }
