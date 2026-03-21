@@ -148,7 +148,7 @@ export function registerStruerePlugin(): void {
 }
 
 const TYPE_DECLARATIONS = `export interface ModelConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
+  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'openrouter' | 'custom'
   name: string
   temperature?: number
   maxTokens?: number

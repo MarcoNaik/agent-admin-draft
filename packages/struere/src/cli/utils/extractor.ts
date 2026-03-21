@@ -1,7 +1,7 @@
 import type { LoadedResources } from './loader'
 import type { AgentConfig, ToolReference, TriggerConfig } from '../../types'
 
-function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' | 'xai' {
+function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' | 'xai' | 'openrouter' {
   if (modelName.startsWith('gpt-') || modelName.startsWith('o1') || modelName.startsWith('o3') || modelName.startsWith('o4')) return 'openai'
   if (modelName.startsWith('gemini')) return 'google'
   if (modelName.startsWith('grok')) return 'xai'
