@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation, internalMutation } from "./_generated/server"
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth, isOrgAdmin } from "./lib/auth"
 import { buildActorContext } from "./lib/permissions/context"
 import { canPerform, assertCanPerform } from "./lib/permissions/evaluate"
@@ -27,7 +27,7 @@ export const get = query({
   },
 })
 
-export const getByClerkId = query({
+export const getByClerkId = internalQuery({
   args: { clerkUserId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -232,6 +232,54 @@ export const remove = mutation({
 
     if (!membership) {
       throw new Error("User not found in organization")
+    }
+
+    if (!adminStatus && membership.role === "admin") {
+      throw new Error("Only admins can remove admin users")
+    }
+
+    await ctx.db.delete(membership._id)
+    return { success: true }
+  },
+})
+
+export const removeByClerkId = mutation({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first()
+
+    if (!user) {
+      return { success: true }
+    }
+
+    const adminStatus = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!adminStatus) {
+      const actor = await buildActorContext(ctx, {
+        organizationId: auth.organizationId,
+        actorType: auth.actorType,
+        actorId: auth.userId,
+        environment: "production",
+      })
+      await assertCanPerform(ctx, actor, "delete", "users")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
+      return { success: true }
     }
 
     if (!adminStatus && membership.role === "admin") {
