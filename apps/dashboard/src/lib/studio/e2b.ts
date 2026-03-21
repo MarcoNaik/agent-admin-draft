@@ -90,6 +90,19 @@ function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<st
         },
         model: `google/${model}`,
       }
+    case "openrouter":
+      return {
+        ...base,
+        provider: {
+          openai: {
+            options: { baseURL: "https://openrouter.ai/api/v1" },
+            models: {
+              [model]: { name: model, limit: { context: 200000, output: 32768 } },
+            },
+          },
+        },
+        model: `openai/${model}`,
+      }
   }
 }
 
