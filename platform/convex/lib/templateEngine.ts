@@ -191,7 +191,7 @@ async function executeTemplateFunction(
       return `[TEMPLATE_ERROR: ${name} - no handler]`
     }
 
-    const stringified = JSON.stringify(result)
+    const stringified = typeof result === 'string' ? result : JSON.stringify(result)
     if (stringified.length > MAX_RESULT_SIZE) {
       return stringified.slice(0, MAX_RESULT_SIZE) + "...[truncated]"
     }
