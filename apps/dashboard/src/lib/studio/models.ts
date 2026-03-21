@@ -11,7 +11,7 @@ export interface StudioProviderConfig {
   models: StudioModel[]
 }
 
-export type StudioProvider = "xai" | "anthropic" | "openai" | "google"
+export type StudioProvider = "xai" | "anthropic" | "openai" | "google" | "openrouter"
 
 export const STUDIO_PROVIDERS: Record<StudioProvider, StudioProviderConfig> = {
   xai: {
@@ -40,6 +40,13 @@ export const STUDIO_PROVIDERS: Record<StudioProvider, StudioProviderConfig> = {
     models: [
       { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro", tier: "recommended" },
       { id: "gemini-3-flash", name: "Gemini 3 Flash", tier: "standard" },
+    ],
+  },
+  openrouter: {
+    name: "OpenRouter",
+    models: [
+      { id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4", tier: "recommended" },
+      { id: "openai/gpt-4o", name: "GPT-4o", tier: "standard" },
     ],
   },
 }
