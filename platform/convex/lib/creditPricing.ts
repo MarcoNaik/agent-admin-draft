@@ -53,11 +53,18 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
 
 const DEFAULT_PRICING: ModelPricing = MODEL_PRICING["grok-4-1-fast"]
 
+function normalizeModelName(model: string): string {
+  const slashIndex = model.indexOf("/")
+  return slashIndex !== -1 ? model.slice(slashIndex + 1) : model
+}
+
 function resolvePricing(model: string): ModelPricing {
-  if (MODEL_PRICING[model]) return MODEL_PRICING[model]
+  const normalized = normalizeModelName(model)
+
+  if (MODEL_PRICING[normalized]) return MODEL_PRICING[normalized]
 
   for (const [key, pricing] of Object.entries(MODEL_PRICING)) {
-    if (model.startsWith(key)) return pricing
+    if (normalized.startsWith(key)) return pricing
   }
 
   return DEFAULT_PRICING
