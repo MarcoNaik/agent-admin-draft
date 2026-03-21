@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 import { rateLimitTables } from "convex-helpers/server/rateLimit"
+import { providerValidator } from "./lib/providers"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -503,7 +504,7 @@ export default defineSchema({
 
   providerConfigs: defineTable({
     organizationId: v.id("organizations"),
-    provider: v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai")),
+    provider: providerValidator,
     mode: v.union(v.literal("platform"), v.literal("custom")),
     apiKey: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
@@ -707,7 +708,7 @@ export default defineSchema({
     totalOutputTokens: v.optional(v.number()),
     totalCreditsConsumed: v.optional(v.number()),
     model: v.optional(v.string()),
-    provider: v.optional(v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"), v.literal("xai"))),
+    provider: v.optional(providerValidator),
     keySource: v.optional(v.union(v.literal("platform"), v.literal("custom"))),
   })
     .index("by_org_env_user", ["organizationId", "environment", "userId"])
