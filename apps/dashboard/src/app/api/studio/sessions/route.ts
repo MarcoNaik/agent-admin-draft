@@ -80,6 +80,7 @@ const PROVIDER_ENV_VARS: Record<StudioProvider, { envVar: string; platformVar: s
   anthropic: { envVar: "ANTHROPIC_API_KEY", platformVar: "ANTHROPIC_API_KEY" },
   openai: { envVar: "OPENAI_API_KEY", platformVar: "OPENAI_API_KEY" },
   google: { envVar: "GOOGLE_GENERATIVE_AI_API_KEY", platformVar: "GOOGLE_GENERATIVE_AI_API_KEY" },
+  openrouter: { envVar: "OPENAI_API_KEY", platformVar: "OPENROUTER_API_KEY" },
 }
 
 export async function POST(request: Request) {
