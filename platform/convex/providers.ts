@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation, action, internalQuery, internalMutation } from "./_generated/server"
+import { query, mutation, action, internalQuery, internalMutation, internalAction } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth, requireOrgAdmin } from "./lib/auth"
@@ -195,6 +195,14 @@ export const resolveStudioKeyInternal = internalQuery({
     }
 
     return { tier: 3 }
+  },
+})
+
+export const getPlatformKey = internalAction({
+  args: {},
+  returns: v.object({ apiKey: v.optional(v.string()) }),
+  handler: async () => {
+    return { apiKey: process.env.OPENROUTER_API_KEY }
   },
 })
 

@@ -132,7 +132,8 @@ export async function POST(request: Request) {
         console.error("[studio/sessions] Insufficient credits")
         return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
       }
-      llmApiKey = process.env.OPENROUTER_API_KEY
+      const platformKey = await adminConvex.action(internal.providers.getPlatformKey, {})
+      llmApiKey = platformKey.apiKey
     }
 
     const keySource = resolved.tier < 3 ? "custom" as const : "platform" as const
