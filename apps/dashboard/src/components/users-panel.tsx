@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Loader2, Shield, User, UserPlus, Link, Unlink, Plus, Trash2 } from "@/lib/icons"
 import { useUser } from "@clerk/nextjs"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes, useCreateEntity } from "@/hooks/use-convex-data"
-import { useRemoveUser } from "@/hooks/use-users"
+import { useRemoveUser, useSetDevAccess } from "@/hooks/use-users"
 import { useEntitiesByEmail, useLinkedEntity, useLinkUserToEntity, useUnlinkUserFromEntity } from "@/hooks/use-entities"
 import { useEnvironment } from "@/contexts/environment-context"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Doc, Id } from "@convex/_generated/dataModel"
+import { Switch } from "@/components/ui/switch"
 import { InviteUserDialog } from "@/components/invite-user-dialog"
 import { toast } from "sonner"
 
@@ -36,7 +37,7 @@ export interface UserPermissions {
 }
 
 type UserRoleWithDetails = Doc<"userRoles"> & { role: Doc<"roles"> | null }
-type UserWithRole = Doc<"users"> & { role: "admin" | "member" }
+type UserWithRole = Doc<"users"> & { role: "admin" | "member"; allowDevAccess?: boolean }
 
 function LinkEntityDialog({
   open,
@@ -178,6 +179,7 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
   const removeRole = useRemoveRoleFromUser()
   const createEntity = useCreateEntity()
   const { removeUser, isRemoving } = useRemoveUser()
+  const setDevAccess = useSetDevAccess()
   const userRoles = useUserRoles(user._id)
   const [isUpdating, setIsUpdating] = useState(false)
   const [pendingEntityCreation, setPendingEntityCreation] = useState<Doc<"entityTypes"> | null>(null)
@@ -382,6 +384,15 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+          {permissions.isAdmin && user.role !== "admin" && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-content-secondary">Dev Access:</span>
+              <Switch
+                checked={user.allowDevAccess === true}
+                onCheckedChange={(checked) => setDevAccess({ userId: user._id, allowDevAccess: checked })}
+              />
             </div>
           )}
         </div>

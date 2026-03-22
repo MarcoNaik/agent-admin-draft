@@ -13,6 +13,10 @@ export function useUpdateUser() {
   return useMutation(api.users.update)
 }
 
+export function useSetDevAccess() {
+  return useMutation(api.users.setDevAccess)
+}
+
 export function useCurrentUser() {
   return useQuery(api.users.getCurrent, {})
 }
