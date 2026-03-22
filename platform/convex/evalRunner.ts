@@ -4,7 +4,7 @@ import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { generateText } from "ai"
 import { createModel } from "./lib/llm"
-import { calculateCost } from "./lib/creditPricing"
+import { parseModelId } from "./lib/providers"
 import { processTemplates, TemplateContext } from "./lib/templateEngine"
 import { buildSystemActorContext } from "./lib/permissions/context"
 
@@ -24,6 +24,8 @@ const getOrgNameRef = makeFunctionReference<"query">("evals:getOrgName")
 const getAgentInternalRef = makeFunctionReference<"query">("evals:getAgentInternal")
 const getEntityTypesRef = makeFunctionReference<"query">("evals:getEntityTypes")
 const getRolesRef = makeFunctionReference<"query">("evals:getRoles")
+const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
+const getModelCostRef = makeFunctionReference<"query">("modelPricing:getModelCost")
 
 interface AssertionDef {
   type: "llm_judge" | "contains" | "matches" | "tool_called" | "tool_not_called"
@@ -225,8 +227,8 @@ export const executeCase = internalAction({
         turnAgentTokens = { input: chatResult.usage.inputTokens, output: chatResult.usage.outputTokens }
 
         const agentConfig = await ctx.runQuery(getAgentConfigRef, { agentId: run.agentId, environment: run.environment })
-        const agentModelName = agentConfig?.model?.name ?? "grok-4-1-fast"
-        state.agentCost += calculateCost(agentModelName, chatResult.usage.inputTokens, chatResult.usage.outputTokens)
+        const agentModelId = agentConfig?.model?.model || "xai/grok-4-1-fast"
+        state.agentCost += await ctx.runQuery(getModelCostRef, { modelId: agentModelId, inputTokens: chatResult.usage.inputTokens, outputTokens: chatResult.usage.outputTokens })
 
         state.chatCompletedForCurrentTurn = true
         state.pendingTurnUsage = {
@@ -458,7 +460,7 @@ async function evaluateAssertions(
   assertions: AssertionDef[],
   response: string,
   toolCalls: Array<{ name: string; arguments: unknown; result?: unknown }>,
-  judgeModel?: { provider: string; name: string },
+  judgeModel?: { model?: string },
   judgeContext?: string,
   agentPrompt?: string,
   priorTurns?: TurnResult[],
@@ -568,7 +570,7 @@ async function judgeResponse(ctx: any, organizationId: Id<"organizations">, args
   response: string
   toolCalls: Array<{ name: string; arguments: unknown; result?: unknown }>
   criteria: string
-  model?: { provider: string; name: string }
+  model?: { model?: string }
   referenceContext?: string
   agentSystemPrompt?: string
   priorTurns?: TurnResult[]
@@ -642,13 +644,28 @@ ${args.criteria}
 
 Evaluate the assistant's current turn response against the criteria. Respond with JSON only.`
 
-  const modelName = args.model?.name || "grok-4-1-fast"
+  const modelId = args.model?.model || "xai/grok-4-1-fast"
+  const { modelName } = parseModelId(modelId)
+
+  const resolved: { apiKey?: string; tier: number } = await ctx.runQuery(resolveApiKeyRef, {
+    organizationId,
+    modelId,
+  })
+
+  let judgeApiKey: string
+  let judgeTier: number
+  if (resolved.apiKey) {
+    judgeApiKey = resolved.apiKey
+    judgeTier = resolved.tier
+  } else {
+    const openrouterKey = process.env.OPENROUTER_API_KEY
+    if (!openrouterKey) throw new Error("OPENROUTER_API_KEY not configured")
+    judgeApiKey = openrouterKey
+    judgeTier = 3
+  }
 
   const result = await generateText({
-    model: createModel({
-      provider: args.model?.provider || "xai",
-      name: modelName,
-    }),
+    model: createModel(modelId, judgeApiKey, judgeTier),
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
     maxRetries: 2,
@@ -659,13 +676,15 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const inputTokens = result.usage.inputTokens ?? 0
   const outputTokens = result.usage.outputTokens ?? 0
   const textContent = result.text
-  const cost = calculateCost(modelName, inputTokens, outputTokens)
+  const cost = await ctx.runQuery(getModelCostRef, { modelId, inputTokens, outputTokens })
 
-  if (cost > 0) {
+  if (cost > 0 && judgeTier === 3) {
     await ctx.runMutation(deductCreditsRef, {
       organizationId,
       amount: cost,
       description: `Eval judge: ${modelName} — ${inputTokens} in / ${outputTokens} out`,
+      costDriver: "eval_judge",
+      model: modelId,
       metadata: {
         model: modelName,
         inputTokens,

@@ -3,6 +3,7 @@ import { query, mutation, internalMutation, internalQuery } from "./_generated/s
 import { makeFunctionReference } from "convex/server"
 import { getAuthContext, getAuthContextForOrg, requireAuth, requireOrgAdmin } from "./lib/auth"
 import { estimateMinimumCost } from "./lib/creditPricing"
+import { parseModelId } from "./lib/providers"
 
 const executeCaseRef = makeFunctionReference<"action">("evalRunner:executeCase")
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
@@ -211,8 +212,7 @@ export const createSuite = mutation({
     description: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     judgeModel: v.optional(v.object({
-      provider: v.string(),
-      name: v.string(),
+      model: v.string(),
     })),
     judgeContext: v.optional(v.string()),
     judgePrompt: v.optional(v.string()),
@@ -265,8 +265,7 @@ export const updateSuite = mutation({
     description: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     judgeModel: v.optional(v.object({
-      provider: v.string(),
-      name: v.string(),
+      model: v.string(),
     })),
     judgeContext: v.optional(v.string()),
     judgePrompt: v.optional(v.string()),
@@ -490,8 +489,9 @@ export const startRun = mutation({
       .order("desc")
       .first()
 
-    const agentModelName = agentConfig?.model?.name ?? "grok-4-1-fast"
-    const judgeModelName = suite.judgeModel?.name ?? "grok-4-1-fast"
+    const agentModelName = parseModelId(agentConfig?.model?.model ?? "xai/grok-4-1-fast").modelName
+    const judgeModelId = suite.judgeModel?.model || "xai/grok-4-1-fast"
+    const judgeModelName = parseModelId(judgeModelId).modelName
     const minCost = estimateMinimumCost(agentModelName) + estimateMinimumCost(judgeModelName)
 
     const creditBalance = await ctx.db
