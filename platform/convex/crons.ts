@@ -10,6 +10,8 @@ const cleanupOldEventsRef = makeFunctionReference<"mutation">("lib/cleanup:clean
 const cleanupStuckRunsRef = makeFunctionReference<"mutation">("evals:cleanupStuckRuns")
 const cleanupOldTransactionsRef = makeFunctionReference<"mutation">("lib/cleanup:cleanupOldTransactions")
 const compactOldExecutionsRef = makeFunctionReference<"mutation">("lib/cleanup:compactOldExecutions")
+const syncModelPricingRef = makeFunctionReference<"action">("modelPricing:syncPricing")
+const cleanupStaleReservationsRef = makeFunctionReference<"mutation">("billing:cleanupStaleReservations")
 
 const crons = cronJobs()
 
@@ -66,6 +68,18 @@ crons.interval(
   "compact old executions",
   { hours: 12 },
   compactOldExecutionsRef,
+)
+
+crons.interval(
+  "sync model pricing from OpenRouter",
+  { hours: 24 },
+  syncModelPricingRef,
+)
+
+crons.interval(
+  "cleanup stale credit reservations",
+  { minutes: 5 },
+  cleanupStaleReservationsRef,
 )
 
 export default crons
