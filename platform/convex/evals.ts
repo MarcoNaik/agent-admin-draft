@@ -2,8 +2,9 @@ import { v } from "convex/values"
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { getAuthContext, getAuthContextForOrg, requireAuth, requireOrgAdmin } from "./lib/auth"
-import { estimateMinimumCost } from "./lib/creditPricing"
 import { parseModelId } from "./lib/providers"
+
+const MARKUP = 1.1
 
 const executeCaseRef = makeFunctionReference<"action">("evalRunner:executeCase")
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
@@ -489,18 +490,32 @@ export const startRun = mutation({
       .order("desc")
       .first()
 
-    const agentModelName = parseModelId(agentConfig?.model?.model ?? "xai/grok-4-1-fast").modelName
+    const agentModelId = agentConfig?.model?.model ?? "xai/grok-4-1-fast"
     const judgeModelId = suite.judgeModel?.model || "xai/grok-4-1-fast"
-    const judgeModelName = parseModelId(judgeModelId).modelName
-    const minCost = estimateMinimumCost(agentModelName) + estimateMinimumCost(judgeModelName)
+
+    const estimateMinCostFromDb = async (modelId: string) => {
+      const openRouterId = modelId.indexOf("/") !== -1 ? modelId : ""
+      const normalized = modelId.indexOf("/") !== -1 ? modelId.slice(modelId.indexOf("/") + 1) : modelId
+      let dbPricing = null
+      if (openRouterId) {
+        dbPricing = await ctx.db.query("modelPricing").withIndex("by_model", (q) => q.eq("modelId", openRouterId)).unique()
+      }
+      if (!dbPricing) {
+        dbPricing = await ctx.db.query("modelPricing").withIndex("by_model", (q) => q.eq("modelId", normalized)).unique()
+      }
+      if (!dbPricing) return 0
+      const costUsd = (1000 * dbPricing.inputPerMTok * MARKUP) / 1_000_000
+      return Math.round(costUsd * 1_000_000)
+    }
+
+    const minCost = await estimateMinCostFromDb(agentModelId) + await estimateMinCostFromDb(judgeModelId)
 
     const creditBalance = await ctx.db
       .query("creditBalances")
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
       .first()
 
-    const effectiveBalance = (creditBalance?.balance ?? 0) - (creditBalance?.reservedCredits ?? 0)
-    if (effectiveBalance < minCost) {
+    if ((creditBalance?.balance ?? 0) < minCost) {
       throw new Error("Insufficient credits. Please add credits to your account before running evals.")
     }
 
@@ -562,19 +577,6 @@ export const cancelRun = mutation({
 
     if (run.status !== "pending" && run.status !== "running") {
       throw new Error("Can only cancel pending or running runs")
-    }
-
-    if (run.reservedCredits && run.reservedCredits > 0) {
-      const balance = await ctx.db
-        .query("creditBalances")
-        .withIndex("by_org", (q) => q.eq("organizationId", run.organizationId))
-        .first()
-      if (balance) {
-        await ctx.db.patch(balance._id, {
-          reservedCredits: Math.max(0, (balance.reservedCredits ?? 0) - run.reservedCredits),
-          updatedAt: Date.now(),
-        })
-      }
     }
 
     await ctx.db.patch(args.id, { status: "cancelled", completedAt: Date.now() })
@@ -716,19 +718,6 @@ export const caseCompleted = internalMutation({
           ? (passedCases / completedCases) * 5
           : undefined
 
-      if (run.reservedCredits && run.reservedCredits > 0) {
-        const balance = await ctx.db
-          .query("creditBalances")
-          .withIndex("by_org", (q) => q.eq("organizationId", run.organizationId))
-          .first()
-        if (balance) {
-          await ctx.db.patch(balance._id, {
-            reservedCredits: Math.max(0, (balance.reservedCredits ?? 0) - run.reservedCredits),
-            updatedAt: Date.now(),
-          })
-        }
-      }
-
       updates.status = "completed"
       updates.overallScore = overallScore
       updates.totalDurationMs = Date.now() - (run.startedAt ?? run.createdAt)
@@ -846,19 +835,6 @@ export const cleanupStuckRuns = internalMutation({
         : completedCases > 0
           ? (passedCases / completedCases) * 5
           : undefined
-
-      if (run.reservedCredits && run.reservedCredits > 0) {
-        const balance = await ctx.db
-          .query("creditBalances")
-          .withIndex("by_org", (q) => q.eq("organizationId", run.organizationId))
-          .first()
-        if (balance) {
-          await ctx.db.patch(balance._id, {
-            reservedCredits: Math.max(0, (balance.reservedCredits ?? 0) - run.reservedCredits),
-            updatedAt: Date.now(),
-          })
-        }
-      }
 
       await ctx.db.patch(run._id, {
         status: completedCases === 0 ? "failed" : "completed",
