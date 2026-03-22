@@ -101,7 +101,7 @@ export default function AgentDetailPage({ params }: { params: { agentId: string 
         </TabsContent>
 
         <TabsContent value="tools">
-          <AgentToolsTab config={config} />
+          <AgentToolsTab config={config} agentId={agentId} environment={environment} />
         </TabsContent>
 
         <TabsContent value="logs">

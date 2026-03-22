@@ -22,6 +22,7 @@ import {
 import { useEnvironment } from "@/contexts/environment-context"
 import { useStudio } from "@/contexts/studio-context"
 import { useCurrentRole } from "@/hooks/use-current-role"
+import { useRoleContext } from "@/contexts/role-context"
 import { useAgents } from "@/hooks/use-agents"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { OrgSwitcher } from "@/components/org-switcher"
@@ -127,6 +128,7 @@ function StudioToggle() {
 export function Header() {
   const pathname = usePathname()
   const { role: userRole, isOrgAdmin } = useCurrentRole()
+  const { hasDevAccess } = useRoleContext()
   const roleNavigation = getNavigationForRole(userRole)
 
   return (
@@ -179,7 +181,7 @@ export function Header() {
             </a>
           )}
           {isOrgAdmin && <StudioToggle />}
-          {isOrgAdmin && <EnvironmentSelector />}
+          {(isOrgAdmin || hasDevAccess) && <EnvironmentSelector />}
           {isOrgAdmin && <NotificationBell />}
           <div className="flex items-center">
             <ThemeToggle />

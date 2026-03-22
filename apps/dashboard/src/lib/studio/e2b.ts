@@ -1,5 +1,4 @@
 import { Sandbox } from "@e2b/code-interpreter"
-import type { StudioProvider } from "./models"
 
 const SANDBOX_AGENT_PORT = 3000
 const SANDBOX_AGENT_VERSION = "0.2.x"
@@ -11,7 +10,6 @@ export interface SandboxConfig {
   apiKey: string
   convexUrl: string
   claudeMd: string
-  provider: StudioProvider
   model: string
 }
 
@@ -33,7 +31,14 @@ async function runCmd(sandbox: Sandbox, label: string, cmd: string, opts: { time
   }
 }
 
-function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<string, unknown> {
+function parseModelId(modelId: string): { provider: string; modelName: string } {
+  const slashIdx = modelId.indexOf("/")
+  if (slashIdx === -1) return { provider: "xai", modelName: modelId }
+  return { provider: modelId.slice(0, slashIdx), modelName: modelId.slice(slashIdx + 1) }
+}
+
+function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
+  const { provider, modelName } = parseModelId(modelId)
   const base = {
     $schema: "https://opencode.ai/config.json",
     instructions: ["CLAUDE.md"],
@@ -48,11 +53,11 @@ function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<st
           openai: {
             options: { baseURL: "https://api.x.ai/v1" },
             models: {
-              [model]: { name: model, limit: { context: 131072, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: 131072, output: 32768 } },
             },
           },
         },
-        model: `openai/${model}`,
+        model: `openai/${modelName}`,
       }
     case "anthropic":
       return {
@@ -60,11 +65,11 @@ function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<st
         provider: {
           anthropic: {
             models: {
-              [model]: { name: model, limit: { context: 200000, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: 200000, output: 32768 } },
             },
           },
         },
-        model: `anthropic/${model}`,
+        model: `anthropic/${modelName}`,
       }
     case "openai":
       return {
@@ -72,11 +77,11 @@ function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<st
         provider: {
           openai: {
             models: {
-              [model]: { name: model, limit: { context: 128000, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: 128000, output: 32768 } },
             },
           },
         },
-        model: `openai/${model}`,
+        model: `openai/${modelName}`,
       }
     case "google":
       return {
@@ -84,11 +89,11 @@ function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<st
         provider: {
           google: {
             models: {
-              [model]: { name: model, limit: { context: 1000000, output: 65536 } },
+              [modelName]: { name: modelName, limit: { context: 1000000, output: 65536 } },
             },
           },
         },
-        model: `google/${model}`,
+        model: `google/${modelName}`,
       }
     case "openrouter":
       return {
@@ -97,11 +102,24 @@ function buildOpenCodeConfig(provider: StudioProvider, model: string): Record<st
           openai: {
             options: { baseURL: "https://openrouter.ai/api/v1" },
             models: {
-              [model]: { name: model, limit: { context: 200000, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: 200000, output: 32768 } },
             },
           },
         },
-        model: `openai/${model}`,
+        model: `openai/${modelName}`,
+      }
+    default:
+      return {
+        ...base,
+        provider: {
+          openai: {
+            options: { baseURL: "https://openrouter.ai/api/v1" },
+            models: {
+              [modelId]: { name: modelId, limit: { context: 200000, output: 32768 } },
+            },
+          },
+        },
+        model: `openai/${modelId}`,
       }
   }
 }
@@ -155,7 +173,7 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
     },
     {
       path: "/workspace/opencode.json",
-      content: JSON.stringify(buildOpenCodeConfig(config.provider, config.model), null, 2),
+      content: JSON.stringify(buildOpenCodeConfig(config.model), null, 2),
     },
   ]
 }

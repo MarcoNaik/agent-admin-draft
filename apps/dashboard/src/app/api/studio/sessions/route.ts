@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { api } from "@convex/_generated/api"
+import { api, internal } from "@convex/_generated/api"
 import { createSandbox } from "@/lib/studio/e2b"
-import { getConvexClient } from "@/lib/studio/client"
-import type { StudioProvider } from "@/lib/studio/models"
+import { getConvexClient, getAdminConvexClient } from "@/lib/studio/client"
 
 const ACP_PROTOCOL_VERSION = 1
 
@@ -75,12 +74,18 @@ async function createAcpSession(
   return { serverId, agentSessionId }
 }
 
-const PROVIDER_ENV_VARS: Record<StudioProvider, { envVar: string; platformVar: string }> = {
+const PROVIDER_ENV_VARS: Record<string, { envVar: string; platformVar: string }> = {
   xai: { envVar: "OPENAI_API_KEY", platformVar: "XAI_API_KEY" },
   anthropic: { envVar: "ANTHROPIC_API_KEY", platformVar: "ANTHROPIC_API_KEY" },
   openai: { envVar: "OPENAI_API_KEY", platformVar: "OPENAI_API_KEY" },
   google: { envVar: "GOOGLE_GENERATIVE_AI_API_KEY", platformVar: "GOOGLE_GENERATIVE_AI_API_KEY" },
   openrouter: { envVar: "OPENAI_API_KEY", platformVar: "OPENROUTER_API_KEY" },
+}
+
+function parseModelId(modelId: string): { provider: string; modelName: string } {
+  const slashIdx = modelId.indexOf("/")
+  if (slashIdx === -1) return { provider: "xai", modelName: modelId }
+  return { provider: modelId.slice(0, slashIdx), modelName: modelId.slice(slashIdx + 1) }
 }
 
 export async function POST(request: Request) {
@@ -97,10 +102,10 @@ export async function POST(request: Request) {
   console.log("[studio/sessions] POST request body:", JSON.stringify(body))
   const {
     environment = "development",
-    provider = "anthropic" as StudioProvider,
-    model = "claude-sonnet-4-6",
-    keySource = "platform" as "platform" | "custom",
+    model = "xai/grok-4-1-fast",
   } = body
+
+  const { provider } = parseModelId(model)
 
   let sessionId: string | null = null
   let sandboxId: string | null = null
@@ -108,15 +113,17 @@ export async function POST(request: Request) {
   try {
     let llmApiKey: string | undefined
 
-    if (keySource === "custom") {
-      const resolved = await convex.query(api.providers.resolveStudioKey, { provider })
-      if (!resolved) {
-        console.error(`[studio/sessions] No custom API key for provider=${provider}`)
-        return NextResponse.json(
-          { error: `No custom API key configured for ${provider}. Add one in Settings > Providers.` },
-          { status: 400 }
-        )
-      }
+    const org = await convex.query(api.organizations.getCurrent, {})
+    if (!org) {
+      throw new Error("Organization not found")
+    }
+
+    const adminConvex = getAdminConvexClient()
+    const resolved = await adminConvex.query(internal.providers.resolveStudioKeyInternal, {
+      organizationId: org._id,
+      modelId: model,
+    })
+    if (resolved?.apiKey) {
       llmApiKey = resolved.apiKey
     } else {
       const { balance } = await convex.query(api.billing.getBalance, {})
@@ -125,10 +132,10 @@ export async function POST(request: Request) {
         console.error("[studio/sessions] Insufficient credits")
         return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
       }
-      const { platformVar } = PROVIDER_ENV_VARS[provider as StudioProvider]
-      llmApiKey = process.env[platformVar]
+      llmApiKey = process.env.OPENROUTER_API_KEY
     }
 
+    const keySource = resolved.tier < 3 ? "custom" as const : "platform" as const
     sessionId = await convex.mutation(api.sandboxSessions.create, {
       environment,
       agentType: "opencode",
@@ -152,11 +159,6 @@ export async function POST(request: Request) {
     })
     console.log(`[studio/sessions] Status updated to provisioning`)
 
-    const org = await convex.query(api.organizations.getCurrent, {})
-    if (!org) {
-      throw new Error("Organization not found")
-    }
-
     const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!
     const claudeMd = buildClaudeMd(org.name, environment)
 
@@ -166,8 +168,16 @@ export async function POST(request: Request) {
       OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: "32768",
     }
 
-    const { envVar } = PROVIDER_ENV_VARS[provider as StudioProvider]
-    if (llmApiKey) envVars[envVar] = llmApiKey
+    let sandboxModel = model
+    if (resolved.tier >= 2) {
+      if (llmApiKey) envVars.OPENAI_API_KEY = llmApiKey
+      const { modelName } = parseModelId(model)
+      const openrouterModelName = provider === "openrouter" ? modelName : model
+      sandboxModel = `openrouter/${openrouterModelName}`
+    } else {
+      const providerEnv = PROVIDER_ENV_VARS[provider]
+      if (llmApiKey && providerEnv) envVars[providerEnv.envVar] = llmApiKey
+    }
     if (process.env.E2B_API_KEY) envVars.E2B_API_KEY = process.env.E2B_API_KEY
 
     const sandbox = await createSandbox({
@@ -176,8 +186,7 @@ export async function POST(request: Request) {
       apiKey: apiKeyResult.key,
       convexUrl,
       claudeMd,
-      provider,
-      model,
+      model: sandboxModel,
     })
     sandboxId = sandbox.sandboxId
     console.log(`[studio/sessions] Sandbox created sandboxId=${sandbox.sandboxId} url=${sandbox.sandboxUrl}`)
@@ -250,7 +259,7 @@ import { defineAgent, defineData, defineRole, defineTrigger, defineTools } from 
 \`\`\`
 
 ## Key Conventions
-- Agent model default: \`{ provider: "xai", name: "grok-4-1-fast" }\`
+- Agent model default: \`{ model: "xai/grok-4-1-fast" }\`
 - Built-in tools: entity.create/get/query/update/delete/link/unlink, event.emit/query, calendar.*, whatsapp.*, agent.chat
 - Schema format: JSON Schema (type: "object", properties, required)
 - Policy effect: "allow" or "deny" (deny overrides allow)

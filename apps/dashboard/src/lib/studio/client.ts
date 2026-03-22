@@ -8,6 +8,14 @@ export function getConvexClient(token: string) {
   return client
 }
 
+export function getAdminConvexClient() {
+  const deployKey = process.env.CONVEX_DEPLOY_KEY
+  if (!deployKey) throw new Error("CONVEX_DEPLOY_KEY not configured")
+  const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+  ;(client as any).setAdminAuth(deployKey)
+  return client
+}
+
 export async function getSessionForRequest(
   convex: ConvexHttpClient,
   sessionId: Id<"sandboxSessions">

@@ -70,7 +70,7 @@ export function AgentHeader({ agent, config, stats, chatUrl, apiEndpoint, enviro
 
       {config && (
         <div className="flex items-center gap-4 text-xs text-content-secondary">
-          <span>{config.model?.provider || "xai"} <span className="text-content-primary font-mono">{config.model?.name || "grok-4-1-fast"}</span></span>
+          <span className="text-content-primary font-mono">{config.model?.model || "xai/grok-4-1-fast"}</span>
           <span className="text-border">|</span>
           <span>v{config.version}</span>
           <span className="text-border">|</span>

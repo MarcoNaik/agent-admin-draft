@@ -1,6 +1,6 @@
 "use client"
 
-import { Key, Cpu, Square, Loader2 } from "@/lib/icons"
+import { Square, Loader2 } from "@/lib/icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,11 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  STUDIO_PROVIDERS,
-  type StudioProvider,
-} from "@/lib/studio/models"
-import Link from "next/link"
+import { STUDIO_MODELS, type StudioModel } from "@/lib/studio/models"
 
 const STATUS_COLORS: Record<string, string> = {
   provisioning: "bg-warning",
@@ -28,35 +24,40 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 interface StudioConfigBarProps {
-  provider: StudioProvider
   model: string
-  keySource: "platform" | "custom"
-  onProviderChange: (provider: StudioProvider) => void
   onModelChange: (model: string) => void
-  onKeySourceChange: (keySource: "platform" | "custom") => void
   isSessionActive: boolean
-  hasCustomKey: boolean
   status?: string
   isStarting?: boolean
   isStopping?: boolean
   onStop?: () => void
 }
 
+const groupedModels = STUDIO_MODELS.reduce<Record<string, StudioModel[]>>((acc, m) => {
+  if (!acc[m.provider]) acc[m.provider] = []
+  acc[m.provider].push(m)
+  return acc
+}, {})
+
+const PROVIDER_LABELS: Record<string, string> = {
+  xai: "xAI",
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  google: "Google",
+}
+
 export function StudioConfigBar({
-  provider,
   model,
-  keySource,
-  onProviderChange,
   onModelChange,
-  onKeySourceChange,
   isSessionActive,
-  hasCustomKey,
   status,
   isStarting,
   isStopping,
   onStop,
 }: StudioConfigBarProps) {
   if (isSessionActive) {
+    const activeModel = STUDIO_MODELS.find((m) => m.id === model)
+
     return (
       <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-border/40">
         {isStarting ? (
@@ -68,17 +69,7 @@ export function StudioConfigBar({
           </>
         ) : null}
         <Badge variant="outline" className="text-[10px] font-normal">
-          {STUDIO_PROVIDERS[provider]?.name ?? provider}
-        </Badge>
-        <Badge variant="outline" className="text-[10px] font-normal">
-          {model}
-        </Badge>
-        <Badge variant="outline" className="text-[10px] font-normal">
-          {keySource === "custom" ? (
-            <><Key className="h-2.5 w-2.5 mr-0.5" />Custom Key</>
-          ) : (
-            <><Cpu className="h-2.5 w-2.5 mr-0.5" />Platform</>
-          )}
+          {activeModel?.name ?? model}
         </Badge>
         <div className="flex-1" />
         {onStop && (
@@ -101,63 +92,34 @@ export function StudioConfigBar({
     )
   }
 
-  const providerConfig = STUDIO_PROVIDERS[provider]
-  const models = providerConfig?.models ?? []
-  const showKeyError = keySource === "custom" && !hasCustomKey
-
   return (
     <div className="px-4 py-2 border-b border-border/40">
       <div className="flex items-center gap-2">
-        <Select value={provider} onValueChange={(v) => onProviderChange(v as StudioProvider)}>
-          <SelectTrigger className="h-7 text-xs w-auto gap-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.entries(STUDIO_PROVIDERS) as [StudioProvider, typeof STUDIO_PROVIDERS[StudioProvider]][]).map(
-              ([key, config]) => (
-                <SelectItem key={key} value={key} className="text-xs">{config.name}</SelectItem>
-              )
-            )}
-          </SelectContent>
-        </Select>
-
         <Select value={model} onValueChange={onModelChange}>
           <SelectTrigger className="h-7 text-xs w-auto gap-1">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {models.map((m) => (
-              <SelectItem key={m.id} value={m.id} className="text-xs">
-                <span className="flex items-center gap-1.5">
-                  {m.name}
-                  {m.tier === "recommended" && (
-                    <span className="text-[9px] font-medium opacity-60 border border-current px-1 py-px rounded">Recommended</span>
-                  )}
-                </span>
-              </SelectItem>
+            {Object.entries(groupedModels).map(([provider, models]) => (
+              <SelectGroup key={provider}>
+                <SelectLabel>{PROVIDER_LABELS[provider] ?? provider}</SelectLabel>
+                {models.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    <span className="flex items-center gap-1.5">
+                      {m.name}
+                      {m.tier === "recommended" && (
+                        <span className="text-[9px] font-medium opacity-60 border border-current px-1 py-px rounded">Recommended</span>
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
 
         <div className="flex-1" />
-
-        <button
-          onClick={() => onKeySourceChange(keySource === "platform" ? "custom" : "platform")}
-          className="flex items-center gap-1 text-xs text-content-tertiary hover:text-content-secondary transition-colors"
-        >
-          {keySource === "custom" ? <Key className="h-3 w-3" /> : <Cpu className="h-3 w-3" />}
-          {keySource === "custom" ? "My Key" : "Platform"}
-        </button>
       </div>
-
-      {showKeyError && (
-        <span className="text-[11px] text-destructive mt-1 block">
-          No key configured.{" "}
-          <Link href="/system/settings/providers" className="underline hover:text-destructive/80">
-            Add one
-          </Link>
-        </span>
-      )}
     </div>
   )
 }

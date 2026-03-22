@@ -7,27 +7,17 @@ import { cn } from "@/lib/utils"
 import { useStudio } from "@/contexts/studio-context"
 import { useStudioSession } from "@/hooks/use-studio-session"
 import { useStudioEvents } from "@/hooks/use-studio-events"
-import { useProviderConfigs } from "@/hooks/use-convex-data"
 import { StudioConfigBar } from "@/components/studio/studio-config-bar"
 import { StudioChat } from "@/components/studio/studio-chat"
 import { PermissionRequestCard, QuestionRequestCard } from "@/components/studio/studio-hitl"
-import {
-  STUDIO_PROVIDERS,
-  DEFAULT_PROVIDER,
-  DEFAULT_MODEL,
-  type StudioProvider,
-} from "@/lib/studio/models"
+import { DEFAULT_MODEL } from "@/lib/studio/models"
 
 const KEEPALIVE_INTERVAL = 60_000
 
 export function StudioPanel() {
   const { isOpen, setHasActiveSession, initialPrompt, consumeInitialPrompt } = useStudio()
 
-  const [selectedProvider, setSelectedProvider] = useState<StudioProvider>(DEFAULT_PROVIDER)
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
-  const [selectedKeySource, setSelectedKeySource] = useState<"platform" | "custom">("platform")
-
-  const providerConfigs = useProviderConfigs()
 
   const {
     session,
@@ -60,24 +50,6 @@ export function StudioPanel() {
   const keepaliveRef = useRef<ReturnType<typeof setInterval>>()
   const pendingMessage = useRef<string | null>(null)
 
-  const hasCustomKey = (() => {
-    if (!providerConfigs) return false
-    const config = providerConfigs.find((c: { provider: string }) => c.provider === selectedProvider)
-    return config?.mode === "custom" && config?.status === "active"
-  })()
-
-  const handleProviderChange = useCallback((provider: StudioProvider) => {
-    setSelectedProvider(provider)
-    const firstModel = STUDIO_PROVIDERS[provider]?.models[0]
-    if (firstModel) {
-      setSelectedModel(firstModel.id)
-    }
-    if (providerConfigs) {
-      const config = providerConfigs.find((c: { provider: string; mode: string; status: string }) => c.provider === provider)
-      setSelectedKeySource(config?.mode === "custom" && config?.status === "active" ? "custom" : "platform")
-    }
-  }, [providerConfigs])
-
   useEffect(() => {
     if (isActive) {
       keepaliveRef.current = setInterval(sendKeepalive, KEEPALIVE_INTERVAL)
@@ -92,8 +64,8 @@ export function StudioPanel() {
   useEffect(() => {
     if (!initialPrompt || isActive || isStarting) return
     pendingMessage.current = consumeInitialPrompt()
-    startSession({ provider: selectedProvider, model: selectedModel, keySource: selectedKeySource })
-  }, [initialPrompt, isActive, isStarting, startSession, consumeInitialPrompt, selectedProvider, selectedModel, selectedKeySource])
+    startSession({ model: selectedModel })
+  }, [initialPrompt, isActive, isStarting, startSession, consumeInitialPrompt, selectedModel])
 
   useEffect(() => {
     if (!pendingMessage.current || !isConnected) return
@@ -102,19 +74,17 @@ export function StudioPanel() {
     sendMessage(message)
   }, [isConnected, sendMessage])
 
-  const canStart = selectedKeySource === "platform" || hasCustomKey
-
   const handleSendMessage = useCallback((text: string) => {
     if (isConnected && isActive) {
       sendMessage(text)
       return
     }
 
-    if (!isActive && !isStarting && canStart) {
+    if (!isActive && !isStarting) {
       pendingMessage.current = text
-      startSession({ provider: selectedProvider, model: selectedModel, keySource: selectedKeySource })
+      startSession({ model: selectedModel })
     }
-  }, [isConnected, isActive, isStarting, canStart, sendMessage, startSession, selectedProvider, selectedModel, selectedKeySource])
+  }, [isConnected, isActive, isStarting, sendMessage, startSession, selectedModel])
 
   const error = sessionError || eventError
   const isCreditsError = error?.toLowerCase().includes("insufficient credits")
@@ -128,14 +98,9 @@ export function StudioPanel() {
     >
       <div className="flex flex-col h-full w-[480px] min-w-[480px] pl-3 border-l border-border/40">
         <StudioConfigBar
-          provider={isActive ? ((session?.provider as StudioProvider) ?? selectedProvider) : selectedProvider}
           model={isActive ? (session?.model ?? selectedModel) : selectedModel}
-          keySource={isActive ? ((session?.keySource as "platform" | "custom") ?? selectedKeySource) : selectedKeySource}
-          onProviderChange={handleProviderChange}
           onModelChange={setSelectedModel}
-          onKeySourceChange={setSelectedKeySource}
           isSessionActive={isActive}
-          hasCustomKey={hasCustomKey}
           status={session?.status}
           isStarting={isStarting}
           isStopping={isStopping}

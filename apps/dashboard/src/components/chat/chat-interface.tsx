@@ -56,7 +56,7 @@ function cleanToolCallText(text: string): string {
 }
 
 interface ChatInterfaceProps {
-  agent: { name: string; model?: { name?: string }; firstMessageSuggestions?: string[] } | null | undefined
+  agent: { name: string; model?: { model?: string }; firstMessageSuggestions?: string[] } | null | undefined
   sendMessage: (args: { message: string; threadId?: Id<"threads"> }) => Promise<{ message: string; threadId: Id<"threads"> }>
   orgName?: string
   environmentLabel?: string
@@ -299,7 +299,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
             <h1 className="font-semibold text-content-primary">{agent.name}</h1>
             <p className="text-xs text-content-secondary">
               {orgName && <>{orgName} · </>}
-              {agent.model?.name || "grok-4-1-fast"}
+              {agent.model?.model || "xai/grok-4-1-fast"}
               {environmentLabel && ` · ${environmentLabel}`}
             </p>
           </div>

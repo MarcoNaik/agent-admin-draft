@@ -5,12 +5,9 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useEnvironment } from "@/contexts/environment-context"
-import type { StudioProvider } from "@/lib/studio/models"
 
 export interface StudioSessionConfig {
-  provider: StudioProvider
   model: string
-  keySource: "platform" | "custom"
 }
 
 export function useStudioSession() {
@@ -27,25 +24,44 @@ export function useStudioSession() {
     setError(null)
 
     try {
-      console.log("[studio/session] startSession: creating session", { environment, provider: config.provider, model: config.model })
+      console.log("[studio/session] startSession: creating session", { environment, model: config.model })
       const response = await fetch("/api/studio/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        redirect: "manual",
+      body: JSON.stringify({
           environment,
-          provider: config.provider,
           model: config.model,
-          keySource: config.keySource,
         }),
       })
-      console.log("[studio/session] startSession: response", response.status)
+      const contentType = response.headers.get("content-type") ?? "unknown"
+      console.log("[studio/session] startSession: response", {
+        status: response.status,
+        type: response.type,
+        contentType,
+        redirected: response.redirected,
+        url: response.url,
+      })
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to create session")
+      if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+        throw new Error(`Auth redirect detected (status=${response.status}). Please refresh the page.`)
       }
 
-      const data = await response.json()
+      const text = await response.text()
+      console.log("[studio/session] startSession: raw body (first 200 chars):", text.slice(0, 200))
+
+      let data: Record<string, unknown>
+      try {
+        data = JSON.parse(text)
+      } catch {
+        console.error("[studio/session] startSession: response is not JSON!", { contentType, bodyPreview: text.slice(0, 500) })
+        throw new Error(`Server returned non-JSON response (${contentType}). This usually means auth expired — try refreshing.`)
+      }
+
+      if (!response.ok) {
+        throw new Error((data.error as string) || "Failed to create session")
+      }
+
       return {
         sessionId: data.sessionId as Id<"sandboxSessions">,
         status: "ready",

@@ -4,7 +4,7 @@ interface PullStateAgent {
   description?: string
   version: string
   systemPrompt: string
-  model: { provider: string; name: string; temperature?: number; maxTokens?: number }
+  model: { model?: string; temperature?: number; maxTokens?: number }
   tools: Array<{ name: string; description: string; parameters: unknown; handlerCode?: string; isBuiltin: boolean }>
 }
 
@@ -80,9 +80,9 @@ function generateAgentFile(agent: PullStateAgent): string {
   const builtinTools = agent.tools.filter((t) => t.isBuiltin).map((t) => `"${t.name}"`)
   const toolsStr = builtinTools.length > 0 ? `\n    ${builtinTools.join(",\n    ")},\n  ` : ""
 
+  const modelId = agent.model.model || "xai/grok-4-1-fast"
   const modelStr = [
-    `    provider: "${agent.model.provider}"`,
-    `    name: "${agent.model.name}"`,
+    `    model: "${modelId}"`,
     agent.model.temperature !== undefined ? `    temperature: ${agent.model.temperature}` : null,
     agent.model.maxTokens !== undefined ? `    maxTokens: ${agent.model.maxTokens}` : null,
   ]
