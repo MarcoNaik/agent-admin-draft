@@ -73,6 +73,7 @@ import type * as migrations_migrateOwnedTemplates from "../migrations/migrateOwn
 import type * as migrations_registerMathlandTemplates from "../migrations/registerMathlandTemplates.js";
 import type * as migrations_syncKapsoTemplates from "../migrations/syncKapsoTemplates.js";
 import type * as migrations_syncKapsoTemplatesHelper from "../migrations/syncKapsoTemplatesHelper.js";
+import type * as modelPricing from "../modelPricing.js";
 import type * as organizations from "../organizations.js";
 import type * as payments from "../payments.js";
 import type * as permissions from "../permissions.js";
@@ -83,6 +84,7 @@ import type * as roles from "../roles.js";
 import type * as sandboxSessions from "../sandboxSessions.js";
 import type * as sync from "../sync.js";
 import type * as threads from "../threads.js";
+import type * as toolTesting from "../toolTesting.js";
 import type * as tools_agents from "../tools/agents.js";
 import type * as tools_airtable from "../tools/airtable.js";
 import type * as tools_calendar from "../tools/calendar.js";
@@ -171,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/registerMathlandTemplates": typeof migrations_registerMathlandTemplates;
   "migrations/syncKapsoTemplates": typeof migrations_syncKapsoTemplates;
   "migrations/syncKapsoTemplatesHelper": typeof migrations_syncKapsoTemplatesHelper;
+  modelPricing: typeof modelPricing;
   organizations: typeof organizations;
   payments: typeof payments;
   permissions: typeof permissions;
@@ -181,6 +184,7 @@ declare const fullApi: ApiFromModules<{
   sandboxSessions: typeof sandboxSessions;
   sync: typeof sync;
   threads: typeof threads;
+  toolTesting: typeof toolTesting;
   "tools/agents": typeof tools_agents;
   "tools/airtable": typeof tools_airtable;
   "tools/calendar": typeof tools_calendar;
