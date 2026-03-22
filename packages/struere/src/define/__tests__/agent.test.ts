@@ -10,8 +10,7 @@ describe("defineAgent", () => {
       systemPrompt: "You are a test agent.",
     })
     expect(config.model).toEqual({
-      provider: "xai",
-      name: "grok-4-1-fast",
+      model: "xai/grok-4-1-fast",
       temperature: 0.7,
       maxTokens: 4096,
     })
@@ -58,8 +57,7 @@ describe("defineAgent", () => {
       description: "A custom agent",
       systemPrompt: "You are helpful.",
       model: {
-        provider: "anthropic",
-        name: "claude-sonnet-4",
+        model: "anthropic/claude-sonnet-4",
         temperature: 0.5,
         maxTokens: 2048,
       },
@@ -71,8 +69,7 @@ describe("defineAgent", () => {
     expect(config.version).toBe("2.0.0")
     expect(config.description).toBe("A custom agent")
     expect(config.systemPrompt).toBe("You are helpful.")
-    expect(config.model!.provider).toBe("anthropic")
-    expect(config.model!.name).toBe("claude-sonnet-4")
+    expect(config.model!.model).toBe("anthropic/claude-sonnet-4")
     expect(config.model!.temperature).toBe(0.5)
     expect(config.model!.maxTokens).toBe(2048)
     expect(config.tools).toEqual(["entity.create", "entity.query"])
@@ -86,11 +83,9 @@ describe("defineAgent", () => {
       version: "1.0.0",
       systemPrompt: "prompt",
       model: {
-        provider: "openai",
-        name: "gpt-4o",
+        model: "openai/gpt-4o",
       },
     })
-    expect(config.model!.provider).toBe("openai")
-    expect(config.model!.name).toBe("gpt-4o")
+    expect(config.model!.model).toBe("openai/gpt-4o")
   })
 })

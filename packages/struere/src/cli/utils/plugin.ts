@@ -10,8 +10,7 @@ function defineAgent(config) {
   if (!config.systemPrompt) throw new Error('System prompt is required')
   return {
     model: {
-      provider: 'xai',
-      name: 'grok-4-1-fast',
+      model: 'xai/grok-4-1-fast',
       temperature: 0.7,
       maxTokens: 4096,
     },
@@ -148,11 +147,9 @@ export function registerStruerePlugin(): void {
 }
 
 const TYPE_DECLARATIONS = `export interface ModelConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'openrouter' | 'custom'
-  name: string
+  model: string
   temperature?: number
   maxTokens?: number
-  apiKey?: string
 }
 
 export interface ToolParameters {
