@@ -40,7 +40,9 @@ platform/
 | Tool Identity Modes | inherit, system, configured |
 | Custom Tools | Handler code in Convex, executed on Fly.io Node.js sandbox |
 | LLM Calls | Convex actions calling LLM APIs directly |
-| Default Model | `grok-4-1-fast` (provider: `xai`), temperature 0.7, maxTokens 4096 |
+| Default Model | `xai/grok-4-1-fast`, temperature 0.7, maxTokens 4096 |
+| Model IDs | OpenRouter format: `provider/model-name` (e.g., `xai/grok-4-1-fast`, `anthropic/claude-sonnet-4`) |
+| Key Resolution | 3-tier fallback: org's direct provider key → org's OpenRouter key → platform OpenRouter key (credits) |
 | Credit Billing | Reservation pattern: reserve -> execute -> consume/release (atomic) |
 
 ## Agent Execution Flow
@@ -151,7 +153,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 | flow | Flow Payments | API key, secret key, HMAC-SHA256 |
 | polar | Polar Payments | Webhook verification |
 
-LLM Providers (providerConfigs table): anthropic, openai, google, xai
+LLM Providers (providerConfigs table): anthropic, openai, google, xai, openrouter. 3-tier key resolution: org direct key → org OpenRouter key → platform OpenRouter key (credits)
 
 ## Permission Engine
 
@@ -194,7 +196,7 @@ import { defineAgent, defineTools, defineData, defineRole, defineTrigger } from 
 ### Key Types
 
 - **AgentConfig**: name, slug, version, systemPrompt, model, tools
-- **ModelConfig**: provider (`anthropic` | `openai` | `google` | `xai` | `custom`), name, temperature?, maxTokens?
+- **ModelConfig**: model (OpenRouter format string, e.g., `xai/grok-4-1-fast`), temperature?, maxTokens?
 - **EntityTypeConfig**: name, slug, schema, searchFields, displayConfig
 - **RoleConfig**: name, description, policies, scopeRules, fieldMasks
 - **PolicyConfig**: resource, actions, effect (NO `priority` field)
