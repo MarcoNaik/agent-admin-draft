@@ -44,8 +44,7 @@ export function generateAgentFile(agent: PullStateAgent): string {
   const toolsArray = toolNames.map((n) => `    "${n}"`).join(',\n')
 
   const modelParts: string[] = [
-    `    provider: "${agent.model.provider}"`,
-    `    name: "${agent.model.name}"`,
+    `    model: "${agent.model.model}"`,
   ]
   if (agent.model.temperature !== undefined) {
     modelParts.push(`    temperature: ${agent.model.temperature}`)

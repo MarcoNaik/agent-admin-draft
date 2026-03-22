@@ -31,7 +31,7 @@ slug: "basic-agent-tests"
 agent: "${agentSlug}"
 description: "Verify agent responds correctly and uses tools appropriately"
 tags: ["smoke-test"]
-judgeModel: "grok-4-1-fast"
+judgeModel: "xai/grok-4-1-fast"
 judgePrompt: "Evaluate whether the agent responds correctly and uses appropriate tools. Be lenient on phrasing but strict on factual accuracy."
 
 cases:
@@ -89,7 +89,7 @@ slug: "${slug}"
 agent: "${agentSlug}"
 description: "TODO: Describe what this eval suite tests"
 tags: []
-judgeModel: "grok-4-1-fast"
+judgeModel: "xai/grok-4-1-fast"
 judgePrompt: "TODO: Custom instructions for the judge (e.g. strictness level, focus areas)"
 
 cases:
@@ -106,7 +106,10 @@ cases:
 }
 
 export function getEnvExample(): string {
-  return `# xAI API Key (default provider)
+  return `# OpenRouter API Key (recommended — access all providers via one key)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# xAI API Key (default provider)
 XAI_API_KEY=your_api_key_here
 
 # Optional: Anthropic API Key (if using Claude models)
@@ -199,8 +202,7 @@ export default defineAgent({
   version: "0.1.0",
   description: "${displayName} Agent",
   model: {
-    provider: "xai",
-    name: "grok-4-1-fast",
+    model: "xai/grok-4-1-fast",
     temperature: 0.7,
     maxTokens: 4096,
   },

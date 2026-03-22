@@ -1,13 +1,6 @@
 import type { LoadedResources } from './loader'
 import type { AgentConfig, ToolReference, TriggerConfig } from '../../types'
 
-function inferProvider(modelName: string): 'anthropic' | 'openai' | 'google' | 'xai' | 'openrouter' {
-  if (modelName.startsWith('gpt-') || modelName.startsWith('o1') || modelName.startsWith('o3') || modelName.startsWith('o4')) return 'openai'
-  if (modelName.startsWith('gemini')) return 'google'
-  if (modelName.startsWith('grok')) return 'xai'
-  return 'anthropic'
-}
-
 const BUILTIN_TOOLS = [
   'entity.create',
   'entity.get',
@@ -56,8 +49,7 @@ export interface SyncPayload {
     }>
     systemPrompt: string
     model: {
-      provider: string
-      name: string
+      model: string
       temperature?: number
       maxTokens?: number
     }
@@ -107,8 +99,7 @@ export interface SyncPayload {
     description?: string
     tags?: string[]
     judgeModel?: {
-      provider: string
-      name: string
+      model: string
     }
     judgeContext?: string
     judgePrompt?: string
@@ -225,7 +216,7 @@ export function extractSyncPayload(resources: LoadedResources): SyncPayload {
         description: suite.description,
         tags: suite.tags,
         judgeModel: suite.judgeModel
-          ? { provider: inferProvider(suite.judgeModel), name: suite.judgeModel }
+          ? { model: suite.judgeModel }
           : undefined,
         judgeContext: suite.judgeContext,
         judgePrompt: suite.judgePrompt,
@@ -336,8 +327,7 @@ function extractAgentPayload(
     threadContextParams: agent.threadContextParams,
     systemPrompt,
     model: {
-      provider: agent.model?.provider || 'xai',
-      name: agent.model?.name || 'grok-4-1-fast',
+      model: agent.model?.model || 'xai/grok-4-1-fast',
       temperature: agent.model?.temperature,
       maxTokens: agent.model?.maxTokens,
     },
