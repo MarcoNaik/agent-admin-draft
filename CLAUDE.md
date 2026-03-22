@@ -103,7 +103,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 
 **Shared across environments:** agents, users, organizations, userOrganizations, toolPermissions, whatsappOwnedTemplates, providerConfigs, creditBalances, creditTransactions
 
-## HTTP Endpoints (19 routes)
+## HTTP Endpoints (20 routes)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -120,6 +120,7 @@ Entity mutations emit `{type}.created`, `{type}.updated`, `{type}.deleted` event
 | /v1/templates/delete | POST | Delete WhatsApp template |
 | /v1/templates/status | GET | Check template status |
 | /v1/compile-prompt | POST | Compile agent system prompt |
+| /v1/run-tool | POST | Run a tool as it would in a real conversation |
 | /internal/tool-callback | POST | Custom tool callback from tool-executor |
 | /webhook/clerk | POST | Clerk user/org sync |
 | /webhook/kapso/project | POST | Kapso WhatsApp phone connection |
@@ -206,7 +207,7 @@ import { defineAgent, defineTools, defineData, defineRole, defineTrigger } from 
 
 Resources are upserted by slug (agents, entityTypes, triggers) or name (roles).
 
-## CLI Commands (18)
+## CLI Commands (19)
 
 | Command | Purpose |
 |---------|---------|
@@ -222,6 +223,7 @@ Resources are upserted by slug (agents, entityTypes, triggers) or name (roles).
 | templates | WhatsApp template management (list, sync, delete) |
 | integration | Integration config management (airtable, resend, flow) |
 | compile-prompt | Compile agent system prompts |
+| run-tool | Run a tool as it would execute during a real agent conversation |
 | org | Organization management |
 | docs | Generate documentation |
 | login | Browser-based OAuth |
