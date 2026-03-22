@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { STUDIO_MODELS, type StudioModel } from "@/lib/studio/models"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 
 const STATUS_COLORS: Record<string, string> = {
   provisioning: "bg-warning",
@@ -33,12 +34,6 @@ interface StudioConfigBarProps {
   onStop?: () => void
 }
 
-const groupedModels = STUDIO_MODELS.reduce<Record<string, StudioModel[]>>((acc, m) => {
-  if (!acc[m.provider]) acc[m.provider] = []
-  acc[m.provider].push(m)
-  return acc
-}, {})
-
 const PROVIDER_LABELS: Record<string, string> = {
   xai: "xAI",
   anthropic: "Anthropic",
@@ -55,8 +50,18 @@ export function StudioConfigBar({
   isStopping,
   onStop,
 }: StudioConfigBarProps) {
+  const featuredModels = useQuery(api.modelPricing.listFeaturedModels)
+
+  type FeaturedModel = { struereId: string; displayName: string; providerSlug: string }
+  const models: FeaturedModel[] = featuredModels ?? []
+  const groupedModels: Record<string, FeaturedModel[]> = {}
+  for (const m of models) {
+    if (!groupedModels[m.providerSlug]) groupedModels[m.providerSlug] = []
+    groupedModels[m.providerSlug].push(m)
+  }
+
   if (isSessionActive) {
-    const activeModel = STUDIO_MODELS.find((m) => m.id === model)
+    const activeModel = models.find((m) => m.struereId === model)
 
     return (
       <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-border/40">
@@ -69,7 +74,7 @@ export function StudioConfigBar({
           </>
         ) : null}
         <Badge variant="outline" className="text-[10px] font-normal">
-          {activeModel?.name ?? model}
+          {activeModel?.displayName ?? model}
         </Badge>
         <div className="flex-1" />
         {onStop && (
@@ -100,21 +105,20 @@ export function StudioConfigBar({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(groupedModels).map(([provider, models]) => (
-              <SelectGroup key={provider}>
-                <SelectLabel>{PROVIDER_LABELS[provider] ?? provider}</SelectLabel>
-                {models.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    <span className="flex items-center gap-1.5">
-                      {m.name}
-                      {m.tier === "recommended" && (
-                        <span className="text-[9px] font-medium opacity-60 border border-current px-1 py-px rounded">Recommended</span>
-                      )}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
+            {featuredModels === undefined ? (
+              <SelectItem value={model} className="text-xs">{model}</SelectItem>
+            ) : (
+              Object.entries(groupedModels).map(([provider, models]) => (
+                <SelectGroup key={provider}>
+                  <SelectLabel>{PROVIDER_LABELS[provider] ?? provider}</SelectLabel>
+                  {models.map((m) => (
+                    <SelectItem key={m.struereId} value={m.struereId} className="text-xs">
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))
+            )}
           </SelectContent>
         </Select>
 
