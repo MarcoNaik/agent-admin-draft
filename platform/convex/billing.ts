@@ -82,6 +82,7 @@ export const reserveCredits = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     model: v.string(),
+    maxTokens: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const balanceDoc = await ctx.db
@@ -89,13 +90,28 @@ export const reserveCredits = internalMutation({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first()
 
-    const estimatedCost = estimateMaxCost(args.model)
+    const modelPricing = await ctx.db
+      .query("modelPricing")
+      .withIndex("by_model", (q) => q.eq("modelId", args.model))
+      .unique()
+
+    let estimatedCost: number
+    if (modelPricing) {
+      const MARKUP = 1.1
+      const inputCost = modelPricing.inputPerMTok * MARKUP
+      const outputCost = modelPricing.outputPerMTok * MARKUP
+      const maxTokens = args.maxTokens ?? 4096
+      const costUsd = (10000 * inputCost + maxTokens * 10 * outputCost) / 1_000_000
+      estimatedCost = Math.round(costUsd * 1_000_000) * 3
+    } else {
+      estimatedCost = estimateMaxCost(args.model, args.maxTokens)
+    }
 
     if (!balanceDoc) {
       await ctx.db.insert("creditBalances", {
         organizationId: args.organizationId,
         balance: 0,
-        reservedCredits: estimatedCost,
+        reservedCredits: 0,
         updatedAt: Date.now(),
       })
       throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
@@ -105,6 +121,27 @@ export const reserveCredits = internalMutation({
 
     if (effectiveBalance < estimatedCost) {
       throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
+    }
+
+    const startOfDay = new Date()
+    startOfDay.setUTCHours(0, 0, 0, 0)
+    const startOfDayMs = startOfDay.getTime()
+
+    const todayTransactions = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_org_created", (q) =>
+        q.eq("organizationId", args.organizationId).gte("createdAt", startOfDayMs)
+      )
+      .collect()
+
+    const dailySpend = todayTransactions
+      .filter((tx) => tx.type === "deduction")
+      .reduce((sum, tx) => sum + tx.amount, 0)
+
+    const dailyLimit = balanceDoc.dailyLimit ?? 50_000_000
+
+    if (dailySpend + (balanceDoc.reservedCredits ?? 0) >= dailyLimit) {
+      throw new Error("Daily spending limit reached. Contact support to increase your limit.")
     }
 
     await ctx.db.patch(balanceDoc._id, {
@@ -169,6 +206,16 @@ export const deductCredits = internalMutation({
   handler: async (ctx, args) => {
     const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
     const newBalance = balanceDoc.balance - args.amount
+
+    if (newBalance < 0) {
+      console.error("OVERDRAFT", {
+        organizationId: args.organizationId,
+        amount: args.amount,
+        previousBalance: balanceDoc.balance,
+        newBalance,
+        description: args.description,
+      })
+    }
 
     await ctx.db.patch(balanceDoc._id, {
       balance: newBalance,
@@ -327,6 +374,10 @@ export const adjustBalance = mutation({
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
 
+    if (args.newBalance < 0) {
+      throw new Error("Balance cannot be set to a negative value")
+    }
+
     const balanceDoc = await getOrCreateBalance(ctx, auth.organizationId)
     const difference = args.newBalance - balanceDoc.balance
 
@@ -419,17 +470,21 @@ export const addCreditsFromPolar = internalMutation({
       throw new Error("Organization not found")
     }
 
+    const duplicate = await ctx.db
+      .query("processedPayments")
+      .withIndex("by_polar_order", (q) => q.eq("polarOrderId", args.polarOrderId))
+      .first()
+    if (duplicate) return
+
     const recentTxs = await ctx.db
       .query("creditTransactions")
       .withIndex("by_org", (q) => q.eq("organizationId", org._id))
       .order("desc")
       .take(100)
-    const duplicate = recentTxs.find(
-      (tx) => tx.metadata?.polarOrderId === args.polarOrderId
+    const duplicateLegacy = recentTxs.find(
+      (tx: any) => tx.metadata?.polarOrderId === args.polarOrderId
     )
-    if (duplicate) {
-      return
-    }
+    if (duplicateLegacy) return
 
     const balanceDoc = await getOrCreateBalance(ctx, org._id)
     const microdollars = args.amount * 10_000
@@ -448,6 +503,13 @@ export const addCreditsFromPolar = internalMutation({
       reconciled: true,
       description: `Credit purchase via Polar (${formatMicrodollars(microdollars)})`,
       metadata: { polarOrderId: args.polarOrderId },
+      createdAt: Date.now(),
+    })
+
+    await ctx.db.insert("processedPayments", {
+      polarOrderId: args.polarOrderId,
+      organizationId: org._id,
+      amount: microdollars,
       createdAt: Date.now(),
     })
 
@@ -487,6 +549,25 @@ export const seedWelcomeCredits = internalMutation({
       description: "Welcome credits",
       createdAt: Date.now(),
     })
+  },
+})
+
+export const cleanupStaleReservations = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000
+    const balances = await ctx.db.query("creditBalances").take(500)
+    let cleaned = 0
+    for (const bal of balances) {
+      if ((bal.reservedCredits ?? 0) > 0 && bal.updatedAt < fifteenMinutesAgo) {
+        await ctx.db.patch(bal._id, {
+          reservedCredits: 0,
+          updatedAt: Date.now(),
+        })
+        cleaned++
+      }
+    }
+    return cleaned
   },
 })
 
