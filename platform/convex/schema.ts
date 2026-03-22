@@ -47,8 +47,7 @@ export default defineSchema({
     name: v.string(),
     systemPrompt: v.string(),
     model: v.object({
-      provider: v.string(),
-      name: v.string(),
+      model: v.string(),
       temperature: v.optional(v.number()),
       maxTokens: v.optional(v.number()),
     }),
@@ -289,6 +288,7 @@ export default defineSchema({
     userId: v.id("users"),
     organizationId: v.id("organizations"),
     role: v.union(v.literal("admin"), v.literal("member")),
+    allowDevAccess: v.optional(v.boolean()),
     clerkMembershipId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -347,6 +347,7 @@ export default defineSchema({
     status: v.union(v.literal("success"), v.literal("error"), v.literal("timeout")),
     errorMessage: v.optional(v.string()),
     usedPlatformKey: v.optional(v.boolean()),
+    tier: v.optional(v.number()),
     creditsConsumed: v.optional(v.number()),
     evalRunId: v.optional(v.id("evalRuns")),
     actorId: v.optional(v.string()),
@@ -505,7 +506,6 @@ export default defineSchema({
   providerConfigs: defineTable({
     organizationId: v.id("organizations"),
     provider: providerValidator,
-    mode: v.union(v.literal("platform"), v.literal("custom")),
     apiKey: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
     lastVerifiedAt: v.optional(v.number()),
@@ -537,8 +537,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     judgeModel: v.optional(v.object({
-      provider: v.string(),
-      name: v.string(),
+      model: v.string(),
     })),
     judgeContext: v.optional(v.string()),
     judgePrompt: v.optional(v.string()),
@@ -645,6 +644,7 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     balance: v.number(),
     reservedCredits: v.optional(v.number()),
+    dailyLimit: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"]),
@@ -662,6 +662,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])
+    .index("by_org_created", ["organizationId", "createdAt"])
     .index("by_execution", ["executionId"])
     .index("by_reconciled", ["reconciled"]),
 
@@ -713,6 +714,7 @@ export default defineSchema({
   })
     .index("by_org_env_user", ["organizationId", "environment", "userId"])
     .index("by_org_env_status", ["organizationId", "environment", "status"])
+    .index("by_status", ["status"])
     .index("by_sandbox_id", ["sandboxId"]),
 
   sandboxEvents: defineTable({
@@ -796,6 +798,20 @@ export default defineSchema({
   })
     .index("by_run", ["runId"])
     .index("by_run_case", ["runId", "caseId"]),
+
+  processedPayments: defineTable({
+    polarOrderId: v.string(),
+    organizationId: v.id("organizations"),
+    amount: v.number(),
+    createdAt: v.number(),
+  }).index("by_polar_order", ["polarOrderId"]),
+
+  modelPricing: defineTable({
+    modelId: v.string(),
+    inputPerMTok: v.number(),
+    outputPerMTok: v.number(),
+    updatedAt: v.number(),
+  }).index("by_model", ["modelId"]),
 
   ...rateLimitTables,
 })
