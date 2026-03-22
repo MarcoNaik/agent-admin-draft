@@ -27,12 +27,14 @@ const getAgentBySlugInternalRef = makeFunctionReference<"query">("agent:getAgent
 const chatActionRef = makeFunctionReference<"action">("agent:chat")
 import { hashApiKey, generateId } from "./lib/utils"
 import { isOrgAdmin as checkIsOrgAdmin } from "./lib/auth"
-import { calculateCost } from "./lib/creditPricing"
+import { calculateCost, isModelPricingKnown } from "./lib/creditPricing"
+const getModelCostRef = makeFunctionReference<"query">("modelPricing:getModelCost")
 import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { buildToolExecutor, serializeActor, executeBuiltinTool, sanitizeFilters } from "./lib/toolExecution"
 import { generateText, tool, jsonSchema, stepCountIs } from "ai"
 import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSteps, cleanToolCallText } from "./lib/llm"
+import { parseModelId } from "./lib/providers"
 import { isBuiltinTool } from "./tools/helpers"
 import { log } from "./lib/logger"
 
@@ -93,8 +95,7 @@ interface AgentConfigDocument {
   name: string
   systemPrompt: string
   model: {
-    provider: string
-    name: string
+    model: string
     temperature?: number
     maxTokens?: number
   }
@@ -328,24 +329,30 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     })
   }
 
-  const providerKey = await ctx.runQuery(resolveApiKeyRef, {
+  const modelId = config.model.model
+  const resolved = await ctx.runQuery(resolveApiKeyRef, {
     organizationId,
-    provider: config.model.provider,
+    modelId,
   })
-
-  const usedPlatformKey = providerKey === null
+  const resolvedApiKey = resolved.apiKey ?? process.env.OPENROUTER_API_KEY
+  if (!resolvedApiKey) throw new Error("OPENROUTER_API_KEY not configured")
+  const usedPlatformKey = resolved.tier === 3
+  if (usedPlatformKey && !isModelPricingKnown(modelId)) {
+    throw new Error("Model not supported on platform credits. Please configure your own API key.")
+  }
   let reservedAmount = 0
-  if (usedPlatformKey && !params.evalRunId) {
+  if (usedPlatformKey) {
     try {
       reservedAmount = await ctx.runMutation(reserveCreditsRef, {
         organizationId,
-        model: config.model.name,
+        model: modelId,
+        maxTokens: config.model.maxTokens,
       })
     } catch (error) {
       log.error("Credit reservation failed before LLM execution", {
         ...log.withOrg(organizationId as string),
         ...log.withAgent(agentId as string),
-        model: config.model.name,
+        model: modelId,
         environment,
         error: error instanceof Error ? error : new Error(String(error)),
       })
@@ -366,8 +373,10 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   try {
     let result
     try {
+      const temperature = Math.max(0, Math.min(2, config.model.temperature ?? 0.7))
+      const maxOutputTokens = Math.max(1, Math.min(65536, config.model.maxTokens ?? 4096))
       result = await generateText({
-        model: createModel(config.model, providerKey?.apiKey),
+        model: createModel(modelId, resolvedApiKey, resolved.tier),
         system: processedSystemPrompt,
         messages: toAIMessages([
           ...historyMessages,
@@ -376,8 +385,8 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
         stopWhen: stepCountIs(10),
         maxRetries: 2,
-        temperature: config.model.temperature ?? 0.7,
-        maxOutputTokens: config.model.maxTokens ?? 4096,
+        temperature,
+        maxOutputTokens,
         onStepFinish: async ({ text, toolCalls, toolResults }) => {
           const stepMsgs = fromSteps([{ text, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
           if (stepMsgs.length > 0) {
@@ -399,8 +408,8 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       log.error("LLM execution failed", {
         ...log.withOrg(organizationId as string),
         ...log.withAgent(agentId as string),
-        model: config.model.name,
-        provider: config.model.provider,
+        model: modelId,
+        provider: parseModelId(modelId).provider,
         environment,
         threadId,
         agentSlug: agent.slug,
@@ -417,16 +426,17 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         inputTokens: 0,
         outputTokens: 0,
         durationMs,
-        model: config.model.name,
+        model: modelId,
         status: "error" as const,
         errorMessage: errorMsg,
         usedPlatformKey,
+        tier: resolved.tier,
         evalRunId: params.evalRunId,
         actorId: actor.actorId,
         actorType: actor.actorType,
         channel: thread?.channel as string | undefined,
         agentSlug: agent.slug,
-        provider: config.model.provider,
+        provider: parseModelId(modelId).provider,
         multiAgentDepth: depth,
         toolCallDetails: toolCallDetails.length > 0 ? toolCallDetails : undefined,
         permissionDenials: permissionDenials.length > 0 ? permissionDenials : undefined,
@@ -474,7 +484,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       })
       .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
 
-    const creditsConsumed = usedPlatformKey ? calculateCost(config.model.name, totalInputTokens, totalOutputTokens) : 0
+    const creditsConsumed = usedPlatformKey ? await ctx.runQuery(getModelCostRef, { modelId, inputTokens: totalInputTokens, outputTokens: totalOutputTokens }) : 0
 
     const executionId = await ctx.runMutation(recordExecutionRef, {
       organizationId,
@@ -488,40 +498,22 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       durationMs,
-      model: config.model.name,
+      model: modelId,
       status: "success",
       usedPlatformKey,
+      tier: resolved.tier,
       creditsConsumed,
       evalRunId: params.evalRunId,
       actorId: actor.actorId,
       actorType: actor.actorType,
       channel: thread?.channel as string | undefined,
       agentSlug: agent.slug,
-      provider: config.model.provider,
+      provider: parseModelId(modelId).provider,
       iterationCount: result.steps.length,
       multiAgentDepth: depth,
       toolCallDetails: toolCallDetails.length > 0 ? toolCallDetails : undefined,
       permissionDenials: permissionDenials.length > 0 ? permissionDenials : undefined,
     })
-
-    if (usedPlatformKey && creditsConsumed > 0) {
-      await ctx.runMutation(deductCreditsRef, {
-        organizationId,
-        amount: creditsConsumed,
-        description: `${config.model.name} — ${totalInputTokens} in / ${totalOutputTokens} out`,
-        executionId,
-        metadata: {
-          model: config.model.name,
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-        },
-        costDriver: "llm",
-        agentId: agentId as unknown as string,
-        channel: thread?.channel as string | undefined,
-        actorId: actor.actorId,
-        model: config.model.name,
-      })
-    }
 
     llmSucceeded = true
 
@@ -530,6 +522,25 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         organizationId,
         reservedAmount,
         actualCost: creditsConsumed,
+      })
+    }
+
+    if (usedPlatformKey && creditsConsumed > 0) {
+      await ctx.runMutation(deductCreditsRef, {
+        organizationId,
+        amount: creditsConsumed,
+        description: `${modelId} — ${totalInputTokens} in / ${totalOutputTokens} out`,
+        executionId,
+        metadata: {
+          model: modelId,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+        },
+        costDriver: "llm",
+        agentId: agentId as unknown as string,
+        channel: thread?.channel as string | undefined,
+        actorId: actor.actorId,
+        model: modelId,
       })
     }
 
