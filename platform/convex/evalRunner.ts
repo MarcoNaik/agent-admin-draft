@@ -19,13 +19,15 @@ const chatAuthenticatedRef = makeFunctionReference<"action">("agent:chatAuthenti
 const getAgentConfigRef = makeFunctionReference<"query">("evals:getAgentConfig")
 const recordResultRef = makeFunctionReference<"mutation">("evals:recordResult")
 const caseCompletedRef = makeFunctionReference<"mutation">("evals:caseCompleted")
-const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
+const recordCostRollupRef = makeFunctionReference<"mutation">("billing:recordCostRollup")
 const getOrgNameRef = makeFunctionReference<"query">("evals:getOrgName")
 const getAgentInternalRef = makeFunctionReference<"query">("evals:getAgentInternal")
 const getEntityTypesRef = makeFunctionReference<"query">("evals:getEntityTypes")
 const getRolesRef = makeFunctionReference<"query">("evals:getRoles")
 const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
 const getModelCostRef = makeFunctionReference<"query">("modelPricing:getModelCost")
+const provisionOrgKeyRef = makeFunctionReference<"action">("orgKeys:provisionOrgKey")
+const getRegistryEntryRef = makeFunctionReference<"query">("modelPricing:getRegistryEntry")
 
 interface AssertionDef {
   type: "llm_judge" | "contains" | "matches" | "tool_called" | "tool_not_called"
@@ -647,25 +649,28 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const modelId = args.model?.model || "xai/grok-4-1-fast"
   const { modelName } = parseModelId(modelId)
 
-  const resolved: { apiKey?: string; tier: number } = await ctx.runQuery(resolveApiKeyRef, {
+  let resolved: { apiKey?: string; tier: number } = await ctx.runQuery(resolveApiKeyRef, {
     organizationId,
     modelId,
   })
 
-  let judgeApiKey: string
-  let judgeTier: number
-  if (resolved.apiKey) {
-    judgeApiKey = resolved.apiKey
-    judgeTier = resolved.tier
-  } else {
-    const openrouterKey = process.env.OPENROUTER_API_KEY
-    if (!openrouterKey) throw new Error("OPENROUTER_API_KEY not configured")
-    judgeApiKey = openrouterKey
-    judgeTier = 3
+  if (resolved.tier === 3 && !resolved.apiKey) {
+    const orgKey = await ctx.runAction(provisionOrgKeyRef, { organizationId })
+    resolved = { apiKey: orgKey.encryptedKey, tier: 3 }
+  }
+
+  if (!resolved.apiKey) throw new Error("No API key resolved for judge model")
+  const judgeApiKey = resolved.apiKey
+  const judgeTier = resolved.tier
+
+  let openRouterId: string | undefined
+  if (judgeTier >= 2) {
+    const registryEntry = await ctx.runQuery(getRegistryEntryRef, { struereId: modelId })
+    openRouterId = registryEntry?.openRouterId
   }
 
   const result = await generateText({
-    model: createModel(modelId, judgeApiKey, judgeTier),
+    model: createModel(modelId, judgeApiKey, judgeTier, openRouterId),
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
     maxRetries: 2,
@@ -678,18 +683,12 @@ Evaluate the assistant's current turn response against the criteria. Respond wit
   const textContent = result.text
   const cost = await ctx.runQuery(getModelCostRef, { modelId, inputTokens, outputTokens })
 
-  if (cost > 0 && judgeTier === 3) {
-    await ctx.runMutation(deductCreditsRef, {
+  if (cost > 0) {
+    await ctx.runMutation(recordCostRollupRef, {
       organizationId,
       amount: cost,
-      description: `Eval judge: ${modelName} — ${inputTokens} in / ${outputTokens} out`,
-      costDriver: "eval_judge",
       model: modelId,
-      metadata: {
-        model: modelName,
-        inputTokens,
-        outputTokens,
-      },
+      costDriver: "eval_judge",
     })
   }
 
