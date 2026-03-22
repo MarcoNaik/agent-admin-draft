@@ -13,8 +13,7 @@ export function defineAgent(config: AgentConfig): AgentConfig {
 
   return {
     model: {
-      provider: 'xai',
-      name: 'grok-4-1-fast',
+      model: 'xai/grok-4-1-fast',
       temperature: 0.7,
       maxTokens: 4096,
     },

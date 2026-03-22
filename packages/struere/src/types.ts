@@ -1,9 +1,7 @@
 export interface ModelConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'openrouter' | 'custom'
-  name: string
+  model: string
   temperature?: number
   maxTokens?: number
-  apiKey?: string
 }
 
 export interface ToolReference {
