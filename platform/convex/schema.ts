@@ -649,9 +649,21 @@ export default defineSchema({
   })
     .index("by_org", ["organizationId"]),
 
+  orgOpenRouterKeys: defineTable({
+    organizationId: v.id("organizations"),
+    keyHash: v.string(),
+    encryptedKey: v.string(),
+    limitUsd: v.number(),
+    lastSyncedUsage: v.number(),
+    lastSyncedAt: v.optional(v.number()),
+    disabled: v.optional(v.boolean()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"]),
+
   creditTransactions: defineTable({
     organizationId: v.id("organizations"),
-    type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment"), v.literal("purchase")),
+    type: v.union(v.literal("deduction"), v.literal("addition"), v.literal("adjustment"), v.literal("purchase"), v.literal("usage_sync")),
     amount: v.number(),
     balanceAfter: v.optional(v.number()),
     reconciled: v.optional(v.boolean()),
@@ -812,6 +824,30 @@ export default defineSchema({
     outputPerMTok: v.number(),
     updatedAt: v.number(),
   }).index("by_model", ["modelId"]),
+
+  modelRegistry: defineTable({
+    struereId: v.string(),
+    openRouterId: v.string(),
+    providerSlug: v.string(),
+    nativeModelName: v.string(),
+    displayName: v.string(),
+    contextWindow: v.number(),
+    maxOutput: v.number(),
+    inputPerMTok: v.number(),
+    outputPerMTok: v.number(),
+    capabilities: v.optional(v.object({
+      vision: v.optional(v.boolean()),
+      toolUse: v.optional(v.boolean()),
+      reasoning: v.optional(v.boolean()),
+    })),
+    featured: v.optional(v.boolean()),
+    status: v.union(v.literal("active"), v.literal("deprecated")),
+    updatedAt: v.number(),
+  })
+    .index("by_struere_id", ["struereId"])
+    .index("by_openrouter_id", ["openRouterId"])
+    .index("by_provider", ["providerSlug"])
+    .index("by_featured", ["featured"]),
 
   ...rateLimitTables,
 })
