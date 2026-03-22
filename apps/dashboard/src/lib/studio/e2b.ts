@@ -11,6 +11,8 @@ export interface SandboxConfig {
   convexUrl: string
   claudeMd: string
   model: string
+  contextWindow?: number
+  maxOutput?: number
 }
 
 export interface SandboxResult {
@@ -37,8 +39,10 @@ function parseModelId(modelId: string): { provider: string; modelName: string } 
   return { provider: modelId.slice(0, slashIdx), modelName: modelId.slice(slashIdx + 1) }
 }
 
-function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
+function buildOpenCodeConfig(modelId: string, contextWindow?: number, maxOutput?: number): Record<string, unknown> {
   const { provider, modelName } = parseModelId(modelId)
+  const ctx = contextWindow ?? 200000
+  const out = maxOutput ?? 32768
   const base = {
     $schema: "https://opencode.ai/config.json",
     instructions: ["CLAUDE.md"],
@@ -53,7 +57,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
           openai: {
             options: { baseURL: "https://api.x.ai/v1" },
             models: {
-              [modelName]: { name: modelName, limit: { context: 131072, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: ctx, output: out } },
             },
           },
         },
@@ -65,7 +69,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
         provider: {
           anthropic: {
             models: {
-              [modelName]: { name: modelName, limit: { context: 200000, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: ctx, output: out } },
             },
           },
         },
@@ -77,7 +81,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
         provider: {
           openai: {
             models: {
-              [modelName]: { name: modelName, limit: { context: 128000, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: ctx, output: out } },
             },
           },
         },
@@ -89,7 +93,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
         provider: {
           google: {
             models: {
-              [modelName]: { name: modelName, limit: { context: 1000000, output: 65536 } },
+              [modelName]: { name: modelName, limit: { context: ctx, output: out } },
             },
           },
         },
@@ -102,7 +106,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
           openai: {
             options: { baseURL: "https://openrouter.ai/api/v1", headers: { "HTTP-Referer": "https://struere.dev", "X-Title": "Struere" } },
             models: {
-              [modelName]: { name: modelName, limit: { context: 200000, output: 32768 } },
+              [modelName]: { name: modelName, limit: { context: ctx, output: out } },
             },
           },
         },
@@ -115,7 +119,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
           openai: {
             options: { baseURL: "https://openrouter.ai/api/v1", headers: { "HTTP-Referer": "https://struere.dev", "X-Title": "Struere" } },
             models: {
-              [modelId]: { name: modelId, limit: { context: 200000, output: 32768 } },
+              [modelId]: { name: modelId, limit: { context: ctx, output: out } },
             },
           },
         },
@@ -173,7 +177,7 @@ function generateBootstrapFiles(config: SandboxConfig): Array<{ path: string; co
     },
     {
       path: "/workspace/opencode.json",
-      content: JSON.stringify(buildOpenCodeConfig(config.model), null, 2),
+      content: JSON.stringify(buildOpenCodeConfig(config.model, config.contextWindow, config.maxOutput), null, 2),
     },
   ]
 }
