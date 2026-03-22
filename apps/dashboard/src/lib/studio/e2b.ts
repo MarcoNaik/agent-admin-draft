@@ -100,7 +100,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
         ...base,
         provider: {
           openai: {
-            options: { baseURL: "https://openrouter.ai/api/v1" },
+            options: { baseURL: "https://openrouter.ai/api/v1", headers: { "HTTP-Referer": "https://struere.dev", "X-Title": "Struere" } },
             models: {
               [modelName]: { name: modelName, limit: { context: 200000, output: 32768 } },
             },
@@ -113,7 +113,7 @@ function buildOpenCodeConfig(modelId: string): Record<string, unknown> {
         ...base,
         provider: {
           openai: {
-            options: { baseURL: "https://openrouter.ai/api/v1" },
+            options: { baseURL: "https://openrouter.ai/api/v1", headers: { "HTTP-Referer": "https://struere.dev", "X-Title": "Struere" } },
             models: {
               [modelId]: { name: modelId, limit: { context: 200000, output: 32768 } },
             },
