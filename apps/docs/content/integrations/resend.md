@@ -73,7 +73,7 @@ export default defineAgent({
 
 When asked to notify someone, compose a clear email and send it using the email.send tool.
 Always confirm the recipient and subject before sending.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 

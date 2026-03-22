@@ -18,8 +18,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You are a scheduling assistant for {{organizationName}}.",
   model: {
-    provider: "xai",
-    name: "grok-4-1-fast",
+    model: "xai/grok-4-1-fast",
   },
   tools: [
     "entity.create",
@@ -39,7 +38,7 @@ export default defineAgent({
 | `version` | `string` | Yes | Semantic version string (e.g., `"0.1.0"`) |
 | `systemPrompt` | `string \| (() => string \| Promise<string>)` | Yes | System prompt with template variable support |
 | `description` | `string` | No | Human-readable description |
-| `model` | `ModelConfig` | No | LLM provider and model settings |
+| `model` | `ModelConfig` | No | LLM model and inference settings |
 | `tools` | `string[]` | No | Array of tool names (built-in and custom) |
 | `firstMessageSuggestions` | `string[]` | No | Clickable suggestion chips shown in the chat empty state |
 | `threadContextParams` | `ThreadContextParam[]` | No | Schema for expected thread context parameters (see below) |
@@ -54,13 +53,13 @@ The `model` field configures which LLM provider and model the agent uses. If omi
 
 ```typescript
 interface ModelConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'xai' | 'custom'
-  name: string
+  model: string
   temperature?: number
   maxTokens?: number
-  apiKey?: string
 }
 ```
+
+Model IDs use `"provider/model-name"` format (e.g., `"xai/grok-4-1-fast"`, `"anthropic/claude-sonnet-4-6"`).
 
 ```typescript
 export default defineAgent({
@@ -69,8 +68,7 @@ export default defineAgent({
   version: "1.0.0",
   systemPrompt: "You are a precise data analyst.",
   model: {
-    provider: "xai",
-    name: "grok-4-1-fast",
+    model: "xai/grok-4-1-fast",
     temperature: 0.3,
     maxTokens: 8192,
   },
@@ -102,7 +100,7 @@ export default defineAgent({
   slug: "support",
   version: "0.1.0",
   systemPrompt: "You are a support agent for {{organizationName}}.",
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
   tools: ["entity.query"],
   firstMessageSuggestions: [
     "What can you help me with?",
@@ -135,7 +133,7 @@ export default defineAgent({
   systemPrompt: `You are a support agent for {{organizationName}}.
 Customer: {{threadContext.params.email}}
 Plan: {{threadContext.params.plan}}`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
   tools: ["entity.query"],
   threadContextParams: [
     { name: "email", type: "string", required: true, description: "Customer email" },

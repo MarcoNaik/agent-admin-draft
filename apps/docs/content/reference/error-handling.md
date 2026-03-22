@@ -50,7 +50,7 @@ All HTTP endpoints return errors as JSON objects with an `error` field:
 |--------|---------|----------------|
 | `400` | Bad Request | Missing required fields in the request body |
 | `401` | Unauthorized | Missing or invalid Bearer token, expired API key |
-| `402` | Payment Required | Insufficient credits when using platform API keys |
+| `402` | Payment Required | Insufficient credits when using platform credits |
 | `404` | Not Found | Agent or resource does not exist |
 | `429` | Too Many Requests | Rate limit exceeded |
 | `500` | Internal Server Error | Unhandled exceptions during request processing |
@@ -233,17 +233,17 @@ Fetch to api.example.com is not allowed. Allowed domains: api.openai.com, api.an
 
 ## Credit and Billing Errors
 
-When an organization uses platform API keys (no custom provider key configured), credit balance is checked before execution. If the balance is insufficient, the request fails:
+When an organization uses platform credits (no direct provider key or OpenRouter key configured), credit balance is checked before execution. If the balance is insufficient, the request fails:
 
 ```
-Insufficient credits. Please add credits to your account to continue using platform API keys.
+Insufficient credits. Please add credits to your account.
 ```
 
 This error propagates through the agent execution action and surfaces as a `500` in the HTTP API response. The check runs before the LLM call is made, so no tokens are consumed on insufficient balance.
 
 To avoid billing errors:
 - Monitor credit balance in the dashboard under **Billing**
-- Configure a custom provider key in **Settings > Providers** to bypass credit checks
+- Configure a provider key or OpenRouter key in **Settings > Providers** to bypass credit checks
 - Purchase credits via the dashboard checkout flow
 
 ## Agent Execution Errors
@@ -293,7 +293,7 @@ export default defineAgent({
 - If entity.create fails with a validation error, review the entity type schema and correct the data before retrying.
 - If entity.query returns empty results, consider whether scope rules may be filtering results and inform the user.
 - Never retry the exact same tool call with the same arguments more than once.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
   tools: ["entity.query", "entity.create", "entity.update"],
 })
 ```

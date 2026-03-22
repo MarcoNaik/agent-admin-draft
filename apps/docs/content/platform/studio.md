@@ -16,7 +16,7 @@ Dashboard (Studio Panel)
     |
     v
 POST /api/studio/sessions
-    |-- Resolve API key (platform or custom)
+    |-- Resolve API key (3-tier: direct → OpenRouter → platform)
     |-- Create sandbox session in Convex
     |-- Provision E2B sandbox
     |-- Write opencode.json (provider-specific config)
@@ -30,7 +30,7 @@ User sends message → POST /api/studio/sessions/{id}/message
     |-- Forward to sandbox via ACP protocol
     |-- OpenCode processes with selected provider/model
     |-- Track token usage
-    |-- Deduct credits (platform key only)
+    |-- Deduct credits (when using platform credits)
     |
     v
 Real-time events streamed via SSE to dashboard
@@ -51,21 +51,15 @@ Studio supports four LLM providers. Each provider offers models grouped by tier:
 
 The default is **xAI / Grok 4.1 Fast** (`grok-4-1-fast`).
 
-## API Key Sources
+## API Key Resolution
 
-Studio offers two ways to pay for LLM usage:
+Studio resolves API keys using the same 3-tier fallback as agent chat:
 
-### Platform Credits
+1. **Direct provider key** -- If the organization has a key configured for the selected provider in **Settings > Providers**, that key is used. No credits are consumed.
+2. **OpenRouter key** -- If the organization has an OpenRouter API key configured, it is used. No credits are consumed.
+3. **Platform credits** -- If no keys are found, the platform uses its own OpenRouter key and deducts credits from the organization balance.
 
-The default mode. Studio uses Struere's platform API keys and deducts credits from your organization balance based on per-token pricing. No configuration needed — just add credits in **Settings → Billing**.
-
-### Custom API Key
-
-Use your own API key from the provider. Configure keys in **Settings → Providers**, then select **My Key** in the Studio config bar. When using a custom key:
-
-- No credit balance is required
-- Token usage is tracked for analytics but no credits are deducted
-- The key is resolved server-side and injected into the sandbox as an environment variable — it never reaches the browser
+When using your own keys, token usage is tracked for analytics but no credits are deducted. Keys are resolved server-side and injected into the sandbox as environment variables — they never reach the browser.
 
 ## Configuration
 
@@ -73,16 +67,15 @@ Before starting a session, the Studio config bar lets you choose:
 
 1. **Provider** — xAI, Anthropic, OpenAI, or Google
 2. **Model** — Filtered by selected provider, grouped by tier
-3. **Key Source** — Platform Credits or My API Key
 
-When you change the provider, the model resets to the first available model for that provider. The key source defaults based on whether you have a custom key configured and active for that provider.
+When you change the provider, the model resets to the first available model for that provider. API key resolution happens automatically based on your configured keys.
 
 Once a session starts, the configuration is locked and displayed as compact badges. You must stop the session to change settings.
 
 ## Session Lifecycle
 
 ```
-[Config Bar: select provider/model/key source]
+[Config Bar: select provider/model]
     |
     v
 User sends first message (or clicks Start)
@@ -178,15 +171,15 @@ Additional env vars always set:
 
 Token usage is always tracked on the session for analytics (`totalInputTokens`, `totalOutputTokens`, `totalCreditsConsumed`).
 
-Credit deductions only occur when `keySource` is `"platform"`:
+Credit deductions only occur when using platform credits (no direct or OpenRouter key configured):
 
 ```
 processUsageEvent
     |
     |-- Always: update session token counters
     |
-    |-- keySource === "platform": deduct credits via billing.deductCredits
-    |-- keySource === "custom": skip credit deduction
+    |-- Platform credits: deduct credits via billing.deductCredits
+    |-- Own key (direct or OpenRouter): skip credit deduction
 ```
 
 Pricing is per-model and defined in `creditPricing.ts`. See [Limits & Pricing](../reference/limits) for details.
@@ -205,7 +198,7 @@ Studio sessions are stored in the `sandboxSessions` table:
 | `agentType` | `"opencode"` | Always OpenCode |
 | `model` | string (optional) | Selected model ID (e.g. `"grok-4-1-fast"`) |
 | `provider` | string (optional) | Selected provider (`"xai"`, `"anthropic"`, `"openai"`, `"google"`) |
-| `keySource` | string (optional) | Key source (`"platform"`, `"custom"`) |
+| `keySource` | string (optional) | Key source (`"platform"`, `"direct"`, `"openrouter"`) |
 | `totalInputTokens` | number | Cumulative input tokens |
 | `totalOutputTokens` | number | Cumulative output tokens |
 | `totalCreditsConsumed` | number | Cumulative credits (micro-USD) |
@@ -214,15 +207,15 @@ Studio sessions are stored in the `sandboxSessions` table:
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/api/studio/sessions` | POST | Create a new session. Body: `{ environment, provider, model, keySource }` |
+| `/api/studio/sessions` | POST | Create a new session. Body: `{ environment, provider, model }` |
 | `/api/studio/sessions/{id}/message` | POST | Send a message. Body: `{ message }` |
 | `/api/studio/sessions/{id}/keepalive` | POST | Reset idle timer |
 | `/api/studio/sessions/{id}` | DELETE | Stop and clean up session |
 
 ### Session Creation Flow
 
-1. If `keySource` is `"custom"` — resolve the custom API key via `providers.resolveStudioKey`. Returns 400 if no key is configured.
-2. If `keySource` is `"platform"` — check credit balance. Returns 402 if insufficient.
+1. Resolve API key using 3-tier fallback (direct provider key → OpenRouter key → platform credits).
+2. If using platform credits — check credit balance. Returns 402 if insufficient.
 3. Create `sandboxSession` record in Convex.
 4. Create temporary API key for sandbox ↔ Convex communication.
 5. Provision E2B sandbox with provider-specific env vars.
@@ -235,10 +228,10 @@ Studio sessions are stored in the `sandboxSessions` table:
 ### Message Flow
 
 1. Validate session exists and is ready.
-2. If platform key — check credit balance.
+2. If using platform credits — check credit balance.
 3. Forward message to sandbox via ACP `session/prompt`.
 4. Record token usage asynchronously.
-5. Deduct credits if platform key.
+5. Deduct credits if using platform credits.
 
 ## Sandbox Contents
 

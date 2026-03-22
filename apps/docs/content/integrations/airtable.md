@@ -58,7 +58,7 @@ export default defineAgent({
 
 When the user asks about data, query the relevant Airtable base and table.
 When creating or updating records, confirm the changes with the user first.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 

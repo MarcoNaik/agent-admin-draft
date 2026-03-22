@@ -7,17 +7,16 @@ order: 1
 
 # Model Configuration
 
-Struere supports multiple LLM providers for agent execution. Each agent can be configured with a specific provider, model, and inference parameters.
+Struere supports multiple LLM providers for agent execution. Each agent can be configured with a specific model and inference parameters using the `"provider/model-name"` format.
 
-## Available Providers
+## Supported Providers
 
-| Provider | Notes |
-|----------|-------|
-| `xai` | Default provider |
-| `anthropic` | Configure in Settings > Providers |
-| `openai` | Configure in Settings > Providers |
-| `google` | Configure in Settings > Providers |
-| `custom` | Requires `apiKey` in model config. Use for self-hosted or alternative providers. |
+| Provider | Model ID Prefix | Notes |
+|----------|----------------|-------|
+| xAI | `xai/` | Default provider |
+| Anthropic | `anthropic/` | Claude models |
+| OpenAI | `openai/` | GPT and o-series models |
+| Google | `google/` | Gemini models |
 
 ## Anthropic Models
 
@@ -90,21 +89,17 @@ The `model` field in an agent definition accepts the following options:
 
 ```typescript
 model: {
-  provider: "xai",
-  name: "grok-4-1-fast",
-  temperature?: 0.7,
-  maxTokens?: 4096,
-  apiKey?: "sk-...",
+  model: "xai/grok-4-1-fast",
+  temperature: 0.7,
+  maxTokens: 4096,
 }
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `provider` | `string` | `"xai"` | The LLM provider (`"anthropic"`, `"openai"`, `"google"`, `"xai"`, or `"custom"`) |
-| `name` | `string` | `"grok-4-1-fast"` | The model name |
+| `model` | `string` | `"xai/grok-4-1-fast"` | Model ID in `"provider/model-name"` format |
 | `temperature` | `number` | `0.7` | Controls randomness. Lower values (0.0-0.3) produce more deterministic output. Higher values (0.7-1.0) produce more creative output. |
 | `maxTokens` | `number` | `4096` | Maximum number of tokens in the model's response |
-| `apiKey` | `string` | — | API key override. Required for `custom` provider. For standard providers, configure keys in the dashboard under Settings > Providers. |
 
 ## Default Configuration
 
@@ -112,12 +107,21 @@ If no model is specified in the agent definition, the default configuration is u
 
 ```typescript
 {
-  provider: "xai",
-  name: "grok-4-1-fast",
+  model: "xai/grok-4-1-fast",
   temperature: 0.7,
   maxTokens: 4096,
 }
 ```
+
+## API Key Resolution
+
+When an agent makes an LLM call, the platform resolves the API key automatically using a 3-tier fallback:
+
+1. **Direct provider key** -- If the organization has a key configured for the model's provider in **Settings > Providers**, that key is used. No credits are consumed.
+2. **OpenRouter key** -- If the organization has an OpenRouter API key configured, all LLM calls are routed through OpenRouter. No credits are consumed.
+3. **Platform credits** -- If no direct or OpenRouter key is found, the platform uses its own OpenRouter key and deducts credits from the organization's balance.
+
+This means you can start using any model immediately with platform credits, then add your own keys when ready to reduce costs.
 
 ## Examples
 
@@ -134,8 +138,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You process incoming data and create records.",
   model: {
-    provider: "anthropic",
-    name: "claude-haiku-4-5",
+    model: "anthropic/claude-haiku-4-5",
     temperature: 0.1,
     maxTokens: 2048,
   },
@@ -156,8 +159,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You analyze business data and provide strategic recommendations.",
   model: {
-    provider: "anthropic",
-    name: "claude-sonnet-4",
+    model: "anthropic/claude-sonnet-4",
     temperature: 0.5,
     maxTokens: 8192,
   },
@@ -178,8 +180,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You generate structured reports from your data.",
   model: {
-    provider: "anthropic",
-    name: "claude-haiku-4-5",
+    model: "anthropic/claude-haiku-4-5",
     temperature: 0.0,
     maxTokens: 4096,
   },
@@ -198,8 +199,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You assist with general queries.",
   model: {
-    provider: "openai",
-    name: "gpt-4o-mini",
+    model: "openai/gpt-4o-mini",
     temperature: 0.7,
     maxTokens: 4096,
   },
@@ -218,8 +218,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You assist with general queries.",
   model: {
-    provider: "xai",
-    name: "grok-4-1-fast-reasoning",
+    model: "xai/grok-4-1-fast-reasoning",
     temperature: 0.7,
     maxTokens: 4096,
   },
@@ -238,8 +237,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You assist with general queries.",
   model: {
-    provider: "google",
-    name: "gemini-1.5-flash",
+    model: "google/gemini-1.5-flash",
     temperature: 0.7,
     maxTokens: 4096,
   },
@@ -249,14 +247,9 @@ export default defineAgent({
 
 ## Provider Configuration
 
-Each provider can run in one of two modes, configured in the dashboard under **Settings > Providers**:
+Configure API keys in the dashboard under **Settings > Providers**. You can add direct provider keys (e.g., an Anthropic API key) or an OpenRouter key that works across all providers.
 
-| Mode | Description |
-|------|-------------|
-| **Platform** | Uses Struere's built-in credits — no API key needed. Usage is deducted from your organization's credit balance. |
-| **Custom** | Bring your own API key. Enter your key in the dashboard and all LLM calls for that provider will use it directly. |
-
-You can configure each provider independently. For example, use platform credits for Anthropic while using your own OpenAI key.
+When no keys are configured, the platform uses its own OpenRouter key and deducts credits from your organization balance. See the [API Key Resolution](#api-key-resolution) section above for the full fallback chain.
 
 ## Token Usage
 

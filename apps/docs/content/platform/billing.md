@@ -7,7 +7,7 @@ order: 10
 
 # Billing and Credits
 
-Struere uses a credit-based billing system. Every LLM call made through platform API keys is metered per-token at provider rates with a 10% markup. Organizations that bring their own provider API keys bypass platform billing entirely.
+Struere uses a credit-based billing system. Credits are consumed when no direct provider key or OpenRouter key is configured — the platform routes LLM calls through its own OpenRouter key and meters usage per-token at provider rates with a 10% markup. Organizations that bring their own API keys (direct provider keys or an OpenRouter key) bypass platform billing entirely.
 
 ## Credit System
 
@@ -169,7 +169,7 @@ This means balance checks are always accurate even when multiple requests are in
 
 ### Agent Chat (API, Webhook, Widget)
 
-Every agent chat request that uses platform API keys is billed. The cost is calculated from actual token usage:
+Every agent chat request that uses platform credits (no direct or OpenRouter key configured) is billed. The cost is calculated from actual token usage:
 
 ```
 cost = (inputTokens * inputRate + outputTokens * outputRate) / 1,000,000
@@ -179,7 +179,7 @@ The result is stored in microdollars on the execution record and deducted from t
 
 ### Studio Sessions
 
-[Studio](/platform/studio) sessions deduct credits per message when using platform keys. Each message's token usage is tracked on the session and deducted via the same billing pipeline. Sessions using a custom API key track token usage for analytics but skip credit deduction.
+[Studio](/platform/studio) sessions deduct credits per message when using platform credits. Each message's token usage is tracked on the session and deducted via the same billing pipeline. Sessions using a direct provider key or OpenRouter key track token usage for analytics but skip credit deduction.
 
 ### Eval Runs
 
@@ -200,30 +200,23 @@ Outbound emails sent through the platform incur a per-message credit deduction.
 
 ## Bring Your Own Keys
 
-Organizations can configure their own API keys for any supported provider, bypassing platform billing entirely for that provider's models.
+Organizations can configure their own API keys to bypass platform billing entirely.
 
 ### How It Works
 
 1. Navigate to **Settings > Providers** in the dashboard
-2. Select a provider (Anthropic, OpenAI, Google, or xAI)
-3. Set the mode to **Custom** and enter your API key
-4. Click **Test Connection** to verify the key works
+2. Add a **direct provider key** (e.g., Anthropic, OpenAI, Google, xAI) or an **OpenRouter key**
+3. Click **Test Connection** to verify the key works
 
-When an agent runs, the platform checks for a custom API key matching the agent's model provider:
+When an agent runs, the platform resolves the API key using a 3-tier fallback:
 
-- **Custom key found** (mode `custom`, status `active`): The agent uses your key. No credit pre-check, no credit deduction. Token usage is still tracked on the execution record.
-- **No custom key**: The agent uses the platform key. Credits are checked before the call and deducted after.
+1. **Direct provider key** -- If a key is configured for the model's provider, that key is used. No credits consumed.
+2. **OpenRouter key** -- If an OpenRouter key is configured, all LLM calls are routed through OpenRouter. No credits consumed.
+3. **Platform credits** -- If no keys are found, the platform uses its own OpenRouter key and deducts credits.
 
-This check happens per-request, so you can configure custom keys for some providers while using platform credits for others.
+Token usage is always tracked on the execution record regardless of which key is used.
 
-### Provider Config Modes
-
-| Mode | Behavior |
-|------|----------|
-| `platform` | Use Struere's platform API key. Credits are deducted per-token. |
-| `custom` | Use your own API key. No credits consumed. |
-
-Custom keys are stored encrypted in the `providerConfigs` table. The API never returns the full key — only a masked version (first 4 and last 4 characters).
+Keys are stored encrypted in the `providerConfigs` table. The API never returns the full key — only a masked version (first 4 and last 4 characters).
 
 ## Manual Credit Management
 

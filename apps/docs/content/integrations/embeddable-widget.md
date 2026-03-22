@@ -124,7 +124,7 @@ Plan: {{threadContext.params.plan}}
 {{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
 
 Greet them by name and tailor your responses to their plan level.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
   tools: ["entity.query", "entity.get"],
   threadContextParams: [
     { name: "email", type: "string", required: true, description: "Customer email" },
@@ -277,7 +277,7 @@ Messages appear progressively as the agent processes each step. The user sees th
 **Chat loads but messages fail**
 
 - The agent's LLM provider key may not be configured. Check provider configs in the dashboard.
-- The organization may have insufficient credits if using platform keys.
+- The organization may have insufficient credits if no provider keys are configured.
 
 **iframe blocked by CSP**
 

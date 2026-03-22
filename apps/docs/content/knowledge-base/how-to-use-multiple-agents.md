@@ -26,7 +26,7 @@ export default defineAgent({
   slug: "scheduler",
   tools: ["entity.query", "entity.create", "entity.update", "calendar.list", "calendar.create"],
   systemPrompt: "You are a scheduling specialist. Create and manage sessions and calendar events.",
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 
@@ -39,7 +39,7 @@ export default defineAgent({
   slug: "billing",
   tools: ["entity.query", "entity.update", "event.emit"],
   systemPrompt: "You handle billing inquiries. Look up payment records and answer questions about charges.",
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 
@@ -62,7 +62,7 @@ Route requests to the right specialist:
 - Billing questions → delegate to "billing"
 
 Use the agent.chat tool to delegate. Always pass the full context of the user's request.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 
@@ -123,7 +123,7 @@ export default defineAgent({
   tools: ["entity.query", "entity.get", "calendar.list"],
   systemPrompt: `You assist parents of {{organizationName}}.
 Be warm and helpful. Only show information about their own children.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 
@@ -136,7 +136,7 @@ export default defineAgent({
   tools: ["entity.query", "entity.get", "entity.update", "calendar.list", "calendar.create"],
   systemPrompt: `You assist teachers at {{organizationName}}.
 Be concise and professional. Show class rosters and session details for their assigned classes.`,
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
 })
 ```
 

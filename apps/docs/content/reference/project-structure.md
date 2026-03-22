@@ -53,7 +53,7 @@ export default defineAgent({
   slug: "scheduler",
   version: "0.1.0",
   systemPrompt: "You are a scheduling assistant for {{organizationName}}.",
-  model: { provider: "xai", name: "grok-4-1-fast" },
+  model: { model: "xai/grok-4-1-fast" },
   tools: ["entity.create", "entity.query", "event.emit"],
 })
 ```
