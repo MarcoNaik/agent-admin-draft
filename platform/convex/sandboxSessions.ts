@@ -2,12 +2,11 @@ import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { requireAuth } from "./lib/auth"
-import { calculateCost } from "./lib/creditPricing"
 import { providerValidator } from "./lib/providers"
 
-const processUsageEventRef = makeFunctionReference<"mutation">("sandboxSessions:processUsageEvent")
-const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
+const MARKUP = 1.1
 
+const processUsageEventRef = makeFunctionReference<"mutation">("sandboxSessions:processUsageEvent")
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 const keySourceValidator = v.optional(v.union(v.literal("platform"), v.literal("custom")))
 
@@ -389,21 +388,35 @@ export const processUsageEvent = internalMutation({
     if (!session) return
 
     const model = session.model ?? "xai/grok-4-1-fast"
-    const cost = calculateCost(model, args.inputTokens, args.outputTokens)
+    const openRouterId = model.indexOf("/") !== -1 ? model : ""
+    const normalized = model.indexOf("/") !== -1 ? model.slice(model.indexOf("/") + 1) : model
+
+    let dbPricing = null
+    if (openRouterId) {
+      dbPricing = await ctx.db
+        .query("modelPricing")
+        .withIndex("by_model", (q) => q.eq("modelId", openRouterId))
+        .unique()
+    }
+    if (!dbPricing) {
+      dbPricing = await ctx.db
+        .query("modelPricing")
+        .withIndex("by_model", (q) => q.eq("modelId", normalized))
+        .unique()
+    }
+
+    let cost = 0
+    if (dbPricing) {
+      const inputCost = dbPricing.inputPerMTok * MARKUP
+      const outputCost = dbPricing.outputPerMTok * MARKUP
+      const costUsd = (args.inputTokens * inputCost + args.outputTokens * outputCost) / 1_000_000
+      cost = Math.round(costUsd * 1_000_000)
+    }
 
     await ctx.db.patch(args.sessionId, {
       totalInputTokens: (session.totalInputTokens ?? 0) + args.inputTokens,
       totalOutputTokens: (session.totalOutputTokens ?? 0) + args.outputTokens,
       totalCreditsConsumed: (session.totalCreditsConsumed ?? 0) + cost,
     })
-
-    if (cost > 0 && session.keySource !== "custom") {
-      await ctx.scheduler.runAfter(0, deductCreditsRef, {
-        organizationId: session.organizationId,
-        amount: cost,
-        description: `Studio session (${model})`,
-        metadata: { source: "studio", sessionId: args.sessionId, model },
-      } as any)
-    }
   },
 })
