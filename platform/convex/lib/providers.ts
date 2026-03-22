@@ -73,3 +73,19 @@ export const PROVIDERS: {
     testEndpoint: "https://openrouter.ai/api/v1/models",
   },
 ]
+
+export function parseModelId(modelId: string): { provider: string; modelName: string } {
+  if (!modelId || modelId.length === 0) {
+    return { provider: "xai", modelName: "grok-4-1-fast" }
+  }
+  const slashIndex = modelId.indexOf("/")
+  if (slashIndex === -1) {
+    return { provider: "xai", modelName: modelId }
+  }
+  return { provider: modelId.slice(0, slashIndex), modelName: modelId.slice(slashIndex + 1) }
+}
+
+export function toModelId(provider: string, modelName: string): string {
+  return `${provider}/${modelName}`
+}
+
