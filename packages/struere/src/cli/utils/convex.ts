@@ -172,8 +172,7 @@ export interface SyncPayload {
     description?: string
     systemPrompt: string
     model: {
-      provider: string
-      name: string
+      model: string
       temperature?: number
       maxTokens?: number
     }
@@ -220,8 +219,7 @@ export interface SyncPayload {
     description?: string
     tags?: string[]
     judgeModel?: {
-      provider: string
-      name: string
+      model: string
     }
     judgeContext?: string
     judgePrompt?: string
@@ -503,7 +501,7 @@ export interface PullStateAgent {
   description?: string
   version: string
   systemPrompt: string
-  model: { provider: string; name: string; temperature?: number; maxTokens?: number }
+  model: { model: string; temperature?: number; maxTokens?: number }
   tools: Array<{ name: string; description: string; parameters: unknown; handlerCode?: string }>
 }
 
@@ -663,6 +661,153 @@ export async function compilePrompt(options: CompilePromptOptions): Promise<{ re
   const text = await response.text()
 
   let json: { status?: string; value?: CompilePromptResult | null; errorMessage?: string; errorData?: { message?: string } }
+  try {
+    json = JSON.parse(text)
+  } catch {
+    return { error: text || `HTTP ${response.status}` }
+  }
+
+  if (!response.ok) {
+    const msg = json.errorData?.message || json.errorMessage || text
+    return { error: msg }
+  }
+
+  if (json.status === 'success' && json.value) {
+    return { result: json.value }
+  }
+
+  if (json.status === 'success' && json.value === null) {
+    return { error: `Agent not found or no config for environment: ${options.environment}` }
+  }
+
+  if (json.status === 'error') {
+    return { error: json.errorData?.message || json.errorMessage || 'Unknown error from Convex' }
+  }
+
+  return { error: `Unexpected response: ${text}` }
+}
+
+export interface RunToolOptions {
+  agentSlug: string
+  toolName: string
+  toolArgs: Record<string, unknown>
+  environment: 'development' | 'production' | 'eval'
+  organizationId?: string
+}
+
+export interface RunToolResult {
+  tool: { name: string; isBuiltin: boolean }
+  agent: { name: string; slug: string }
+  environment: string
+  result: unknown
+  durationMs: number
+  identity: { actorType: string; identityMode: string }
+  error?: boolean
+  errorType?: string
+  message?: string
+}
+
+export async function runTool(options: RunToolOptions): Promise<{ result?: RunToolResult; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+
+  if (apiKey && !credentials?.token) {
+    const siteUrl = getSiteUrl()
+    try {
+      const response = await fetch(`${siteUrl}/v1/run-tool`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          agentSlug: options.agentSlug,
+          toolName: options.toolName,
+          args: options.toolArgs,
+        }),
+        signal: AbortSignal.timeout(30000),
+      })
+
+      const text = await response.text()
+
+      let json: Record<string, unknown>
+      try {
+        json = JSON.parse(text)
+      } catch {
+        return { error: text || `HTTP ${response.status}` }
+      }
+
+      if (!response.ok) {
+        return { error: (json.error as string) || text }
+      }
+
+      return { result: json as unknown as RunToolResult }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'TimeoutError') {
+        return { error: 'Request timed out after 30s' }
+      }
+      return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
+  if (credentials?.sessionId) {
+    await refreshToken()
+  }
+
+  const freshCredentials = loadCredentials()
+  const token = apiKey || freshCredentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  const agentResponse = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'agents:getBySlug',
+      args: { slug: options.agentSlug, organizationId: options.organizationId },
+    }),
+  })
+
+  if (!agentResponse.ok) {
+    return { error: await agentResponse.text() }
+  }
+
+  const agentResult = await agentResponse.json() as { status: string; value?: { _id: string } | null; errorMessage?: string }
+
+  if (agentResult.status === 'error') {
+    return { error: agentResult.errorMessage || 'Failed to look up agent' }
+  }
+
+  if (!agentResult.value) {
+    return { error: `Agent not found: ${options.agentSlug}` }
+  }
+
+  const response = await fetch(`${CONVEX_URL}/api/action`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path: 'toolTesting:runTool',
+      args: {
+        agentId: agentResult.value._id,
+        environment: options.environment,
+        toolName: options.toolName,
+        toolArgs: options.toolArgs,
+      },
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  const text = await response.text()
+
+  let json: { status?: string; value?: RunToolResult | null; errorMessage?: string; errorData?: { message?: string } }
   try {
     json = JSON.parse(text)
   } catch {

@@ -17,6 +17,7 @@ import { evalCommand } from './commands/eval'
 import { templatesCommand } from './commands/templates'
 import { integrationCommand } from './commands/integration'
 import { compilePromptCommand } from './commands/compile-prompt'
+import { runToolCommand } from './commands/run-tool'
 import pkg from '../../package.json'
 
 const CURRENT_VERSION = pkg.version
@@ -77,5 +78,6 @@ program.addCommand(evalCommand)
 program.addCommand(templatesCommand)
 program.addCommand(integrationCommand)
 program.addCommand(compilePromptCommand)
+program.addCommand(runToolCommand)
 
 program.parse()
