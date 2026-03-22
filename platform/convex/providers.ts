@@ -117,6 +117,15 @@ export const resolveApiKey = internalQuery({
       return { apiKey: openrouterConfig.apiKey, tier: 2 }
     }
 
+    const orgKey = await ctx.db
+      .query("orgOpenRouterKeys")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .first()
+
+    if (orgKey && !orgKey.disabled && orgKey.encryptedKey) {
+      return { apiKey: orgKey.encryptedKey, tier: 3 }
+    }
+
     return { tier: 3 }
   },
 })
@@ -194,15 +203,16 @@ export const resolveStudioKeyInternal = internalQuery({
       return { apiKey: openrouterConfig.apiKey, tier: 2 }
     }
 
-    return { tier: 3 }
-  },
-})
+    const orgKey = await ctx.db
+      .query("orgOpenRouterKeys")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .first()
 
-export const getPlatformKey = internalAction({
-  args: {},
-  returns: v.object({ apiKey: v.optional(v.string()) }),
-  handler: async () => {
-    return { apiKey: process.env.OPENROUTER_API_KEY }
+    if (orgKey && !orgKey.disabled && orgKey.encryptedKey) {
+      return { apiKey: orgKey.encryptedKey, tier: 3 }
+    }
+
+    return { tier: 3 }
   },
 })
 
