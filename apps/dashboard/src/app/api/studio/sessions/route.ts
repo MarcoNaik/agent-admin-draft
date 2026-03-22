@@ -132,8 +132,10 @@ export async function POST(request: Request) {
         console.error("[studio/sessions] Insufficient credits")
         return NextResponse.json({ error: "Insufficient credits" }, { status: 402 })
       }
-      const platformKey = await adminConvex.action(internal.providers.getPlatformKey, {})
-      llmApiKey = platformKey.apiKey
+      const orgKey = await adminConvex.action(internal.orgKeys.provisionOrgKey, {
+        organizationId: org._id,
+      })
+      llmApiKey = orgKey.encryptedKey
     }
 
     const keySource = resolved.tier < 3 ? "custom" as const : "platform" as const
@@ -181,6 +183,8 @@ export async function POST(request: Request) {
     }
     if (process.env.E2B_API_KEY) envVars.E2B_API_KEY = process.env.E2B_API_KEY
 
+    const registryEntry = await adminConvex.query(internal.modelPricing.getRegistryEntry, { struereId: model })
+
     const sandbox = await createSandbox({
       envVars,
       orgInfo: { id: org._id, slug: org.slug, name: org.name },
@@ -188,6 +192,8 @@ export async function POST(request: Request) {
       convexUrl,
       claudeMd,
       model: sandboxModel,
+      contextWindow: registryEntry?.contextWindow,
+      maxOutput: registryEntry?.maxOutput,
     })
     sandboxId = sandbox.sandboxId
     console.log(`[studio/sessions] Sandbox created sandboxId=${sandbox.sandboxId} url=${sandbox.sandboxUrl}`)
