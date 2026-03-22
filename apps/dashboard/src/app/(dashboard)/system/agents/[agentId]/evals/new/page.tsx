@@ -26,22 +26,22 @@ const modelOptions: Record<string, { label: string; models: { value: string; lab
   xai: {
     label: "xAI",
     models: [
-      { value: "grok-4-1-fast", label: "grok-4-1-fast" },
-      { value: "grok-4-1-fast-reasoning", label: "grok-4-1-fast-reasoning" },
+      { value: "xai/grok-4-1-fast", label: "xai/grok-4-1-fast" },
+      { value: "xai/grok-4-1-fast-reasoning", label: "xai/grok-4-1-fast-reasoning" },
     ],
   },
   anthropic: {
     label: "Anthropic",
     models: [
-      { value: "claude-haiku-4-5-20251001", label: "claude-haiku-4-5-20251001" },
-      { value: "claude-sonnet-4-20250514", label: "claude-sonnet-4-20250514" },
+      { value: "anthropic/claude-haiku-4-5-20251001", label: "anthropic/claude-haiku-4-5-20251001" },
+      { value: "anthropic/claude-sonnet-4-20250514", label: "anthropic/claude-sonnet-4-20250514" },
     ],
   },
   openai: {
     label: "OpenAI",
     models: [
-      { value: "gpt-4o", label: "gpt-4o" },
-      { value: "gpt-4o-mini", label: "gpt-4o-mini" },
+      { value: "openai/gpt-4o", label: "openai/gpt-4o" },
+      { value: "openai/gpt-4o-mini", label: "openai/gpt-4o-mini" },
     ],
   },
 }
@@ -64,8 +64,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
   const [slugManual, setSlugManual] = useState(false)
   const [description, setDescription] = useState("")
   const [tags, setTags] = useState("")
-  const [judgeProvider, setJudgeProvider] = useState("xai")
-  const [judgeModel, setJudgeModel] = useState("grok-4-1-fast")
+  const [judgeModel, setJudgeModel] = useState("xai/grok-4-1-fast")
   const [customModel, setCustomModel] = useState(false)
   const [judgeContext, setJudgeContext] = useState("")
   const [judgePrompt, setJudgePrompt] = useState("")
@@ -86,13 +85,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
       return
     }
     setCustomModel(false)
-    for (const [provider, group] of Object.entries(modelOptions)) {
-      if (group.models.some((m) => m.value === value)) {
-        setJudgeProvider(provider)
-        setJudgeModel(value)
-        return
-      }
-    }
+    setJudgeModel(value)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,7 +102,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
         slug: slug.trim(),
         description: description.trim() || undefined,
         tags: tags.trim() ? tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
-        judgeModel: { provider: judgeProvider, name: judgeModel },
+        judgeModel: { model: judgeModel },
         judgeContext: judgeContext.trim() || undefined,
         judgePrompt: judgePrompt.trim() || undefined,
         environment,
@@ -205,31 +198,21 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
               </SelectContent>
             </Select>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <select
-                value={judgeProvider}
-                onChange={(e) => setJudgeProvider(e.target.value)}
-                className="rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={judgeModel}
+                onChange={(e) => setJudgeModel(e.target.value)}
+                placeholder="provider/model-name"
+                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={() => { setCustomModel(false); setJudgeModel("anthropic/claude-haiku-4-5-20251001") }}
+                className="rounded-md border px-2.5 py-2 text-xs text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
               >
-                <option value="anthropic">Anthropic</option>
-                <option value="openai">OpenAI</option>
-              </select>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={judgeModel}
-                  onChange={(e) => setJudgeModel(e.target.value)}
-                  placeholder="model-name"
-                  className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-input focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <button
-                  type="button"
-                  onClick={() => { setCustomModel(false); setJudgeModel("claude-haiku-4-5-20251001"); setJudgeProvider("anthropic") }}
-                  className="rounded-md border px-2.5 py-2 text-xs text-content-secondary hover:bg-background-tertiary transition-colors ease-out-soft"
-                >
-                  Presets
-                </button>
-              </div>
+                Presets
+              </button>
             </div>
           )}
           <p className="text-xs text-content-tertiary">Model used for LLM judge assertions</p>

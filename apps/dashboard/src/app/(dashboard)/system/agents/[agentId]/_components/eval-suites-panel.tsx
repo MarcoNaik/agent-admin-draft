@@ -87,7 +87,7 @@ function SuiteCard({ suite, agentId, environment }: { suite: any; agentId: Id<"a
   }
 
   const judgeInfo = [
-    suite.judgeModel ? `${suite.judgeModel.provider}/${suite.judgeModel.name}` : null,
+    suite.judgeModel ? (suite.judgeModel.model || "xai/grok-4-1-fast") : null,
   ].filter(Boolean)
 
   return (
