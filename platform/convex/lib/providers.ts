@@ -1,5 +1,18 @@
 import { v } from "convex/values"
 
+const OPENROUTER_PROVIDER_MAP: Record<string, string> = {
+  "x-ai": "xai",
+}
+
+export function openRouterProviderToStruere(orProvider: string): string {
+  return OPENROUTER_PROVIDER_MAP[orProvider] ?? orProvider
+}
+
+export function normalizeNativeModelName(providerSlug: string, openRouterModelName: string): string {
+  if (providerSlug === "xai" || providerSlug === "anthropic") return openRouterModelName.replace(/\./g, "-")
+  return openRouterModelName
+}
+
 export const PROVIDER_IDS = [
   "anthropic",
   "openai",
