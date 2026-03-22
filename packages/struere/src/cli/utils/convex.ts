@@ -800,6 +800,7 @@ export async function runTool(options: RunToolOptions): Promise<{ result?: RunTo
         environment: options.environment,
         toolName: options.toolName,
         toolArgs: options.toolArgs,
+        organizationId: options.organizationId,
       },
     }),
     signal: AbortSignal.timeout(30000),

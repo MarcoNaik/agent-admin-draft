@@ -91,12 +91,14 @@ export const runTool = action({
     environment: environmentValidator,
     toolName: v.string(),
     toolArgs: v.any(),
+    organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
     const data = await ctx.runQuery(getToolTestDataRef, {
       agentId: args.agentId,
       environment: args.environment,
+      organizationId: args.organizationId,
     }) as any
 
     if (!data) {
