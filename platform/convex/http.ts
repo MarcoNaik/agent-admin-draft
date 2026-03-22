@@ -37,6 +37,7 @@ const internalCreateTemplateRef = makeFunctionReference<"action">("whatsappActio
 const internalDeleteTemplateRef = makeFunctionReference<"action">("whatsappActions:internalDeleteTemplate")
 const internalGetTemplateStatusRef = makeFunctionReference<"action">("whatsappActions:internalGetTemplateStatus")
 const compileSystemPromptBySlugRef = makeFunctionReference<"action">("agents:compileSystemPromptBySlug")
+const runToolBySlugRef = makeFunctionReference<"action">("toolTesting:runToolBySlug" as any)
 const executeToolCallbackRef = makeFunctionReference<"action">("agent:executeToolCallback")
 const checkDataRateLimitRef = makeFunctionReference<"mutation">("rateLimits:checkDataRateLimit")
 const listEntityTypesInternalRef = makeFunctionReference<"query">("entityTypes:listInternal")
@@ -1309,6 +1310,69 @@ http.route({
       if (!result) {
         return new Response(JSON.stringify({ error: "Agent not found or no config for this environment" }), {
           status: 404,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }),
+})
+
+http.route({
+  path: "/v1/run-tool",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authResult = await authenticateApiKey(ctx, request)
+    if (authResult instanceof Response) return authResult
+
+    try {
+      const body = await request.json() as {
+        agentSlug: string
+        toolName: string
+        args?: Record<string, unknown>
+      }
+
+      if (!body.agentSlug) {
+        return new Response(JSON.stringify({ error: "agentSlug is required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+
+      if (!body.toolName) {
+        return new Response(JSON.stringify({ error: "toolName is required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+
+      const result = await ctx.runAction(runToolBySlugRef, {
+        organizationId: authResult.organizationId,
+        slug: body.agentSlug,
+        environment: authResult.environment,
+        toolName: body.toolName,
+        toolArgs: body.args || {},
+      })
+
+      if (result?.error) {
+        const statusMap: Record<string, number> = {
+          not_found: 404,
+          tool_not_found: 400,
+          permission_denied: 403,
+          execution_error: 500,
+        }
+        return new Response(JSON.stringify(result), {
+          status: statusMap[result.errorType] || 500,
           headers: { "Content-Type": "application/json" },
         })
       }
