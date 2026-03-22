@@ -52,15 +52,27 @@ export const getBalance = query({
 export const getTransactions = query({
   args: {
     limit: v.optional(v.number()),
+    cursor: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
+    const pageSize = args.limit ?? 20
 
-    return await ctx.db
+    const q = ctx.db
       .query("creditTransactions")
-      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .withIndex("by_org_created", (q) =>
+        args.cursor
+          ? q.eq("organizationId", auth.organizationId).lt("createdAt", args.cursor)
+          : q.eq("organizationId", auth.organizationId)
+      )
       .order("desc")
-      .take(args.limit ?? 50)
+
+    const items = await q.take(pageSize + 1)
+    const hasMore = items.length > pageSize
+    const page = hasMore ? items.slice(0, pageSize) : items
+    const nextCursor = hasMore ? page[page.length - 1].createdAt : undefined
+
+    return { items: page, nextCursor }
   },
 })
 

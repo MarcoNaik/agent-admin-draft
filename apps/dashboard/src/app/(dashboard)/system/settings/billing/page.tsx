@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Doc } from "@convex/_generated/dataModel"
 import Link from "next/link"
@@ -153,9 +153,106 @@ function TransactionBadge({ type }: { type: string }) {
   )
 }
 
+function TransactionHistory() {
+  const PAGE_SIZE = 20
+  const [cursors, setCursors] = useState<(number | undefined)[]>([undefined])
+  const currentCursor = cursors[cursors.length - 1]
+  const result = useCreditTransactions(PAGE_SIZE, currentCursor)
+
+  const loadMore = useCallback(() => {
+    if (result?.nextCursor) {
+      setCursors((prev) => [...prev, result.nextCursor])
+    }
+  }, [result?.nextCursor])
+
+  const loadPrevious = useCallback(() => {
+    if (cursors.length > 1) {
+      setCursors((prev) => prev.slice(0, -1))
+    }
+  }, [cursors.length])
+
+  const transactions = result?.items
+  const page = cursors.length
+
+  return (
+    <Card className="bg-background-secondary">
+      <CardHeader>
+        <CardTitle className="text-base font-semibold text-content-primary">Transaction History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {transactions === undefined ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-content-secondary" />
+          </div>
+        ) : transactions.length === 0 && page === 1 ? (
+          <p className="text-sm text-content-secondary py-4 text-center">No transactions yet</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-content-secondary">
+                    <th className="text-left py-2 pr-4 font-medium">Date</th>
+                    <th className="text-left py-2 px-4 font-medium">Type</th>
+                    <th className="text-right py-2 px-4 font-medium">Amount</th>
+                    <th className="text-right py-2 px-4 font-medium">Balance</th>
+                    <th className="text-left py-2 pl-4 font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((tx: Doc<"creditTransactions">) => (
+                    <tr key={tx._id} className="border-b border-border/50">
+                      <td className="py-2 pr-4 text-content-secondary whitespace-nowrap">
+                        {new Date(tx.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="py-2 px-4">
+                        <TransactionBadge type={tx.type} />
+                      </td>
+                      <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-destructive" : "text-success"}`}>
+                        <FormattedCredits microdollars={tx.amount} prefix={tx.type === "deduction" ? "-" : "+"} />
+                      </td>
+                      <td className="text-right py-2 px-4 text-content-primary">
+                        {tx.balanceAfter !== undefined ? <FormattedCredits microdollars={tx.balanceAfter} /> : "—"}
+                      </td>
+                      <td className="py-2 pl-4 text-content-secondary truncate max-w-[200px]">
+                        {tx.description}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t mt-3">
+              <button
+                onClick={loadPrevious}
+                disabled={page === 1}
+                className="text-xs text-content-secondary hover:text-content-primary disabled:opacity-30 disabled:pointer-events-none"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-content-tertiary">Page {page}</span>
+              <button
+                onClick={loadMore}
+                disabled={!result?.nextCursor}
+                className="text-xs text-content-secondary hover:text-content-primary disabled:opacity-30 disabled:pointer-events-none"
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function BillingPage() {
   const balance = useCreditBalance()
-  const transactions = useCreditTransactions(100)
   const searchParams = useSearchParams()
   const showSuccess = searchParams.get("success") === "true"
 
@@ -223,7 +320,7 @@ export default function BillingPage() {
               <Monitor className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-content-primary">Studio</p>
-                <p className="text-xs text-content-secondary mt-0.5">Each prompt billed per token (grok-4-1-fast).</p>
+                <p className="text-xs text-content-secondary mt-0.5">Each prompt billed per token.</p>
               </div>
             </div>
             <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
@@ -245,60 +342,7 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-background-secondary">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-content-primary">Transaction History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {transactions === undefined ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-content-secondary" />
-            </div>
-          ) : transactions.length === 0 ? (
-            <p className="text-sm text-content-secondary py-4 text-center">No transactions yet</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-content-secondary">
-                    <th className="text-left py-2 pr-4 font-medium">Date</th>
-                    <th className="text-left py-2 px-4 font-medium">Type</th>
-                    <th className="text-right py-2 px-4 font-medium">Amount</th>
-                    <th className="text-right py-2 px-4 font-medium">Balance</th>
-                    <th className="text-left py-2 pl-4 font-medium">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((tx: Doc<"creditTransactions">) => (
-                    <tr key={tx._id} className="border-b border-border/50">
-                      <td className="py-2 pr-4 text-content-secondary whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td className="py-2 px-4">
-                        <TransactionBadge type={tx.type} />
-                      </td>
-                      <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-destructive" : "text-success"}`}>
-                        <FormattedCredits microdollars={tx.amount} prefix={tx.type === "deduction" ? "-" : "+"} />
-                      </td>
-                      <td className="text-right py-2 px-4 text-content-primary">
-                        {tx.balanceAfter !== undefined ? <FormattedCredits microdollars={tx.balanceAfter} /> : "—"}
-                      </td>
-                      <td className="py-2 pl-4 text-content-secondary truncate max-w-[200px]">
-                        {tx.description}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <TransactionHistory />
     </div>
   )
 }

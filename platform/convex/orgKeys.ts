@@ -67,7 +67,7 @@ export const provisionOrgKey = internalAction({
       body: JSON.stringify({
         name: `struere-org-${args.organizationId}`,
         limit: limitUsd,
-        include_byok_in_limit: false,
+        include_byok_in_limit: true,
       }),
     })
 
@@ -133,8 +133,8 @@ export const syncKeyUsage = internalAction({
 
     if (!res.ok) return
 
-    const data = await res.json() as { data: { usage: number } }
-    const currentUsage = data.data.usage
+    const data = await res.json() as { data: { usage: number; byok_usage: number } }
+    const currentUsage = data.data.usage + (data.data.byok_usage ?? 0)
 
     if (currentUsage > orgKey.lastSyncedUsage) {
       const deltaUsd = currentUsage - orgKey.lastSyncedUsage
@@ -229,8 +229,8 @@ export const recordUsageDelta = internalMutation({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first()
 
+    const newBalance = balance ? balance.balance - args.deltaMicrodollars : 0
     if (balance) {
-      const newBalance = balance.balance - args.deltaMicrodollars
       await ctx.db.patch(balance._id, {
         balance: newBalance,
         updatedAt: Date.now(),
@@ -239,9 +239,11 @@ export const recordUsageDelta = internalMutation({
 
     await ctx.db.insert("creditTransactions", {
       organizationId: args.organizationId,
-      type: "usage_sync",
+      type: "deduction",
       amount: args.deltaMicrodollars,
+      balanceAfter: newBalance,
       description: "OpenRouter usage sync",
+      reconciled: true,
       createdAt: Date.now(),
     })
 

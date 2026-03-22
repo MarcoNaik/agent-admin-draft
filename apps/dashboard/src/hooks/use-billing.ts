@@ -7,8 +7,8 @@ export function useCreditBalance() {
   return useQuery(api.billing.getBalance, {})
 }
 
-export function useCreditTransactions(limit?: number) {
-  return useQuery(api.billing.getTransactions, { limit })
+export function useCreditTransactions(limit?: number, cursor?: number) {
+  return useQuery(api.billing.getTransactions, { limit, cursor })
 }
 
 export function useAddCredits() {
