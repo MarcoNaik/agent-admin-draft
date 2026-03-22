@@ -163,6 +163,11 @@ export function useStudioEvents(
 
       es.onmessage = (msg) => {
         try {
+          if (msg.data && msg.data.trimStart().startsWith("<")) {
+            console.error("[studio/events] EventSource received HTML instead of JSON!", { dataPreview: msg.data.slice(0, 300) })
+            setError("EventSource received HTML — auth may have expired. Try refreshing.")
+            return
+          }
           const raw = JSON.parse(msg.data)
           lastEventTimestampRef.current = Date.now()
 
@@ -438,7 +443,17 @@ export function useStudioEvents(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
       })
-      console.log("[studio/events] sendMessage: response", res.status)
+      const contentType = res.headers.get("content-type") ?? "unknown"
+      const resBody = await res.text()
+      console.log("[studio/events] sendMessage: response", {
+        status: res.status,
+        contentType,
+        redirected: res.redirected,
+        bodyPreview: resBody.slice(0, 300),
+      })
+      if (!res.ok) {
+        console.error("[studio/events] sendMessage: non-ok response", { status: res.status, body: resBody.slice(0, 500) })
+      }
     } catch (err) {
       console.error("[studio/events] sendMessage error:", err)
       setError(err instanceof Error ? err.message : "Failed to send message")
