@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useEnvironment } from "@/contexts/environment-context"
+import Link from "next/link"
 import {
   Wrench,
   Database,
@@ -17,6 +18,7 @@ import {
   Mail,
   CreditCard,
   Globe,
+  Play,
 } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
@@ -674,11 +676,17 @@ function ToolsPageContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-display font-semibold text-content-primary">Tools</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          {totalTools} tools available for agents
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-display font-semibold text-content-primary">Tools</h1>
+          <p className="text-sm text-content-secondary mt-1">
+            {totalTools} tools available for agents
+          </p>
+        </div>
+        <Link href="/system/tools/playground" className="inline-flex items-center gap-1.5 rounded-md bg-background-secondary px-3 py-1.5 text-sm text-content-secondary hover:text-content-primary transition-colors">
+          <Play className="h-3.5 w-3.5" />
+          Playground
+        </Link>
       </div>
 
       <div className="space-y-4">
