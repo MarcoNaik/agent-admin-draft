@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation"
 import { Doc } from "@convex/_generated/dataModel"
 import Link from "next/link"
 import { Loader2, CreditCard, DollarSign, CheckCircle2, X, Bot, Monitor, FlaskConical } from "@/lib/icons"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import {
   useCreditBalance,
   useCreditTransactions,
@@ -89,6 +91,55 @@ function SuccessBanner() {
       <button onClick={() => setDismissed(true)} className="text-success hover:text-success/80">
         <X className="h-4 w-4" />
       </button>
+    </div>
+  )
+}
+
+function formatModelDisplayName(modelId: string): string {
+  const name = modelId.includes("/") ? modelId.split("/")[1] : modelId
+  return name
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/(\d) (\d)/g, "$1.$2")
+}
+
+function PricingTable() {
+  const featuredPricing = useQuery(api.modelPricing.getFeaturedPricing)
+
+  if (featuredPricing === undefined) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />
+      </div>
+    )
+  }
+
+  if (featuredPricing.length === 0) {
+    return (
+      <p className="text-xs text-content-tertiary py-2">Pricing data not yet available.</p>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b text-content-tertiary">
+            <th className="text-left py-1.5 pr-4 font-medium">Model</th>
+            <th className="text-right py-1.5 px-4 font-medium">Input</th>
+            <th className="text-right py-1.5 pl-4 font-medium">Output</th>
+          </tr>
+        </thead>
+        <tbody className="text-content-secondary">
+          {featuredPricing.map((p: { modelId: string; inputPerMTok: number; outputPerMTok: number }, i: number) => (
+            <tr key={p.modelId} className={i < featuredPricing.length - 1 ? "border-b border-border/50" : ""}>
+              <td className="py-1.5 pr-4 text-content-primary">{formatModelDisplayName(p.modelId)}</td>
+              <td className="text-right py-1.5 px-4">${p.inputPerMTok.toFixed(2)}</td>
+              <td className="text-right py-1.5 pl-4">${p.outputPerMTok.toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -192,44 +243,7 @@ export default function BillingPage() {
 
           <div>
             <p className="text-xs font-medium text-content-secondary mb-2">Pricing per 1M tokens (incl. 10% markup)</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b text-content-tertiary">
-                    <th className="text-left py-1.5 pr-4 font-medium">Model</th>
-                    <th className="text-right py-1.5 px-4 font-medium">Input</th>
-                    <th className="text-right py-1.5 pl-4 font-medium">Output</th>
-                  </tr>
-                </thead>
-                <tbody className="text-content-secondary">
-                  <tr className="border-b border-border/50">
-                    <td className="py-1.5 pr-4 text-content-primary">grok-4-1-fast</td>
-                    <td className="text-right py-1.5 px-4">$0.22</td>
-                    <td className="text-right py-1.5 pl-4">$0.55</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-1.5 pr-4 text-content-primary">claude-sonnet-4</td>
-                    <td className="text-right py-1.5 px-4">$3.30</td>
-                    <td className="text-right py-1.5 pl-4">$16.50</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-1.5 pr-4 text-content-primary">claude-haiku-4.5</td>
-                    <td className="text-right py-1.5 px-4">$1.10</td>
-                    <td className="text-right py-1.5 pl-4">$5.50</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-1.5 pr-4 text-content-primary">gpt-4o</td>
-                    <td className="text-right py-1.5 px-4">$2.75</td>
-                    <td className="text-right py-1.5 pl-4">$11.00</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1.5 pr-4 text-content-primary">gemini-2.5-flash</td>
-                    <td className="text-right py-1.5 px-4">$0.33</td>
-                    <td className="text-right py-1.5 pl-4">$2.75</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <PricingTable />
             <p className="text-xs text-content-tertiary mt-2">
               40+ models supported. See <Link href="/system/settings/usage" className="underline hover:text-content-secondary">Usage</Link> for per-model breakdowns.
             </p>
