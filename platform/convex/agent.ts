@@ -11,12 +11,9 @@ const getToolIdentityQueryRef = makeFunctionReference<"query">("permissions:getT
 const executeCustomToolRef = makeFunctionReference<"action">("agent:executeCustomTool")
 const canUseToolQueryRef = makeFunctionReference<"query">("permissions:canUseToolQuery")
 const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
-const reserveCreditsRef = makeFunctionReference<"mutation">("billing:reserveCredits")
-const consumeReservationRef = makeFunctionReference<"mutation">("billing:consumeReservation")
-const releaseReservationRef = makeFunctionReference<"mutation">("billing:releaseReservation")
 const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
 const recordExecutionRef = makeFunctionReference<"mutation">("executions:record")
-const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
+const recordCostRollupRef = makeFunctionReference<"mutation">("billing:recordCostRollup")
 const validateApiKeyRef = makeFunctionReference<"query">("agent:validateApiKey")
 const getAgentInternalRef = makeFunctionReference<"query">("agent:getAgentInternal")
 const getActiveConfigRef = makeFunctionReference<"query">("agents:getActiveConfig")
@@ -25,10 +22,11 @@ const getThreadInternalRef = makeFunctionReference<"query">("threads:getThreadIn
 const buildActorContextForAgentRef = makeFunctionReference<"query">("agent:buildActorContextForAgent")
 const getAgentBySlugInternalRef = makeFunctionReference<"query">("agent:getAgentBySlugInternal")
 const chatActionRef = makeFunctionReference<"action">("agent:chat")
+const provisionOrgKeyRef = makeFunctionReference<"action">("orgKeys:provisionOrgKey")
 import { hashApiKey, generateId } from "./lib/utils"
 import { isOrgAdmin as checkIsOrgAdmin } from "./lib/auth"
-import { calculateCost, isModelPricingKnown } from "./lib/creditPricing"
 const getModelCostRef = makeFunctionReference<"query">("modelPricing:getModelCost")
+const getRegistryEntryRef = makeFunctionReference<"query">("modelPricing:getRegistryEntry")
 import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext, ActorType, Environment } from "./lib/permissions/types"
 import { buildToolExecutor, serializeActor, executeBuiltinTool, sanitizeFilters } from "./lib/toolExecution"
@@ -330,34 +328,22 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   }
 
   const modelId = config.model.model
-  const resolved = await ctx.runQuery(resolveApiKeyRef, {
+  let resolved: { apiKey?: string; tier: number } = await ctx.runQuery(resolveApiKeyRef, {
     organizationId,
     modelId,
   })
-  const resolvedApiKey = resolved.apiKey ?? process.env.OPENROUTER_API_KEY
-  if (!resolvedApiKey) throw new Error("OPENROUTER_API_KEY not configured")
-  const usedPlatformKey = resolved.tier === 3
-  if (usedPlatformKey && !isModelPricingKnown(modelId)) {
-    throw new Error("Model not supported on platform credits. Please configure your own API key.")
+  if (resolved.tier === 3 && !resolved.apiKey) {
+    const orgKey = await ctx.runAction(provisionOrgKeyRef, { organizationId })
+    resolved = { apiKey: orgKey.encryptedKey, tier: 3 }
   }
-  let reservedAmount = 0
-  if (usedPlatformKey) {
-    try {
-      reservedAmount = await ctx.runMutation(reserveCreditsRef, {
-        organizationId,
-        model: modelId,
-        maxTokens: config.model.maxTokens,
-      })
-    } catch (error) {
-      log.error("Credit reservation failed before LLM execution", {
-        ...log.withOrg(organizationId as string),
-        ...log.withAgent(agentId as string),
-        model: modelId,
-        environment,
-        error: error instanceof Error ? error : new Error(String(error)),
-      })
-      throw error
-    }
+  const resolvedApiKey = resolved.apiKey
+  if (!resolvedApiKey) throw new Error("No API key resolved for model")
+  const usedPlatformKey = resolved.tier === 3
+
+  let openRouterId: string | undefined
+  if (resolved.tier >= 2) {
+    const registryEntry = await ctx.runQuery(getRegistryEntryRef, { struereId: modelId })
+    openRouterId = registryEntry?.openRouterId
   }
 
   let lastAssistantMessageId: Id<"messages"> | undefined
@@ -369,14 +355,12 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     })
   }
 
-  let llmSucceeded = false
+  let result
   try {
-    let result
-    try {
       const temperature = Math.max(0, Math.min(2, config.model.temperature ?? 0.7))
       const maxOutputTokens = Math.max(1, Math.min(65536, config.model.maxTokens ?? 4096))
       result = await generateText({
-        model: createModel(modelId, resolvedApiKey, resolved.tier),
+        model: createModel(modelId, resolvedApiKey, resolved.tier, openRouterId),
         system: processedSystemPrompt,
         messages: toAIMessages([
           ...historyMessages,
@@ -404,6 +388,10 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     } catch (error) {
       const durationMs = Date.now() - startTime
       const errorMsg = error instanceof Error ? error.message : String(error)
+
+      if (errorMsg.includes("402") || errorMsg.includes("Payment Required")) {
+        throw new Error("Insufficient credits. Please add credits to your account.")
+      }
 
       log.error("LLM execution failed", {
         ...log.withOrg(organizationId as string),
@@ -515,32 +503,15 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       permissionDenials: permissionDenials.length > 0 ? permissionDenials : undefined,
     })
 
-    llmSucceeded = true
-
-    if (usedPlatformKey && reservedAmount > 0) {
-      await ctx.runMutation(consumeReservationRef, {
-        organizationId,
-        reservedAmount,
-        actualCost: creditsConsumed,
-      })
-    }
-
-    if (usedPlatformKey && creditsConsumed > 0) {
-      await ctx.runMutation(deductCreditsRef, {
+    if (creditsConsumed > 0) {
+      await ctx.runMutation(recordCostRollupRef, {
         organizationId,
         amount: creditsConsumed,
-        description: `${modelId} — ${totalInputTokens} in / ${totalOutputTokens} out`,
-        executionId,
-        metadata: {
-          model: modelId,
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-        },
+        model: modelId,
         costDriver: "llm",
         agentId: agentId as unknown as string,
         channel: thread?.channel as string | undefined,
         actorId: actor.actorId,
-        model: modelId,
       })
     }
 
@@ -554,14 +525,6 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         totalTokens: totalInputTokens + totalOutputTokens,
       },
     }
-  } finally {
-    if (!llmSucceeded && usedPlatformKey && reservedAmount > 0) {
-      await ctx.runMutation(releaseReservationRef, {
-        organizationId,
-        reservedAmount,
-      })
-    }
-  }
 }
 
 export const executeChatAction = internalAction({
