@@ -3,7 +3,7 @@ import { query, mutation, action, internalQuery, internalMutation } from "./_gen
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth, requireOrgAdmin } from "./lib/auth"
-import { providerValidator, type Provider } from "./lib/providers"
+import { providerValidator, type Provider, parseModelId } from "./lib/providers"
 
 const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
 const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
@@ -25,7 +25,6 @@ export const getConfig = query({
       _id: v.id("providerConfigs"),
       organizationId: v.id("organizations"),
       provider: providerValidator,
-      mode: v.union(v.literal("platform"), v.literal("custom")),
       apiKey: v.optional(v.string()),
       status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
       lastVerifiedAt: v.optional(v.number()),
@@ -60,7 +59,6 @@ export const listConfigs = query({
     _id: v.id("providerConfigs"),
     organizationId: v.id("organizations"),
     provider: providerValidator,
-    mode: v.union(v.literal("platform"), v.literal("custom")),
     apiKey: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("error")),
     lastVerifiedAt: v.optional(v.number()),
@@ -88,59 +86,124 @@ export const listConfigs = query({
 export const resolveApiKey = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    provider: v.string(),
+    modelId: v.string(),
   },
-  returns: v.union(
-    v.object({ apiKey: v.string() }),
-    v.null()
-  ),
+  returns: v.object({
+    apiKey: v.optional(v.string()),
+    tier: v.number(),
+  }),
   handler: async (ctx, args) => {
-    const config = await ctx.db
+    const { provider } = parseModelId(args.modelId)
+
+    const directConfig = await ctx.db
       .query("providerConfigs")
       .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", args.organizationId).eq("provider", args.provider as Provider)
+        q.eq("organizationId", args.organizationId).eq("provider", provider as Provider)
       )
       .first()
 
-    if (!config || config.mode !== "custom" || !config.apiKey) {
-      return null
+    if (directConfig && directConfig.apiKey && directConfig.status !== "error") {
+      return { apiKey: directConfig.apiKey, tier: 1 }
     }
 
-    return { apiKey: config.apiKey }
+    const openrouterConfig = await ctx.db
+      .query("providerConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("provider", "openrouter" as Provider)
+      )
+      .first()
+
+    if (openrouterConfig && openrouterConfig.apiKey && openrouterConfig.status !== "error") {
+      return { apiKey: openrouterConfig.apiKey, tier: 2 }
+    }
+
+    return { tier: 3 }
   },
 })
 
 export const resolveStudioKey = query({
   args: {
-    provider: providerValidator,
+    modelId: v.string(),
   },
-  returns: v.union(v.object({ apiKey: v.string() }), v.null()),
+  returns: v.object({
+    tier: v.number(),
+  }),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
 
-    const config = await ctx.db
+    const { provider } = parseModelId(args.modelId)
+
+    const directConfig = await ctx.db
       .query("providerConfigs")
       .withIndex("by_org_provider", (q) =>
-        q.eq("organizationId", auth.organizationId).eq("provider", args.provider)
+        q.eq("organizationId", auth.organizationId).eq("provider", provider as Provider)
       )
       .first()
 
-    if (!config || config.mode !== "custom" || !config.apiKey || config.status !== "active") {
-      return null
+    if (directConfig && directConfig.apiKey && directConfig.status === "active") {
+      return { tier: 1 }
     }
 
-    return { apiKey: config.apiKey }
+    const openrouterConfig = await ctx.db
+      .query("providerConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("provider", "openrouter" as Provider)
+      )
+      .first()
+
+    if (openrouterConfig && openrouterConfig.apiKey && openrouterConfig.status === "active") {
+      return { tier: 2 }
+    }
+
+    return { tier: 3 }
+  },
+})
+
+export const resolveStudioKeyInternal = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    modelId: v.string(),
+  },
+  returns: v.object({
+    apiKey: v.optional(v.string()),
+    tier: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const { provider } = parseModelId(args.modelId)
+
+    const directConfig = await ctx.db
+      .query("providerConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("provider", provider as Provider)
+      )
+      .first()
+
+    if (directConfig && directConfig.apiKey && directConfig.status === "active") {
+      return { apiKey: directConfig.apiKey, tier: 1 }
+    }
+
+    const openrouterConfig = await ctx.db
+      .query("providerConfigs")
+      .withIndex("by_org_provider", (q) =>
+        q.eq("organizationId", args.organizationId).eq("provider", "openrouter" as Provider)
+      )
+      .first()
+
+    if (openrouterConfig && openrouterConfig.apiKey && openrouterConfig.status === "active") {
+      return { apiKey: openrouterConfig.apiKey, tier: 2 }
+    }
+
+    return { tier: 3 }
   },
 })
 
 export const updateConfig = mutation({
   args: {
     provider: providerValidator,
-    mode: v.union(v.literal("platform"), v.literal("custom")),
     apiKey: v.optional(v.string()),
   },
-  returns: v.id("providerConfigs"),
+  returns: v.union(v.id("providerConfigs"), v.null()),
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
@@ -154,30 +217,31 @@ export const updateConfig = mutation({
 
     const now = Date.now()
 
+    if (!args.apiKey) {
+      if (existing) {
+        await ctx.db.delete(existing._id)
+      }
+      return null
+    }
+
+    if (args.apiKey.includes("...")) {
+      return existing?._id ?? null
+    }
+
     if (existing) {
-      const patch: Record<string, unknown> = {
-        mode: args.mode,
+      await ctx.db.patch(existing._id, {
+        apiKey: args.apiKey,
+        status: "inactive" as const,
         updatedAt: now,
-      }
-
-      if (args.mode === "platform") {
-        patch.apiKey = undefined
-        patch.status = "active"
-      } else if (args.apiKey && !args.apiKey.includes("...")) {
-        patch.apiKey = args.apiKey
-        patch.status = "inactive"
-      }
-
-      await ctx.db.patch(existing._id, patch)
+      })
       return existing._id
     }
 
     return await ctx.db.insert("providerConfigs", {
       organizationId: auth.organizationId,
       provider: args.provider,
-      mode: args.mode,
-      apiKey: args.mode === "custom" && args.apiKey && !args.apiKey.includes("...") ? args.apiKey : undefined,
-      status: args.mode === "platform" ? "active" : "inactive",
+      apiKey: args.apiKey,
+      status: "inactive",
       lastVerifiedAt: undefined,
       createdAt: now,
       updatedAt: now,
@@ -231,16 +295,16 @@ export const testConnection = action({
       throw new Error("Admin access required")
     }
 
-    const resolved: { apiKey: string } | null = await ctx.runQuery(resolveApiKeyRef, {
+    const providerConfig = await ctx.runQuery(getConfigInternalRef, {
       organizationId: auth.organizationId,
       provider: args.provider,
     })
 
-    if (!resolved) {
-      return { success: false, message: `No custom API key configured for ${args.provider}` }
+    if (!providerConfig || !providerConfig.apiKey) {
+      return { success: false, message: `No API key configured for ${args.provider}` }
     }
 
-    const apiKey = resolved.apiKey
+    const apiKey = providerConfig.apiKey
 
     try {
       if (args.provider === "anthropic") {
@@ -289,34 +353,20 @@ export const testConnection = action({
         }
       }
 
-      const providerConfig = await ctx.runQuery(getConfigInternalRef, {
-        organizationId: auth.organizationId,
-        provider: args.provider,
+      await ctx.runMutation(patchStatusRef, {
+        configId: providerConfig._id,
+        status: "active" as const,
+        lastVerifiedAt: Date.now(),
       })
-
-      if (providerConfig) {
-        await ctx.runMutation(patchStatusRef, {
-          configId: providerConfig._id,
-          status: "active" as const,
-          lastVerifiedAt: Date.now(),
-        })
-      }
 
       return { success: true, message: `${args.provider} API key is valid` }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Connection failed"
 
-      const providerConfig = await ctx.runQuery(getConfigInternalRef, {
-        organizationId: auth.organizationId,
-        provider: args.provider,
+      await ctx.runMutation(patchStatusRef, {
+        configId: providerConfig._id,
+        status: "error" as const,
       })
-
-      if (providerConfig) {
-        await ctx.runMutation(patchStatusRef, {
-          configId: providerConfig._id,
-          status: "error" as const,
-        })
-      }
 
       return { success: false, message }
     }
