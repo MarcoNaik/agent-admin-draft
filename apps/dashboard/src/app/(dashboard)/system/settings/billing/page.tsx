@@ -95,18 +95,12 @@ function SuccessBanner() {
   )
 }
 
-function formatModelDisplayName(modelId: string): string {
-  const name = modelId.includes("/") ? modelId.split("/")[1] : modelId
-  return name
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .replace(/(\d) (\d)/g, "$1.$2")
-}
+const PRICING_MARKUP = 1.1
 
 function PricingTable() {
-  const featuredPricing = useQuery(api.modelPricing.getFeaturedPricing)
+  const featuredModels = useQuery(api.modelPricing.listFeaturedModels)
 
-  if (featuredPricing === undefined) {
+  if (featuredModels === undefined) {
     return (
       <div className="flex items-center justify-center py-4">
         <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />
@@ -114,7 +108,7 @@ function PricingTable() {
     )
   }
 
-  if (featuredPricing.length === 0) {
+  if (featuredModels.length === 0) {
     return (
       <p className="text-xs text-content-tertiary py-2">Pricing data not yet available.</p>
     )
@@ -131,11 +125,11 @@ function PricingTable() {
           </tr>
         </thead>
         <tbody className="text-content-secondary">
-          {featuredPricing.map((p: { modelId: string; inputPerMTok: number; outputPerMTok: number }, i: number) => (
-            <tr key={p.modelId} className={i < featuredPricing.length - 1 ? "border-b border-border/50" : ""}>
-              <td className="py-1.5 pr-4 text-content-primary">{formatModelDisplayName(p.modelId)}</td>
-              <td className="text-right py-1.5 px-4">${p.inputPerMTok.toFixed(2)}</td>
-              <td className="text-right py-1.5 pl-4">${p.outputPerMTok.toFixed(2)}</td>
+          {featuredModels.map((m: { struereId: string; displayName: string; inputPerMTok: number; outputPerMTok: number }, i: number) => (
+            <tr key={m.struereId} className={i < featuredModels.length - 1 ? "border-b border-border/50" : ""}>
+              <td className="py-1.5 pr-4 text-content-primary">{m.displayName}</td>
+              <td className="text-right py-1.5 px-4">${(Math.round(m.inputPerMTok * PRICING_MARKUP * 100) / 100).toFixed(2)}</td>
+              <td className="text-right py-1.5 pl-4">${(Math.round(m.outputPerMTok * PRICING_MARKUP * 100) / 100).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>
