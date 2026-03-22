@@ -81,7 +81,7 @@ export const getCurrent = query({
       return user
     }
 
-    return { ...user, role: membership.role }
+    return { ...user, role: membership.role, allowDevAccess: membership.allowDevAccess }
   },
 })
 
@@ -98,11 +98,44 @@ export const list = query({
       memberships.map(async (membership) => {
         const user = await ctx.db.get(membership.userId)
         if (!user || user.deletedAt) return null
-        return { ...user, role: membership.role }
+        return { ...user, role: membership.role, allowDevAccess: membership.allowDevAccess }
       })
     )
 
     return users.filter((u): u is NonNullable<typeof u> => u !== null)
+  },
+})
+
+export const setDevAccess = mutation({
+  args: {
+    userId: v.id("users"),
+    allowDevAccess: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const admin = await isOrgAdmin(ctx, {
+      userId: auth.userId,
+      organizationId: auth.organizationId,
+    })
+    if (!admin) {
+      throw new Error("Admin access required")
+    }
+
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", auth.organizationId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("User not found in organization")
+    }
+
+    await ctx.db.patch(membership._id, {
+      allowDevAccess: args.allowDevAccess,
+      updatedAt: Date.now(),
+    })
   },
 })
 
