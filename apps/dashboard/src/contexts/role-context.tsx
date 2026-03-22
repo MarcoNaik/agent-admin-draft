@@ -2,6 +2,7 @@
 
 import { createContext, useContext, ReactNode } from "react"
 import { useCurrentRole, UserRole } from "@/hooks/use-current-role"
+import { useCurrentUser } from "@/hooks/use-users"
 import { Id } from "@convex/_generated/dataModel"
 
 interface RoleContextValue {
@@ -10,12 +11,14 @@ interface RoleContextValue {
   userId: Id<"users"> | null
   isOrgAdmin: boolean
   isAdmin: boolean
+  hasDevAccess: boolean
 }
 
 const RoleContext = createContext<RoleContextValue | null>(null)
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const { role, isOrgAdmin, isLoading, userId } = useCurrentRole()
+  const currentUser = useCurrentUser()
 
   const value: RoleContextValue = {
     role,
@@ -23,6 +26,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     userId,
     isOrgAdmin,
     isAdmin: isOrgAdmin,
+    hasDevAccess: isOrgAdmin || currentUser?.allowDevAccess === true,
   }
 
   return (
@@ -41,6 +45,7 @@ export function useRoleContext(): RoleContextValue {
       userId: null,
       isOrgAdmin: false,
       isAdmin: false,
+      hasDevAccess: false,
     }
   }
   return context

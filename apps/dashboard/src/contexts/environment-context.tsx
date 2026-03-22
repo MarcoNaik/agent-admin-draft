@@ -22,7 +22,7 @@ const EnvironmentContext = createContext<EnvironmentContextValue | null>(null)
 
 export function EnvironmentProvider({ children }: { children: ReactNode }) {
   const [environment, setEnvironmentState] = useState<Environment>(getStoredEnvironment)
-  const { isAdmin } = useRoleContext()
+  const { isAdmin, hasDevAccess } = useRoleContext()
 
   useEffect(() => {
     const stored = getStoredEnvironment()
@@ -36,7 +36,7 @@ export function EnvironmentProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, env)
   }, [])
 
-  const resolvedEnvironment: Environment = isAdmin ? environment : "production"
+  const resolvedEnvironment: Environment = (isAdmin || hasDevAccess) ? environment : "production"
 
   return (
     <EnvironmentContext.Provider value={{ environment: resolvedEnvironment, setEnvironment }}>
