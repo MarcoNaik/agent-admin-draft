@@ -7,7 +7,12 @@ import { parseModelId } from "./providers"
 
 const BUILTIN_PREFIXES = ["entity", "event", "agent", "calendar", "whatsapp", "airtable", "email", "web", "payment"]
 
-export function createModel(modelId: string, apiKey: string, tier: number): LanguageModel {
+export function createModel(
+  modelId: string,
+  apiKey: string,
+  tier: number,
+  openRouterId?: string,
+): LanguageModel {
   if (tier === 1) {
     const { provider, modelName } = parseModelId(modelId)
     switch (provider) {
@@ -28,13 +33,12 @@ export function createModel(modelId: string, apiKey: string, tier: number): Lang
             "X-OpenRouter-Title": "Struere",
           },
         })
-        return openrouter(modelId)
+        return openrouter.chat(modelId)
       }
     }
   }
 
-  const { modelName: routerModelName } = parseModelId(modelId)
-  const openrouterModelId = modelId.startsWith("openrouter/") ? routerModelName : modelId
+  const resolvedId = openRouterId ?? modelId
   const openrouter = createOpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey,
@@ -43,7 +47,7 @@ export function createModel(modelId: string, apiKey: string, tier: number): Lang
       "X-OpenRouter-Title": "Struere",
     },
   })
-  return openrouter(openrouterModelId)
+  return openrouter.chat(resolvedId)
 }
 
 export function sanitizeToolName(name: string): string {
