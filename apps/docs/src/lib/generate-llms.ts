@@ -116,4 +116,221 @@ export function generateLlmsFullTxt(): string {
   return sections.join("\n")
 }
 
+export function generateWorkspaceContext(): string {
+  return `# Struere Workspace
+
+> This is a Struere workspace project. You define agents, data types, roles, triggers, and custom tools here. The CLI syncs them to the Convex backend.
+
+## Agent Usage
+
+If you are an AI coding agent (Claude Code, Cursor, Copilot, etc.), use these patterns:
+
+**Auth**: Set \`STRUERE_API_KEY\` environment variable (no browser login needed)
+
+**Sync**: Use \`struere sync\` instead of \`struere dev\` — it syncs once and exits (no watch loop)
+\`\`\`bash
+struere sync              # sync to development + eval, then exit
+struere sync --json       # machine-readable JSON output
+struere sync --env production  # sync to production
+struere sync --force      # skip deletion confirmations
+\`\`\`
+
+**Deploy**: \`struere deploy --force\` skips confirmation prompts
+
+**JSON output**: Most commands support \`--json\` for structured output:
+\`\`\`bash
+struere data list <type> --json
+struere status --json
+struere deploy --json --force
+\`\`\`
+
+**Non-interactive mode** is auto-detected when \`STRUERE_API_KEY\` is set or stdout is not a TTY. In this mode, all confirmation prompts are auto-accepted and spinners are replaced with plain text.
+
+**Exit codes**: All commands exit \`0\` on success, \`1\` on error. Check \`$?\` after execution.
+
+{{PROJECT_CONTEXT}}
+
+## Project Structure
+
+\`\`\`
+agents/              # Agent definitions (one file per agent)
+entity-types/        # Data type schemas (like DB tables)
+roles/               # RBAC roles with policies, scope rules, field masks
+triggers/            # Automation rules (react to entity changes)
+tools/index.ts       # Custom tools shared by all agents
+evals/*.eval.yaml    # Test suites for agent evaluation
+fixtures/*.fixture.yaml # Test data for eval environment
+struere.json         # Organization config (auto-generated)
+\`\`\`
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| \`struere sync\` | One-shot sync to Convex and exit (agent-friendly) |
+| \`struere dev\` | Watch files and sync to Convex on save |
+| \`struere deploy\` | Push development config to production |
+| \`struere add agent\\|data-type\\|role\\|trigger\\|eval\\|fixture <name>\` | Scaffold a new resource |
+| \`struere status\` | Compare local vs remote state |
+| \`struere pull\` | Download remote resources to local files |
+| \`struere data types\` | List data types in an environment |
+| \`struere data list <type>\` | List records (supports \`--status\`, \`--limit\`, \`--json\`) |
+| \`struere data get <id>\` | Get record details |
+| \`struere data create <type>\` | Create record (interactive or \`--data <json>\`) |
+| \`struere data update <id>\` | Update record (\`--data <json>\`, \`--status\`) |
+| \`struere data delete <id>\` | Delete record (with confirmation) |
+| \`struere data search <type> <query>\` | Search records by text |
+| \`struere eval run <suite>\` | Run an eval suite and write Markdown results |
+| \`struere eval run <suite> --case <name>\` | Run specific case(s) by name |
+| \`struere eval run <suite> --tag <tag>\` | Run cases matching a tag |
+| \`struere compile-prompt <agent-slug>\` | Compile and preview an agent's system prompt after template processing |
+| \`struere run-tool <agent-slug> <tool-name>\` | Run a tool as it would execute during a real agent conversation |
+| \`struere templates list\` | List WhatsApp message templates |
+| \`struere templates create <name>\` | Create a template (\`--components <json>\` or \`--file <path>\`) |
+| \`struere templates delete <name>\` | Delete a template (with confirmation) |
+| \`struere templates status <name>\` | Check template approval status |
+| \`struere docs\` | Regenerate this file |
+
+## Key Patterns
+
+- **Imports**: \`import { defineAgent, defineData, defineRole, defineTrigger, defineTools } from 'struere'\`
+- **Default model**: \`xai/grok-4-1-fast\` (OpenRouter format: \`provider/model-name\`). Also supports \`anthropic\`, \`openai\`, \`google\`
+- **Scope rule values**: \`actor.userId\`, \`actor.entityId\`, \`actor.organizationId\`, \`actor.relatedIds:TYPE\`, \`literal:VALUE\`
+- **Policy actions**: \`create\`, \`read\`, \`update\`, \`delete\`, \`list\` (deny overrides allow)
+- **Entity link/unlink params**: \`fromId\`, \`toId\`, \`relationType\`
+- **Trigger template vars**: \`{{trigger.entityId}}\`, \`{{trigger.data.X}}\`, \`{{steps.NAME.X}}\`
+
+## Dynamic System Prompts
+
+System prompts are **not static strings** — they are templates evaluated at runtime before every LLM call. This is one of the most powerful features in Struere because it enables completely different agent behavior depending on conditions, live data, and even other agents' responses.
+
+### Template Variables
+Simple variable substitution: \`{{agentName}}\`, \`{{organizationName}}\`, \`{{currentTime}}\`, \`{{entityTypes}}\`, \`{{roles}}\`, \`{{message}}\`, \`{{thread.metadata.X}}\`
+
+### Embedded Queries (Function Calls)
+Pull live data from the database directly into the system prompt:
+\`\`\`
+{{entity.query({"type": "customer", "limit": 5})}}
+{{entity.get({"id": "ent_123"})}}
+\`\`\`
+This means the agent always sees the latest data — no stale context.
+
+### Custom Tools in Prompts
+Since custom tools can run arbitrary logic, you can create tools specifically to generate dynamic prompt sections. A custom tool can fetch external APIs, compute conditions, aggregate data, or format context — and its output gets embedded into the system prompt at runtime.
+
+### Agent-to-Agent in Prompts
+You can even use \`agent.chat\` in the template to have another agent's response injected into the system prompt. This enables patterns like a "context agent" that summarizes relevant info before the main agent starts reasoning.
+
+For full template syntax: [System Prompt Templates](${BASE_URL}/tools/system-prompt-templates.md)
+
+## WhatsApp Template Management
+
+WhatsApp message templates are required for outbound messages outside the 24-hour messaging window. Struere supports full template lifecycle management.
+
+### Template Actions
+
+| Action | Description |
+|--------|-------------|
+| \`whatsappActions.listTemplates\` | List all templates for a connection |
+| \`whatsappActions.createTemplate\` | Create a new template on Meta |
+| \`whatsappActions.deleteTemplate\` | Delete a template from Meta |
+| \`whatsappActions.getTemplateStatus\` | Check approval status of a template |
+
+### Template Categories
+
+- **UTILITY**: transactional updates (order confirmations, reminders)
+- **MARKETING**: promotional content
+- **AUTHENTICATION**: OTP/verification codes
+
+### Template Components
+
+- **HEADER** (optional): TEXT, IMAGE, VIDEO, or DOCUMENT
+- **BODY** (required): main message text with \`{{named_params}}\` or \`{{1}}\` positional
+- **FOOTER** (optional): short text, no variables
+- **BUTTONS** (optional): QUICK_REPLY, URL, PHONE_NUMBER (do not interleave QUICK_REPLY with URL/PHONE_NUMBER)
+
+Use \`parameter_format: "NAMED"\` with \`{{param_name}}\` variables (recommended over positional). Include examples when variables appear in HEADER or BODY.
+
+### Status Flow
+
+\`PENDING\` → \`APPROVED\` | \`REJECTED\` | \`PAUSED\`
+
+For details: [WhatsApp Integration](${BASE_URL}/integrations/whatsapp.md)
+
+## Multi-Agent Communication (agent.chat)
+
+The \`agent.chat\` tool lets agents delegate work to other agents. This is a core building block for complex systems:
+
+- **Orchestrator pattern**: A coordinator agent routes tasks to specialist agents based on the request
+- **Trigger actions**: Use \`agent.chat\` inside trigger action pipelines to have an agent reason about entity changes
+- **Chained delegation**: Agents can call other agents up to 3 levels deep (A→B→C), with cycle detection
+- **Isolated execution**: Each agent runs its own LLM loop with its own system prompt, tools, and permissions
+
+\`\`\`typescript
+// Orchestrator that delegates to specialists
+tools: ["agent.chat", "entity.query"]
+// In trigger actions:
+{ tool: "agent.chat", args: { agent: "billing-agent", message: "Process refund for {{trigger.data.orderId}}" } }
+\`\`\`
+
+For details: [Agents](${BASE_URL}/platform/agents.md)
+
+## Best Practices
+
+- **Keep tools under 10 per agent.** Agents perform significantly worse when they have too many tools to choose from. If an agent needs more, split it into specialist agents and use \`agent.chat\` to orchestrate
+- **Always ask the user before making assumptions.** The user may not be technical — help them accomplish what they want by asking the right questions and offering clear options
+- **Always check the documentation before making changes.** Fetch the relevant doc link below to verify the correct API, field names, and patterns. Do not guess — wrong field names or patterns will cause silent failures
+- **Use \`struere sync\` to validate changes.** Run after editing files to sync to Convex. Use \`struere dev\` for continuous watch mode during manual development
+- **Test with evals.** Write eval suites to catch regressions in agent behavior (\`struere add eval <name>\`)
+
+## Documentation
+
+Fetch these URLs for detailed documentation on each topic:
+
+### SDK
+- [SDK Overview](${BASE_URL}/sdk/overview.md)
+- [defineAgent](${BASE_URL}/sdk/define-agent.md)
+- [defineData](${BASE_URL}/sdk/define-data.md)
+- [defineRole](${BASE_URL}/sdk/define-role.md)
+- [defineTrigger](${BASE_URL}/sdk/define-trigger.md)
+- [defineTools](${BASE_URL}/sdk/define-tools.md)
+
+### Tools
+- [Built-in Tools](${BASE_URL}/tools/built-in-tools.md)
+- [Custom Tools](${BASE_URL}/tools/custom-tools.md)
+- [System Prompt Templates](${BASE_URL}/tools/system-prompt-templates.md)
+
+### Platform
+- [Data](${BASE_URL}/platform/data.md)
+- [Permissions](${BASE_URL}/platform/permissions.md)
+- [Agents](${BASE_URL}/platform/agents.md)
+- [Events](${BASE_URL}/platform/events.md)
+- [Triggers](${BASE_URL}/platform/triggers.md)
+- [Environment Isolation](${BASE_URL}/platform/environment-isolation.md)
+- [Evaluations](${BASE_URL}/platform/evals.md)
+
+### CLI
+- [CLI Overview](${BASE_URL}/cli/overview.md)
+- [struere init](${BASE_URL}/cli/init.md)
+- [struere sync](${BASE_URL}/cli/sync.md)
+- [struere dev](${BASE_URL}/cli/dev.md)
+- [struere add](${BASE_URL}/cli/add.md)
+- [struere deploy](${BASE_URL}/cli/deploy.md)
+- [struere eval run](${BASE_URL}/cli/eval.md)
+- [struere compile-prompt](${BASE_URL}/cli/compile-prompt.md)
+- [struere run-tool](${BASE_URL}/cli/run-tool.md)
+- [struere templates](${BASE_URL}/cli/templates.md)
+
+### API & Integrations
+- [Chat API](${BASE_URL}/api/chat.md)
+- [Webhooks](${BASE_URL}/api/webhooks.md)
+- [WhatsApp Integration](${BASE_URL}/integrations/whatsapp.md)
+
+### Reference
+- [Project Structure](${BASE_URL}/reference/project-structure.md)
+- [Model Configuration](${BASE_URL}/reference/model-configuration.md)
+
+Full docs: ${BASE_URL}/llms-full.txt`
+}
+
 export { API_QUICK_START }
