@@ -3,58 +3,47 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createXai } from "@ai-sdk/xai"
 import type { LanguageModel, ModelMessage } from "ai"
+import { parseModelId } from "./providers"
 
-interface ModelConfig {
-  provider: string
-  name: string
-  temperature?: number
-  maxTokens?: number
-}
+const BUILTIN_PREFIXES = ["entity", "event", "agent", "calendar", "whatsapp", "airtable", "email", "web", "payment"]
 
-const BUILTIN_PREFIXES = ["entity", "event", "agent", "calendar", "whatsapp", "airtable", "email"]
-
-export function createModel(config: ModelConfig, apiKeyOverride?: string): LanguageModel {
-  switch (config.provider) {
-    case "anthropic": {
-      const apiKey = apiKeyOverride ?? process.env.ANTHROPIC_API_KEY
-      if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured")
-      const provider = createAnthropic({ apiKey })
-      return provider(config.name)
+export function createModel(modelId: string, apiKey: string, tier: number): LanguageModel {
+  if (tier === 1) {
+    const { provider, modelName } = parseModelId(modelId)
+    switch (provider) {
+      case "anthropic":
+        return createAnthropic({ apiKey })(modelName)
+      case "openai":
+        return createOpenAI({ apiKey })(modelName)
+      case "google":
+        return createGoogleGenerativeAI({ apiKey })(modelName)
+      case "xai":
+        return createXai({ apiKey })(modelName)
+      default: {
+        const openrouter = createOpenAI({
+          baseURL: "https://openrouter.ai/api/v1",
+          apiKey,
+          headers: {
+            "HTTP-Referer": "https://struere.dev",
+            "X-OpenRouter-Title": "Struere",
+          },
+        })
+        return openrouter(modelId)
+      }
     }
-    case "openai": {
-      const apiKey = apiKeyOverride ?? process.env.OPENAI_API_KEY
-      if (!apiKey) throw new Error("OPENAI_API_KEY not configured")
-      const provider = createOpenAI({ apiKey })
-      return provider(config.name)
-    }
-    case "google": {
-      const apiKey = apiKeyOverride ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
-      if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY not configured")
-      const provider = createGoogleGenerativeAI({ apiKey })
-      return provider(config.name)
-    }
-    case "xai": {
-      const apiKey = apiKeyOverride ?? process.env.XAI_API_KEY
-      if (!apiKey) throw new Error("XAI_API_KEY not configured")
-      const provider = createXai({ apiKey })
-      return provider(config.name)
-    }
-    case "openrouter": {
-      const apiKey = apiKeyOverride ?? process.env.OPENROUTER_API_KEY
-      if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured")
-      const provider = createOpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
-        apiKey,
-        headers: {
-          "HTTP-Referer": "https://struere.dev",
-          "X-OpenRouter-Title": "Struere",
-        },
-      })
-      return provider(config.name)
-    }
-    default:
-      throw new Error(`Unsupported model provider: ${config.provider}`)
   }
+
+  const { modelName: routerModelName } = parseModelId(modelId)
+  const openrouterModelId = modelId.startsWith("openrouter/") ? routerModelName : modelId
+  const openrouter = createOpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey,
+    headers: {
+      "HTTP-Referer": "https://struere.dev",
+      "X-OpenRouter-Title": "Struere",
+    },
+  })
+  return openrouter(openrouterModelId)
 }
 
 export function sanitizeToolName(name: string): string {
@@ -152,7 +141,7 @@ export function toAIMessages(messages: InternalMessage[]): ModelMessage[] {
   return result
 }
 
-const TOOL_CALL_PATTERN = /^(?:entity|event|calendar|whatsapp|agent)[._](?:create|get|query|update|delete|link|unlink|emit|list|freeBusy|send|sendTemplate|sendInteractive|sendMedia|listTemplates|getConversation|getStatus|chat)\b/i
+const TOOL_CALL_PATTERN = /^(?:entity|event|calendar|whatsapp|agent|airtable|email|web|payment)[._](?:create|get|query|update|delete|link|unlink|emit|list|freeBusy|send|sendTemplate|sendInteractive|sendMedia|listTemplates|getConversation|getStatus|chat|listBases|listTables|listRecords|getRecord|createRecords|updateRecords|deleteRecords|search|fetch)\b/i
 
 export function cleanToolCallText(text: string): string {
   const lines = text.split("\n")
