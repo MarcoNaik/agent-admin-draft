@@ -31,3 +31,7 @@ export function useDeleteAgent() {
 export function useCompileSystemPrompt() {
   return useAction(api.agents.compileSystemPrompt)
 }
+
+export function useRunTool() {
+  return useAction(api.toolTesting.runTool)
+}
