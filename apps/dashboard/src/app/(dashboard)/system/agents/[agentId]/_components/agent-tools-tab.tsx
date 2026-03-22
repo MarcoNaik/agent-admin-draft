@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronDown, ChevronRight, Database, Bell, Code, ExternalLink } from "@/lib/icons"
+import { ChevronDown, ChevronRight, Database, Bell, Code, ExternalLink, Play, Loader2 } from "@/lib/icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useRunTool } from "@/hooks/use-agents"
+import { Id } from "@convex/_generated/dataModel"
 
 interface Tool {
   name: string
@@ -33,41 +35,149 @@ function getToolCategory(name: string): string {
   return "custom"
 }
 
-function ToolItem({ tool }: { tool: Tool }) {
+function generateArgsTemplate(parameters: any): string {
+  if (!parameters?.properties) return "{}"
+  const template: Record<string, unknown> = {}
+  for (const [key, prop] of Object.entries(parameters.properties as Record<string, any>)) {
+    if (prop.type === "string") template[key] = ""
+    else if (prop.type === "number") template[key] = 0
+    else if (prop.type === "boolean") template[key] = false
+    else if (prop.type === "array") template[key] = []
+    else if (prop.type === "object") template[key] = {}
+    else template[key] = null
+  }
+  return JSON.stringify(template, null, 2)
+}
+
+function ToolItem({ tool, agentId, environment }: { tool: Tool; agentId: string; environment: string }) {
   const [expanded, setExpanded] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
+  const [testArgs, setTestArgs] = useState("{}")
+  const [testResult, setTestResult] = useState<any>(null)
+  const [isRunning, setIsRunning] = useState(false)
+  const runTool = useRunTool()
   const category = getToolCategory(tool.name)
   const { icon: Icon, color, bgColor } = TOOL_CATEGORIES[category] ?? TOOL_CATEGORIES.custom
 
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!testOpen) {
+      setTestArgs(generateArgsTemplate(tool.parameters))
+      setTestResult(null)
+    }
+    setTestOpen(!testOpen)
+  }
+
+  const handleRun = async () => {
+    setIsRunning(true)
+    setTestResult(null)
+    try {
+      const parsed = JSON.parse(testArgs)
+      const res = await runTool({
+        agentId: agentId as Id<"agents">,
+        environment: environment as "development" | "production" | "eval",
+        toolName: tool.name,
+        toolArgs: parsed,
+      })
+      setTestResult(res)
+    } catch (err) {
+      setTestResult({ error: true, errorType: "parse_error", message: err instanceof Error ? err.message : "Invalid JSON" })
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
   return (
     <div className="border-b last:border-0">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer"
-      >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
+      <div className="flex items-center">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex-1 flex items-center gap-3 px-4 py-2.5 text-left hover:bg-background-secondary transition-colors ease-out-soft cursor-pointer"
+        >
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
+          )}
+          <div className={cn("p-1 rounded", bgColor)}>
+            <Icon className={cn("h-3 w-3", color)} />
+          </div>
+          <span className="font-mono text-xs text-content-primary">{tool.name}</span>
+          {tool.isBuiltin && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">builtin</Badge>
+          )}
+          {tool.templateOnly && (
+            <Badge variant="amber" className="text-[10px] px-1.5 py-0">template-only</Badge>
+          )}
+          <span className="text-xs text-content-tertiary truncate ml-auto max-w-[40%]">
+            {tool.description}
+          </span>
+        </button>
+        {!tool.templateOnly && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePlayClick}
+            className="shrink-0 mr-2"
+          >
+            <Play className="h-3.5 w-3.5" />
+          </Button>
         )}
-        <div className={cn("p-1 rounded", bgColor)}>
-          <Icon className={cn("h-3 w-3", color)} />
-        </div>
-        <span className="font-mono text-xs text-content-primary">{tool.name}</span>
-        {tool.isBuiltin && (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">builtin</Badge>
-        )}
-        {tool.templateOnly && (
-          <Badge variant="amber" className="text-[10px] px-1.5 py-0">template-only</Badge>
-        )}
-        <span className="text-xs text-content-tertiary truncate ml-auto max-w-[40%]">
-          {tool.description}
-        </span>
-      </button>
+      </div>
       {expanded && tool.parameters && (
         <div className="px-4 pb-3 pl-11">
           <pre className="rounded bg-background-tertiary p-3 text-xs font-mono overflow-x-auto">
             {JSON.stringify(tool.parameters, null, 2)}
           </pre>
+        </div>
+      )}
+      {testOpen && (
+        <div className="px-4 pb-3 pl-11 space-y-3">
+          <textarea
+            value={testArgs}
+            onChange={(e) => setTestArgs(e.target.value)}
+            className="w-full rounded bg-background-tertiary p-3 text-xs font-mono resize-y min-h-[100px] text-content-primary border-0 outline-none"
+            spellCheck={false}
+          />
+          <Button
+            onClick={handleRun}
+            disabled={isRunning}
+            size="sm"
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="h-3.5 w-3.5 mr-1.5" />
+                Run
+              </>
+            )}
+          </Button>
+          {testResult && (
+            <>
+              {testResult.error ? (
+                <div className="rounded border-l-2 border-destructive bg-destructive/5 p-3">
+                  <p className="text-xs font-medium text-destructive">{testResult.errorType}</p>
+                  <p className="text-xs text-content-secondary mt-1">{testResult.message}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-background-tertiary text-content-secondary px-1.5 py-0.5 rounded">{testResult.durationMs}ms</span>
+                    <span className="text-[10px] bg-background-tertiary text-content-secondary px-1.5 py-0.5 rounded">{testResult.identity?.identityMode} mode</span>
+                  </div>
+                  <div className="rounded border-l-2 border-success bg-success/5 p-3">
+                    <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap text-content-primary">
+                      {JSON.stringify(testResult.result, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -76,9 +186,11 @@ function ToolItem({ tool }: { tool: Tool }) {
 
 interface AgentToolsTabProps {
   config: any
+  agentId: string
+  environment: string
 }
 
-export function AgentToolsTab({ config }: AgentToolsTabProps) {
+export function AgentToolsTab({ config, agentId, environment }: AgentToolsTabProps) {
   const tools: Tool[] = config?.tools ?? []
   const [expandAll, setExpandAll] = useState(false)
 
@@ -130,7 +242,7 @@ export function AgentToolsTab({ config }: AgentToolsTabProps) {
       </div>
       <div>
         {tools.map((tool: Tool, index: number) => (
-          <ToolItem key={index} tool={tool} />
+          <ToolItem key={index} tool={tool} agentId={agentId} environment={environment} />
         ))}
       </div>
     </div>
