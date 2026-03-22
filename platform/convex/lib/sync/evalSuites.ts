@@ -8,8 +8,7 @@ export interface EvalSuiteInput {
   description?: string
   tags?: string[]
   judgeModel?: {
-    provider: string
-    name: string
+    model: string
   }
   judgeContext?: string
   judgePrompt?: string

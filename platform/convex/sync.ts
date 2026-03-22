@@ -27,8 +27,7 @@ const agentValidator = v.object({
   }))),
   systemPrompt: v.string(),
   model: v.object({
-    provider: v.string(),
-    name: v.string(),
+    model: v.string(),
     temperature: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
   }),
@@ -93,8 +92,7 @@ const evalSuiteValidator = v.object({
   description: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
   judgeModel: v.optional(v.object({
-    provider: v.string(),
-    name: v.string(),
+    model: v.string(),
   })),
   judgeContext: v.optional(v.string()),
   judgePrompt: v.optional(v.string()),
@@ -594,7 +592,7 @@ export const getPullState = query({
           description: agent.description,
           version: config?.version ?? "0.1.0",
           systemPrompt: config?.systemPrompt ?? "",
-          model: config?.model ?? { provider: "anthropic", name: "claude-haiku-4-5" },
+          model: config?.model ?? { model: "anthropic/claude-haiku-4-5" },
           tools: config?.tools ?? [],
         }
       })
@@ -960,7 +958,7 @@ export const internalGetPullState = internalQuery({
           description: agent.description,
           version: config?.version ?? "0.1.0",
           systemPrompt: config?.systemPrompt ?? "",
-          model: config?.model ?? { provider: "anthropic", name: "claude-haiku-4-5" },
+          model: config?.model ?? { model: "anthropic/claude-haiku-4-5" },
           tools: config?.tools ?? [],
         }
       })

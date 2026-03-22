@@ -42,7 +42,7 @@ export const getPublicAgent = query({
       name: agent.name,
       slug: agent.slug,
       description: agent.description,
-      model: { name: prodConfig.model.name },
+      model: { model: prodConfig.model.model },
       orgName: org.name,
       firstMessageSuggestions: prodConfig.firstMessageSuggestions,
       threadContextParams: prodConfig.threadContextParams,

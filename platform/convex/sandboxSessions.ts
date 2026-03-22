@@ -51,7 +51,7 @@ export const create = mutation({
     }
 
     const now = Date.now()
-    const model = args.model ?? "grok-4-1-fast"
+    const model = args.model ?? "xai/grok-4-1-fast"
     const id = await ctx.db.insert("sandboxSessions", {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -337,19 +337,21 @@ export const checkIdleSessions = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now()
-    const activeStatuses = new Set(["provisioning", "ready", "active", "idle"])
+    const activeStatuses = ["provisioning", "ready", "active", "idle"] as const
 
-    const allSessions = await ctx.db
-      .query("sandboxSessions")
-      .collect()
+    for (const status of activeStatuses) {
+      const sessions = await ctx.db
+        .query("sandboxSessions")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .collect()
 
-    for (const session of allSessions) {
-      if (!activeStatuses.has(session.status)) continue
-      if (now - session.lastActivityAt > session.idleTimeoutMs) {
-        await ctx.db.patch(session._id, {
-          status: "stopped",
-          stoppedAt: now,
-        })
+      for (const session of sessions) {
+        if (now - session.lastActivityAt > session.idleTimeoutMs) {
+          await ctx.db.patch(session._id, {
+            status: "stopped",
+            stoppedAt: now,
+          })
+        }
       }
     }
   },
@@ -386,7 +388,7 @@ export const processUsageEvent = internalMutation({
     const session = await ctx.db.get(args.sessionId)
     if (!session) return
 
-    const model = session.model ?? "grok-4-1-fast"
+    const model = session.model ?? "xai/grok-4-1-fast"
     const cost = calculateCost(model, args.inputTokens, args.outputTokens)
 
     await ctx.db.patch(args.sessionId, {

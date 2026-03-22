@@ -15,8 +15,7 @@ export interface AgentInput {
   }>
   systemPrompt: string
   model: {
-    provider: string
-    name: string
+    model: string
     temperature?: number
     maxTokens?: number
   }
