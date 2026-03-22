@@ -303,3 +303,72 @@ export const migrateOwnerToAdmin = internalMutation({
     return { updated }
   },
 })
+
+import { mutation } from "./_generated/server"
+
+export const run = mutation({
+  args: {},
+  returns: v.object({
+    agentConfigs: v.number(),
+    evalSuites: v.number(),
+    providerConfigsDeleted: v.number(),
+    providerConfigsUpdated: v.number(),
+  }),
+  handler: async (ctx) => {
+    const counts = {
+      agentConfigs: 0,
+      evalSuites: 0,
+      providerConfigsDeleted: 0,
+      providerConfigsUpdated: 0,
+    }
+
+    const agentConfigs = await ctx.db.query("agentConfigs").collect()
+    for (const doc of agentConfigs) {
+      const m = doc.model as Record<string, unknown>
+      if (m.model) continue
+      const provider = m.provider ?? "xai"
+      const name = m.name
+      if (!name) continue
+      await ctx.db.patch(doc._id, {
+        model: {
+          model: `${provider}/${name}`,
+          temperature: m.temperature as number | undefined,
+          maxTokens: m.maxTokens as number | undefined,
+        },
+      })
+      counts.agentConfigs++
+    }
+
+    const evalSuites = await ctx.db.query("evalSuites").collect()
+    for (const doc of evalSuites) {
+      if (!doc.judgeModel) continue
+      const jm = doc.judgeModel as Record<string, unknown>
+      if (jm.model) continue
+      const provider = jm.provider ?? "xai"
+      const name = jm.name
+      if (!name) continue
+      await ctx.db.patch(doc._id, {
+        judgeModel: {
+          model: `${provider}/${name}`,
+        },
+      })
+      counts.evalSuites++
+    }
+
+    const providerConfigs = await ctx.db.query("providerConfigs").collect()
+    for (const doc of providerConfigs) {
+      const mode = (doc as unknown as Record<string, unknown>).mode as string | undefined
+      if (mode === "platform" && !doc.apiKey) {
+        await ctx.db.delete(doc._id)
+        counts.providerConfigsDeleted++
+      } else {
+        await ctx.db.patch(doc._id, {
+          mode: undefined,
+        } as Record<string, unknown>)
+        counts.providerConfigsUpdated++
+      }
+    }
+
+    return counts
+  },
+})
