@@ -3,10 +3,10 @@ import { query, mutation, action, internalQuery, internalMutation, MutationCtx }
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
 import { requireAuth, requireOrgAdmin } from "./lib/auth"
-import { estimateMaxCost } from "./lib/creditPricing"
 
 const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
 const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
+const updateKeyLimitRef = makeFunctionReference<"action">("orgKeys:updateKeyLimit")
 
 function formatMicrodollars(microdollars: number): string {
   const dollars = microdollars / 1_000_000
@@ -43,7 +43,7 @@ export const getBalance = query({
       .first()
 
     return {
-      balance: (balance?.balance ?? 0) - (balance?.reservedCredits ?? 0),
+      balance: balance?.balance ?? 0,
       updatedAt: balance?.updatedAt ?? Date.now(),
     }
   },
@@ -74,119 +74,7 @@ export const getBalanceInternal = internalQuery({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first()
 
-    return (balance?.balance ?? 0) - (balance?.reservedCredits ?? 0)
-  },
-})
-
-export const reserveCredits = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    model: v.string(),
-    maxTokens: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const balanceDoc = await ctx.db
-      .query("creditBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first()
-
-    const modelPricing = await ctx.db
-      .query("modelPricing")
-      .withIndex("by_model", (q) => q.eq("modelId", args.model))
-      .unique()
-
-    let estimatedCost: number
-    if (modelPricing) {
-      const MARKUP = 1.1
-      const inputCost = modelPricing.inputPerMTok * MARKUP
-      const outputCost = modelPricing.outputPerMTok * MARKUP
-      const maxTokens = args.maxTokens ?? 4096
-      const costUsd = (10000 * inputCost + maxTokens * 10 * outputCost) / 1_000_000
-      estimatedCost = Math.round(costUsd * 1_000_000) * 3
-    } else {
-      estimatedCost = estimateMaxCost(args.model, args.maxTokens)
-    }
-
-    if (!balanceDoc) {
-      await ctx.db.insert("creditBalances", {
-        organizationId: args.organizationId,
-        balance: 0,
-        reservedCredits: 0,
-        updatedAt: Date.now(),
-      })
-      throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
-    }
-
-    const effectiveBalance = balanceDoc.balance - (balanceDoc.reservedCredits ?? 0)
-
-    if (effectiveBalance < estimatedCost) {
-      throw new Error("Insufficient credits. Please add credits to your account to continue using platform API keys.")
-    }
-
-    const startOfDay = new Date()
-    startOfDay.setUTCHours(0, 0, 0, 0)
-    const startOfDayMs = startOfDay.getTime()
-
-    const todayTransactions = await ctx.db
-      .query("creditTransactions")
-      .withIndex("by_org_created", (q) =>
-        q.eq("organizationId", args.organizationId).gte("createdAt", startOfDayMs)
-      )
-      .collect()
-
-    const dailySpend = todayTransactions
-      .filter((tx) => tx.type === "deduction")
-      .reduce((sum, tx) => sum + tx.amount, 0)
-
-    const dailyLimit = balanceDoc.dailyLimit ?? 50_000_000
-
-    if (dailySpend + (balanceDoc.reservedCredits ?? 0) >= dailyLimit) {
-      throw new Error("Daily spending limit reached. Contact support to increase your limit.")
-    }
-
-    await ctx.db.patch(balanceDoc._id, {
-      reservedCredits: (balanceDoc.reservedCredits ?? 0) + estimatedCost,
-      updatedAt: Date.now(),
-    })
-
-    return estimatedCost
-  },
-})
-
-export const consumeReservation = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    reservedAmount: v.number(),
-    actualCost: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const balanceDoc = await ctx.db
-      .query("creditBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first()
-    if (!balanceDoc) return
-    await ctx.db.patch(balanceDoc._id, {
-      reservedCredits: Math.max(0, (balanceDoc.reservedCredits ?? 0) - args.reservedAmount),
-      updatedAt: Date.now(),
-    })
-  },
-})
-
-export const releaseReservation = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    reservedAmount: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const balanceDoc = await ctx.db
-      .query("creditBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first()
-    if (!balanceDoc) return
-    await ctx.db.patch(balanceDoc._id, {
-      reservedCredits: Math.max(0, (balanceDoc.reservedCredits ?? 0) - args.reservedAmount),
-      updatedAt: Date.now(),
-    })
+    return balance?.balance ?? 0
   },
 })
 
@@ -232,6 +120,11 @@ export const deductCredits = internalMutation({
       executionId: args.executionId,
       metadata: args.metadata,
       createdAt: Date.now(),
+    })
+
+    await ctx.scheduler.runAfter(0, updateKeyLimitRef, {
+      organizationId: args.organizationId,
+      newBalanceMicrodollars: newBalance,
     })
 
     if (args.costDriver) {
@@ -303,6 +196,84 @@ export const deductCredits = internalMutation({
 })
 
 
+export const recordCostRollup = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    amount: v.number(),
+    model: v.string(),
+    agentId: v.optional(v.string()),
+    channel: v.optional(v.string()),
+    actorId: v.optional(v.string()),
+    costDriver: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const driver = args.costDriver ?? "llm"
+    const now = new Date()
+    const dayKey = now.toISOString().slice(0, 10)
+    const monthKey = now.toISOString().slice(0, 7)
+
+    for (const [periodType, period] of [["day", dayKey], ["month", monthKey]] as const) {
+      const existing = await ctx.db
+        .query("costRollups")
+        .withIndex("by_org_period", (q) =>
+          q.eq("organizationId", args.organizationId).eq("periodType", periodType).eq("period", period)
+        )
+        .first()
+
+      if (existing) {
+        const byAgent = (existing.byAgent ?? {}) as Record<string, number>
+        const byChannel = (existing.byChannel ?? {}) as Record<string, number>
+        const byDriver = (existing.byDriver ?? {}) as Record<string, number>
+        const byActor = (existing.byActor ?? {}) as Record<string, number>
+        const byModel = (existing.byModel ?? {}) as Record<string, number>
+
+        if (args.agentId) byAgent[args.agentId] = (byAgent[args.agentId] ?? 0) + args.amount
+        if (args.channel) byChannel[args.channel] = (byChannel[args.channel] ?? 0) + args.amount
+        byDriver[driver] = (byDriver[driver] ?? 0) + args.amount
+        if (args.actorId) byActor[args.actorId] = (byActor[args.actorId] ?? 0) + args.amount
+        byModel[args.model] = (byModel[args.model] ?? 0) + args.amount
+
+        await ctx.db.patch(existing._id, {
+          totalCost: existing.totalCost + args.amount,
+          totalCount: existing.totalCount + 1,
+          byAgent,
+          byChannel,
+          byDriver,
+          byActor,
+          byModel,
+          updatedAt: Date.now(),
+        })
+      } else {
+        const byAgent: Record<string, number> = {}
+        const byChannel: Record<string, number> = {}
+        const byDriver: Record<string, number> = {}
+        const byActor: Record<string, number> = {}
+        const byModel: Record<string, number> = {}
+
+        if (args.agentId) byAgent[args.agentId] = args.amount
+        if (args.channel) byChannel[args.channel] = args.amount
+        byDriver[driver] = args.amount
+        if (args.actorId) byActor[args.actorId] = args.amount
+        byModel[args.model] = args.amount
+
+        await ctx.db.insert("costRollups", {
+          organizationId: args.organizationId,
+          period,
+          periodType,
+          totalCost: args.amount,
+          totalCount: 1,
+          byAgent,
+          byChannel,
+          byDriver,
+          byActor,
+          byModel,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+  },
+})
+
 export const reconcileBalances = internalMutation({
   handler: async (ctx) => {
     const unprocessed = await ctx.db
@@ -359,6 +330,11 @@ export const addCredits = mutation({
       description: args.description ?? "Manual credit addition",
       createdBy: auth.userId,
       createdAt: Date.now(),
+    })
+
+    await ctx.scheduler.runAfter(0, updateKeyLimitRef, {
+      organizationId: auth.organizationId,
+      newBalanceMicrodollars: newBalance,
     })
 
     return newBalance
@@ -513,6 +489,11 @@ export const addCreditsFromPolar = internalMutation({
       createdAt: Date.now(),
     })
 
+    await ctx.scheduler.runAfter(0, updateKeyLimitRef, {
+      organizationId: org._id,
+      newBalanceMicrodollars: newBalance,
+    })
+
     if (args.polarCustomerId && !org.polarCustomerId) {
       await ctx.db.patch(org._id, { polarCustomerId: args.polarCustomerId })
     }
@@ -549,25 +530,11 @@ export const seedWelcomeCredits = internalMutation({
       description: "Welcome credits",
       createdAt: Date.now(),
     })
-  },
-})
 
-export const cleanupStaleReservations = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000
-    const balances = await ctx.db.query("creditBalances").take(500)
-    let cleaned = 0
-    for (const bal of balances) {
-      if ((bal.reservedCredits ?? 0) > 0 && bal.updatedAt < fifteenMinutesAgo) {
-        await ctx.db.patch(bal._id, {
-          reservedCredits: 0,
-          updatedAt: Date.now(),
-        })
-        cleaned++
-      }
-    }
-    return cleaned
+    await ctx.scheduler.runAfter(0, updateKeyLimitRef, {
+      organizationId: args.organizationId,
+      newBalanceMicrodollars: newBalance,
+    })
   },
 })
 
