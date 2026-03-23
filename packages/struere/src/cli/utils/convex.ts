@@ -835,6 +835,136 @@ export async function runTool(options: RunToolOptions): Promise<{ result?: RunTo
   return { error: `Unexpected response: ${text}` }
 }
 
+export interface ChatOptions {
+  slug: string
+  message: string
+  threadId?: string
+  environment: 'development' | 'production' | 'eval'
+  organizationId?: string
+  channel?: string
+  signal?: AbortSignal
+}
+
+export interface ChatResult {
+  message: string
+  threadId: string
+  usage: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+  }
+}
+
+export async function chatWithAgent(options: ChatOptions): Promise<{ result?: ChatResult; error?: string }> {
+  const credentials = loadCredentials()
+  const apiKey = getApiKey()
+
+  if (apiKey && !credentials?.token) {
+    const siteUrl = getSiteUrl()
+    try {
+      const response = await fetch(`${siteUrl}/v1/agents/${options.slug}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          message: options.message,
+          threadId: options.threadId,
+          environment: options.environment,
+          channel: options.channel || 'api',
+        }),
+        signal: options.signal || AbortSignal.timeout(120000),
+      })
+
+      const text = await response.text()
+
+      let json: Record<string, unknown>
+      try {
+        json = JSON.parse(text)
+      } catch {
+        return { error: text || `HTTP ${response.status}` }
+      }
+
+      if (!response.ok) {
+        return { error: (json.error as string) || text }
+      }
+
+      return { result: json as unknown as ChatResult }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'TimeoutError') {
+        return { error: 'Request timed out after 120s' }
+      }
+      return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
+  if (credentials?.sessionId) {
+    await refreshToken()
+  }
+
+  const freshCredentials = loadCredentials()
+  const token = apiKey || freshCredentials?.token
+
+  if (!token) {
+    return { error: 'Not authenticated' }
+  }
+
+  try {
+    const response = await fetch(`${CONVEX_URL}/api/action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        path: 'chat:sendBySlug',
+        args: {
+          slug: options.slug,
+          message: options.message,
+          threadId: options.threadId,
+          environment: options.environment,
+          channel: options.channel || 'api',
+        },
+      }),
+      signal: options.signal || AbortSignal.timeout(120000),
+    })
+
+    const text = await response.text()
+
+    let json: { status?: string; value?: ChatResult | null; errorMessage?: string; errorData?: { message?: string } }
+    try {
+      json = JSON.parse(text)
+    } catch {
+      return { error: text || `HTTP ${response.status}` }
+    }
+
+    if (!response.ok) {
+      const msg = json.errorData?.message || json.errorMessage || text
+      return { error: msg }
+    }
+
+    if (json.status === 'success' && json.value) {
+      return { result: json.value }
+    }
+
+    if (json.status === 'success' && json.value === null) {
+      return { error: `Agent not found or no config for environment: ${options.environment}` }
+    }
+
+    if (json.status === 'error') {
+      return { error: json.errorData?.message || json.errorMessage || 'Unknown error from Convex' }
+    }
+
+    return { error: `Unexpected response: ${text}` }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { error: 'Request timed out after 120s' }
+    }
+    return { error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+  }
+}
+
 export async function getPullState(
   organizationId?: string,
   environment: 'development' | 'production' | 'eval' = 'development'

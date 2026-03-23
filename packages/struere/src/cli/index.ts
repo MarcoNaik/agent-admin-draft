@@ -18,6 +18,7 @@ import { templatesCommand } from './commands/templates'
 import { integrationCommand } from './commands/integration'
 import { compilePromptCommand } from './commands/compile-prompt'
 import { runToolCommand } from './commands/run-tool'
+import { chatCommand } from './commands/chat'
 import pkg from '../../package.json'
 
 const CURRENT_VERSION = pkg.version
@@ -79,5 +80,6 @@ program.addCommand(templatesCommand)
 program.addCommand(integrationCommand)
 program.addCommand(compilePromptCommand)
 program.addCommand(runToolCommand)
+program.addCommand(chatCommand)
 
 program.parse()
