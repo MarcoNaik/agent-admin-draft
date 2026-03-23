@@ -157,6 +157,32 @@ const translations = {
     managedIncludes: "Studio, deployed agents, and testing \u2014 all included.",
     tableFooter: "40+ models supported.",
   },
+  faq: {
+    title: "Frequently asked questions.",
+    subtitle: "Everything you need to know about Struere.",
+    items: [
+      {
+        question: "What is Struere?",
+        answer: "Struere is an AI agent platform for business automation. You describe what your business needs in natural language, and Struere builds AI agents that handle customer support, appointments, payments, and more \u2014 complete with a database, integrations, and multi-agent orchestration.",
+      },
+      {
+        question: "Is Struere free?",
+        answer: "Yes. Struere\u2019s platform is free forever when you bring your own API keys. You get unlimited agents, WhatsApp and Calendar integrations, the full developer toolkit, and no platform fees. You can also buy credits to skip API key setup.",
+      },
+      {
+        question: "What integrations does Struere support?",
+        answer: "Struere integrates with WhatsApp Business, Google Calendar, Airtable, email via Resend, and payment processing via Flow. It supports 40+ LLM models including GPT, Claude, Gemini, and Grok.",
+      },
+      {
+        question: "How does multi-agent orchestration work?",
+        answer: "Agents can communicate with each other using the agent.chat tool. You can build teams of specialized agents \u2014 for example, one handles orders while another manages inventory. Struere handles depth limits, cycle detection, and shared conversation context automatically.",
+      },
+      {
+        question: "Do I need to code?",
+        answer: "No. You can build and deploy agents entirely from the browser using Studio. For developers, Struere also offers a CLI and SDK for defining agents, data types, roles, and triggers in code.",
+      },
+    ],
+  },
   cta: {
     title: "Build your first agent.",
     subtitle: "Describe what you need. It gets built.",
