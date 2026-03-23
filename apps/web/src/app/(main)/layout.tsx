@@ -1,3 +1,4 @@
+import Script from "next/script"
 import { Providers } from "@/components/providers"
 
 export default function MainLayout({
@@ -8,10 +9,9 @@ export default function MainLayout({
   return (
     <Providers>
       {children}
-      <script
+      <Script
         src="https://app.struere.dev/embed/widget.js?org=struere-support-1771842295&agent=struere-customer-service&theme=dark&accent=%231B4F72"
-        async
-        defer
+        strategy="afterInteractive"
       />
     </Providers>
   )

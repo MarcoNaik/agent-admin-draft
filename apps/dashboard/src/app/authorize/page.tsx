@@ -112,7 +112,7 @@ export default function AuthorizePage() {
           </CardHeader>
           <CardContent>
             <SignIn
-              afterSignInUrl={`/authorize?callback=${encodeURIComponent(callback || "")}`}
+              fallbackRedirectUrl={`/authorize?callback=${encodeURIComponent(callback || "")}`}
               appearance={{
                 elements: {
                   rootBox: "w-full",
