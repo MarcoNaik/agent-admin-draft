@@ -8,7 +8,7 @@ function Step({ step }: { step: { number: string; title: string; description: st
   const { ref, opacity, y } = useFadeSlideUp()
 
   return (
-    <motion.div ref={ref} style={{ opacity, y, willChange: "transform, opacity" }} className="relative py-16 md:py-20">
+    <motion.div ref={ref} style={{ opacity, y, willChange: "transform, opacity" }} className="relative py-8 md:py-10">
       <span className="absolute top-8 md:top-12 left-0 font-display text-[120px] md:text-[140px] font-bold text-charcoal/[0.04] leading-none select-none pointer-events-none">
         {step.number}
       </span>
@@ -30,7 +30,7 @@ export function HowItWorks() {
   const { ref, y } = useParallaxY(200)
 
   return (
-    <section id="how-it-works" className="bg-stone-base py-20 md:py-28">
+    <section id="how-it-works" className="bg-stone-base pt-4 pb-8 md:pt-6 md:pb-12">
       <div className="mx-auto max-w-4xl px-6 md:px-12">
         <div ref={ref} className="text-center mb-8">
           <motion.h2
