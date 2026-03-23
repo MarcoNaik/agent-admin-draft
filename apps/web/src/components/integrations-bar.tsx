@@ -8,10 +8,6 @@ const integrations = [
   "Google Calendar",
   "Airtable",
   "Resend",
-  "OpenAI",
-  "Anthropic",
-  "Google AI",
-  "xAI",
 ]
 
 export function IntegrationsBar() {
