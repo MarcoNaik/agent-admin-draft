@@ -37,6 +37,12 @@ export interface CalendarEvent {
   end: { dateTime: string; timeZone?: string }
   attendees?: Array<{ email: string }>
   status?: string
+  conferenceData?: {
+    createRequest: {
+      requestId: string
+      conferenceSolutionKey: { type: string }
+    }
+  }
 }
 
 export interface CalendarEventResponse {
@@ -46,6 +52,13 @@ export interface CalendarEventResponse {
   start: { dateTime: string; timeZone?: string }
   end: { dateTime: string; timeZone?: string }
   status: string
+  hangoutLink?: string
+  conferenceData?: {
+    conferenceId: string
+    conferenceSolution: { key: { type: string }; name: string; iconUri: string }
+    entryPoints: Array<{ entryPointType: string; uri: string; label?: string }>
+    createRequest?: { status: { statusCode: string } }
+  }
 }
 
 export async function listCalendarEvents(
@@ -83,8 +96,9 @@ export async function createCalendarEvent(
   calendarId: string,
   event: CalendarEvent
 ): Promise<CalendarEventResponse> {
+  const params = event.conferenceData ? "?conferenceDataVersion=1" : ""
   const response = await fetch(
-    `${CALENDAR_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
+    `${CALENDAR_BASE}/calendars/${encodeURIComponent(calendarId)}/events${params}`,
     {
       method: "POST",
       headers: {
@@ -109,8 +123,9 @@ export async function updateCalendarEvent(
   eventId: string,
   updates: Partial<CalendarEvent>
 ): Promise<CalendarEventResponse> {
+  const params = updates.conferenceData ? "?conferenceDataVersion=1" : ""
   const response = await fetch(
-    `${CALENDAR_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    `${CALENDAR_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}${params}`,
     {
       method: "PATCH",
       headers: {

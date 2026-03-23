@@ -187,16 +187,18 @@ export async function executeBuiltinTool(
       if (!args.userId) throw new Error("calendar.create requires 'userId' parameter")
       if (!args.summary) throw new Error("calendar.create requires 'summary' parameter")
       if (!args.startTime) throw new Error("calendar.create requires 'startTime' parameter")
-      if (!args.endTime) throw new Error("calendar.create requires 'endTime' parameter")
+      if (!args.endTime && !args.durationMinutes) throw new Error("calendar.create requires 'endTime' or 'durationMinutes' parameter")
       return await ctx.runAction(ref("tools/calendar:calendarCreate"), {
         organizationId, actorId, actorType, environment,
         userId: args.userId as string,
         summary: args.summary as string,
         startTime: args.startTime as string,
-        endTime: args.endTime as string,
+        endTime: args.endTime as string | undefined,
+        durationMinutes: args.durationMinutes as number | undefined,
         description: args.description as string | undefined,
         attendees: args.attendees as string[] | undefined,
         timeZone: args.timeZone as string | undefined,
+        addGoogleMeet: args.addGoogleMeet as boolean | undefined,
       })
 
     case "calendar.update":

@@ -12,6 +12,7 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
   getFreeBusy,
+  type CalendarEvent,
 } from "../lib/integrations/googleCalendar"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
@@ -74,6 +75,7 @@ export const calendarCreate = internalAction({
     description: v.optional(v.string()),
     attendees: v.optional(v.array(v.string())),
     timeZone: v.optional(v.string()),
+    addGoogleMeet: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     let endTime = args.endTime
@@ -95,12 +97,20 @@ export const calendarCreate = internalAction({
 
     const token = await getGoogleAccessToken(target.clerkUserId)
 
-    const event = {
+    const event: CalendarEvent = {
       summary: args.summary,
       description: args.description,
       start: { dateTime: args.startTime, timeZone: args.timeZone },
       end: { dateTime: endTime, timeZone: args.timeZone },
       attendees: args.attendees?.filter((email) => email).map((email) => ({ email })),
+      ...(args.addGoogleMeet && {
+        conferenceData: {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        },
+      }),
     }
 
     const result = await createCalendarEvent(token, target.calendarId, event)
@@ -115,6 +125,9 @@ export const calendarCreate = internalAction({
       summary: result.summary,
       start: result.start,
       end: result.end,
+      ...(result.hangoutLink && { meetLink: result.hangoutLink }),
+      ...(result.conferenceData && { conferenceData: result.conferenceData }),
+      ...(args.addGoogleMeet && !result.hangoutLink && { meetWarning: "Google Meet link could not be created — the user's account may not have Meet enabled" }),
     }
   },
 })
