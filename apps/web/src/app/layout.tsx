@@ -23,12 +23,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://struere.dev"),
   title: "Struere — AI agents for business",
   description:
-    "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
+    "Struere is an AI agent platform for business automation. Build agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
     title: "Struere — AI agents for business",
     description:
-      "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
+      "Struere is an AI agent platform for business automation. Build agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
     url: "https://struere.dev",
     siteName: "Struere",
     type: "website",
@@ -38,8 +38,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Struere — AI agents for business",
     description:
-      "Describe what your business needs. Struere builds AI agents that handle it — no code, no hassle.",
+      "Struere is an AI agent platform for business automation. Build agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
     images: ["/opengraph-image"],
+  },
+  alternates: {
+    canonical: "https://struere.dev",
   },
 }
 
