@@ -3,6 +3,7 @@ import { query, mutation, internalMutation, internalQuery } from "./_generated/s
 import { getAuthContext, requireAuth, isOrgAdmin } from "./lib/auth"
 import { buildActorContext } from "./lib/permissions/context"
 import { canPerform, assertCanPerform } from "./lib/permissions/evaluate"
+import { cleanupMembershipData } from "./lib/membershipCleanup"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -232,7 +233,10 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("users") },
+  args: {
+    id: v.id("users"),
+    deleteLinkedEntities: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
@@ -272,12 +276,24 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(membership._id)
-    return { success: true }
+
+    const summary = await cleanupMembershipData(ctx, {
+      userId: user._id,
+      organizationId: auth.organizationId,
+      clerkUserId: user.clerkUserId,
+      deleteLinkedEntities: args.deleteLinkedEntities,
+      actor: { actorId: auth.userId, actorType: "user" },
+    })
+
+    return { success: true, cleanup: summary }
   },
 })
 
 export const removeByClerkId = mutation({
-  args: { clerkUserId: v.string() },
+  args: {
+    clerkUserId: v.string(),
+    deleteLinkedEntities: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
 
@@ -287,7 +303,7 @@ export const removeByClerkId = mutation({
       .first()
 
     if (!user) {
-      return { success: true }
+      return { success: true, cleanup: null }
     }
 
     const adminStatus = await isOrgAdmin(ctx, {
@@ -312,7 +328,7 @@ export const removeByClerkId = mutation({
       .first()
 
     if (!membership) {
-      return { success: true }
+      return { success: true, cleanup: null }
     }
 
     if (!adminStatus && membership.role === "admin") {
@@ -320,7 +336,16 @@ export const removeByClerkId = mutation({
     }
 
     await ctx.db.delete(membership._id)
-    return { success: true }
+
+    const summary = await cleanupMembershipData(ctx, {
+      userId: user._id,
+      organizationId: auth.organizationId,
+      clerkUserId: user.clerkUserId,
+      deleteLinkedEntities: args.deleteLinkedEntities,
+      actor: { actorId: auth.userId, actorType: "user" },
+    })
+
+    return { success: true, cleanup: summary }
   },
 })
 
@@ -426,5 +451,149 @@ export const checkPermissions = query({
       canDelete: deleteResult.allowed,
       isAdmin: false,
     }
+  },
+})
+
+export const previewMembershipCleanup = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const user = await ctx.db.get(args.userId)
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    const organizationId = auth.organizationId
+
+    let rolesRemoved = 0
+    let pendingAssignmentsRemoved = 0
+    let calendarConnectionsRemoved = 0
+    let sandboxSessionsRemoved = 0
+    let entitiesDeleted = 0
+
+    const userRoles = await ctx.db
+      .query("userRoles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect()
+
+    for (const ur of userRoles) {
+      const role = await ctx.db.get(ur.roleId)
+      if (role && role.organizationId === organizationId) {
+        rolesRemoved++
+      }
+    }
+
+    if (user.email) {
+      const pendingAssignments = await ctx.db
+        .query("pendingRoleAssignments")
+        .withIndex("by_org_email", (q) =>
+          q.eq("organizationId", organizationId).eq("email", user.email!)
+        )
+        .collect()
+      pendingAssignmentsRemoved = pendingAssignments.length
+    }
+
+    for (const env of ["development", "production", "eval"] as const) {
+      const calConnections = await ctx.db
+        .query("calendarConnections")
+        .withIndex("by_user_org_env", (q) =>
+          q.eq("userId", args.userId).eq("organizationId", organizationId).eq("environment", env)
+        )
+        .collect()
+      calendarConnectionsRemoved += calConnections.length
+
+      const sandboxSessions = await ctx.db
+        .query("sandboxSessions")
+        .withIndex("by_org_env_user", (q) =>
+          q.eq("organizationId", organizationId).eq("environment", env).eq("userId", args.userId)
+        )
+        .collect()
+      sandboxSessionsRemoved += sandboxSessions.length
+
+      const entityTypes = await ctx.db
+        .query("entityTypes")
+        .withIndex("by_org_env", (q) =>
+          q.eq("organizationId", organizationId).eq("environment", env)
+        )
+        .collect()
+
+      for (const et of entityTypes) {
+        if (!et.userIdField) continue
+        const entities = await ctx.db
+          .query("entities")
+          .withIndex("by_org_env_type", (q) =>
+            q.eq("organizationId", organizationId).eq("environment", env).eq("entityTypeId", et._id)
+          )
+          .collect()
+
+        for (const entity of entities) {
+          if (entity.deletedAt) continue
+          if (entity.data?.[et.userIdField] === user.clerkUserId) {
+            entitiesDeleted++
+          }
+        }
+      }
+    }
+
+    return {
+      rolesRemoved,
+      pendingAssignmentsRemoved,
+      calendarConnectionsRemoved,
+      sandboxSessionsRemoved,
+      entitiesDeleted,
+    }
+  },
+})
+
+export const getLinkedEntitiesForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+    const user = await ctx.db.get(args.userId)
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    const organizationId = auth.organizationId
+    const results: Array<{
+      environment: string
+      entityTypeName: string
+      entityName: string
+      entityId: string
+    }> = []
+
+    for (const env of ["development", "production", "eval"] as const) {
+      const entityTypes = await ctx.db
+        .query("entityTypes")
+        .withIndex("by_org_env", (q) =>
+          q.eq("organizationId", organizationId).eq("environment", env)
+        )
+        .collect()
+
+      for (const et of entityTypes) {
+        if (!et.userIdField) continue
+        const entities = await ctx.db
+          .query("entities")
+          .withIndex("by_org_env_type", (q) =>
+            q.eq("organizationId", organizationId).eq("environment", env).eq("entityTypeId", et._id)
+          )
+          .collect()
+
+        for (const entity of entities) {
+          if (entity.deletedAt) continue
+          if (entity.data?.[et.userIdField] === user.clerkUserId) {
+            const name = (entity.data?.name as string) ?? (entity.data?.email as string) ?? String(entity._id)
+            results.push({
+              environment: env,
+              entityTypeName: et.name,
+              entityName: name,
+              entityId: entity._id,
+            })
+          }
+        }
+      }
+    }
+
+    return results
   },
 })

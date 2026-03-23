@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation, internalQuery } from "./_generated/server"
+import { query, mutation, internalQuery, internalMutation } from "./_generated/server"
 import { getAuthContext, requireAuth, requireOrgAdmin, isOrgAdmin } from "./lib/auth"
 import { buildActorContext } from "./lib/permissions/context"
 import { assertCanPerform } from "./lib/permissions/evaluate"
@@ -467,6 +467,13 @@ export const getAssignedUsers = query({
       active.map(async (ur) => {
         const user = await ctx.db.get(ur.userId)
         if (!user) return null
+        const membership = await ctx.db
+          .query("userOrganizations")
+          .withIndex("by_user_org", (q) =>
+            q.eq("userId", user._id).eq("organizationId", auth.organizationId)
+          )
+          .first()
+        if (!membership) return null
         return {
           _id: ur._id,
           userId: ur.userId,
@@ -592,5 +599,45 @@ export const listInternal = internalQuery({
       .query("roles")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+  },
+})
+
+export const cleanupOrphanedUserRoles = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now()
+    const allUserRoles = await ctx.db.query("userRoles").collect()
+
+    let orphanedRemoved = 0
+    let expiredRemoved = 0
+
+    for (const ur of allUserRoles) {
+      if (ur.expiresAt && ur.expiresAt < now) {
+        await ctx.db.delete(ur._id)
+        expiredRemoved++
+        continue
+      }
+
+      const role = await ctx.db.get(ur.roleId)
+      if (!role) {
+        await ctx.db.delete(ur._id)
+        orphanedRemoved++
+        continue
+      }
+
+      const membership = await ctx.db
+        .query("userOrganizations")
+        .withIndex("by_user_org", (q) =>
+          q.eq("userId", ur.userId).eq("organizationId", role.organizationId)
+        )
+        .first()
+
+      if (!membership) {
+        await ctx.db.delete(ur._id)
+        orphanedRemoved++
+      }
+    }
+
+    return { orphanedRemoved, expiredRemoved }
   },
 })

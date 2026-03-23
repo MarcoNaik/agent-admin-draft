@@ -704,8 +704,13 @@ export const unlinkUserFromEntity = mutation({
     const userIdField = entityType.userIdField
 
     if (args.deleteEntity) {
-      await ctx.db.patch(args.entityId, {
-        deletedAt: Date.now(),
+      await deleteEntityMutation(ctx, {
+        organizationId: auth.organizationId,
+        environment: entity.environment as "development" | "production" | "eval",
+        entityId: args.entityId,
+        entityTypeSlug: entityType.slug,
+        previousData: (entity.data ?? {}) as Record<string, unknown>,
+        actor: { actorId: auth.userId, actorType: "user" },
       })
     } else {
       await ctx.db.patch(args.entityId, {

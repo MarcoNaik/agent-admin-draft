@@ -3,11 +3,13 @@ import { query, mutation, action, internalMutation, internalQuery, MutationCtx }
 import { makeFunctionReference } from "convex/server"
 import { getAuthContext, getAuthContextSafe, requireAuth } from "./lib/auth"
 import { Id } from "./_generated/dataModel"
+import { cleanupMembershipData } from "./lib/membershipCleanup"
 
 const deleteAllOrgDataRef = makeFunctionReference<"mutation">("organizations:deleteAllOrgData")
 const getOrCreateFromClerkRef = makeFunctionReference<"mutation">("organizations:getOrCreateFromClerk")
 const syncMembershipRef = makeFunctionReference<"mutation">("organizations:syncMembership")
 const seedWelcomeCreditsRef = makeFunctionReference<"mutation">("billing:seedWelcomeCredits")
+const ensureStudioKeyRef = makeFunctionReference<"mutation">("apiKeys:ensureStudioKey")
 
 export const get = query({
   args: { id: v.id("organizations") },
@@ -354,6 +356,8 @@ async function ensureOrgFromClerk(
   })
 
   await ctx.scheduler.runAfter(0, seedWelcomeCreditsRef, { organizationId })
+  await ctx.scheduler.runAfter(0, ensureStudioKeyRef, { organizationId, environment: "development" as const })
+  await ctx.scheduler.runAfter(0, ensureStudioKeyRef, { organizationId, environment: "production" as const })
 
   return organizationId
 }
@@ -573,48 +577,12 @@ export const removeMembership = internalMutation({
     if (membership) {
       await ctx.db.delete(membership._id)
 
-      const userRoles = await ctx.db
-        .query("userRoles")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .collect()
-
-      for (const ur of userRoles) {
-        await ctx.db.delete(ur._id)
-      }
-
-      if (user.email) {
-        const pendingAssignments = await ctx.db
-          .query("pendingRoleAssignments")
-          .withIndex("by_org_email", (q) =>
-            q.eq("organizationId", org._id).eq("email", user.email!)
-          )
-          .collect()
-        for (const pa of pendingAssignments) {
-          await ctx.db.delete(pa._id)
-        }
-      }
-
-      for (const env of ["development", "production", "eval"] as const) {
-        const calConnections = await ctx.db
-          .query("calendarConnections")
-          .withIndex("by_user_org_env", (q) =>
-            q.eq("userId", user._id).eq("organizationId", org._id).eq("environment", env)
-          )
-          .collect()
-        for (const cc of calConnections) {
-          await ctx.db.delete(cc._id)
-        }
-
-        const sandboxSessions = await ctx.db
-          .query("sandboxSessions")
-          .withIndex("by_org_env_user", (q) =>
-            q.eq("organizationId", org._id).eq("environment", env).eq("userId", user._id)
-          )
-          .collect()
-        for (const ss of sandboxSessions) {
-          await ctx.db.delete(ss._id)
-        }
-      }
+      await cleanupMembershipData(ctx, {
+        userId: user._id,
+        organizationId: org._id,
+        clerkUserId: user.clerkUserId,
+        actor: { actorId: "system", actorType: "system" },
+      })
     }
   },
 })
