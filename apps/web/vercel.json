@@ -15,7 +15,7 @@
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://app.struere.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://*.struere.dev data:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://*.public.blob.vercel-storage.com; connect-src 'self' https://*.struere.dev https://*.clerk.dev https://clerk.struere.dev; frame-src https://app.struere.dev https://clerk.struere.dev https://*.clerk.accounts.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://app.struere.dev https://datafa.st; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://*.struere.dev data:; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://*.public.blob.vercel-storage.com; connect-src 'self' https://*.struere.dev https://*.clerk.dev https://clerk.struere.dev https://datafa.st; frame-src https://app.struere.dev https://clerk.struere.dev https://*.clerk.accounts.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" }
       ]
     }
   ],
