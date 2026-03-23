@@ -13,6 +13,7 @@ const compactOldExecutionsRef = makeFunctionReference<"mutation">("lib/cleanup:c
 const syncModelPricingRef = makeFunctionReference<"action">("modelPricing:syncPricing")
 const syncModelRegistryRef = makeFunctionReference<"action">("modelPricing:syncModelRegistry")
 const syncAllOrgKeysRef = makeFunctionReference<"action">("orgKeys:syncAllOrgKeys")
+const cleanupOrphanedUserRolesRef = makeFunctionReference<"mutation">("roles:cleanupOrphanedUserRoles")
 
 const crons = cronJobs()
 
@@ -87,6 +88,12 @@ crons.interval(
   "sync org OpenRouter key usage",
   { minutes: 15 },
   syncAllOrgKeysRef,
+)
+
+crons.interval(
+  "cleanup orphaned and expired user roles",
+  { hours: 24 },
+  cleanupOrphanedUserRolesRef,
 )
 
 export default crons
