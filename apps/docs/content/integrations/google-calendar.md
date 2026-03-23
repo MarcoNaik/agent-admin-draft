@@ -72,9 +72,10 @@ Create a new calendar event.
 | `description` | `string` | No | Event description |
 | `startTime` | `string` | Yes | Start time (ISO 8601) |
 | `endTime` | `string` | No | End time (ISO 8601). Provide either `endTime` or `durationMinutes` |
-| `durationMinutes` | `number` | No | Duration in minutes. Used if `endTime` is not provided |
+| `durationMinutes` | `number` | No | Duration in minutes. Used to calculate `endTime` if not provided |
 | `attendees` | `string[]` | No | Email addresses of attendees |
-| `location` | `string` | No | Event location |
+| `timeZone` | `string` | No | IANA timezone (e.g., `America/Santiago`) |
+| `addGoogleMeet` | `boolean` | No | Set to `true` to auto-create a Google Meet link for the event |
 
 ### calendar.update
 
