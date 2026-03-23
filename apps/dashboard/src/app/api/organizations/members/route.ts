@@ -9,7 +9,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
-  const { userId, organizationId } = await req.json()
+  const { userId, organizationId, deleteLinkedEntities } = await req.json()
   const orgId = session.orgId || organizationId
   if (!orgId) {
     return NextResponse.json({ error: "No active organization" }, { status: 401 })
@@ -55,19 +55,23 @@ export async function DELETE(req: Request) {
     }
   }
 
-  await client.organizations.deleteOrganizationMembership({
-    organizationId: orgId,
-    userId,
-  })
+  const token = await session.getToken({ template: "convex" })
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+  convex.setAuth(token)
+  const result = await convex.mutation(api.users.removeByClerkId, { clerkUserId: userId, deleteLinkedEntities: deleteLinkedEntities === true })
 
   try {
-    const token = await session.getToken({ template: "convex" })
-    if (token) {
-      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-      convex.setAuth(token)
-      await convex.mutation(api.users.removeByClerkId, { clerkUserId: userId })
-    }
-  } catch (_) {}
+    await client.organizations.deleteOrganizationMembership({
+      organizationId: orgId,
+      userId,
+    })
+  } catch (err) {
+    console.error("Convex cleanup succeeded but Clerk removal failed:", err)
+  }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, cleanup: result.cleanup })
 }

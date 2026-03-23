@@ -37,19 +37,19 @@ export function useRemoveUser() {
   const [isRemoving, setIsRemoving] = useState(false)
   const { organization } = useOrganization()
 
-  const removeUser = async (clerkUserId: string) => {
+  const removeUser = async (clerkUserId: string, deleteLinkedEntities?: boolean) => {
     setIsRemoving(true)
     try {
       const res = await fetch("/api/organizations/members", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: clerkUserId, organizationId: organization?.id }),
+        body: JSON.stringify({ userId: clerkUserId, organizationId: organization?.id, deleteLinkedEntities }),
       })
+      const data = await res.json()
       if (!res.ok) {
-        const data = await res.json()
         throw new Error(data.error || "Failed to remove user")
       }
-      return true
+      return data as { success: true; cleanup: { rolesRemoved: number; pendingAssignmentsRemoved: number; calendarConnectionsRemoved: number; sandboxSessionsRemoved: number; entitiesDeleted: number } }
     } finally {
       setIsRemoving(false)
     }

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import { Loader2, Shield, User, UserPlus, Link, Unlink, Plus, Trash2 } from "@/lib/icons"
 import { useUser } from "@clerk/nextjs"
 import { useUsers, useUpdateUser, useRoles, useAssignRoleToUser, useRemoveRoleFromUser, useUserRoles, useEntityTypes, useCreateEntity } from "@/hooks/use-convex-data"
@@ -123,19 +125,27 @@ function UnlinkEntityDialog({
   onOpenChange,
   entityId,
   entityName,
+  boundToRole,
+  userId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   entityId: Id<"entities">
   entityName: string
+  boundToRole?: string
+  userId?: Id<"users">
 }) {
   const unlinkUser = useUnlinkUserFromEntity()
+  const removeRole = useRemoveRoleFromUser()
   const [isUnlinking, setIsUnlinking] = useState(false)
 
-  const handleUnlink = async (deleteEntity: boolean) => {
+  const handleUnlink = async (deleteEntity: boolean, removeRoleAssignment?: boolean) => {
     setIsUnlinking(true)
     try {
       await unlinkUser({ entityId, deleteEntity })
+      if (removeRoleAssignment && userId) {
+        await removeRole({ userId })
+      }
       toast.success(deleteEntity ? `Deleted and unlinked ${entityName}` : `Unlinked ${entityName}`)
       onOpenChange(false)
     } catch (err) {
@@ -162,14 +172,30 @@ function UnlinkEntityDialog({
             {isUnlinking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Just Unlink
           </Button>
+          {boundToRole && userId && (
+            <Button variant="outline" onClick={() => handleUnlink(false, true)} disabled={isUnlinking}>
+              {isUnlinking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Unlink & Remove Role
+            </Button>
+          )}
           <Button variant="destructive" onClick={() => handleUnlink(true)} disabled={isUnlinking}>
             {isUnlinking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Delete & Unlink
+            Unlink & Delete {entityName}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
+}
+
+function formatCleanupPreview(preview: { rolesRemoved: number; pendingAssignmentsRemoved: number; calendarConnectionsRemoved: number; sandboxSessionsRemoved: number; entitiesDeleted: number }) {
+  const parts: string[] = []
+  if (preview.rolesRemoved > 0) parts.push(`${preview.rolesRemoved} role assignment${preview.rolesRemoved !== 1 ? "s" : ""}`)
+  if (preview.pendingAssignmentsRemoved > 0) parts.push(`${preview.pendingAssignmentsRemoved} pending assignment${preview.pendingAssignmentsRemoved !== 1 ? "s" : ""}`)
+  if (preview.calendarConnectionsRemoved > 0) parts.push(`${preview.calendarConnectionsRemoved} calendar connection${preview.calendarConnectionsRemoved !== 1 ? "s" : ""}`)
+  if (preview.sandboxSessionsRemoved > 0) parts.push(`${preview.sandboxSessionsRemoved} sandbox session${preview.sandboxSessionsRemoved !== 1 ? "s" : ""}`)
+  if (preview.entitiesDeleted > 0) parts.push(`${preview.entitiesDeleted} linked entit${preview.entitiesDeleted !== 1 ? "ies" : "y"}`)
+  return parts.length > 0 ? parts.join(", ") : "no additional resources"
 }
 
 function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: { user: UserWithRole; roles: Doc<"roles">[]; entityTypes: Doc<"entityTypes">[]; currentClerkUserId: string | undefined; permissions: UserPermissions }) {
@@ -187,6 +213,7 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false)
   const [linkEntityType, setLinkEntityType] = useState<Doc<"entityTypes"> | null>(null)
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
 
   const currentRole = userRoles?.find((ur: UserRoleWithDetails) => ur.role !== null)
 
@@ -195,6 +222,22 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
     : undefined
 
   const linkedEntity = useLinkedEntity(boundEntityType?._id, user.clerkUserId, environment)
+
+  const linkedEntityName = linkedEntity
+    ? (linkedEntity as { data?: { name?: string; email?: string } }).data?.name
+      || (linkedEntity as { data?: { name?: string; email?: string } }).data?.email
+      || "Linked"
+    : ""
+
+  const allLinkedEntities = useQuery(
+    api.users.getLinkedEntitiesForUser as any,
+    removeDialogOpen ? { userId: user._id } : "skip"
+  ) as { environment: string; entityTypeName: string; entityName: string; entityId: string }[] | undefined
+
+  const cleanupPreview = useQuery(
+    api.users.previewMembershipCleanup as any,
+    removeDialogOpen ? { userId: user._id } : "skip"
+  ) as { rolesRemoved: number; pendingAssignmentsRemoved: number; calendarConnectionsRemoved: number; sandboxSessionsRemoved: number; entitiesDeleted: number } | undefined
 
   const handleOrgRoleChange = async (newRole: "admin" | "member") => {
     setIsUpdating(true)
@@ -269,11 +312,26 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
     setLinkDialogOpen(true)
   }
 
-  const handleRemoveUser = async () => {
-    if (!window.confirm(`Remove ${user.name || user.email} from the organization? This action cannot be undone.`)) return
+  const handleRemoveUser = async (deleteLinkedEntities?: boolean) => {
     try {
-      await removeUser(user.clerkUserId)
-      toast.success(`${user.name || user.email} has been removed from the organization`)
+      const result = await removeUser(user.clerkUserId, deleteLinkedEntities)
+      const displayName = user.name || user.email
+      if (result?.cleanup) {
+        const parts: string[] = []
+        if (result.cleanup.rolesRemoved > 0) parts.push(`${result.cleanup.rolesRemoved} roles`)
+        if (result.cleanup.pendingAssignmentsRemoved > 0) parts.push(`${result.cleanup.pendingAssignmentsRemoved} pending assignments`)
+        if (result.cleanup.calendarConnectionsRemoved > 0) parts.push(`${result.cleanup.calendarConnectionsRemoved} calendar connections`)
+        if (result.cleanup.sandboxSessionsRemoved > 0) parts.push(`${result.cleanup.sandboxSessionsRemoved} sandbox sessions`)
+        if (result.cleanup.entitiesDeleted > 0) parts.push(`${result.cleanup.entitiesDeleted} entities deleted`)
+        if (parts.length > 0) {
+          toast.success(`Removed ${displayName}. Cleaned up: ${parts.join(", ")}.`)
+        } else {
+          toast.success(`Removed ${displayName} from the organization.`)
+        }
+      } else {
+        toast.success(`Removed ${displayName} from the organization.`)
+      }
+      setRemoveDialogOpen(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove user")
     }
@@ -402,7 +460,7 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
             variant="ghost"
             size="sm"
             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            onClick={handleRemoveUser}
+            onClick={() => setRemoveDialogOpen(true)}
             disabled={isRemoving}
           >
             {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -451,8 +509,61 @@ function UserRow({ user, roles, entityTypes, currentClerkUserId, permissions }: 
           onOpenChange={setUnlinkDialogOpen}
           entityId={(linkedEntity as { _id: Id<"entities"> })._id}
           entityName={(linkedEntity as { data?: { name?: string } }).data?.name || boundEntityType.name}
+          boundToRole={boundEntityType.boundToRole}
+          userId={user._id}
         />
       )}
+
+      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove {user.name || user.email}</DialogTitle>
+            <DialogDescription>
+              {linkedEntity
+                ? `This user has a linked ${boundEntityType?.name || "entity"} record: ${linkedEntityName}. Would you like to also delete that record?`
+                : "This action cannot be undone. The user will be removed from the organization."}
+            </DialogDescription>
+          </DialogHeader>
+          {allLinkedEntities && allLinkedEntities.length > 0 && (
+            <div className="space-y-1 text-sm text-content-secondary">
+              <p className="font-medium text-content-primary">Linked entities across environments:</p>
+              {allLinkedEntities.map((le: { environment: string; entityTypeName: string; entityName: string; entityId: string }, i: number) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-background-tertiary px-2 py-0.5 text-xs">{le.environment}</span>
+                  <span>{le.entityTypeName}: {le.entityName}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {cleanupPreview && (
+            <div className="text-sm text-content-secondary">
+              <p>This will remove: {formatCleanupPreview(cleanupPreview)}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setRemoveDialogOpen(false)} disabled={isRemoving}>
+              Cancel
+            </Button>
+            {linkedEntity ? (
+              <>
+                <Button variant="outline" onClick={() => handleRemoveUser(false)} disabled={isRemoving}>
+                  {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Just Remove
+                </Button>
+                <Button variant="destructive" onClick={() => handleRemoveUser(true)} disabled={isRemoving}>
+                  {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Remove & Delete {boundEntityType?.name || "Entity"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="destructive" onClick={() => handleRemoveUser(false)} disabled={isRemoving}>
+                {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Remove User
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
