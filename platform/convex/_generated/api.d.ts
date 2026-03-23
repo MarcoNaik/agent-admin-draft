@@ -35,6 +35,7 @@ import type * as lib_integrations_kapso from "../lib/integrations/kapso.js";
 import type * as lib_integrations_resend from "../lib/integrations/resend.js";
 import type * as lib_llm from "../lib/llm.js";
 import type * as lib_logger from "../lib/logger.js";
+import type * as lib_membershipCleanup from "../lib/membershipCleanup.js";
 import type * as lib_permissions_context from "../lib/permissions/context.js";
 import type * as lib_permissions_evaluate from "../lib/permissions/evaluate.js";
 import type * as lib_permissions_index from "../lib/permissions/index.js";
@@ -134,6 +135,7 @@ declare const fullApi: ApiFromModules<{
   "lib/integrations/resend": typeof lib_integrations_resend;
   "lib/llm": typeof lib_llm;
   "lib/logger": typeof lib_logger;
+  "lib/membershipCleanup": typeof lib_membershipCleanup;
   "lib/permissions/context": typeof lib_permissions_context;
   "lib/permissions/evaluate": typeof lib_permissions_evaluate;
   "lib/permissions/index": typeof lib_permissions_index;

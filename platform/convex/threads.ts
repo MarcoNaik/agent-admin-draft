@@ -53,6 +53,7 @@ export const listWithPreviews = query({
   args: {
     agentId: v.optional(v.id("agents")),
     environment: v.optional(v.union(v.literal("development"), v.literal("production"), v.literal("eval"))),
+    channel: v.optional(v.union(v.literal("widget"), v.literal("whatsapp"), v.literal("api"), v.literal("dashboard"))),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -75,6 +76,9 @@ export const listWithPreviews = query({
           .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
           .order("desc")
           .take(args.limit ?? 50)
+        if (args.channel) {
+          threads = threads.filter((t) => t.channel === args.channel)
+        }
       } else {
         const allThreads: any[] = []
         for (const agentId of allowedAgentIds) {
@@ -87,11 +91,23 @@ export const listWithPreviews = query({
         }
         allThreads.sort((a, b) => (b.updatedAt ?? b._creationTime) - (a.updatedAt ?? a._creationTime))
         threads = allThreads.slice(0, args.limit ?? 50)
+        if (args.channel) {
+          threads = threads.filter((t: any) => t.channel === args.channel)
+        }
       }
     } else if (args.agentId) {
       threads = await ctx.db
         .query("threads")
         .withIndex("by_agent_env", (q) => q.eq("agentId", args.agentId!).eq("environment", environment))
+        .order("desc")
+        .take(args.limit ?? 50)
+      if (args.channel) {
+        threads = threads.filter((t) => t.channel === args.channel)
+      }
+    } else if (args.channel) {
+      threads = await ctx.db
+        .query("threads")
+        .withIndex("by_org_env_channel", (q) => q.eq("organizationId", auth.organizationId).eq("environment", environment).eq("channel", args.channel!))
         .order("desc")
         .take(args.limit ?? 50)
     } else {
