@@ -67,7 +67,7 @@ export function HeroSection() {
   useEffect(() => {
     if (!mounted) return
 
-    const timeout = setTimeout(() => setPromptRevealed(true), 3100)
+    const timeout = setTimeout(() => setPromptRevealed(true), 1200)
 
     const onScroll = () => {
       setPromptRevealed(true)
@@ -88,15 +88,23 @@ export function HeroSection() {
   }, [prompt])
 
   return (
-    <section className="relative w-full min-h-screen overflow-hidden z-10">
+    <section className="relative w-full pt-0 pb-8 px-3 md:px-5 z-10">
       <div
-        className="absolute inset-0"
+        className={`relative mx-auto rounded-2xl overflow-hidden ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100 scale-100" : "opacity-0 scale-[0.98]"}`}
         style={{
-          maskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+          transitionProperty: "opacity, transform",
+          transitionDuration: "1200ms",
+          height: "calc(100vh - 100px)",
+          minHeight: "500px",
         }}
       >
-        <div className="absolute inset-0 overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            maskImage: "linear-gradient(to bottom, black 0%, black 90%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 90%, transparent 100%)",
+          }}
+        >
           <Image
             src="/hero-bg.webp"
             alt=""
@@ -108,149 +116,142 @@ export function HeroSection() {
             sizes="100vw"
           />
         </div>
-      </div>
 
-      <div className="absolute top-[8%] md:top-[10%] left-0 right-0 text-center px-6 md:px-12">
-        <div className="max-w-3xl mx-auto">
-          <div
-            className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100" : "opacity-0"}`}
-            style={{ transitionProperty: "opacity", transitionDuration: "900ms" }}
-          >
-            <h1
-              className={`hero-gradient-text font-display text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.2] pb-2 ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
-              onAnimationEnd={(e) => {
-                if (e.animationName === "hero-gradient-flow") setHeroLooping(true)
-              }}
-              style={{
-                backgroundImage:
-                  "linear-gradient(-90deg, #98a8b0, #7898b0, #5880a8, #5880a8, #4878a8, #4870a0, #5078a0, #6890a8, #90a8b8, #b8c0c8 56%, #d8d0c0 58%, #f0e8d8 59%, #e8e8e0 60%, #a0c0e0 62%, #80a8d0, #6888a8, #8898a8)",
-                backgroundClip: "text",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-                WebkitTextFillColor: "transparent",
-                filter: "drop-shadow(0 0 2px rgba(255,255,255,0.85)) drop-shadow(0 2px 24px rgba(0,0,0,0.15))",
-              }}
-            >
-              {t.hero.headline}
-            </h1>
-          </div>
-
-          <div
-            className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
-            style={{
-              transitionProperty: "opacity, transform",
-              transitionDuration: "700ms",
-              transitionDelay: mounted ? "500ms" : "0ms",
-            }}
-          >
-            <p
-              className={`hero-tagline-gradient text-xs tracking-[0.25em] uppercase mt-4 font-sans font-medium ${mounted ? "hero-animate" : ""}`}
-              style={{
-                backgroundImage:
-                  "linear-gradient(-90deg, #4870a0, #5888b0, #6898c0, #80a8d0, #6898c0, #5888b0, #4870a0)",
-                backgroundClip: "text",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-                WebkitTextFillColor: "transparent",
-                filter: "drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 1px 8px rgba(0,0,0,0.15))",
-              }}
-            >
-              {t.hero.tagline}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-32 md:bottom-36 left-0 right-0 text-center px-6 md:px-12">
-        <div className="max-w-4xl mx-auto">
-          <form onSubmit={handleSubmit}>
+        <div className="relative z-10 flex flex-col items-center justify-between h-full pt-[5%] pb-28 px-6 md:px-12">
+          <div className="max-w-5xl mx-auto text-center">
             <div
-              className="liquid-glass liquid-glass-dark rounded-2xl"
+              className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100" : "opacity-0"}`}
+              style={{ transitionProperty: "opacity", transitionDuration: "900ms" }}
+            >
+              <h1
+                className={`hero-gradient-text font-display text-5xl md:text-7xl lg:text-8xl font-semibold leading-[1.15] pb-4 ${heroLooping ? "hero-gradient-loop" : mounted ? "hero-animate" : ""}`}
+                onAnimationEnd={(e) => {
+                  if (e.animationName === "hero-gradient-flow") setHeroLooping(true)
+                }}
+                style={{
+                  backgroundImage:
+                    "linear-gradient(-90deg, #98a8b0, #7898b0, #5880a8, #5880a8, #4878a8, #4870a0, #5078a0, #6890a8, #90a8b8, #b8c0c8 56%, #d8d0c0 58%, #f0e8d8 59%, #e8e8e0 60%, #a0c0e0 62%, #80a8d0, #6888a8, #8898a8)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                  WebkitTextFillColor: "transparent",
+                  filter: "drop-shadow(0 0 2px rgba(255,255,255,0.85)) drop-shadow(0 2px 24px rgba(0,0,0,0.15))",
+                }}
+              >
+                {t.hero.headline}
+              </h1>
+            </div>
+
+            <div
+              className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
               style={{
-                opacity: 0,
-                transform: "translateY(40px)",
-                ...(promptRevealed && {
-                  animation: "prompt-card-reveal 2000ms cubic-bezier(0.16,1,0.3,1) forwards",
-                }),
+                transitionProperty: "opacity, transform",
+                transitionDuration: "700ms",
+                transitionDelay: mounted ? "500ms" : "0ms",
               }}
             >
-              <div className="relative z-10">
-                <div className="relative">
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSubmit(e)
-                      }
-                    }}
-                    rows={3}
-                    className="w-full px-6 pt-5 pb-14 text-base text-left bg-transparent text-white placeholder:text-transparent focus:outline-none resize-none leading-relaxed font-input font-medium"
-                    aria-label={t.hero.ariaLabel}
-                  />
-                  {!prompt && !isFocused && (
-                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none text-left">
-                      <CyclingPlaceholder items={t.hero.placeholders} delay={4500} />
-                    </div>
-                  )}
-                  {!prompt && isFocused && (
-                    <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-input font-medium text-white/95 text-left">
-                      {t.hero.focusPlaceholder}
-                    </div>
-                  )}
-                </div>
-                <div className="absolute bottom-3 right-3">
-                  <div
-                    style={{
-                      opacity: 0,
-                      ...(promptRevealed && {
-                        animation: "prompt-btn-reveal 1000ms cubic-bezier(0.16,1,0.3,1) 800ms forwards",
-                      }),
-                    }}
-                  >
-                    <button
-                      type="submit"
-                      className="hero-send-btn px-6 py-2.5 text-sm font-medium text-white/70 rounded-xl border border-transparent bg-transparent"
+              <p
+                className={`hero-tagline-gradient text-sm md:text-base tracking-[0.3em] uppercase mt-5 font-sans font-medium ${mounted ? "hero-animate" : ""}`}
+                style={{
+                  backgroundImage:
+                    "linear-gradient(-90deg, #4870a0, #5888b0, #6898c0, #80a8d0, #6898c0, #5888b0, #4870a0)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                  WebkitTextFillColor: "transparent",
+                  filter: "drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 1px 8px rgba(0,0,0,0.15))",
+                }}
+              >
+                {t.hero.tagline}
+              </p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl w-full mx-auto">
+            <form onSubmit={handleSubmit}>
+              <div
+                className={`liquid-glass liquid-glass-dark rounded-2xl ease-[cubic-bezier(0.16,1,0.3,1)] ${promptRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+                style={{
+                  transitionProperty: "opacity, transform",
+                  transitionDuration: "1500ms",
+                }}
+              >
+                <div className="relative z-10">
+                  <div className="relative">
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSubmit(e)
+                        }
+                      }}
+                      rows={3}
+                      className="w-full px-6 pt-5 pb-14 text-base text-left bg-transparent text-white placeholder:text-transparent focus:outline-none resize-none leading-relaxed font-input font-medium"
+                      aria-label={t.hero.ariaLabel}
+                    />
+                    {!prompt && !isFocused && (
+                      <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none text-left">
+                        <CyclingPlaceholder items={t.hero.placeholders} delay={4500} />
+                      </div>
+                    )}
+                    {!prompt && isFocused && (
+                      <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-input font-medium text-white/95 text-left">
+                        {t.hero.focusPlaceholder}
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute bottom-3 right-3">
+                    <div
+                      className={`ease-[cubic-bezier(0.16,1,0.3,1)] ${promptRevealed ? "opacity-100" : "opacity-0"}`}
+                      style={{
+                        transitionProperty: "opacity",
+                        transitionDuration: "1000ms",
+                        transitionDelay: "600ms",
+                      }}
                     >
-                      <span className="relative z-10 flex items-center gap-1.5">
-                        {t.hero.createButton}
-                        <span className="btn-arrow">&rarr;</span>
-                      </span>
-                    </button>
+                      <button
+                        type="submit"
+                        className="hero-send-btn px-6 py-2.5 text-sm font-medium text-white/70 rounded-xl border border-transparent bg-transparent"
+                      >
+                        <span className="relative z-10 flex items-center gap-1.5">
+                          {t.hero.createButton}
+                          <span className="btn-arrow">&rarr;</span>
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {t.hero.suggestions.map((s, i) => {
-                return (
-                  <div
-                    key={s.label}
-                    className="liquid-glass liquid-glass-dark rounded-full"
-                    style={{
-                      opacity: 0,
-                      transform: "translateY(12px)",
-                      ...(promptRevealed && {
-                        animation: `prompt-pill-reveal 500ms cubic-bezier(0.16,1,0.3,1) ${200 + i * 150}ms forwards`,
-                      }),
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setPrompt(s.prompt)}
-                      className="px-4 py-2 text-xs text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-colors duration-200 font-sans"
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                {t.hero.suggestions.map((s, i) => {
+                  return (
+                    <div
+                      key={s.label}
+                      className={`liquid-glass liquid-glass-dark rounded-full ease-[cubic-bezier(0.16,1,0.3,1)] ${promptRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+                      style={{
+                        transitionProperty: "opacity, transform",
+                        transitionDuration: "500ms",
+                        transitionDelay: `${800 + i * 150}ms`,
+                      }}
                     >
-                      {s.label}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </form>
+                      <button
+                        type="button"
+                        onClick={() => setPrompt(s.prompt)}
+                        className="px-4 py-2 text-xs text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-colors duration-200 font-sans"
+                      >
+                        {s.label}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </section>
