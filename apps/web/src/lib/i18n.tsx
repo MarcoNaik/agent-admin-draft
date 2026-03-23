@@ -4,9 +4,9 @@ import { createContext, useContext, type ReactNode } from "react"
 
 const translations = {
   nav: {
-    howItWorks: "How it works",
-    useCases: "Use cases",
-    earlyAccess: "Early access",
+    howItWorks: "Features",
+    useCases: "Demo",
+    earlyAccess: "Pricing",
     docs: "Docs",
     cta: "Start free",
   },
@@ -223,7 +223,7 @@ const translations = {
         ],
       },
     ],
-    madeWith: "Made with \uD83E\uDD0D for LATAM",
+    madeWith: "",
   },
 }
 
