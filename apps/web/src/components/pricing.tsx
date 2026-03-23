@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
+import { Check } from "lucide-react"
 import { useFadeSlideUp, useScaleIn } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
@@ -52,9 +53,7 @@ export function Pricing() {
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-6">
                 {t.pricing.freeFeatures.map((feature) => (
                   <div key={feature} className="flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5 text-ocean flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
+                    <Check className="w-3.5 h-3.5 text-ocean flex-shrink-0" strokeWidth={2.5} />
                     <span className="text-sm text-charcoal/70">{feature}</span>
                   </div>
                 ))}

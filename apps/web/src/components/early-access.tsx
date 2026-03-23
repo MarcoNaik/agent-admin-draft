@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
+import { Check } from "lucide-react"
 import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
@@ -50,19 +51,7 @@ export function EarlyAccess() {
             <div className="flex flex-col gap-3 mb-8 max-w-xs mx-auto">
               {t.earlyAccess.features.map((feature) => (
                 <div key={feature} className="flex items-center gap-2.5">
-                  <svg
-                    className="w-4 h-4 text-ocean flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 12.75l6 6 9-13.5"
-                    />
-                  </svg>
+                  <Check className="w-4 h-4 text-ocean flex-shrink-0" strokeWidth={2} />
                   <span className="text-sm text-charcoal/70">{feature}</span>
                 </div>
               ))}

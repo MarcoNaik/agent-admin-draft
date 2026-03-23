@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { Menu, X } from "lucide-react"
 import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
@@ -124,27 +125,11 @@ export function Navigation() {
             className={`p-2 ${textColor} transition-colors duration-500`}
             aria-label="Menu"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              {mobileOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3.75 9h16.5m-16.5 6.75h16.5"
-                />
-              )}
-            </svg>
+            {mobileOpen ? (
+              <X className="w-5 h-5" strokeWidth={1.5} />
+            ) : (
+              <Menu className="w-5 h-5" strokeWidth={1.5} />
+            )}
           </button>
         </div>
       </div>

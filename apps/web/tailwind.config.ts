@@ -31,7 +31,7 @@ const config: Config = {
         display: ["var(--font-fraunces)", "Georgia", "serif"],
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
-        input: ["var(--font-ibm-plex)", "monospace"],
+        input: ["var(--font-jetbrains)", "monospace"],
       },
       animation: {
         "shimmer": "shimmer 3s linear infinite",

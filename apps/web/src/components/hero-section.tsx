@@ -62,41 +62,15 @@ export function HeroSection() {
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [heroLooping, setHeroLooping] = useState(false)
-  const promptCardRef = useRef<HTMLDivElement>(null)
-  const promptBtnRef = useRef<HTMLDivElement>(null)
-  const promptPillsRef = useRef<HTMLDivElement>(null)
-  const promptRevealedRef = useRef(false)
+  const [promptRevealed, setPromptRevealed] = useState(false)
 
   useEffect(() => {
-    function revealPrompt() {
-      if (promptRevealedRef.current) return
-      promptRevealedRef.current = true
-      if (promptCardRef.current) {
-        promptCardRef.current.style.opacity = "1"
-        promptCardRef.current.style.transform = "translateY(0)"
-      }
-      if (promptBtnRef.current) {
-        const btn = promptBtnRef.current
-        setTimeout(() => { btn.style.opacity = "1" }, 800)
-      }
-      if (promptPillsRef.current) {
-        const pills = promptPillsRef.current.children
-        for (let i = 0; i < pills.length; i++) {
-          const pill = pills[i] as HTMLElement
-          const delay = 200 + i * 150
-          setTimeout(() => {
-            pill.style.opacity = "1"
-            pill.style.transform = "translateY(0)"
-          }, delay)
-        }
-      }
-    }
-
     if (!mounted) return
-    const timeout = setTimeout(revealPrompt, 3100)
+
+    const timeout = setTimeout(() => setPromptRevealed(true), 3100)
 
     const onScroll = () => {
-      revealPrompt()
+      setPromptRevealed(true)
       window.removeEventListener("scroll", onScroll)
     }
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -124,7 +98,7 @@ export function HeroSection() {
       >
         <div className="absolute inset-0 overflow-hidden">
           <Image
-            src="/hero-bg.png"
+            src="/hero-bg.webp"
             alt=""
             fill
             priority
@@ -191,12 +165,13 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit}>
             <div
-              ref={promptCardRef}
               className="liquid-glass liquid-glass-dark rounded-2xl"
               style={{
                 opacity: 0,
                 transform: "translateY(40px)",
-                transition: "opacity 400ms cubic-bezier(0.16,1,0.3,1), transform 2000ms cubic-bezier(0.16,1,0.3,1)",
+                ...(promptRevealed && {
+                  animation: "prompt-card-reveal 2000ms cubic-bezier(0.16,1,0.3,1) forwards",
+                }),
               }}
             >
               <div className="relative z-10">
@@ -229,8 +204,12 @@ export function HeroSection() {
                 </div>
                 <div className="absolute bottom-3 right-3">
                   <div
-                    ref={promptBtnRef}
-                    style={{ opacity: 0, transition: "opacity 1000ms cubic-bezier(0.16,1,0.3,1)" }}
+                    style={{
+                      opacity: 0,
+                      ...(promptRevealed && {
+                        animation: "prompt-btn-reveal 1000ms cubic-bezier(0.16,1,0.3,1) 800ms forwards",
+                      }),
+                    }}
                   >
                     <button
                       type="submit"
@@ -246,8 +225,8 @@ export function HeroSection() {
               </div>
             </div>
 
-            <div ref={promptPillsRef} className="flex flex-wrap justify-center gap-2 mt-4">
-              {t.hero.suggestions.map((s) => {
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {t.hero.suggestions.map((s, i) => {
                 return (
                   <div
                     key={s.label}
@@ -255,7 +234,9 @@ export function HeroSection() {
                     style={{
                       opacity: 0,
                       transform: "translateY(12px)",
-                      transition: "opacity 300ms cubic-bezier(0.16,1,0.3,1), transform 500ms cubic-bezier(0.16,1,0.3,1)",
+                      ...(promptRevealed && {
+                        animation: `prompt-pill-reveal 500ms cubic-bezier(0.16,1,0.3,1) ${200 + i * 150}ms forwards`,
+                      }),
                     }}
                   >
                     <button

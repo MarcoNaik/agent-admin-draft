@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
+import { Mail } from "lucide-react"
 import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
 import { useI18n } from "@/lib/i18n"
 
@@ -44,9 +45,7 @@ export function Footer() {
 
           <div className="flex items-center gap-5">
             <a href="mailto:hello@struere.dev" className="text-charcoal/30 hover:text-charcoal/60 transition-colors" aria-label="Email">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-              </svg>
+              <Mail className="w-4 h-4" strokeWidth={1.5} />
             </a>
             <a href="#" className="text-charcoal/30 hover:text-charcoal/60 transition-colors" aria-label="Twitter">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
