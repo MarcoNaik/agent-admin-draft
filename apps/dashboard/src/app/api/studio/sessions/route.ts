@@ -148,17 +148,16 @@ export async function POST(request: Request) {
     })
     console.log(`[studio/sessions] Session created sessionId=${sessionId}`)
 
-    const apiKeyResult = await convex.mutation(api.apiKeys.create, {
-      name: `sandbox-${sessionId}`,
-      permissions: ["*"],
+    const studioKey = await adminConvex.mutation(internal.apiKeys.ensureStudioKey, {
+      organizationId: org._id,
       environment,
     })
-    console.log(`[studio/sessions] API key created id=${apiKeyResult.id}`)
+    console.log(`[studio/sessions] Studio key resolved id=${studioKey.id}`)
 
     await convex.mutation(api.sandboxSessions.updateStatus, {
       id: sessionId,
       status: "provisioning",
-      apiKeyId: apiKeyResult.id,
+      apiKeyId: studioKey.id,
     })
     console.log(`[studio/sessions] Status updated to provisioning`)
 
@@ -166,7 +165,7 @@ export async function POST(request: Request) {
     const claudeMd = buildClaudeMd(org.name, environment)
 
     const envVars: Record<string, string> = {
-      STRUERE_API_KEY: apiKeyResult.key,
+      STRUERE_API_KEY: studioKey.key,
       STRUERE_CONVEX_URL: convexUrl,
       OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: "32768",
     }
@@ -188,7 +187,7 @@ export async function POST(request: Request) {
     const sandbox = await createSandbox({
       envVars,
       orgInfo: { id: org._id, slug: org.slug, name: org.name },
-      apiKey: apiKeyResult.key,
+      apiKey: studioKey.key,
       convexUrl,
       claudeMd,
       model: sandboxModel,
