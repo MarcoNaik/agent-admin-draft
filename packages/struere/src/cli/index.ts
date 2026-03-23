@@ -12,6 +12,7 @@ import { addCommand } from './commands/add'
 import { statusCommand } from './commands/status'
 import { pullCommand } from './commands/pull'
 import { entitiesCommand } from './commands/entities'
+import { logsCommand } from './commands/logs'
 import { docsCommand } from './commands/docs'
 import { evalCommand } from './commands/eval'
 import { templatesCommand } from './commands/templates'
@@ -74,6 +75,7 @@ program.addCommand(addCommand)
 program.addCommand(statusCommand)
 program.addCommand(pullCommand)
 program.addCommand(entitiesCommand)
+program.addCommand(logsCommand)
 program.addCommand(docsCommand)
 program.addCommand(evalCommand)
 program.addCommand(templatesCommand)
