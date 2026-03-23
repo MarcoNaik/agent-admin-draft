@@ -320,6 +320,8 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
     lastUsedAt: v.optional(v.number()),
     createdAt: v.number(),
+    type: v.optional(v.literal("studio")),
+    rawKey: v.optional(v.string()),
   })
     .index("by_org", ["organizationId"])
     .index("by_org_env", ["organizationId", "environment"])

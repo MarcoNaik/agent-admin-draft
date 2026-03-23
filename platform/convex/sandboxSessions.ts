@@ -298,13 +298,6 @@ export const cleanup = mutation({
       throw new Error("Session not found")
     }
 
-    if (session.apiKeyId) {
-      const apiKey = await ctx.db.get(session.apiKeyId)
-      if (apiKey && apiKey.organizationId === auth.organizationId) {
-        await ctx.db.delete(session.apiKeyId)
-      }
-    }
-
     await ctx.db.patch(args.id, {
       status: "stopped",
       stoppedAt: Date.now(),

@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server"
 import { getAuthContext, requireAuth, requireOrgAdmin } from "./lib/auth"
 import { generateApiKey, hashApiKey } from "./lib/utils"
 
@@ -14,16 +14,18 @@ export const list = query({
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
       .collect()
 
-    return keys.map((k) => ({
-      id: k._id,
-      name: k.name,
-      keyPrefix: k.keyPrefix,
-      permissions: k.permissions,
-      environment: k.environment,
-      expiresAt: k.expiresAt,
-      lastUsedAt: k.lastUsedAt,
-      createdAt: k.createdAt,
-    }))
+    return keys
+      .filter((k) => k.type !== "studio")
+      .map((k) => ({
+        id: k._id,
+        name: k.name,
+        keyPrefix: k.keyPrefix,
+        permissions: k.permissions,
+        environment: k.environment,
+        expiresAt: k.expiresAt,
+        lastUsedAt: k.lastUsedAt,
+        createdAt: k.createdAt,
+      }))
   },
 })
 
@@ -103,6 +105,10 @@ export const update = mutation({
       throw new Error("API key not found")
     }
 
+    if (apiKey.type === "studio") {
+      throw new Error("Studio keys cannot be modified")
+    }
+
     const updates: Record<string, unknown> = {}
     if (args.name !== undefined) updates.name = args.name
     if (args.permissions !== undefined) updates.permissions = args.permissions
@@ -124,12 +130,16 @@ export const remove = mutation({
       throw new Error("API key not found")
     }
 
+    if (apiKey.type === "studio") {
+      throw new Error("Studio keys cannot be deleted")
+    }
+
     await ctx.db.delete(args.id)
     return { success: true }
   },
 })
 
-export const recordUsage = mutation({
+export const recordUsage = internalMutation({
   args: { keyPrefix: v.string() },
   handler: async (ctx, args) => {
     const apiKey = await ctx.db
@@ -139,6 +149,110 @@ export const recordUsage = mutation({
 
     if (apiKey) {
       await ctx.db.patch(apiKey._id, { lastUsedAt: Date.now() })
+    }
+  },
+})
+
+export const ensureStudioKey = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment)
+      )
+      .collect()
+
+    const studioKey = existing.find((k) => k.type === "studio")
+    if (studioKey && studioKey.rawKey) {
+      return { id: studioKey._id, key: studioKey.rawKey }
+    }
+    if (studioKey && !studioKey.rawKey) {
+      const { key, prefix } = generateApiKey()
+      const keyHash = await hashApiKey(key)
+      await ctx.db.patch(studioKey._id, { rawKey: key, keyHash, keyPrefix: prefix })
+      return { id: studioKey._id, key }
+    }
+
+    const { key, prefix } = generateApiKey()
+    const keyHash = await hashApiKey(key)
+    const now = Date.now()
+
+    const id = await ctx.db.insert("apiKeys", {
+      organizationId: args.organizationId,
+      environment: args.environment,
+      name: "Studio",
+      keyHash,
+      keyPrefix: prefix,
+      permissions: ["*"],
+      createdAt: now,
+      type: "studio",
+      rawKey: key,
+    })
+
+    return { id, key }
+  },
+})
+
+export const cleanupSandboxKeys = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const allKeys = await ctx.db.query("apiKeys").collect()
+    let deleted = 0
+    for (const key of allKeys) {
+      if (key.name.startsWith("sandbox-")) {
+        await ctx.db.delete(key._id)
+        deleted++
+      }
+    }
+    return { deleted }
+  },
+})
+
+export const getStudioKey = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+  },
+  handler: async (ctx, args) => {
+    const keys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment)
+      )
+      .collect()
+
+    const studioKey = keys.find((k) => k.type === "studio")
+    if (!studioKey || !studioKey.rawKey) return null
+    return { id: studioKey._id, key: studioKey.rawKey }
+  },
+})
+
+export const getStudioKeyStatus = query({
+  args: {
+    environment: v.union(v.literal("development"), v.literal("production"), v.literal("eval")),
+  },
+  handler: async (ctx, args) => {
+    const auth = await getAuthContext(ctx)
+
+    const keys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
+      )
+      .collect()
+
+    const studioKey = keys.find((k) => k.type === "studio")
+    if (!studioKey) return null
+
+    return {
+      active: true,
+      keyPrefix: studioKey.keyPrefix,
+      lastUsedAt: studioKey.lastUsedAt,
+      createdAt: studioKey.createdAt,
     }
   },
 })
