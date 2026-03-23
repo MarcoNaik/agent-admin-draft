@@ -40,6 +40,7 @@ const compileSystemPromptBySlugRef = makeFunctionReference<"action">("agents:com
 const runToolBySlugRef = makeFunctionReference<"action">("toolTesting:runToolBySlug" as any)
 const executeToolCallbackRef = makeFunctionReference<"action">("agent:executeToolCallback")
 const checkDataRateLimitRef = makeFunctionReference<"mutation">("rateLimits:checkDataRateLimit")
+const recordKeyUsageRef = makeFunctionReference<"mutation">("apiKeys:recordUsage")
 const listEntityTypesInternalRef = makeFunctionReference<"query">("entityTypes:listInternal")
 const entityCreateRef = makeFunctionReference<"mutation">("tools/entities:entityCreate")
 const entityGetRef = makeFunctionReference<"query">("tools/entities:entityGet")
@@ -56,7 +57,7 @@ async function hashApiKey(key: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-async function authenticateApiKey(ctx: any, request: Request): Promise<{ organizationId: Id<"organizations">; environment: "development" | "production" | "eval"; permissions: string[]; keyHash: string } | Response> {
+async function authenticateApiKey(ctx: any, request: Request): Promise<{ organizationId: Id<"organizations">; environment: "development" | "production" | "eval"; permissions: string[]; keyHash: string; keyPrefix: string } | Response> {
   const apiKey = request.headers.get("Authorization")?.replace("Bearer ", "")
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -75,7 +76,9 @@ async function authenticateApiKey(ctx: any, request: Request): Promise<{ organiz
     })
   }
 
-  return { organizationId: auth.organizationId, environment: auth.environment, permissions: auth.permissions, keyHash }
+  await ctx.runMutation(recordKeyUsageRef, { keyPrefix: auth.keyPrefix })
+
+  return { organizationId: auth.organizationId, environment: auth.environment, permissions: auth.permissions, keyHash, keyPrefix: auth.keyPrefix }
 }
 
 function base64Encode(bytes: Uint8Array): string {
@@ -171,6 +174,8 @@ http.route({
       })
     }
 
+    await ctx.runMutation(recordKeyUsageRef, { keyPrefix: auth.keyPrefix })
+
     const rateLimitResult = await ctx.runMutation(checkChatRateLimitRef, {
       key: keyHash,
       organizationId: auth.organizationId,
@@ -253,6 +258,8 @@ http.route({
         headers: { "Content-Type": "application/json" },
       })
     }
+
+    await ctx.runMutation(recordKeyUsageRef, { keyPrefix: auth.keyPrefix })
 
     const rateLimitResult = await ctx.runMutation(checkChatRateLimitRef, {
       key: keyHash,
