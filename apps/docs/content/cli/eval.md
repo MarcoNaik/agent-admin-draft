@@ -2,7 +2,7 @@
 title: "struere eval run"
 description: "Run eval suites from the command line and generate Markdown result reports"
 section: "CLI"
-order: 8
+order: 9
 ---
 
 # struere eval run

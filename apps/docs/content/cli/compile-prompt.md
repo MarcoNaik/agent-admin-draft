@@ -2,7 +2,7 @@
 title: "struere compile-prompt"
 description: "Compile and preview an agent's system prompt after template processing"
 section: "CLI"
-order: 11
+order: 12
 ---
 
 # struere compile-prompt

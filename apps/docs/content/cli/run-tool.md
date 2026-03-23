@@ -2,7 +2,7 @@
 title: "struere run-tool"
 description: "Run a tool as it would execute during a real agent conversation"
 section: "CLI"
-order: 12
+order: 13
 ---
 
 # struere run-tool

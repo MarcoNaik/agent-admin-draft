@@ -2,7 +2,7 @@
 title: "struere templates"
 description: "Manage WhatsApp message templates from the command line"
 section: "CLI"
-order: 9
+order: 10
 ---
 
 # struere templates

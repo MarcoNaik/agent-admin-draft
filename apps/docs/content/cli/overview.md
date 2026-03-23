@@ -23,6 +23,7 @@ The Struere CLI is your primary interface for defining, syncing, and deploying a
 | `struere eval run <suite>` | Run an eval suite and generate Markdown reports |
 | `struere compile-prompt <slug>` | Compile and preview an agent's system prompt |
 | `struere run-tool <slug> <tool>` | Run a tool as it would execute during a real agent conversation |
+| `struere chat <slug>` | Chat with an agent interactively or send a single message |
 | `struere templates list` | List WhatsApp message templates |
 | `struere templates create <name>` | Create a new message template |
 | `struere templates delete <name>` | Delete a message template |
@@ -98,6 +99,7 @@ src/cli/
 │   ├── org.ts            # Organization management
 │   ├── compile-prompt.ts # Compile system prompt templates
 │   ├── run-tool.ts       # Run tools for testing
+│   ├── chat.ts           # Interactive agent chat
 │   ├── login.ts          # Browser-based OAuth
 │   ├── logout.ts         # Clear credentials
 │   └── whoami.ts         # Current user info

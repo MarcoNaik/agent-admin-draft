@@ -2,7 +2,7 @@
 title: "struere integration"
 description: "Configure and manage integrations from the command line"
 section: "CLI"
-order: 10
+order: 11
 ---
 
 # struere integration
