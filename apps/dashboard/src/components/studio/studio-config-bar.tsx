@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Square, Loader2 } from "@/lib/icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import {
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -39,6 +41,33 @@ const PROVIDER_LABELS: Record<string, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   google: "Google",
+  meta: "Meta",
+  mistralai: "Mistral",
+  deepseek: "DeepSeek",
+  cohere: "Cohere",
+  microsoft: "Microsoft",
+  amazon: "Amazon",
+  perplexity: "Perplexity",
+  qwen: "Qwen",
+}
+
+const TOP_MODELS = [
+  "anthropic/claude-opus-4",
+  "xai/grok-4",
+  "google/gemini-2.5-pro",
+  "openai/gpt-5-mini",
+  "anthropic/claude-sonnet-4",
+]
+
+type ModelEntry = { struereId: string; displayName: string; providerSlug: string }
+
+function groupByProvider(models: ModelEntry[]): Record<string, ModelEntry[]> {
+  const grouped: Record<string, ModelEntry[]> = {}
+  for (const m of models) {
+    if (!grouped[m.providerSlug]) grouped[m.providerSlug] = []
+    grouped[m.providerSlug].push(m)
+  }
+  return grouped
 }
 
 export function StudioConfigBar({
@@ -51,17 +80,15 @@ export function StudioConfigBar({
   onStop,
 }: StudioConfigBarProps) {
   const featuredModels = useQuery(api.modelPricing.listFeaturedModels)
+  const allModels = useQuery(api.modelPricing.listAllModels)
+  const [showAll, setShowAll] = useState(false)
 
-  type FeaturedModel = { struereId: string; displayName: string; providerSlug: string }
-  const models: FeaturedModel[] = featuredModels ?? []
-  const groupedModels: Record<string, FeaturedModel[]> = {}
-  for (const m of models) {
-    if (!groupedModels[m.providerSlug]) groupedModels[m.providerSlug] = []
-    groupedModels[m.providerSlug].push(m)
-  }
+  const featured: ModelEntry[] = featuredModels ?? []
+  const all: ModelEntry[] = allModels ?? []
 
   if (isSessionActive) {
-    const activeModel = models.find((m) => m.struereId === model)
+    const activeModel = featured.find((m) => m.struereId === model)
+      ?? all.find((m) => m.struereId === model)
 
     return (
       <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-border/40">
@@ -97,10 +124,18 @@ export function StudioConfigBar({
     )
   }
 
+  const topModels = featured.filter((m) => TOP_MODELS.includes(m.struereId))
+  const displayModels = showAll ? all : topModels
+  const groupedModels = groupByProvider(displayModels)
+  const selectedInDisplay = displayModels.some((m) => m.struereId === model)
+  const selectedModel = !selectedInDisplay
+    ? (all.find((m) => m.struereId === model) ?? featured.find((m) => m.struereId === model))
+    : null
+
   return (
     <div className="px-4 py-2 border-b border-border/40">
       <div className="flex items-center gap-2">
-        <Select value={model} onValueChange={onModelChange}>
+        <Select value={model} onValueChange={onModelChange} onOpenChange={(open) => { if (!open) setShowAll(false) }}>
           <SelectTrigger className="h-7 text-xs w-auto gap-1">
             <SelectValue />
           </SelectTrigger>
@@ -108,16 +143,50 @@ export function StudioConfigBar({
             {featuredModels === undefined ? (
               <SelectItem value={model} className="text-xs">{model}</SelectItem>
             ) : (
-              Object.entries(groupedModels).map(([provider, models]) => (
-                <SelectGroup key={provider}>
-                  <SelectLabel>{PROVIDER_LABELS[provider] ?? provider}</SelectLabel>
-                  {models.map((m) => (
-                    <SelectItem key={m.struereId} value={m.struereId} className="text-xs">
-                      {m.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))
+              <>
+                {selectedModel && (
+                  <SelectItem value={selectedModel.struereId} className="hidden">
+                    {selectedModel.displayName}
+                  </SelectItem>
+                )}
+                {showAll && (
+                  <button
+                    className="w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left cursor-pointer"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShowAll(false)
+                    }}
+                  >
+                    Show less
+                  </button>
+                )}
+                {Object.entries(groupedModels).map(([provider, models]) => (
+                  <SelectGroup key={provider}>
+                    <SelectLabel>{PROVIDER_LABELS[provider] ?? provider.charAt(0).toUpperCase() + provider.slice(1)}</SelectLabel>
+                    {models.map((m) => (
+                      <SelectItem key={m.struereId} value={m.struereId} className="text-xs">
+                        {m.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+                {!showAll && (
+                  <>
+                    <SelectSeparator />
+                    <button
+                      className="w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left cursor-pointer"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setShowAll(true)
+                      }}
+                    >
+                      See more models...
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </SelectContent>
         </Select>
