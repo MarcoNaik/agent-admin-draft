@@ -11,7 +11,7 @@ The Data API lets you create, read, update, and delete entities in your Struere 
 
 ## Authentication
 
-Data API endpoints require an API key with the `data` permission. Create one in the Struere dashboard under **API Keys** and enable the **Data** permission.
+Data API endpoints require an API key with the `data` or `*` (wildcard) permission. Keys created in the dashboard default to `*` which grants access to all endpoints including the Data API.
 
 ```
 Authorization: Bearer sk_dev_abc123...

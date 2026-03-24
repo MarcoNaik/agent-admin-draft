@@ -21,6 +21,19 @@ The environment of the API key determines which environment the request operates
 
 API keys are validated by computing a SHA-256 hash and looking up the hashed value in the database.
 
+### Permissions
+
+Each API key has a set of permissions that control which endpoints it can access.
+
+| Permission | Access |
+|------------|--------|
+| `*` | Full access to all endpoints (chat, data, sync) |
+| `chat` | Chat endpoints (`/v1/chat`, `/v1/agents/:slug/chat`) |
+| `data` | Data API endpoints (`/v1/data/*`, `/v1/entity-types`) |
+| `sync` | CLI sync endpoints (`/v1/sync/*`) |
+
+Keys created in the dashboard default to `*` (full access). When creating keys programmatically or through the agent settings page, you can restrict permissions to specific scopes.
+
 ## Endpoints
 
 | Method | Path | Auth | Description |
