@@ -3,7 +3,29 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
-import { useI18n } from "@/lib/i18n"
+
+const faqItems = [
+  {
+    question: "What is Struere?",
+    answer: "Struere is an AI agent platform for business automation. You describe what your business needs in natural language, and Struere builds AI agents that handle customer support, appointments, payments, and more \u2014 complete with a database, integrations, and multi-agent orchestration.",
+  },
+  {
+    question: "Is Struere free?",
+    answer: "Yes. Struere\u2019s platform is free forever when you bring your own API keys. You get unlimited agents, WhatsApp and Calendar integrations, the full developer toolkit, and no platform fees. You can also buy credits to skip API key setup.",
+  },
+  {
+    question: "What integrations does Struere support?",
+    answer: "Struere integrates with WhatsApp Business, Google Calendar, Airtable, email via Resend, and payment processing via Flow. It supports 40+ LLM models including GPT, Claude, Gemini, and Grok.",
+  },
+  {
+    question: "How does multi-agent orchestration work?",
+    answer: "Agents can communicate with each other using the agent.chat tool. You can build teams of specialized agents \u2014 for example, one handles orders while another manages inventory. Struere handles depth limits, cycle detection, and shared conversation context automatically.",
+  },
+  {
+    question: "Do I need to code?",
+    answer: "No. You can build and deploy agents entirely from the browser using Studio. For developers, Struere also offers a CLI and SDK for defining agents, data types, roles, and triggers in code.",
+  },
+]
 
 function FAQItem({ question, answer, isOpen, onToggle }: { question: string; answer: string; isOpen: boolean; onToggle: () => void }) {
   return (
@@ -41,7 +63,6 @@ function FAQItem({ question, answer, isOpen, onToggle }: { question: string; ans
 }
 
 export function FAQ() {
-  const { t } = useI18n()
   const { ref, opacity, y } = useFadeSlideUp()
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
@@ -50,13 +71,13 @@ export function FAQ() {
       <motion.div ref={ref} style={{ opacity, y, willChange: "transform, opacity" }} className="mx-auto max-w-2xl px-6 md:px-12">
         <div className="text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading">
-            {t.faq.title}
+            Frequently asked questions.
           </h2>
-          <p className="mt-4 text-base text-charcoal/60 max-w-lg mx-auto">{t.faq.subtitle}</p>
+          <p className="mt-4 text-base text-charcoal/60 max-w-lg mx-auto">Everything you need to know about Struere.</p>
         </div>
 
         <div className="rounded-2xl bg-white/80 border border-ocean/15 shadow-lg shadow-ocean/5 px-6 md:px-8">
-          {t.faq.items.map((item, i) => (
+          {faqItems.map((item, i) => (
             <FAQItem
               key={i}
               question={item.question}

@@ -3,7 +3,20 @@
 import { useState, useEffect } from "react"
 import { motion } from "motion/react"
 import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
-import { useI18n } from "@/lib/i18n"
+
+const placeholders = [
+  "A recruitment system that screens applications, scores candidates, and books interviews with available interviewers...",
+  "When a tenant reports a maintenance issue on WhatsApp, classify urgency, dispatch the right vendor, and track resolution...",
+  "Two agents for a clinic — one handles patient intake and scheduling, the other manages post-visit follow-ups...",
+  "A system that monitors trial usage, scores activation, and hands off to sales when an account is ready to convert...",
+]
+
+const suggestions = [
+  { label: "Recruitment", prompt: "A two-agent recruitment pipeline: the screening agent scores inbound applications against job requirements and routes qualified candidates. The interview agent checks interviewer availability on Google Calendar, books the slot, sends WhatsApp confirmation to the candidate, and syncs the pipeline to Airtable." },
+  { label: "Property ops", prompt: "A property management system where tenants report issues via WhatsApp. The triage agent classifies urgency (emergency, high, normal, low) and category, creates a work order, dispatches the right vendor, and notifies the property manager. A billing agent tracks costs and generates monthly owner reports." },
+  { label: "Clinic", prompt: "A clinic intake agent that when a new patient registers, verifies insurance, matches to the right provider, books the first available appointment on Google Calendar, sends a WhatsApp welcome with intake forms, and syncs to Airtable. A care agent handles post-visit follow-ups and medication reminders." },
+  { label: "Trial conversion", prompt: "A SaaS trial activation system: one agent monitors product usage events, calculates activation scores, and sends contextual nurture emails. When an account crosses the threshold, the sales handoff agent enriches the lead, assigns an AE, books a demo call, sends the AE a WhatsApp brief, and syncs to the Airtable CRM." },
+]
 
 function CyclingPlaceholder({ items }: { items: readonly string[] }) {
   const [index, setIndex] = useState(0)
@@ -28,7 +41,6 @@ function CyclingPlaceholder({ items }: { items: readonly string[] }) {
 }
 
 export function CTASection() {
-  const { t } = useI18n()
   const { ref, opacity, y } = useFadeSlideUp()
   const [prompt, setPrompt] = useState("")
   const [isFocused, setIsFocused] = useState(false)
@@ -42,8 +54,8 @@ export function CTASection() {
   return (
     <section className="relative bg-gradient-to-b from-stone-base to-stone-deep py-24 md:py-32">
       <motion.div ref={ref} style={{ opacity, y, willChange: "transform, opacity" }} className="mx-auto max-w-3xl px-6 md:px-12 text-center">
-        <h2 className="font-display text-4xl md:text-5xl font-medium text-charcoal-heading mb-4">{t.cta.title}</h2>
-        <p className="text-lg text-charcoal/50 mb-10">{t.cta.subtitle}</p>
+        <h2 className="font-display text-4xl md:text-5xl font-medium text-charcoal-heading mb-4">Build your first agent.</h2>
+        <p className="text-lg text-charcoal/50 mb-10">Describe what you need. It gets built.</p>
 
         <form onSubmit={handleSubmit}>
           <div
@@ -74,16 +86,16 @@ export function CTASection() {
                   }}
                   rows={3}
                   className="w-full px-6 pt-5 pb-14 text-base bg-transparent text-charcoal placeholder:text-transparent focus:outline-none resize-none leading-relaxed relative z-10"
-                  aria-label={t.cta.ariaLabel}
+                  aria-label="What do you need to build"
                 />
                 {!prompt && !isFocused && (
                   <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none">
-                    <CyclingPlaceholder items={t.hero.placeholders} />
+                    <CyclingPlaceholder items={placeholders} />
                   </div>
                 )}
                 {!prompt && isFocused && (
                   <div className="absolute top-5 left-6 right-20 text-base leading-relaxed pointer-events-none font-mono text-charcoal/25">
-                    {t.cta.focusPlaceholder}
+                    What do you need to build...
                   </div>
                 )}
               </div>
@@ -92,14 +104,14 @@ export function CTASection() {
                   type="submit"
                   className="px-6 py-2.5 text-sm font-medium bg-ocean text-white hover:bg-ocean-light rounded-xl transition-colors duration-200"
                 >
-                  {t.cta.createButton} &rarr;
+                  Try it free &rarr;
                 </button>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-2 mt-4">
-            {t.hero.suggestions.map((s) => (
+            {suggestions.map((s) => (
               <button
                 key={s.label}
                 type="button"

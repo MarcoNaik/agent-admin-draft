@@ -2,7 +2,6 @@
 
 import { motion } from "motion/react"
 import { useParallaxY, useFadeSlideUp } from "@/hooks/use-scroll-animation"
-import { useI18n } from "@/lib/i18n"
 
 const aiProviders = [
   { name: "GPT", label: "OpenAI" },
@@ -17,7 +16,6 @@ const available = [
 ]
 
 export function Integrations() {
-  const { t } = useI18n()
   const { ref: headingRef, y: headingY } = useParallaxY()
   const ai = useFadeSlideUp()
   const int = useFadeSlideUp()
@@ -30,13 +28,13 @@ export function Integrations() {
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
             style={{ y: headingY, willChange: "transform" }}
           >
-            {t.integrations.title}
+            Connects to what you already use.
           </motion.h2>
         </div>
 
         <motion.div ref={ai.ref} style={{ opacity: ai.opacity, y: ai.y, willChange: "transform, opacity" }}>
           <p className="text-center text-xs font-medium uppercase tracking-widest text-charcoal/40 mb-4">
-            {t.integrations.aiModelsLabel}
+            Powered by
           </p>
           <div className="flex flex-wrap justify-center gap-3 mb-10">
             {aiProviders.map((provider) => (
@@ -61,7 +59,7 @@ export function Integrations() {
                 <span>{item.icon}</span>
                 <span>{item.name}</span>
                 <span className="ml-1 text-[10px] font-medium text-ocean/70 bg-ocean/5 px-2 py-0.5 rounded-full">
-                  {t.integrations.available}
+                  Live
                 </span>
               </div>
             ))}

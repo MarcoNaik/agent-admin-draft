@@ -3,10 +3,41 @@
 import { motion } from "motion/react"
 import { Mail } from "lucide-react"
 import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
-import { useI18n } from "@/lib/i18n"
+
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { label: "How it works", href: "#how-it-works" },
+      { label: "Use cases", href: "#use-cases" },
+      { label: "Integrations", href: "#integrations" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      {
+        label: "Documentation",
+        href: "https://docs.struere.dev",
+      },
+    ],
+  },
+  {
+    title: "Contact",
+    links: [
+      { label: "Email", href: "mailto:hello@struere.dev" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Terms of service", href: "/terms-of-service" },
+      { label: "Privacy policy", href: "/privacy-policy" },
+    ],
+  },
+]
 
 export function Footer() {
-  const { t } = useI18n()
   const grid = useFadeSlideUp()
   const bottom = useFadeSlideUp()
 
@@ -18,7 +49,7 @@ export function Footer() {
           style={{ opacity: grid.opacity, y: grid.y, willChange: "transform, opacity" }}
           className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12"
         >
-          {t.footer.columns.map((column) => (
+          {columns.map((column) => (
             <div key={column.title}>
               <h4 className="text-xs font-medium text-charcoal-heading tracking-wide mb-4">{column.title}</h4>
               <ul className="flex flex-col gap-3">

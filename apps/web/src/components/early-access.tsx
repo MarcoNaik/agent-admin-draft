@@ -3,10 +3,17 @@
 import { motion } from "motion/react"
 import { Check } from "lucide-react"
 import { useParallaxY, useScaleIn } from "@/hooks/use-scroll-animation"
-import { useI18n } from "@/lib/i18n"
+
+const features = [
+  "Unlimited agents for any task",
+  "WhatsApp Business with a real-time inbox",
+  "Google Calendar \u2014 your agent books and manages appointments",
+  "A database for your customers, orders, and products",
+  "Agents that hand off to each other automatically",
+  "Direct support from the founding team",
+]
 
 export function EarlyAccess() {
-  const { t } = useI18n()
   const { ref: headingRef, y: headingY } = useParallaxY()
   const { ref, scale, opacity, y } = useScaleIn()
 
@@ -18,10 +25,10 @@ export function EarlyAccess() {
             className="font-display text-3xl md:text-4xl font-medium text-charcoal-heading"
             style={{ y: headingY, willChange: "transform" }}
           >
-            {t.earlyAccess.title}
+            Get in before everyone else.
           </motion.h2>
           <p className="mt-4 text-base text-charcoal/60">
-            {t.earlyAccess.subtitle}
+            Everything you need to automate your business — free while we grow together.
           </p>
         </div>
 
@@ -36,20 +43,20 @@ export function EarlyAccess() {
 
           <div className="relative text-center">
             <span className="inline-block px-4 py-1 text-xs font-medium text-white bg-ocean rounded-full mb-6">
-              {t.earlyAccess.badge}
+              Early access
             </span>
 
             <div className="flex items-baseline justify-center gap-2 mb-2">
               <span className="font-display text-5xl font-semibold text-charcoal-heading">
-                {t.earlyAccess.price}
+                Free
               </span>
             </div>
             <p className="text-sm text-charcoal/50 mb-8">
-              {t.earlyAccess.priceNote}
+              during early access
             </p>
 
             <div className="flex flex-col gap-3 mb-8 max-w-xs mx-auto">
-              {t.earlyAccess.features.map((feature) => (
+              {features.map((feature) => (
                 <div key={feature} className="flex items-center gap-2.5">
                   <Check className="w-4 h-4 text-ocean flex-shrink-0" strokeWidth={2} />
                   <span className="text-sm text-charcoal/70">{feature}</span>
@@ -61,11 +68,11 @@ export function EarlyAccess() {
               href="https://app.struere.dev?studio="
               className="inline-block w-full max-w-xs text-center text-sm font-medium py-3 rounded-xl bg-ocean text-white hover:bg-ocean-light transition-colors duration-200"
             >
-              {t.earlyAccess.cta}
+              Get early access
             </a>
 
             <p className="mt-4 text-xs text-charcoal/40">
-              {t.earlyAccess.note}
+              No credit card · Cancel anytime
             </p>
           </div>
         </motion.div>

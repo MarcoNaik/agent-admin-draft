@@ -2,11 +2,16 @@
 
 import { useState, useCallback } from "react"
 import { Menu, X, ArrowUpRight } from "lucide-react"
-import { useI18n } from "@/lib/i18n"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
+const navLinks = [
+  { label: "Features", href: "#use-cases", external: false },
+  { label: "Demo", href: "#demo", external: false },
+  { label: "Pricing", href: "#pricing", external: false },
+  { label: "Docs", href: "https://docs.struere.dev", external: true },
+]
+
 export function Navigation() {
-  const { t } = useI18n()
   const { mounted } = useHeroEntrance()
 
   const scrollTo = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -16,13 +21,6 @@ export function Navigation() {
     if (el) el.scrollIntoView({ behavior: "smooth" })
   }, [])
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  const navLinks = [
-    { label: t.nav.howItWorks, href: "#use-cases", external: false },
-    { label: t.nav.useCases, href: "#demo", external: false },
-    { label: t.nav.earlyAccess, href: "#pricing", external: false },
-    { label: t.nav.docs, href: "https://docs.struere.dev", external: true },
-  ]
 
   return (
     <nav className="sticky top-0 left-0 right-0 z-50 bg-stone-base backdrop-blur-xl">
@@ -65,7 +63,7 @@ export function Navigation() {
             href="https://app.struere.dev?studio="
             className="text-sm font-medium px-5 py-2 rounded-xl text-white bg-ocean hover:bg-ocean-light transition-colors duration-200"
           >
-            {t.nav.cta}
+            Start free
           </a>
         </div>
 
@@ -107,7 +105,7 @@ export function Navigation() {
               href="https://app.struere.dev?studio="
               className="mt-2 text-center text-sm font-medium px-5 py-3 rounded-xl text-white bg-ocean hover:bg-ocean-light transition-colors duration-200"
             >
-              {t.nav.cta}
+              Start free
             </a>
           </div>
         </div>

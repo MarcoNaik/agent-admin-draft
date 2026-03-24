@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { I18nProvider } from "@/lib/i18n"
 import { HeroEntranceProvider, useHeroEntrance } from "@/lib/hero-entrance"
 
 function BrandLoader() {
@@ -29,11 +28,9 @@ function BrandLoader() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <I18nProvider>
-      <HeroEntranceProvider>
-        <BrandLoader />
-        {children}
-      </HeroEntranceProvider>
-    </I18nProvider>
+    <HeroEntranceProvider>
+      <BrandLoader />
+      {children}
+    </HeroEntranceProvider>
   )
 }

@@ -2,7 +2,27 @@
 
 import { motion } from "motion/react"
 import { useParallaxY, useFadeSlideUp } from "@/hooks/use-scroll-animation"
-import { useI18n } from "@/lib/i18n"
+
+const steps = [
+  {
+    number: "01",
+    title: "Describe what you need",
+    description:
+      "Tell Claude what your client needs: \"I need a WhatsApp agent that handles bookings and checks the calendar.\" Plain English. No flowcharts.",
+  },
+  {
+    number: "02",
+    title: "AI builds the system",
+    description:
+      "Claude creates the agent, defines its tools, sets up the database, and writes tests. You review everything from the dashboard.",
+  },
+  {
+    number: "03",
+    title: "Deploy and monitor",
+    description:
+      "Push to WhatsApp, web, or API. See every conversation in real time. Step in when you want.",
+  },
+]
 
 function Step({ step }: { step: { number: string; title: string; description: string } }) {
   const { ref, opacity, y } = useFadeSlideUp()
@@ -26,7 +46,6 @@ function Step({ step }: { step: { number: string; title: string; description: st
 }
 
 export function HowItWorks() {
-  const { t } = useI18n()
   const { ref, y } = useParallaxY(200)
 
   return (
@@ -37,12 +56,12 @@ export function HowItWorks() {
             className="font-display text-6xl md:text-8xl font-medium text-charcoal-heading"
             style={{ y, willChange: "transform" }}
           >
-            {t.howItWorks.title}
+            Live in minutes.
           </motion.h2>
         </div>
 
         <div className="divide-y divide-charcoal/5">
-          {t.howItWorks.steps.map((step) => (
+          {steps.map((step) => (
             <Step key={step.number} step={step} />
           ))}
         </div>
