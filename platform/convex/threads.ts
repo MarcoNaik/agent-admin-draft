@@ -399,6 +399,64 @@ export const update = mutation({
   },
 })
 
+export const setAgentPaused = mutation({
+  args: {
+    threadId: v.id("threads"),
+    paused: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx)
+    const thread = await ctx.db.get(args.threadId)
+    if (!thread || thread.organizationId !== auth.organizationId) {
+      throw new Error("Thread not found")
+    }
+
+    const allowedAgentIds = await resolveAllowedAgentIds(ctx, auth, thread.environment)
+    if (allowedAgentIds !== null && !allowedAgentIds.some((id) => id === thread.agentId)) {
+      throw new Error("Thread not found")
+    }
+
+    if (thread.agentPaused === args.paused) return
+
+    const now = Date.now()
+    await ctx.db.patch(args.threadId, { agentPaused: args.paused, updatedAt: now })
+    await ctx.db.insert("messages", {
+      threadId: args.threadId,
+      organizationId: auth.organizationId,
+      role: "system",
+      content: args.paused
+        ? "Agent paused by operator."
+        : "Agent resumed by operator. The agent can now see all previous messages and will continue handling this conversation.",
+      channelData: { systemType: args.paused ? "human_takeover" : "agent_resumed", visible: true },
+      createdAt: now,
+    })
+  },
+})
+
+export const setAgentPausedInternal = internalMutation({
+  args: {
+    threadId: v.id("threads"),
+    paused: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const thread = await ctx.db.get(args.threadId)
+    if (!thread || thread.agentPaused === args.paused) return
+
+    const now = Date.now()
+    await ctx.db.patch(args.threadId, { agentPaused: args.paused, updatedAt: now })
+    await ctx.db.insert("messages", {
+      threadId: args.threadId,
+      organizationId: thread.organizationId,
+      role: "system",
+      content: args.paused
+        ? "Agent paused — human operator is responding from the dashboard."
+        : "Agent resumed.",
+      channelData: { systemType: args.paused ? "human_takeover" : "agent_resumed", visible: true },
+      createdAt: now,
+    })
+  },
+})
+
 export const remove = mutation({
   args: { id: v.id("threads") },
   handler: async (ctx, args) => {

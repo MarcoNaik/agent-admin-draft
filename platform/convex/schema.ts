@@ -84,6 +84,7 @@ export default defineSchema({
     channelParams: v.optional(v.any()),
     conversationId: v.optional(v.string()),
     parentThreadId: v.optional(v.id("threads")),
+    agentPaused: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

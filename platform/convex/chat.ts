@@ -14,6 +14,7 @@ const sendTextToPhoneRef = makeFunctionReference<"action">("whatsappActions:send
 const patchMessageRef = makeFunctionReference<"mutation">("threads:patchMessage")
 const canAccessThreadRef = makeFunctionReference<"query">("threads:canAccessThread")
 const isOrgAdminRef = makeFunctionReference<"query">("chat:isOrgAdminQuery")
+const setAgentPausedInternalRef = makeFunctionReference<"mutation">("threads:setAgentPausedInternal")
 
 interface AuthInfo {
   userId: Id<"users">
@@ -181,7 +182,7 @@ export const replyToThread = action({
 
     const ids = await ctx.runMutation(appendMessagesRef, {
       threadId: args.threadId,
-      messages: [{ role: "assistant", content: args.message, direction: "outbound" }],
+      messages: [{ role: "assistant", content: args.message, direction: "outbound", channelData: { origin: "dashboard", authorType: "human_operator" } }],
     }) as string[]
 
     if (thread.externalId?.startsWith("whatsapp:")) {
@@ -219,9 +220,11 @@ export const replyToThread = action({
           messageId: ids[0] as any,
           externalMessageId: messageId,
           status,
-          channelData: { connectionId: connectionId },
+          channelData: { origin: "dashboard", authorType: "human_operator", connectionId: connectionId },
         })
       }
+
+      await ctx.runMutation(setAgentPausedInternalRef, { threadId: args.threadId, paused: true })
 
       return { success: true, whatsappStatus: status }
     }

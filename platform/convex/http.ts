@@ -20,6 +20,7 @@ const processInboundMessageRef = makeFunctionReference<"mutation">("whatsapp:pro
 const scheduleMediaDownloadRef = makeFunctionReference<"mutation">("whatsapp:scheduleMediaDownload")
 const scheduleAgentRoutingRef = makeFunctionReference<"mutation">("whatsapp:scheduleAgentRouting")
 const updateMessageStatusRef = makeFunctionReference<"mutation">("whatsapp:updateMessageStatus")
+const processOutboundBusinessAppMessageRef = makeFunctionReference<"mutation">("whatsapp:processOutboundBusinessAppMessage")
 const markAsPaidRef = makeFunctionReference<"mutation">("payments:markAsPaid")
 const markAsFailedRef = makeFunctionReference<"mutation">("payments:markAsFailed")
 const getPaymentByFlowTokenRef = makeFunctionReference<"query">("payments:getPaymentByFlowToken")
@@ -586,6 +587,7 @@ http.route({
         kapso?: {
           direction?: string
           status?: string
+          origin?: string
           media_url?: string
           media_data?: { url?: string; filename?: string; content_type?: string }
           content?: string
@@ -713,27 +715,60 @@ http.route({
         const messageId = message.id
         const status = eventType.split(".").pop()!
         if (messageId) {
-          const updateArgs: {
-            messageId: string
-            status: string
-            pricingBillable?: boolean
-            pricingModel?: string
-            pricingCategory?: string
-          } = { messageId, status }
-
           if (status === "sent") {
-            const statuses = message.kapso?.statuses
-            if (statuses && Array.isArray(statuses)) {
-              const pricingEntry = statuses.find((s) => s.pricing)
-              if (pricingEntry?.pricing) {
-                updateArgs.pricingBillable = pricingEntry.pricing.billable
-                updateArgs.pricingModel = pricingEntry.pricing.pricing_model
-                updateArgs.pricingCategory = pricingEntry.pricing.category
-              }
-            }
-          }
+            const origin = message.kapso?.origin
 
-          await ctx.runMutation(updateMessageStatusRef, updateArgs)
+            if (origin === "history_sync") {
+              continue
+            }
+
+            if (origin === "business_app") {
+              const from = item.conversation?.phone_number?.replace("+", "") ?? ""
+              if (!from) {
+                continue
+              }
+              const msgType = message.type ?? "text"
+              let text = message.text?.body
+              if (!text) {
+                if (msgType === "image") text = "[Sent an image]"
+                else if (msgType === "video") text = "[Sent a video]"
+                else if (msgType === "audio") text = "[Sent a voice message]"
+                else if (msgType === "document") text = "[Sent a document]"
+                else text = `[${msgType}]`
+              }
+
+              await ctx.runMutation(processOutboundBusinessAppMessageRef, {
+                kapsoPhoneNumberId: phoneNumberId,
+                messageId,
+                timestamp: Number(message.timestamp) * 1000 || Date.now(),
+                text,
+                type: msgType,
+                customerPhone: from,
+              })
+            } else {
+              const updateArgs: {
+                messageId: string
+                status: string
+                pricingBillable?: boolean
+                pricingModel?: string
+                pricingCategory?: string
+              } = { messageId, status }
+
+              const statuses = message.kapso?.statuses
+              if (statuses && Array.isArray(statuses)) {
+                const pricingEntry = statuses.find((s) => s.pricing)
+                if (pricingEntry?.pricing) {
+                  updateArgs.pricingBillable = pricingEntry.pricing.billable
+                  updateArgs.pricingModel = pricingEntry.pricing.pricing_model
+                  updateArgs.pricingCategory = pricingEntry.pricing.category
+                }
+              }
+
+              await ctx.runMutation(updateMessageStatusRef, updateArgs)
+            }
+          } else {
+            await ctx.runMutation(updateMessageStatusRef, { messageId, status })
+          }
         }
       }
     }

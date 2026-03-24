@@ -512,6 +512,81 @@ export const processInboundMessage = internalMutation({
   },
 })
 
+export const processOutboundBusinessAppMessage = internalMutation({
+  args: {
+    kapsoPhoneNumberId: v.string(),
+    messageId: v.string(),
+    timestamp: v.number(),
+    text: v.optional(v.string()),
+    type: v.string(),
+    customerPhone: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("messages")
+      .withIndex("by_externalMessageId", (q) => q.eq("externalMessageId", args.messageId))
+      .first()
+
+    if (existing) {
+      return null
+    }
+
+    const connection = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_kapso_phone", (q) => q.eq("kapsoPhoneNumberId", args.kapsoPhoneNumberId))
+      .first()
+
+    if (!connection || !connection.agentId || connection.status !== "connected") {
+      return null
+    }
+
+    const normalizedPhone = args.customerPhone.replace(/^\+/, "")
+    const externalId = `whatsapp:${connection._id}:${normalizedPhone}`
+
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_external", (q) => q.eq("externalId", externalId))
+      .first()
+
+    if (!thread) {
+      return null
+    }
+
+    await ctx.db.insert("messages", {
+      threadId: thread._id,
+      organizationId: connection.organizationId,
+      role: "assistant",
+      content: args.text ?? "",
+      externalMessageId: args.messageId,
+      direction: "outbound",
+      status: "sent",
+      channelData: {
+        type: args.type,
+        origin: "business_app",
+        authorType: "human_operator",
+        connectionId: connection._id,
+      },
+      createdAt: args.timestamp,
+    })
+
+    if (thread.agentPaused !== true) {
+      const now = Date.now()
+      await ctx.db.patch(thread._id, { agentPaused: true, updatedAt: now })
+      await ctx.db.insert("messages", {
+        threadId: thread._id,
+        organizationId: connection.organizationId,
+        role: "system",
+        content: "Human takeover detected — a message was sent from the WhatsApp Business app. Agent paused.",
+        channelData: { systemType: "human_takeover", visible: true },
+        createdAt: now,
+      })
+    }
+
+    return null
+  },
+})
+
 export const updateMessageStatus = internalMutation({
   args: {
     messageId: v.string(),
@@ -605,6 +680,13 @@ export const scheduleAgentRouting = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId)
+
+    if (args.threadId) {
+      const thread = await ctx.db.get(args.threadId)
+      if (thread?.agentPaused === true) {
+        return null
+      }
+    }
 
     if (connection?.agentId && connection.status === "connected") {
       const attachments = args.mediaDirectUrl && args.mediaType === "image"
@@ -902,7 +984,10 @@ export const getWhatsAppTimeline = query({
     const seen = new Set<string>()
     const timeline = []
     for (const msg of messages) {
-      if (msg.role === "system") continue
+      if (msg.role === "system") {
+        const scd = (msg.channelData ?? {}) as Record<string, unknown>
+        if (!scd.visible) continue
+      }
       if (msg.externalMessageId) {
         const dedupKey = `${msg.externalMessageId}:${msg.role}`
         if (seen.has(dedupKey)) continue
@@ -928,6 +1013,9 @@ export const getWhatsAppTimeline = query({
         toolCalls: msg.toolCalls,
         toolCallId: msg.toolCallId,
         role: msg.role,
+        origin: cd.origin,
+        systemType: cd.systemType,
+        authorType: cd.authorType,
       })
     }
 

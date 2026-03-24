@@ -955,11 +955,19 @@ export const getThreadMessages = internalQuery({
   args: { threadId: v.id("threads") },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    return await ctx.db
+    const allMessages = await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("asc")
       .collect()
+
+    return allMessages.filter((m) => {
+      if (m.role === "system") {
+        const cd = (m.channelData ?? {}) as Record<string, unknown>
+        if (cd.systemType === "human_takeover" || cd.systemType === "agent_resumed") return false
+      }
+      return true
+    })
   },
 })
 
