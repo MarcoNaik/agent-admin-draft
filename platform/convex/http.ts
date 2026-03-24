@@ -121,7 +121,7 @@ async function authenticateDataApi(ctx: any, request: Request): Promise<{ organi
   const authResult = await authenticateApiKey(ctx, request)
   if (authResult instanceof Response) return authResult
 
-  if (!authResult.permissions.includes("data")) {
+  if (!authResult.permissions.includes("data") && !authResult.permissions.includes("*")) {
     return jsonResponse({ error: "API key does not have data permission" }, 403)
   }
 
