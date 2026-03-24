@@ -96,6 +96,7 @@ export const syncModelRegistry = internalAction({
       outputPerMTok: number
     }> = []
 
+    const seenIds = new Set<string>()
     for (const model of data.data) {
       if (!model.pricing?.prompt || !model.pricing?.completion) continue
 
@@ -112,17 +113,20 @@ export const syncModelRegistry = internalAction({
       const nativeModelName = normalizeNativeModelName(providerSlug, orModelName)
       const struereId = `${providerSlug}/${nativeModelName}`
 
-      entries.push({
-        struereId,
-        openRouterId: model.id,
-        providerSlug,
-        nativeModelName,
-        displayName: model.name || orModelName,
-        contextWindow: model.context_length ?? 128000,
-        maxOutput: model.top_provider?.max_completion_tokens ?? 4096,
-        inputPerMTok,
-        outputPerMTok,
-      })
+      if (!seenIds.has(struereId)) {
+        seenIds.add(struereId)
+        entries.push({
+          struereId,
+          openRouterId: model.id,
+          providerSlug,
+          nativeModelName,
+          displayName: model.name || orModelName,
+          contextWindow: model.context_length ?? 128000,
+          maxOutput: model.top_provider?.max_completion_tokens ?? 4096,
+          inputPerMTok,
+          outputPerMTok,
+        })
+      }
     }
 
     const BATCH_SIZE = 50
@@ -296,6 +300,43 @@ export const listFeaturedModels = query({
       .collect()
     return models
       .filter((m) => m.status === "active")
+      .map((m) => ({
+        struereId: m.struereId,
+        displayName: m.displayName,
+        providerSlug: m.providerSlug,
+        inputPerMTok: m.inputPerMTok,
+        outputPerMTok: m.outputPerMTok,
+        contextWindow: m.contextWindow,
+        maxOutput: m.maxOutput,
+      }))
+  },
+})
+
+export const listAllModels = query({
+  args: {},
+  returns: v.array(v.object({
+    struereId: v.string(),
+    displayName: v.string(),
+    providerSlug: v.string(),
+    inputPerMTok: v.number(),
+    outputPerMTok: v.number(),
+    contextWindow: v.number(),
+    maxOutput: v.number(),
+  })),
+  handler: async (ctx) => {
+    const models = await ctx.db
+      .query("modelRegistry")
+      .collect()
+    const seen = new Set<string>()
+    return models
+      .filter((m) => m.status === "active")
+      .sort((a, b) => a.providerSlug.localeCompare(b.providerSlug))
+      .filter((m) => {
+        const key = `${m.providerSlug}:${m.displayName}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
       .map((m) => ({
         struereId: m.struereId,
         displayName: m.displayName,
