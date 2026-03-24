@@ -15,6 +15,7 @@ import {
   useSendWhatsAppMedia,
   useSendWhatsAppInteractive,
   useGenerateUploadUrl,
+  useSetAgentPaused,
 } from "@/hooks/use-convex-data"
 import { useEnvironment } from "@/contexts/environment-context"
 import { useRoleContext } from "@/contexts/role-context"
@@ -363,10 +364,30 @@ type TimelineEntry = {
   toolCalls?: Array<{ id: string; name: string; arguments: unknown }>
   toolCallId?: string
   role?: string
+  origin?: string
+  systemType?: string
+  authorType?: string
+}
+
+function SystemMessageDivider({ entry }: { entry: TimelineEntry }) {
+  const text = entry.systemType === "human_takeover"
+    ? "Agent paused — human takeover"
+    : entry.systemType === "agent_resumed"
+    ? "Agent resumed"
+    : entry.text ?? "System"
+
+  return (
+    <div className="flex items-center gap-3 py-2">
+      <div className="flex-1 h-px bg-border" />
+      <span className="text-xs text-content-tertiary px-2">{text}</span>
+      <div className="flex-1 h-px bg-border" />
+    </div>
+  )
 }
 
 function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
   const isOutbound = entry.direction === "outbound"
+  const isHumanOperator = entry.authorType === "human_operator"
   const [imageOpen, setImageOpen] = useState(false)
 
   const renderMedia = () => {
@@ -481,9 +502,11 @@ function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
     <div className={cn("flex gap-3 max-w-3xl", isOutbound ? "ml-auto flex-row-reverse" : "")}>
       <div className={cn(
         "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-        isOutbound ? "bg-success text-white" : "bg-muted"
+        isOutbound
+          ? isHumanOperator ? "bg-warning text-white" : "bg-success text-white"
+          : "bg-muted"
       )}>
-        {isOutbound ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+        {isOutbound ? (isHumanOperator ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />) : <User className="h-4 w-4" />}
       </div>
       <div className={cn(
         "rounded-lg px-4 py-2 max-w-[80%]",
@@ -501,6 +524,11 @@ function WhatsAppBubble({ entry }: { entry: TimelineEntry }) {
           <p className="text-[10px] text-content-tertiary">
             {new Date(entry.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
+          {isOutbound && isHumanOperator && (
+            <span className="text-[10px] text-warning">
+              {entry.origin === "dashboard" ? "via Dashboard" : "via WhatsApp"}
+            </span>
+          )}
           {isOutbound && <MessageStatus status={entry.status} />}
         </div>
       </div>
@@ -755,6 +783,7 @@ type ThreadPreview = {
   connectionLabel?: string
   channel?: string
   channelParams?: Record<string, unknown>
+  agentPaused?: boolean
   lastMessage?: { content: string; role: string; createdAt: number } | null
 }
 
@@ -791,6 +820,7 @@ function ThreadView({
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
   const replyToThread = useReplyToThread()
   const sendTemplate = useSendWhatsAppTemplate()
+  const setAgentPaused = useSetAgentPaused()
   const selectedThread = useThreadWithMessages(threadId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -860,7 +890,7 @@ function ThreadView({
   }
 
   const visibleMessages = selectedThread.messages?.filter(
-    (m: { role: string }) => m.role !== "system"
+    (m: any) => m.role !== "system" || (m.channelData as any)?.visible
   ) ?? []
 
   return (
@@ -887,6 +917,12 @@ function ThreadView({
             </h2>
             <ChannelBadge channel={preview?.channel} />
             {isWhatsAppThread && <WindowIndicator lastInboundAt={lastInboundAt} />}
+            {isWhatsAppThread && !selectedThread.agentPaused && (
+              <Button variant="ghost" size="sm" className="text-xs text-content-tertiary"
+                onClick={() => setAgentPaused({ threadId, paused: true })}>
+                Pause Agent
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <p className="text-xs text-content-tertiary">
@@ -927,6 +963,18 @@ function ThreadView({
         </div>
       </header>
 
+      {isWhatsAppThread && selectedThread.agentPaused && (
+        <div className="px-4 py-2 flex items-center justify-between bg-warning/10 border-b border-warning/20">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-warning" />
+            <span className="text-sm font-medium text-warning">Agent paused — human takeover active</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setAgentPaused({ threadId, paused: false })}>
+            Resume Agent
+          </Button>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {(() => {
           const items = isWhatsAppThread && whatsAppTimeline
@@ -946,6 +994,9 @@ function ThreadView({
                 toolCalls: m.toolCalls,
                 toolCallId: m.toolCallId,
                 role: m.role,
+                origin: (m.channelData as any)?.origin,
+                systemType: (m.channelData as any)?.systemType,
+                authorType: (m.channelData as any)?.authorType,
               }))
 
           if (items.length === 0) {
@@ -997,7 +1048,12 @@ function ThreadView({
               )
             }
 
-            if (entry.role === "system") return null
+            if (entry.role === "system") {
+              if (entry.systemType === "human_takeover" || entry.systemType === "agent_resumed") {
+                return <SystemMessageDivider key={entry.id} entry={entry} />
+              }
+              return null
+            }
 
             return <WhatsAppBubble key={entry.id} entry={entry} />
           })
@@ -1237,6 +1293,9 @@ export default function ChatPage() {
                           <span className="text-sm font-medium text-content-primary truncate">
                             {thread.participantName}
                           </span>
+                          {thread.agentPaused && (
+                            <Badge variant="outline" className="text-[10px] text-warning border-warning/30 ml-1">Paused</Badge>
+                          )}
                           {thread.lastMessage && (
                             <span className="text-xs text-content-tertiary shrink-0">
                               {formatRelativeTime(thread.lastMessage.createdAt)}

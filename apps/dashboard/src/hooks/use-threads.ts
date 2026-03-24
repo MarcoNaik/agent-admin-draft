@@ -33,3 +33,7 @@ export function useDeleteThread() {
 export function useAddMessage() {
   return useMutation(api.threads.addMessage)
 }
+
+export function useSetAgentPaused() {
+  return useMutation(api.threads.setAgentPaused)
+}
