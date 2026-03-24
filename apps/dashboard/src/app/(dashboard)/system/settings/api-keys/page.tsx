@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Key, Plus, Copy, Trash2, Eye, EyeOff, Loader2 } from "@/lib/icons"
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from "@/hooks/use-convex-data"
+import { useEnvironment } from "@/contexts/environment-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +21,7 @@ import {
 import { Doc } from "@convex/_generated/dataModel"
 
 export default function ApiKeysPage() {
+  const { environment } = useEnvironment()
   const apiKeys = useApiKeys()
   const createApiKey = useCreateApiKey()
   const deleteApiKey = useDeleteApiKey()
@@ -33,7 +35,7 @@ export default function ApiKeysPage() {
     if (!newKeyName.trim()) return
     setCreating(true)
     try {
-      const result = await createApiKey({ name: newKeyName })
+      const result = await createApiKey({ name: newKeyName, permissions: ["*"], environment })
       setNewKey(result.key)
       setNewKeyName("")
     } finally {
