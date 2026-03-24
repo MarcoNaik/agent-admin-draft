@@ -132,6 +132,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
         additionalScopes: [
           "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
           "https://www.googleapis.com/auth/calendar.events",
+          "https://www.googleapis.com/auth/calendar.freebusy",
         ],
         redirectUrl: buildRedirectUrl(),
       })
@@ -144,6 +145,7 @@ export function CalendarConnectionCard({ alwaysShow = false }: { alwaysShow?: bo
         additionalScopes: [
           "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
           "https://www.googleapis.com/auth/calendar.events",
+          "https://www.googleapis.com/auth/calendar.freebusy",
         ],
         redirectUrl: buildRedirectUrl(),
       })
