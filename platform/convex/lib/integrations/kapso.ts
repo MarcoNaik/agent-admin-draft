@@ -174,6 +174,8 @@ export async function registerPhoneWebhook(
           "whatsapp.message.failed",
         ],
         active: true,
+        buffer_enabled: true,
+        buffer_window_seconds: 10,
       },
     }
   )
