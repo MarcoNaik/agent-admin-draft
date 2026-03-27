@@ -407,10 +407,11 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
       const providerOptions: Record<string, Record<string, any>> = {}
       if (reasoningConfig?.enabled !== false) {
-        if (provider === "openai" || provider === "xai") {
-          const openaiOpts: Record<string, unknown> = {}
-          if (reasoningConfig?.effort) openaiOpts.reasoningEffort = reasoningConfig.effort
-          if (Object.keys(openaiOpts).length > 0) providerOptions.openai = openaiOpts
+        if (provider === "openai") {
+          if (reasoningConfig?.effort) providerOptions.openai = { reasoningEffort: reasoningConfig.effort }
+        } else if (provider === "xai") {
+          const xaiEffort = reasoningConfig?.effort === "minimal" || reasoningConfig?.effort === "low" ? "low" : reasoningConfig?.effort === "medium" || reasoningConfig?.effort === "high" ? "high" : undefined
+          if (xaiEffort) providerOptions.xai = { reasoningEffort: xaiEffort }
         } else if (provider === "anthropic") {
           if (reasoningConfig?.budgetTokens) {
             providerOptions.anthropic = { thinking: { type: "enabled", budgetTokens: reasoningConfig.budgetTokens } }
@@ -420,7 +421,6 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         }
       }
 
-      const hideReasoning = reasoningConfig?.hideFromResponse !== false
 
       result = await generateText({
         model: createModel(modelId, resolvedApiKey, resolved.tier, openRouterId),
@@ -521,7 +521,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     const durationMs = Date.now() - startTime
     const totalInputTokens = result.totalUsage.inputTokens ?? 0
     const totalOutputTokens = result.totalUsage.outputTokens ?? 0
-    const totalReasoningTokens = (result.totalUsage as any).outputTokenDetails?.reasoningTokens ?? 0
+    const totalReasoningTokens = result.totalUsage.outputTokenDetails?.reasoningTokens ?? 0
 
     const executedToolCalls = stepsMessages
       .filter(m => m.role === "tool")
