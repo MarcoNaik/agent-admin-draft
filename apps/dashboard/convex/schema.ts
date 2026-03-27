@@ -48,6 +48,12 @@ export default defineSchema({
       model: v.string(),
       temperature: v.optional(v.number()),
       maxTokens: v.optional(v.number()),
+      reasoning: v.optional(v.object({
+        enabled: v.optional(v.boolean()),
+        effort: v.optional(v.union(v.literal("minimal"), v.literal("low"), v.literal("medium"), v.literal("high"))),
+        budgetTokens: v.optional(v.number()),
+        hideFromResponse: v.optional(v.boolean()),
+      })),
     }),
     tools: v.array(
       v.object({
@@ -100,6 +106,7 @@ export default defineSchema({
       v.literal("tool")
     ),
     content: v.string(),
+    reasoning: v.optional(v.string()),
     toolCalls: v.optional(v.array(v.any())),
     toolCallId: v.optional(v.string()),
     createdAt: v.number(),
@@ -311,6 +318,7 @@ export default defineSchema({
     }))),
     inputTokens: v.number(),
     outputTokens: v.number(),
+    reasoningTokens: v.optional(v.number()),
     durationMs: v.number(),
     model: v.optional(v.string()),
     status: v.union(v.literal("success"), v.literal("error"), v.literal("timeout")),
@@ -553,6 +561,9 @@ export default defineSchema({
   creditBalances: defineTable({
     organizationId: v.id("organizations"),
     balance: v.number(),
+    subscriptionCredits: v.optional(v.number()),
+    purchasedCredits: v.optional(v.number()),
+    weeklyCreditsResetAt: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"]),
