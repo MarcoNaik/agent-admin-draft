@@ -15,6 +15,7 @@
     "@anthropic-ai/sdk": "^0.78.0",
     "@convex-dev/polar": "^0.9.0",
     "@kapso/whatsapp-cloud-api": "^0.1.1",
+    "@openrouter/ai-sdk-provider": "^2.3.3",
     "@polar-sh/sdk": "^0.43.1",
     "ai": "^6.0.77",
     "convex": "^1.33.1",

@@ -407,7 +407,13 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
 
       const providerOptions: Record<string, Record<string, any>> = {}
       if (reasoningConfig?.enabled !== false) {
-        if (provider === "openai") {
+        if (resolved.tier >= 2) {
+          const orOpts: Record<string, unknown> = {}
+          if (reasoningConfig?.effort) orOpts.effort = reasoningConfig.effort
+          if (reasoningConfig?.hideFromResponse !== false) orOpts.exclude = true
+          if (reasoningConfig?.budgetTokens) orOpts.max_tokens = reasoningConfig.budgetTokens
+          if (Object.keys(orOpts).length > 0) providerOptions.openrouter = { reasoning: orOpts }
+        } else if (provider === "openai") {
           if (reasoningConfig?.effort) providerOptions.openai = { reasoningEffort: reasoningConfig.effort }
         } else if (provider === "xai") {
           const xaiEffort = reasoningConfig?.effort === "minimal" || reasoningConfig?.effort === "low" ? "low" : reasoningConfig?.effort === "medium" || reasoningConfig?.effort === "high" ? "high" : undefined

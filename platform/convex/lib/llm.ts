@@ -2,6 +2,7 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createXai } from "@ai-sdk/xai"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import type { LanguageModel, ModelMessage } from "ai"
 import { parseModelId } from "./providers"
 
@@ -25,29 +26,25 @@ export function createModel(
       case "xai":
         return createXai({ apiKey })(modelName)
       default: {
-        const openrouter = createOpenAI({
-          baseURL: "https://openrouter.ai/api/v1",
+        return createOpenRouter({
           apiKey,
           headers: {
             "HTTP-Referer": "https://struere.dev",
             "X-OpenRouter-Title": "Struere",
           },
-        })
-        return openrouter.chat(modelId)
+        }).chat(modelId)
       }
     }
   }
 
   const resolvedId = openRouterId ?? modelId
-  const openrouter = createOpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
+  return createOpenRouter({
     apiKey,
     headers: {
       "HTTP-Referer": "https://struere.dev",
       "X-OpenRouter-Title": "Struere",
     },
-  })
-  return openrouter.chat(resolvedId)
+  }).chat(resolvedId)
 }
 
 export function sanitizeToolName(name: string): string {
