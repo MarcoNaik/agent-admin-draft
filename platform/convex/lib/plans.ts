@@ -23,7 +23,7 @@ export const PLANS = {
     maxTeamMembers: 20,
     maxWhatsAppConnections: Infinity,
     maxEvalSuites: Infinity,
-    weeklyCredits: 18_750_000,
+    weeklyCredits: 75_000_000,
     extraSeatPrice: 500,
   },
 } as const

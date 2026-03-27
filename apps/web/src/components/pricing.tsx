@@ -31,12 +31,12 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "$129",
+    price: "$299",
     period: "/mo",
     features: [
       "Everything in Starter",
       "Unlimited WhatsApp",
-      "$18.75/week in credits",
+      "$75/week in credits",
       "Up to 20 team members",
       "Priority support",
     ],
@@ -99,7 +99,7 @@ export function Pricing() {
 
           <div className="relative mt-8 pt-6 border-t border-charcoal/10">
             <p className="text-xs text-charcoal/40 leading-relaxed">
-              All plans include BYOK support, full SDK & CLI, and 40+ AI models. Credits reset weekly. Extra credits never expire. $5/mo per additional team member.
+              All plans include BYOK support, full SDK & CLI, and 40+ AI models. Credits reset weekly. Extra credits never expire.
             </p>
           </div>
         </motion.div>
