@@ -229,7 +229,7 @@ export const executeCase = internalAction({
         turnAgentTokens = { input: chatResult.usage.inputTokens, output: chatResult.usage.outputTokens }
 
         const agentConfig = await ctx.runQuery(getAgentConfigRef, { agentId: run.agentId, environment: run.environment })
-        const agentModelId = agentConfig?.model?.model || "xai/grok-4-1-fast"
+        const agentModelId = agentConfig?.model?.model || "openai/gpt-5-mini"
         state.agentCost += await ctx.runQuery(getModelCostRef, { modelId: agentModelId, inputTokens: chatResult.usage.inputTokens, outputTokens: chatResult.usage.outputTokens })
 
         state.chatCompletedForCurrentTurn = true
@@ -646,7 +646,7 @@ ${args.criteria}
 
 Evaluate the assistant's current turn response against the criteria. Respond with JSON only.`
 
-  const modelId = args.model?.model || "xai/grok-4-1-fast"
+  const modelId = args.model?.model || "openai/gpt-5-mini"
   const { modelName } = parseModelId(modelId)
 
   let resolved: { apiKey?: string; tier: number } = await ctx.runQuery(resolveApiKeyRef, {

@@ -89,7 +89,7 @@ export const PROVIDERS: {
 
 export function parseModelId(modelId: string): { provider: string; modelName: string } {
   if (!modelId || modelId.length === 0) {
-    return { provider: "xai", modelName: "grok-4-1-fast" }
+    return { provider: "openai", modelName: "gpt-5-mini" }
   }
   const slashIndex = modelId.indexOf("/")
   if (slashIndex === -1) {

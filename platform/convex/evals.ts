@@ -490,8 +490,8 @@ export const startRun = mutation({
       .order("desc")
       .first()
 
-    const agentModelId = agentConfig?.model?.model ?? "xai/grok-4-1-fast"
-    const judgeModelId = suite.judgeModel?.model || "xai/grok-4-1-fast"
+    const agentModelId = agentConfig?.model?.model ?? "openai/gpt-5-mini"
+    const judgeModelId = suite.judgeModel?.model || "openai/gpt-5-mini"
 
     const estimateMinCostFromDb = async (modelId: string) => {
       const openRouterId = modelId.indexOf("/") !== -1 ? modelId : ""

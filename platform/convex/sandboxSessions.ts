@@ -50,7 +50,7 @@ export const create = mutation({
     }
 
     const now = Date.now()
-    const model = args.model ?? "xai/grok-4-1-fast"
+    const model = args.model ?? "openai/gpt-5-mini"
     const id = await ctx.db.insert("sandboxSessions", {
       organizationId: auth.organizationId,
       environment: args.environment,
@@ -380,7 +380,7 @@ export const processUsageEvent = internalMutation({
     const session = await ctx.db.get(args.sessionId)
     if (!session) return
 
-    const model = session.model ?? "xai/grok-4-1-fast"
+    const model = session.model ?? "openai/gpt-5-mini"
     const openRouterId = model.indexOf("/") !== -1 ? model : ""
     const normalized = model.indexOf("/") !== -1 ? model.slice(model.indexOf("/") + 1) : model
 
