@@ -102,7 +102,7 @@ export async function POST(request: Request) {
   console.log("[studio/sessions] POST request body:", JSON.stringify(body))
   const {
     environment = "development",
-    model = "xai/grok-4-1-fast",
+    model = "openai/gpt-5-mini",
   } = body
 
   const { provider } = parseModelId(model)
@@ -265,7 +265,7 @@ import { defineAgent, defineData, defineRole, defineTrigger, defineTools } from 
 \`\`\`
 
 ## Key Conventions
-- Agent model default: \`{ model: "xai/grok-4-1-fast" }\`
+- Agent model default: \`{ model: "openai/gpt-5-mini" }\`
 - Built-in tools: entity.create/get/query/update/delete/link/unlink, event.emit/query, calendar.*, whatsapp.*, agent.chat
 - Schema format: JSON Schema (type: "object", properties, required)
 - Policy effect: "allow" or "deny" (deny overrides allow)

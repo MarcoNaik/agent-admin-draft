@@ -299,7 +299,7 @@ export function ChatInterface({ agent, sendMessage, orgName, environmentLabel, a
             <h1 className="font-semibold text-content-primary">{agent.name}</h1>
             <p className="text-xs text-content-secondary">
               {orgName && <>{orgName} · </>}
-              {agent.model?.model || "xai/grok-4-1-fast"}
+              {agent.model?.model || "openai/gpt-5-mini"}
               {environmentLabel && ` · ${environmentLabel}`}
             </p>
           </div>

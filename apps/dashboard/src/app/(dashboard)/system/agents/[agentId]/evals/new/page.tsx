@@ -26,7 +26,7 @@ const modelOptions: Record<string, { label: string; models: { value: string; lab
   xai: {
     label: "xAI",
     models: [
-      { value: "xai/grok-4-1-fast", label: "xai/grok-4-1-fast" },
+      { value: "openai/gpt-5-mini", label: "openai/gpt-5-mini" },
       { value: "xai/grok-4-1-fast-reasoning", label: "xai/grok-4-1-fast-reasoning" },
     ],
   },
@@ -64,7 +64,7 @@ export default function NewSuitePage({ params }: NewSuitePageProps) {
   const [slugManual, setSlugManual] = useState(false)
   const [description, setDescription] = useState("")
   const [tags, setTags] = useState("")
-  const [judgeModel, setJudgeModel] = useState("xai/grok-4-1-fast")
+  const [judgeModel, setJudgeModel] = useState("openai/gpt-5-mini")
   const [customModel, setCustomModel] = useState(false)
   const [judgeContext, setJudgeContext] = useState("")
   const [judgePrompt, setJudgePrompt] = useState("")

@@ -80,7 +80,7 @@ function generateAgentFile(agent: PullStateAgent): string {
   const builtinTools = agent.tools.filter((t) => t.isBuiltin).map((t) => `"${t.name}"`)
   const toolsStr = builtinTools.length > 0 ? `\n    ${builtinTools.join(",\n    ")},\n  ` : ""
 
-  const modelId = agent.model.model || "xai/grok-4-1-fast"
+  const modelId = agent.model.model || "openai/gpt-5-mini"
   const modelStr = [
     `    model: "${modelId}"`,
     agent.model.temperature !== undefined ? `    temperature: ${agent.model.temperature}` : null,

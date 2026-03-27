@@ -4,4 +4,4 @@ export interface StudioModel {
   providerSlug: string
 }
 
-export const DEFAULT_MODEL = "xai/grok-4-1-fast"
+export const DEFAULT_MODEL = "openai/gpt-5-mini"

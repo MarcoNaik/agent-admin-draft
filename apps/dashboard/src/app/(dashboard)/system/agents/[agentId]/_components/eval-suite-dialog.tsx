@@ -25,8 +25,8 @@ const modelOptions: Record<string, { label: string; models: { value: string; lab
   xai: {
     label: "xAI",
     models: [
-      { value: "xai/grok-4-1-fast", label: "xai/grok-4-1-fast" },
-      { value: "xai/grok-4-1-fast-reasoning", label: "xai/grok-4-1-fast-reasoning" },
+      { value: "openai/gpt-5-mini", label: "openai/gpt-5-mini" },
+      { value: "openai/gpt-5-mini-reasoning", label: "openai/gpt-5-mini-reasoning" },
     ],
   },
   anthropic: {
@@ -70,7 +70,7 @@ export function EvalSuiteDialog({ open, onOpenChange, agentId, environment, suit
   const [slugManual, setSlugManual] = useState(false)
   const [description, setDescription] = useState("")
   const [tags, setTags] = useState("")
-  const [judgeModel, setJudgeModel] = useState("xai/grok-4-1-fast")
+  const [judgeModel, setJudgeModel] = useState("openai/gpt-5-mini")
   const [customModel, setCustomModel] = useState(false)
   const [judgeContext, setJudgeContext] = useState("")
   const [judgePrompt, setJudgePrompt] = useState("")
@@ -85,7 +85,7 @@ export function EvalSuiteDialog({ open, onOpenChange, agentId, environment, suit
       setDescription(suite.description || "")
       setTags(suite.tags?.join(", ") || "")
       if (suite.judgeModel) {
-        setJudgeModel(suite.judgeModel.model || "xai/grok-4-1-fast")
+        setJudgeModel(suite.judgeModel.model || "openai/gpt-5-mini")
       }
       setJudgeContext(suite.judgeContext || "")
       setJudgePrompt(suite.judgePrompt || "")
@@ -95,7 +95,7 @@ export function EvalSuiteDialog({ open, onOpenChange, agentId, environment, suit
       setSlugManual(false)
       setDescription("")
       setTags("")
-      setJudgeModel("xai/grok-4-1-fast")
+      setJudgeModel("openai/gpt-5-mini")
       setCustomModel(false)
       setJudgeContext("")
       setJudgePrompt("")

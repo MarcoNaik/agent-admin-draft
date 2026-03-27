@@ -153,7 +153,7 @@ export default function SuiteDetailPage({ params }: SuiteDetailPageProps) {
   }
 
   const judgeInfo = [
-    suite.judgeModel ? (suite.judgeModel.model || "xai/grok-4-1-fast") : null,
+    suite.judgeModel ? (suite.judgeModel.model || "openai/gpt-5-mini") : null,
     suite.judgeContext ? "Context configured" : null,
     suite.judgePrompt ? "Custom prompt configured" : null,
   ].filter(Boolean)
