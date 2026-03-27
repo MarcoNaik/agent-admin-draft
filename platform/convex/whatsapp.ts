@@ -4,6 +4,8 @@ import { Id } from "./_generated/dataModel"
 import { makeFunctionReference } from "convex/server"
 import { requireAuth, requireOrgAdmin, isOrgAdmin } from "./lib/auth"
 import { calculateWhatsAppCost } from "./lib/whatsappPricing"
+import { getPlanLimits, getProductPlan } from "./lib/plans"
+import { polar } from "./polarClient"
 
 const createKapsoSetupRef = makeFunctionReference<"action">("whatsappActions:createKapsoSetup")
 const registerNumberWebhookRef = makeFunctionReference<"action">("whatsappActions:registerNumberWebhook")
@@ -42,6 +44,21 @@ export const addPhoneNumber = mutation({
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
+
+    const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
+    const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+    const limits = getPlanLimits(plan)
+    const existingConnections = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId).eq("environment", args.environment)
+      )
+      .collect()
+    const activeCount = existingConnections.filter((c) => c.status !== "disconnected").length
+    if (activeCount >= limits.maxWhatsAppConnections) {
+      throw new Error(`WhatsApp connection limit reached. Your plan allows up to ${limits.maxWhatsAppConnections} connections.`)
+    }
+
     const integrationConfig = await requireWhatsAppEnabled(ctx, auth.organizationId, args.environment)
 
     const pendingSetup = await ctx.db
@@ -378,6 +395,20 @@ export const createConnection = internalMutation({
   },
   returns: v.id("whatsappConnections"),
   handler: async (ctx, args) => {
+    const sub = await polar.getCurrentSubscription(ctx, { userId: args.organizationId as string })
+    const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+    const limits = getPlanLimits(plan)
+    const existingConnections = await ctx.db
+      .query("whatsappConnections")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", args.organizationId).eq("environment", args.environment)
+      )
+      .collect()
+    const activeCount = existingConnections.filter((c) => c.status !== "disconnected").length
+    if (activeCount >= limits.maxWhatsAppConnections) {
+      throw new Error(`WhatsApp connection limit reached. Your plan allows up to ${limits.maxWhatsAppConnections} connections.`)
+    }
+
     const now = Date.now()
     return await ctx.db.insert("whatsappConnections", {
       organizationId: args.organizationId,

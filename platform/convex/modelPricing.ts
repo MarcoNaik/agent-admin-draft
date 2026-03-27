@@ -2,7 +2,11 @@ import { internalAction, internalMutation, internalQuery, query } from "./_gener
 import { v } from "convex/values"
 import { makeFunctionReference } from "convex/server"
 import { openRouterProviderToStruere, normalizeNativeModelName } from "./lib/providers"
-import { getModelTier } from "./lib/plans"
+function getModelTier(outputPerMTok: number): "efficient" | "standard" | "premium" {
+  if (outputPerMTok <= 2) return "efficient"
+  if (outputPerMTok <= 20) return "standard"
+  return "premium"
+}
 
 const MARKUP = 1.25
 

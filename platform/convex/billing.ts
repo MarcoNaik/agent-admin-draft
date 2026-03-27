@@ -63,7 +63,7 @@ export const getBalance = query({
     const { subscriptionCredits, purchasedCredits } = resolveCredits(balance)
 
     const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
-    const plan = sub ? getProductPlan(sub.productId) : "starter"
+    const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
     const limits = getPlanLimits(plan)
 
     return {
@@ -139,7 +139,7 @@ export const deductCredits = internalMutation({
 
     if (balanceDoc.weeklyCreditsResetAt && balanceDoc.weeklyCreditsResetAt < Date.now()) {
       const sub = await polar.getCurrentSubscription(ctx, { userId: args.organizationId as string })
-      if (sub) {
+      if (sub && sub.status === "active") {
         const plan = getProductPlan(sub.productId)
         const limits = getPlanLimits(plan)
         const resetAmount = limits.weeklyCredits
@@ -667,7 +667,7 @@ export const resetWeeklyCredits = internalMutation({
       if (!bal.weeklyCreditsResetAt || bal.weeklyCreditsResetAt >= now) continue
 
       const sub = await polar.getCurrentSubscription(ctx, { userId: bal.organizationId as string })
-      if (!sub) continue
+      if (!sub || sub.status !== "active") continue
 
       const plan = getProductPlan(sub.productId)
       const limits = getPlanLimits(plan)

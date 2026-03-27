@@ -1,5 +1,7 @@
 import { MutationCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
+import { getPlanLimits, getProductPlan } from "../plans"
+import { polar } from "../../polarClient"
 
 export interface TriggerInput {
   name: string
@@ -39,8 +41,23 @@ export async function syncTriggers(
     .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId).eq("environment", environment))
     .collect()
 
+  const sub = await polar.getCurrentSubscription(ctx, { userId: organizationId as string })
+  const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+  const limits = getPlanLimits(plan)
+
+  const allOrgTriggers = await ctx.db
+    .query("triggers")
+    .withIndex("by_org_env", (q) => q.eq("organizationId", organizationId))
+    .collect()
+
   const existingBySlug = new Map(existingTriggers.map((t) => [t.slug, t]))
   const inputSlugs = new Set(triggers.map((t) => t.slug))
+  const newTriggerCount = triggers.filter((t) => !existingBySlug.has(t.slug)).length
+  const deletedCount = existingTriggers.filter((t) => !inputSlugs.has(t.slug)).length
+  const projectedCount = allOrgTriggers.length + newTriggerCount - deletedCount
+  if (projectedCount > limits.maxAutomations) {
+    throw new Error(`Automation limit reached. Your plan allows up to ${limits.maxAutomations} automations.`)
+  }
 
   for (const trigger of triggers) {
     const existing = existingBySlug.get(trigger.slug)

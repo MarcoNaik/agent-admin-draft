@@ -1,5 +1,7 @@
 import { MutationCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
+import { getPlanLimits, getProductPlan } from "../plans"
+import { polar } from "../../polarClient"
 
 export interface AgentInput {
   name: string
@@ -46,6 +48,16 @@ export async function syncAgents(
   const activeAgents = existingAgents.filter((a) => a.status !== "deleted")
   const existingBySlug = new Map(activeAgents.map((a) => [a.slug, a]))
   const inputSlugs = new Set(agents.map((a) => a.slug))
+
+  const sub = await polar.getCurrentSubscription(ctx, { userId: organizationId as string })
+  const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+  const limits = getPlanLimits(plan)
+  const newAgentCount = agents.filter((a) => !existingBySlug.has(a.slug)).length
+  const deletedCount = activeAgents.filter((a) => !inputSlugs.has(a.slug)).length
+  const projectedCount = activeAgents.length + newAgentCount - deletedCount
+  if (projectedCount > limits.maxAgents) {
+    throw new Error(`Agent limit reached. Your plan allows up to ${limits.maxAgents} agents.`)
+  }
 
   for (const agent of agents) {
     const existing = existingBySlug.get(agent.slug)

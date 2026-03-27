@@ -1,17 +1,30 @@
 export const PLANS = {
+  free: {
+    maxAgents: 3,
+    maxAutomations: 5,
+    maxTeamMembers: 1,
+    maxWhatsAppConnections: 1,
+    maxEvalSuites: 1,
+    weeklyCredits: 0,
+    extraSeatPrice: 0,
+  },
   starter: {
-    maxAgents: 15,
+    maxAgents: Infinity,
+    maxAutomations: Infinity,
+    maxTeamMembers: 5,
+    maxWhatsAppConnections: 5,
+    maxEvalSuites: Infinity,
     weeklyCredits: 7_500_000,
-    modelTierAccess: ["efficient", "standard"] as const,
-    maxCostPerRequest: 2_000_000,
-    tools: ["*"] as const,
+    extraSeatPrice: 500,
   },
   pro: {
     maxAgents: Infinity,
+    maxAutomations: Infinity,
+    maxTeamMembers: 20,
+    maxWhatsAppConnections: Infinity,
+    maxEvalSuites: Infinity,
     weeklyCredits: 18_750_000,
-    modelTierAccess: ["efficient", "standard", "premium"] as const,
-    maxCostPerRequest: 10_000_000,
-    tools: ["*"] as const,
+    extraSeatPrice: 500,
   },
 } as const
 
@@ -23,21 +36,10 @@ export const PRODUCT_TO_PLAN: Record<string, PlanId> = {
 }
 
 export function getProductPlan(productId: string): PlanId {
-  return PRODUCT_TO_PLAN[productId] ?? "starter"
+  return PRODUCT_TO_PLAN[productId] ?? "free"
 }
 
 export function getPlanLimits(plan: string) {
   if (plan in PLANS) return PLANS[plan as PlanId]
-  return PLANS.starter
-}
-
-export function getModelTier(outputPerMTok: number): "efficient" | "standard" | "premium" {
-  if (outputPerMTok < 2) return "efficient"
-  if (outputPerMTok <= 20) return "standard"
-  return "premium"
-}
-
-export function canUseModelTier(plan: string, tier: "efficient" | "standard" | "premium"): boolean {
-  const limits = getPlanLimits(plan)
-  return (limits.modelTierAccess as readonly string[]).includes(tier)
+  return PLANS.free
 }

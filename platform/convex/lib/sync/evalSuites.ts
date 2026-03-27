@@ -1,5 +1,7 @@
 import { MutationCtx } from "../../_generated/server"
 import { Id } from "../../_generated/dataModel"
+import { getPlanLimits, getProductPlan } from "../plans"
+import { polar } from "../../polarClient"
 
 export interface EvalSuiteInput {
   name: string
@@ -61,6 +63,16 @@ export async function syncEvalSuites(
   const activeSuites = existingSuites.filter((s) => s.status === "active")
   const existingBySlug = new Map(activeSuites.map((s) => [s.slug, s]))
   const inputSlugs = new Set(suites.map((s) => s.slug))
+
+  const sub = await polar.getCurrentSubscription(ctx, { userId: organizationId as string })
+  const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+  const limits = getPlanLimits(plan)
+  const newSuiteCount = suites.filter((s) => !existingBySlug.has(s.slug)).length
+  const deletedCount = activeSuites.filter((s) => !inputSlugs.has(s.slug)).length
+  const projectedCount = activeSuites.length + newSuiteCount - deletedCount
+  if (projectedCount > limits.maxEvalSuites) {
+    throw new Error(`Eval suite limit reached. Your plan allows up to ${limits.maxEvalSuites} eval suites.`)
+  }
 
   const skippedSlugs = new Set<string>()
 

@@ -15,7 +15,7 @@ export const seedWeeklyCredits = internalMutation({
     const orgId = args.organizationId as Id<"organizations">
 
     const sub = await polar.getCurrentSubscription(ctx, { userId: args.organizationId })
-    if (!sub) return
+    if (!sub || sub.status !== "active") return
     const plan = getProductPlan(sub.productId)
     const limits = getPlanLimits(plan)
     const WEEKLY_CREDITS = limits.weeklyCredits

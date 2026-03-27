@@ -3,6 +3,8 @@ import { query, mutation, internalMutation, internalQuery } from "./_generated/s
 import { makeFunctionReference } from "convex/server"
 import { getAuthContext, getAuthContextForOrg, requireAuth, requireOrgAdmin } from "./lib/auth"
 import { parseModelId } from "./lib/providers"
+import { getPlanLimits, getProductPlan } from "./lib/plans"
+import { polar } from "./polarClient"
 
 const MARKUP = 1.1
 
@@ -223,6 +225,20 @@ export const createSuite = mutation({
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
     const environment = args.environment ?? "development"
+
+    const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
+    const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+    const limits = getPlanLimits(plan)
+    const existingSuites = await ctx.db
+      .query("evalSuites")
+      .withIndex("by_org_env", (q) =>
+        q.eq("organizationId", auth.organizationId)
+      )
+      .collect()
+    const activeSuiteCount = existingSuites.filter((s) => s.status === "active").length
+    if (activeSuiteCount >= limits.maxEvalSuites) {
+      throw new Error(`Eval suite limit reached. Your plan allows up to ${limits.maxEvalSuites} eval suites.`)
+    }
 
     const agent = await ctx.db.get(args.agentId)
     if (!agent || agent.organizationId !== auth.organizationId) {

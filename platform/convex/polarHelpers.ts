@@ -41,9 +41,9 @@ export const getOrgPlan = internalQuery({
   handler: async (ctx, args): Promise<{ plan: PlanId; status: string; currentPeriodEnd: number | null }> => {
     const sub = await polar.getCurrentSubscription(ctx, { userId: args.organizationId })
     if (!sub) {
-      return { plan: "starter", status: "none", currentPeriodEnd: null }
+      return { plan: "free", status: "none", currentPeriodEnd: null }
     }
-    const plan = getProductPlan(sub.productId)
+    const plan = sub.status === "active" ? getProductPlan(sub.productId) : "free" as PlanId
     const currentPeriodEnd = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).getTime() : null
     return { plan, status: sub.status, currentPeriodEnd }
   },
@@ -55,7 +55,7 @@ export const getSubscription = query({
     const auth = await requireAuth(ctx)
     const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
     if (!sub) return null
-    const plan = getProductPlan(sub.productId)
+    const plan = sub.status === "active" ? getProductPlan(sub.productId) : "free" as PlanId
     return {
       plan,
       status: sub.cancelAtPeriodEnd ? "cancelling" : sub.status === "active" ? "active" : sub.status,

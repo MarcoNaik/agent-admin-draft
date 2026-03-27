@@ -26,7 +26,6 @@ const chatActionRef = makeFunctionReference<"action">("agent:chat")
 const provisionOrgKeyRef = makeFunctionReference<"action">("orgKeys:provisionOrgKey")
 import { hashApiKey, generateId } from "./lib/utils"
 import { isOrgAdmin as checkIsOrgAdmin } from "./lib/auth"
-const getOrgPlanRef = makeFunctionReference<"query">("polarHelpers:getOrgPlan")
 const getModelCostRef = makeFunctionReference<"query">("modelPricing:getModelCost")
 const getRegistryEntryRef = makeFunctionReference<"query">("modelPricing:getRegistryEntry")
 import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
@@ -37,7 +36,6 @@ import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSt
 import { parseModelId } from "./lib/providers"
 import { isBuiltinTool } from "./tools/helpers"
 import { log } from "./lib/logger"
-import { canUseModelTier, getModelTier } from "./lib/plans"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -368,24 +366,11 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     }
   }
 
-  const orgPlan = await ctx.runQuery(getOrgPlanRef, { organizationId: organizationId as string })
-  const planName = orgPlan.plan
-
-  if (usedPlatformKey) {
-    if (!registryEntry) {
-      return {
-        threadId,
-        message: `The model ${modelId} is not recognized. Please choose a supported model.`,
-        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      }
-    }
-    const modelTier = getModelTier(registryEntry.outputPerMTok)
-    if (!canUseModelTier(planName, modelTier)) {
-      return {
-        threadId,
-        message: `The model ${modelId} is not available on your current plan. Please upgrade or choose a different model.`,
-        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      }
+  if (usedPlatformKey && !registryEntry) {
+    return {
+      threadId,
+      message: `The model ${modelId} is not recognized. Please choose a supported model.`,
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
     }
   }
 

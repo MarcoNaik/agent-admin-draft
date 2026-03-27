@@ -4,6 +4,8 @@ import { makeFunctionReference } from "convex/server"
 import { getAuthContext, getAuthContextSafe, requireAuth } from "./lib/auth"
 import { Id } from "./_generated/dataModel"
 import { cleanupMembershipData } from "./lib/membershipCleanup"
+import { getPlanLimits, getProductPlan } from "./lib/plans"
+import { polar } from "./polarClient"
 
 const deleteAllOrgDataRef = makeFunctionReference<"mutation">("organizations:deleteAllOrgData")
 const getOrCreateFromClerkRef = makeFunctionReference<"mutation">("organizations:getOrCreateFromClerk")
@@ -443,6 +445,17 @@ async function ensureMembershipFromClerk(
       updatedAt: now,
     })
     return existing._id
+  }
+
+  const sub = await polar.getCurrentSubscription(ctx, { userId: org._id as string })
+  const orgPlan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+  const limits = getPlanLimits(orgPlan)
+  const currentMembers = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_org", (q) => q.eq("organizationId", org._id))
+    .collect()
+  if (currentMembers.length >= limits.maxTeamMembers) {
+    throw new Error(`Team member limit reached. Your plan allows up to ${limits.maxTeamMembers} team members.`)
   }
 
   const membershipId = await ctx.db.insert("userOrganizations", {

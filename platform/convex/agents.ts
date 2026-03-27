@@ -105,7 +105,7 @@ export const create = mutation({
     await requireOrgAdmin(ctx, auth)
 
     const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
-    const plan = sub ? getProductPlan(sub.productId) : "starter"
+    const plan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
     const limits = getPlanLimits(plan)
 
     const existingAgents = await ctx.db
