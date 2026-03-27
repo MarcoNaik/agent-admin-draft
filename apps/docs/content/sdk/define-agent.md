@@ -56,6 +56,12 @@ interface ModelConfig {
   model: string
   temperature?: number
   maxTokens?: number
+  reasoning?: {
+    enabled?: boolean
+    effort?: 'minimal' | 'low' | 'medium' | 'high'
+    budgetTokens?: number
+    hideFromResponse?: boolean
+  }
 }
 ```
 
@@ -76,7 +82,25 @@ export default defineAgent({
 })
 ```
 
-For the full list of providers, models, and pricing, see [Model Configuration](../reference/model-configuration).
+To enable chain-of-thought reasoning:
+
+```typescript
+export default defineAgent({
+  name: "Research Assistant",
+  slug: "research-assistant",
+  version: "1.0.0",
+  systemPrompt: "You are a research assistant.",
+  model: {
+    model: "openai/gpt-5-mini",
+    reasoning: {
+      effort: "high",
+    },
+  },
+  tools: [],
+})
+```
+
+For the full list of providers, models, pricing, and reasoning options, see [Model Configuration](../reference/model-configuration).
 
 ## Tools
 

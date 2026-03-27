@@ -100,6 +100,54 @@ model: {
 | `model` | `string` | `"openai/gpt-5-mini"` | Model ID in `"provider/model-name"` format |
 | `temperature` | `number` | `0.7` | Controls randomness. Lower values (0.0-0.3) produce more deterministic output. Higher values (0.7-1.0) produce more creative output. |
 | `maxTokens` | `number` | `4096` | Maximum number of tokens in the model's response |
+| `reasoning` | `ReasoningConfig` | `undefined` | Reasoning / chain-of-thought settings (see below) |
+
+## Reasoning Configuration
+
+Models that support chain-of-thought reasoning (e.g., `gpt-5-mini`, Claude with extended thinking) can be configured to reason internally without the reasoning text appearing in the final response.
+
+```typescript
+model: {
+  model: "openai/gpt-5-mini",
+  temperature: 0.7,
+  maxTokens: 4096,
+  reasoning: {
+    enabled: true,
+    effort: "medium",
+    budgetTokens: 12000,
+    hideFromResponse: true,
+  },
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Toggle reasoning on or off |
+| `effort` | `"minimal" \| "low" \| "medium" \| "high"` | `"medium"` | Controls how much reasoning the model performs |
+| `budgetTokens` | `number` | `undefined` | Maximum tokens allocated to reasoning (Anthropic only) |
+| `hideFromResponse` | `boolean` | `true` | Strip reasoning from the API response text |
+
+### Effort Levels
+
+The `effort` value maps to each provider's native reasoning parameter:
+
+| Provider | Supported Levels | Mapping |
+|----------|-----------------|---------|
+| OpenAI | `minimal`, `low`, `medium`, `high` | Maps directly to `reasoningEffort` |
+| Anthropic | `low`, `medium`, `high` | `minimal` maps to `low` |
+| xAI | `low`, `high` | `minimal` and `medium` map to `low` |
+
+### Budget Tokens
+
+The `budgetTokens` option sets a hard cap on the number of tokens the model can spend on reasoning. This only applies to Anthropic models and is ignored by other providers.
+
+### Response Handling
+
+When `hideFromResponse` is `true` (the default), reasoning tokens are stripped from the text returned in the API response. The full reasoning content is always stored in the execution record in the database, so you can inspect it in the dashboard for debugging and observability.
+
+### Billing
+
+Reasoning tokens are tracked separately in execution records and billed at the output token rate.
 
 ## Default Configuration
 
@@ -188,6 +236,32 @@ export default defineAgent({
 })
 ```
 
+### Reasoning Agent
+
+For tasks that benefit from step-by-step thinking:
+
+```typescript
+import { defineAgent } from 'struere'
+
+export default defineAgent({
+  name: "Research Analyst",
+  slug: "research-analyst",
+  version: "0.1.0",
+  systemPrompt: "You analyze complex datasets and produce research summaries.",
+  model: {
+    model: "anthropic/claude-sonnet-4-6",
+    temperature: 0.3,
+    maxTokens: 8192,
+    reasoning: {
+      enabled: true,
+      effort: "high",
+      budgetTokens: 16000,
+    },
+  },
+  tools: ["entity.query", "event.query"],
+})
+```
+
 ### OpenAI Provider
 
 ```typescript
@@ -260,9 +334,12 @@ Token usage is tracked per interaction and returned in the chat API response:
   "usage": {
     "inputTokens": 1250,
     "outputTokens": 45,
-    "totalTokens": 1295
+    "reasoningTokens": 320,
+    "totalTokens": 1615
   }
 }
 ```
+
+When reasoning is enabled, `reasoningTokens` is included in the usage breakdown. Reasoning tokens are billed at the output token rate.
 
 Each tool call within the agent's LLM loop counts toward token usage. Multi-agent conversations (via `agent.chat`) track usage independently per agent in the chain. When using platform credits, token usage is automatically deducted from your organization's credit balance.
