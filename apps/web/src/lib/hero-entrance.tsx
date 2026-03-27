@@ -24,6 +24,13 @@ export function HeroEntranceProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    const fallback = setTimeout(() => {
+      setImageLoadedState(true)
+    }, 500)
+    return () => clearTimeout(fallback)
+  }, [])
+
+  useEffect(() => {
     if (!imageLoaded) return
 
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
