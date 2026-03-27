@@ -438,6 +438,27 @@ async function ensureMembershipFromClerk(
     )
     .first()
 
+  const sub = await polar.getCurrentSubscription(ctx, { userId: org._id as string })
+  const orgPlan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
+
+  const isBecomingAdmin = args.role === "admin" && (!existing || existing.role !== "admin")
+  if (isBecomingAdmin && orgPlan === "free") {
+    const userMemberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect()
+    const adminOrgIds = userMemberships
+      .filter((m) => m.role === "admin")
+      .map((m) => m.organizationId)
+    for (const adminOrgId of adminOrgIds) {
+      const adminOrgSub = await polar.getCurrentSubscription(ctx, { userId: adminOrgId as string })
+      const adminOrgPlan = (adminOrgSub && adminOrgSub.status === "active") ? getProductPlan(adminOrgSub.productId) : "free"
+      if (adminOrgPlan === "free") {
+        throw new Error("You can only be admin of one free organization. Upgrade an existing organization or remove your admin role from another free organization.")
+      }
+    }
+  }
+
   if (existing) {
     await ctx.db.patch(existing._id, {
       role: args.role,
@@ -447,8 +468,6 @@ async function ensureMembershipFromClerk(
     return existing._id
   }
 
-  const sub = await polar.getCurrentSubscription(ctx, { userId: org._id as string })
-  const orgPlan = (sub && sub.status === "active") ? getProductPlan(sub.productId) : "free"
   const limits = getPlanLimits(orgPlan)
   const currentMembers = await ctx.db
     .query("userOrganizations")
