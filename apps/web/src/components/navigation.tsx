@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import Link from "next/link"
 import { Menu, X, ArrowUpRight } from "lucide-react"
 import { useHeroEntrance } from "@/lib/hero-entrance"
 
 const navLinks = [
-  { label: "Features", href: "#use-cases", external: false },
-  { label: "Demo", href: "#demo", external: false },
-  { label: "Pricing", href: "#pricing", external: false },
+  { label: "Features", href: "/#use-cases", external: false },
+  { label: "Demo", href: "/#demo", external: false },
+  { label: "Pricing", href: "/pricing", external: false },
+  { label: "Contact", href: "/contact", external: false },
   { label: "Docs", href: "https://docs.struere.dev", external: true },
 ]
 
@@ -15,9 +17,11 @@ export function Navigation() {
   const { mounted } = useHeroEntrance()
 
   const scrollTo = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (!href.startsWith("#")) return
+    const hash = href.startsWith("/#") ? href.slice(1) : href.startsWith("#") ? href : null
+    if (!hash) return
+    if (window.location.pathname !== "/") return
     e.preventDefault()
-    const el = document.querySelector(href)
+    const el = document.querySelector(hash)
     if (el) el.scrollIntoView({ behavior: "smooth" })
   }, [])
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -47,18 +51,28 @@ export function Navigation() {
             transitionDuration: "800ms",
           }}
         >
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => scrollTo(e, link.href)}
-              className="text-sm text-ocean/70 hover:text-ocean transition-colors duration-200 inline-flex items-center gap-1"
-              {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            >
-              {link.label}
-              {link.external && <ArrowUpRight className="w-3 h-3" strokeWidth={2} />}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("/") ? (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm text-ocean/70 hover:text-ocean transition-colors duration-200 inline-flex items-center gap-1"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => scrollTo(e, link.href)}
+                className="text-sm text-ocean/70 hover:text-ocean transition-colors duration-200 inline-flex items-center gap-1"
+                {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
+                {link.label}
+                {link.external && <ArrowUpRight className="w-3 h-3" strokeWidth={2} />}
+              </a>
+            )
+          )}
           <a
             href="https://app.struere.dev?studio="
             className="text-sm font-medium px-5 py-2 rounded-xl text-white bg-ocean hover:bg-ocean-light transition-colors duration-200"
@@ -91,16 +105,27 @@ export function Navigation() {
       {mobileOpen && (
         <div className="md:hidden bg-white/80 backdrop-blur-xl border-t border-black/5">
           <div className="px-6 py-6 flex flex-col gap-4">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => { scrollTo(e, link.href); setMobileOpen(false) }}
-                className="text-base text-ocean/70 hover:text-ocean transition-colors duration-200"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.href.startsWith("/") ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="text-base text-ocean/70 hover:text-ocean transition-colors duration-200"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={(e) => { scrollTo(e, link.href); setMobileOpen(false) }}
+                  className="text-base text-ocean/70 hover:text-ocean transition-colors duration-200"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
             <a
               href="https://app.struere.dev?studio="
               className="mt-2 text-center text-sm font-medium px-5 py-3 rounded-xl text-white bg-ocean hover:bg-ocean-light transition-colors duration-200"
