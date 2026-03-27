@@ -14,6 +14,8 @@ const syncModelPricingRef = makeFunctionReference<"action">("modelPricing:syncPr
 const syncModelRegistryRef = makeFunctionReference<"action">("modelPricing:syncModelRegistry")
 const syncAllOrgKeysRef = makeFunctionReference<"action">("orgKeys:syncAllOrgKeys")
 const cleanupOrphanedUserRolesRef = makeFunctionReference<"mutation">("roles:cleanupOrphanedUserRoles")
+const checkLowBalancesRef = makeFunctionReference<"mutation">("billing:checkLowBalances")
+const resetWeeklyCreditsRef = makeFunctionReference<"mutation">("billing:resetWeeklyCredits")
 
 const crons = cronJobs()
 
@@ -94,6 +96,18 @@ crons.interval(
   "cleanup orphaned and expired user roles",
   { hours: 24 },
   cleanupOrphanedUserRolesRef,
+)
+
+crons.interval(
+  "check low credit balances",
+  { hours: 24 },
+  checkLowBalancesRef,
+)
+
+crons.interval(
+  "reset weekly credits safety net",
+  { hours: 24 },
+  resetWeeklyCreditsRef,
 )
 
 export default crons
