@@ -224,29 +224,6 @@ export const recordUsageDelta = internalMutation({
     currentUsage: v.number(),
   },
   handler: async (ctx, args) => {
-    const balance = await ctx.db
-      .query("creditBalances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first()
-
-    const newBalance = balance ? balance.balance - args.deltaMicrodollars : 0
-    if (balance) {
-      await ctx.db.patch(balance._id, {
-        balance: newBalance,
-        updatedAt: Date.now(),
-      })
-    }
-
-    await ctx.db.insert("creditTransactions", {
-      organizationId: args.organizationId,
-      type: "deduction",
-      amount: args.deltaMicrodollars,
-      balanceAfter: newBalance,
-      description: "OpenRouter usage sync",
-      reconciled: true,
-      createdAt: Date.now(),
-    })
-
     const orgKey = await ctx.db
       .query("orgOpenRouterKeys")
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
