@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { motion } from "motion/react"
 import { Mail } from "lucide-react"
 import { useFadeSlideUp } from "@/hooks/use-scroll-animation"
@@ -10,6 +11,7 @@ const columns = [
     links: [
       { label: "How it works", href: "#how-it-works" },
       { label: "Use cases", href: "#use-cases" },
+      { label: "Pricing", href: "/pricing" },
       { label: "Integrations", href: "#integrations" },
     ],
   },
@@ -25,6 +27,7 @@ const columns = [
   {
     title: "Contact",
     links: [
+      { label: "Contact us", href: "/contact" },
       { label: "Email", href: "mailto:hello@struere.dev" },
     ],
   },
@@ -55,9 +58,15 @@ export function Footer() {
               <ul className="flex flex-col gap-3">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <a href={link.href} className="text-sm text-charcoal/50 hover:text-charcoal transition-colors">
-                      {link.label}
-                    </a>
+                    {link.href.startsWith("/") ? (
+                      <Link href={link.href} className="text-sm text-charcoal/50 hover:text-charcoal transition-colors">
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a href={link.href} className="text-sm text-charcoal/50 hover:text-charcoal transition-colors">
+                        {link.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>
