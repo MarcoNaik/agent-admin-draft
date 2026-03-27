@@ -7,6 +7,8 @@ import { generateSlug } from "./lib/utils"
 import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
 import { ActorContext } from "./lib/permissions/types"
 import { buildToolExecutor } from "./lib/toolExecution"
+import { getPlanLimits, getProductPlan } from "./lib/plans"
+import { polar } from "./polarClient"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -101,6 +103,20 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const auth = await requireAuth(ctx)
     await requireOrgAdmin(ctx, auth)
+
+    const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
+    const plan = sub ? getProductPlan(sub.productId) : "starter"
+    const limits = getPlanLimits(plan)
+
+    const existingAgents = await ctx.db
+      .query("agents")
+      .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
+      .collect()
+    const activeCount = existingAgents.filter((a) => a.status !== "deleted").length
+    if (activeCount >= limits.maxAgents) {
+      throw new Error(`Agent limit reached. Your plan allows up to ${limits.maxAgents} agents.`)
+    }
+
     const slug = args.slug || generateSlug(args.name)
 
     const existing = await ctx.db
