@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values"
 import { httpAction } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 import { log } from "./lib/logger"
+import { polar } from "./polarClient"
 
 const validateApiKeyRef = makeFunctionReference<"query">("agent:validateApiKey")
 const checkChatRateLimitRef = makeFunctionReference<"mutation">("rateLimits:checkChatRateLimit")
@@ -27,6 +28,8 @@ const getPaymentByFlowTokenRef = makeFunctionReference<"query">("payments:getPay
 const verifyPaymentFromWebhookRef = makeFunctionReference<"action">("payments:verifyPaymentFromWebhook")
 const listFlowConfigsRef = makeFunctionReference<"query">("integrations:listFlowConfigs")
 const addCreditsFromPolarRef = makeFunctionReference<"mutation">("billing:addCreditsFromPolar")
+const seedWeeklyCreditsRef = makeFunctionReference<"mutation">("subscriptions:seedWeeklyCredits")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
 const updateEmailStatusRef = makeFunctionReference<"mutation">("email:updateEmailStatus")
 const checkAuthRefreshLimitRef = makeFunctionReference<"mutation">("rateLimits:checkAuthRefreshLimit")
 const internalSyncOrganizationRef = makeFunctionReference<"mutation">("sync:internalSyncOrganization")
@@ -864,80 +867,67 @@ http.route({
   }),
 })
 
-http.route({
+polar.registerRoutes(http, {
   path: "/webhook/polar",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
-    if (!webhookSecret) {
-      return new Response("Webhook secret not configured", { status: 500 })
-    }
-
-    const webhookId = request.headers.get("webhook-id")
-    const webhookTimestamp = request.headers.get("webhook-timestamp")
-    const webhookSignature = request.headers.get("webhook-signature")
-
-    if (!webhookId || !webhookTimestamp || !webhookSignature) {
-      return new Response("Missing webhook headers", { status: 400 })
-    }
-
-    const now = Math.floor(Date.now() / 1000)
-    const ts = parseInt(webhookTimestamp)
-    if (Math.abs(now - ts) > 300) {
-      return new Response("Timestamp too old", { status: 400 })
-    }
-
-    const body = await request.text()
-
-    const secretBytes = new TextEncoder().encode(webhookSecret)
-    const key = await crypto.subtle.importKey(
-      "raw",
-      secretBytes.buffer as ArrayBuffer,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    )
-    const toSign = new TextEncoder().encode(`${webhookId}.${webhookTimestamp}.${body}`)
-    const signatureBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, toSign.buffer as ArrayBuffer))
-    const expectedSig = base64Encode(signatureBytes)
-
-    const signatures = webhookSignature.split(" ")
-    const verified = signatures.some((sig) => {
-      const parts = sig.split(",")
-      return parts[1] === expectedSig
-    })
-
-    if (!verified) {
-      return new Response("Invalid signature", { status: 400 })
-    }
-
-    const event = JSON.parse(body) as {
-      type: string
-      data: {
-        id: string
-        amount: number
-        subtotal_amount: number
-        customer: { external_id: string; id: string }
-        metadata: Record<string, string>
-      }
-    }
-
-    if (event.type === "order.paid") {
+  events: {
+    "order.paid": async (ctx, event) => {
       const order = event.data
-      const organizationId = order.metadata?.organizationId ?? order.customer?.external_id
-      if (!organizationId) {
-        return new Response("Missing organizationId", { status: 400 })
-      }
-      await ctx.runMutation(addCreditsFromPolarRef, {
-        organizationId,
-        amount: order.subtotal_amount,
-        polarOrderId: order.id,
-        polarCustomerId: order.customer?.id,
-      })
-    }
+      const organizationId = order.metadata?.organizationId ?? order.customer?.externalId
+      if (!organizationId) return
 
-    return new Response("OK", { status: 200 })
-  }),
+      if (order.billingReason === "subscription_create" || order.billingReason === "subscription_cycle") {
+        await ctx.runMutation(seedWeeklyCreditsRef, {
+          organizationId,
+        })
+      } else {
+        await ctx.runMutation(addCreditsFromPolarRef, {
+          organizationId,
+          amount: order.subtotalAmount,
+          polarOrderId: order.id,
+          polarCustomerId: order.customer?.id,
+        })
+      }
+    },
+    "order.refunded": async (ctx, event) => {
+      const order = event.data
+      const organizationId = order.metadata?.organizationId ?? order.customer?.externalId
+      if (organizationId) {
+        await ctx.runMutation(deductCreditsRef, {
+          organizationId: organizationId as Id<"organizations">,
+          amount: order.subtotalAmount * 10_000,
+          description: `Refund: order ${order.id}`,
+        })
+      }
+    },
+    "subscription.created": async (ctx, event) => {
+      const sub = event.data
+      const organizationId = sub.metadata?.organizationId ?? sub.customer?.externalId
+      if (organizationId) {
+        await ctx.runMutation(seedWeeklyCreditsRef, { organizationId })
+      }
+    },
+    "subscription.updated": async (ctx, event) => {
+      const sub = event.data
+      const organizationId = sub.metadata?.organizationId ?? sub.customer?.externalId
+      if (organizationId && sub.status === "active" && !sub.cancelAtPeriodEnd) {
+        await ctx.runMutation(seedWeeklyCreditsRef, { organizationId })
+      }
+    },
+    "subscription.active": async (ctx, event) => {
+      const sub = event.data
+      const organizationId = sub.metadata?.organizationId ?? sub.customer?.externalId
+      if (organizationId) {
+        await ctx.runMutation(seedWeeklyCreditsRef, { organizationId })
+      }
+    },
+    "subscription.uncanceled": async (ctx, event) => {
+      const sub = event.data
+      const organizationId = sub.metadata?.organizationId ?? sub.customer?.externalId
+      if (organizationId) {
+        await ctx.runMutation(seedWeeklyCreditsRef, { organizationId })
+      }
+    },
+  },
 })
 
 http.route({
