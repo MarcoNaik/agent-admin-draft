@@ -13,7 +13,8 @@ const canUseToolQueryRef = makeFunctionReference<"query">("permissions:canUseToo
 const resolveApiKeyRef = makeFunctionReference<"query">("providers:resolveApiKey")
 const appendMessagesRef = makeFunctionReference<"mutation">("threads:appendMessages")
 const recordExecutionRef = makeFunctionReference<"mutation">("executions:record")
-const recordCostRollupRef = makeFunctionReference<"mutation">("billing:recordCostRollup")
+const deductCreditsRef = makeFunctionReference<"mutation">("billing:deductCredits")
+const getBalanceInternalRef = makeFunctionReference<"query">("billing:getBalanceInternal")
 const validateApiKeyRef = makeFunctionReference<"query">("agent:validateApiKey")
 const getAgentInternalRef = makeFunctionReference<"query">("agent:getAgentInternal")
 const getActiveConfigRef = makeFunctionReference<"query">("agents:getActiveConfig")
@@ -25,6 +26,7 @@ const chatActionRef = makeFunctionReference<"action">("agent:chat")
 const provisionOrgKeyRef = makeFunctionReference<"action">("orgKeys:provisionOrgKey")
 import { hashApiKey, generateId } from "./lib/utils"
 import { isOrgAdmin as checkIsOrgAdmin } from "./lib/auth"
+const getOrgPlanRef = makeFunctionReference<"query">("polarHelpers:getOrgPlan")
 const getModelCostRef = makeFunctionReference<"query">("modelPricing:getModelCost")
 const getRegistryEntryRef = makeFunctionReference<"query">("modelPricing:getRegistryEntry")
 import { processTemplates, TemplateContext, EntityTypeContext } from "./lib/templateEngine"
@@ -35,6 +37,7 @@ import { createModel, sanitizeToolName, desanitizeToolName, toAIMessages, fromSt
 import { parseModelId } from "./lib/providers"
 import { isBuiltinTool } from "./tools/helpers"
 import { log } from "./lib/logger"
+import { canUseModelTier, getModelTier } from "./lib/plans"
 
 const environmentValidator = v.union(v.literal("development"), v.literal("production"), v.literal("eval"))
 
@@ -66,6 +69,7 @@ interface ChatResponse {
     inputTokens: number
     outputTokens: number
     totalTokens: number
+    reasoningTokens?: number
   }
 }
 
@@ -96,6 +100,12 @@ interface AgentConfigDocument {
     model: string
     temperature?: number
     maxTokens?: number
+    reasoning?: {
+      enabled?: boolean
+      effort?: 'minimal' | 'low' | 'medium' | 'high'
+      budgetTokens?: number
+      hideFromResponse?: boolean
+    }
   }
   tools: ToolConfig[]
   firstMessageSuggestions?: string[]
@@ -340,10 +350,43 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   if (!resolvedApiKey) throw new Error("No API key resolved for model")
   const usedPlatformKey = resolved.tier === 3
 
+  const registryEntry = await ctx.runQuery(getRegistryEntryRef, { struereId: modelId })
+
   let openRouterId: string | undefined
   if (resolved.tier >= 2) {
-    const registryEntry = await ctx.runQuery(getRegistryEntryRef, { struereId: modelId })
     openRouterId = registryEntry?.openRouterId
+  }
+
+  if (usedPlatformKey) {
+    const balance = await ctx.runQuery(getBalanceInternalRef, { organizationId })
+    if (balance <= 0) {
+      return {
+        threadId,
+        message: "I'm temporarily unavailable due to a billing issue. Please contact support.",
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+      }
+    }
+  }
+
+  const orgPlan = await ctx.runQuery(getOrgPlanRef, { organizationId: organizationId as string })
+  const planName = orgPlan.plan
+
+  if (usedPlatformKey) {
+    if (!registryEntry) {
+      return {
+        threadId,
+        message: `The model ${modelId} is not recognized. Please choose a supported model.`,
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+      }
+    }
+    const modelTier = getModelTier(registryEntry.outputPerMTok)
+    if (!canUseModelTier(planName, modelTier)) {
+      return {
+        threadId,
+        message: `The model ${modelId} is not available on your current plan. Please upgrade or choose a different model.`,
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+      }
+    }
   }
 
   let lastAssistantMessageId: Id<"messages"> | undefined
@@ -359,6 +402,26 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
   try {
       const temperature = Math.max(0, Math.min(2, config.model.temperature ?? 0.7))
       const maxOutputTokens = Math.max(1, Math.min(65536, config.model.maxTokens ?? 4096))
+      const reasoningConfig = config.model.reasoning
+      const { provider } = parseModelId(modelId)
+
+      const providerOptions: Record<string, Record<string, any>> = {}
+      if (reasoningConfig?.enabled !== false) {
+        if (provider === "openai" || provider === "xai") {
+          const openaiOpts: Record<string, unknown> = {}
+          if (reasoningConfig?.effort) openaiOpts.reasoningEffort = reasoningConfig.effort
+          if (Object.keys(openaiOpts).length > 0) providerOptions.openai = openaiOpts
+        } else if (provider === "anthropic") {
+          if (reasoningConfig?.budgetTokens) {
+            providerOptions.anthropic = { thinking: { type: "enabled", budgetTokens: reasoningConfig.budgetTokens } }
+          } else if (reasoningConfig?.effort) {
+            providerOptions.anthropic = { thinking: { type: "adaptive" }, effort: reasoningConfig.effort === "minimal" ? "low" : reasoningConfig.effort }
+          }
+        }
+      }
+
+      const hideReasoning = reasoningConfig?.hideFromResponse !== false
+
       result = await generateText({
         model: createModel(modelId, resolvedApiKey, resolved.tier, openRouterId),
         system: processedSystemPrompt,
@@ -371,12 +434,14 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         maxRetries: 2,
         temperature,
         maxOutputTokens,
-        onStepFinish: async ({ text, toolCalls, toolResults }) => {
-          const stepMsgs = fromSteps([{ text, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
+        ...(Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
+        onStepFinish: async ({ text, toolCalls, toolResults, reasoning }) => {
+          const stepMsgs = fromSteps([{ text, reasoning: reasoning as any, toolCalls: toolCalls ?? [], toolResults: toolResults ?? [] }])
           if (stepMsgs.length > 0) {
+            const storedMsgs = stepMsgs
             const ids = await ctx.runMutation(appendMessagesRef, {
               threadId,
-              messages: stepMsgs,
+              messages: storedMsgs,
             }) as Id<"messages">[]
             const lastStepMsg = stepMsgs[stepMsgs.length - 1]
             if (lastStepMsg?.role === "assistant" && !lastStepMsg.toolCalls?.length && ids.length > 0) {
@@ -456,6 +521,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     const durationMs = Date.now() - startTime
     const totalInputTokens = result.totalUsage.inputTokens ?? 0
     const totalOutputTokens = result.totalUsage.outputTokens ?? 0
+    const totalReasoningTokens = (result.totalUsage as any).outputTokenDetails?.reasoningTokens ?? 0
 
     const executedToolCalls = stepsMessages
       .filter(m => m.role === "tool")
@@ -472,7 +538,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       })
       .filter((tc): tc is { name: string; arguments: Record<string, unknown>; result: unknown } => tc !== null)
 
-    const creditsConsumed = usedPlatformKey ? await ctx.runQuery(getModelCostRef, { modelId, inputTokens: totalInputTokens, outputTokens: totalOutputTokens }) : 0
+    const creditsConsumed = usedPlatformKey ? await ctx.runQuery(getModelCostRef, { modelId, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens || undefined }) : 0
 
     const executionId = await ctx.runMutation(recordExecutionRef, {
       organizationId,
@@ -485,6 +551,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
       toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
+      reasoningTokens: totalReasoningTokens || undefined,
       durationMs,
       model: modelId,
       status: "success",
@@ -504,14 +571,16 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
     })
 
     if (creditsConsumed > 0) {
-      await ctx.runMutation(recordCostRollupRef, {
+      await ctx.runMutation(deductCreditsRef, {
         organizationId,
         amount: creditsConsumed,
-        model: modelId,
+        description: `LLM usage: ${modelId}`,
+        executionId,
         costDriver: "llm",
         agentId: agentId as unknown as string,
         channel: thread?.channel as string | undefined,
         actorId: actor.actorId,
+        model: modelId,
       })
     }
 
@@ -523,6 +592,7 @@ async function executeChat(params: ExecuteChatParams): Promise<ChatResponse> {
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,
         totalTokens: totalInputTokens + totalOutputTokens,
+        reasoningTokens: totalReasoningTokens || undefined,
       },
     }
 }
@@ -558,6 +628,7 @@ export const executeChatAction = internalAction({
       inputTokens: v.number(),
       outputTokens: v.number(),
       totalTokens: v.number(),
+      reasoningTokens: v.optional(v.number()),
     }),
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
@@ -598,6 +669,7 @@ export const chat = internalAction({
       inputTokens: v.number(),
       outputTokens: v.number(),
       totalTokens: v.number(),
+      reasoningTokens: v.optional(v.number()),
     }),
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
@@ -680,6 +752,7 @@ export const chatBySlug = internalAction({
       inputTokens: v.number(),
       outputTokens: v.number(),
       totalTokens: v.number(),
+      reasoningTokens: v.optional(v.number()),
     }),
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
@@ -733,6 +806,7 @@ export const chatAuthenticated = internalAction({
       inputTokens: v.number(),
       outputTokens: v.number(),
       totalTokens: v.number(),
+      reasoningTokens: v.optional(v.number()),
     }),
   }),
   handler: async (ctx, args): Promise<ChatResponse> => {
