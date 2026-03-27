@@ -11,7 +11,7 @@ const faqItems = [
   },
   {
     question: "Is Struere free?",
-    answer: "Yes. Struere\u2019s platform is free forever when you bring your own API keys. You get unlimited agents, WhatsApp and Calendar integrations, the full developer toolkit, and no platform fees. You can also buy credits to skip API key setup.",
+    answer: "Yes. The Free plan gives you 3 agents, 5 automations, and full access to the developer toolkit with your own API keys. When you need more agents, integrations like WhatsApp and Calendar, or platform credits, paid plans start at $30/mo.",
   },
   {
     question: "What integrations does Struere support?",
