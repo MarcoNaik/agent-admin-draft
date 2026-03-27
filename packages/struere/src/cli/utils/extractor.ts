@@ -327,7 +327,7 @@ function extractAgentPayload(
     threadContextParams: agent.threadContextParams,
     systemPrompt,
     model: {
-      model: agent.model?.model || 'xai/grok-4-1-fast',
+      model: agent.model?.model || 'openai/gpt-5-mini',
       temperature: agent.model?.temperature,
       maxTokens: agent.model?.maxTokens,
     },

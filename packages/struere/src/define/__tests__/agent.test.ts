@@ -10,7 +10,7 @@ describe("defineAgent", () => {
       systemPrompt: "You are a test agent.",
     })
     expect(config.model).toEqual({
-      model: "xai/grok-4-1-fast",
+      model: "openai/gpt-5-mini",
       temperature: 0.7,
       maxTokens: 4096,
     })

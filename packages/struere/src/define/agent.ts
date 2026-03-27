@@ -13,7 +13,7 @@ export function defineAgent(config: AgentConfig): AgentConfig {
 
   return {
     model: {
-      model: 'xai/grok-4-1-fast',
+      model: 'openai/gpt-5-mini',
       temperature: 0.7,
       maxTokens: 4096,
     },

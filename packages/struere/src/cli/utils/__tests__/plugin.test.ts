@@ -34,6 +34,6 @@ describe("virtual module consistency", () => {
     const fn = new Function(stripped + "\nreturn defineAgent;")
     const defineAgent = fn()
     const config = defineAgent({ name: "Test", slug: "test", version: "1.0", systemPrompt: "p" })
-    expect(config.model.model).toBe("xai/grok-4-1-fast")
+    expect(config.model.model).toBe("openai/gpt-5-mini")
   })
 })

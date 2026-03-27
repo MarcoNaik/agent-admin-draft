@@ -31,7 +31,7 @@ slug: "basic-agent-tests"
 agent: "${agentSlug}"
 description: "Verify agent responds correctly and uses tools appropriately"
 tags: ["smoke-test"]
-judgeModel: "xai/grok-4-1-fast"
+judgeModel: "openai/gpt-5-mini"
 judgePrompt: "Evaluate whether the agent responds correctly and uses appropriate tools. Be lenient on phrasing but strict on factual accuracy."
 
 cases:
@@ -89,7 +89,7 @@ slug: "${slug}"
 agent: "${agentSlug}"
 description: "TODO: Describe what this eval suite tests"
 tags: []
-judgeModel: "xai/grok-4-1-fast"
+judgeModel: "openai/gpt-5-mini"
 judgePrompt: "TODO: Custom instructions for the judge (e.g. strictness level, focus areas)"
 
 cases:
@@ -202,7 +202,7 @@ export default defineAgent({
   version: "0.1.0",
   description: "${displayName} Agent",
   model: {
-    model: "xai/grok-4-1-fast",
+    model: "openai/gpt-5-mini",
     temperature: 0.7,
     maxTokens: 4096,
   },

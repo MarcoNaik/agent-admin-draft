@@ -2,6 +2,12 @@ export interface ModelConfig {
   model: string
   temperature?: number
   maxTokens?: number
+  reasoning?: {
+    enabled?: boolean
+    effort?: 'minimal' | 'low' | 'medium' | 'high'
+    budgetTokens?: number
+    hideFromResponse?: boolean
+  }
 }
 
 export interface ToolReference {
