@@ -2,8 +2,9 @@ import { internalAction, internalMutation, internalQuery, query } from "./_gener
 import { v } from "convex/values"
 import { makeFunctionReference } from "convex/server"
 import { openRouterProviderToStruere, normalizeNativeModelName } from "./lib/providers"
+import { getModelTier } from "./lib/plans"
 
-const MARKUP = 1.1
+const MARKUP = 1.25
 
 const upsertPricingRef = makeFunctionReference<"mutation">("modelPricing:upsertPricing")
 const upsertRegistryRef = makeFunctionReference<"mutation">("modelPricing:upsertRegistry")
@@ -94,6 +95,7 @@ export const syncModelRegistry = internalAction({
       maxOutput: number
       inputPerMTok: number
       outputPerMTok: number
+      tier: "efficient" | "standard" | "premium"
     }> = []
 
     const seenIds = new Set<string>()
@@ -125,6 +127,7 @@ export const syncModelRegistry = internalAction({
           maxOutput: model.top_provider?.max_completion_tokens ?? 4096,
           inputPerMTok,
           outputPerMTok,
+          tier: getModelTier(outputPerMTok),
         })
       }
     }
@@ -206,6 +209,7 @@ export const upsertRegistry = internalMutation({
       maxOutput: v.number(),
       inputPerMTok: v.number(),
       outputPerMTok: v.number(),
+      tier: v.union(v.literal("efficient"), v.literal("standard"), v.literal("premium")),
     })),
   },
   handler: async (ctx, args) => {
@@ -224,6 +228,7 @@ export const upsertRegistry = internalMutation({
           maxOutput: entry.maxOutput,
           inputPerMTok: entry.inputPerMTok,
           outputPerMTok: entry.outputPerMTok,
+          tier: entry.tier,
           status: "active" as const,
           updatedAt: now,
         })
@@ -400,6 +405,7 @@ export const getModelCost = internalQuery({
     modelId: v.string(),
     inputTokens: v.number(),
     outputTokens: v.number(),
+    reasoningTokens: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const registryEntry = await ctx.db
@@ -408,7 +414,8 @@ export const getModelCost = internalQuery({
       .unique()
 
     if (registryEntry) {
-      const costUsd = (args.inputTokens * registryEntry.inputPerMTok * MARKUP + args.outputTokens * registryEntry.outputPerMTok * MARKUP) / 1_000_000
+      const reasoningCost = (args.reasoningTokens ?? 0) * registryEntry.outputPerMTok * MARKUP
+      const costUsd = (args.inputTokens * registryEntry.inputPerMTok * MARKUP + args.outputTokens * registryEntry.outputPerMTok * MARKUP + reasoningCost) / 1_000_000
       return Math.round(costUsd * 1_000_000)
     }
 
@@ -433,7 +440,8 @@ export const getModelCost = internalQuery({
     if (dbPricing) {
       const inputCost = dbPricing.inputPerMTok * MARKUP
       const outputCost = dbPricing.outputPerMTok * MARKUP
-      const costUsd = (args.inputTokens * inputCost + args.outputTokens * outputCost) / 1_000_000
+      const reasoningCost = (args.reasoningTokens ?? 0) * outputCost
+      const costUsd = (args.inputTokens * inputCost + args.outputTokens * outputCost + reasoningCost) / 1_000_000
       return Math.round(costUsd * 1_000_000)
     }
 
