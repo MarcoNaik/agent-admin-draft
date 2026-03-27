@@ -681,6 +681,7 @@ export const appendMessages = internalMutation({
           v.literal("tool")
         ),
         content: v.string(),
+        reasoning: v.optional(v.string()),
         toolCalls: v.optional(v.array(v.object({
           id: v.string(),
           name: v.string(),
@@ -718,6 +719,7 @@ export const appendMessages = internalMutation({
         organizationId,
         role: msg.role,
         content: msg.content,
+        reasoning: msg.reasoning,
         toolCalls: msg.toolCalls,
         toolCallId: msg.toolCallId,
         attachments: msg.attachments,

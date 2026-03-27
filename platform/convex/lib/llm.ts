@@ -66,6 +66,7 @@ export function desanitizeToolName(name: string): string {
 interface InternalMessage {
   role: "user" | "assistant" | "system" | "tool"
   content: string
+  reasoning?: string
   toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>
   toolCallId?: string
   attachments?: Array<{ type: string; url: string; mimeType: string }>
@@ -184,6 +185,7 @@ export function cleanToolCallText(text: string): string {
 
 interface StepData {
   text: string
+  reasoning: Array<{ type: string; text: string }> | undefined
   toolCalls: Array<{ toolCallId: string; toolName: string; input?: unknown; args?: unknown }>
   toolResults: Array<{ toolCallId: string; toolName: string; output: unknown }>
 }
@@ -192,10 +194,13 @@ export function fromSteps(steps: StepData[]): InternalMessage[] {
   const result: InternalMessage[] = []
 
   for (const step of steps) {
+    const reasoningText = step.reasoning?.map((r) => r.text).join("\n") || undefined
+
     if (step.toolCalls.length > 0) {
       result.push({
         role: "assistant",
         content: "",
+        reasoning: reasoningText,
         toolCalls: step.toolCalls.map((tc) => ({
           id: tc.toolCallId,
           name: desanitizeToolName(tc.toolName),
@@ -216,6 +221,7 @@ export function fromSteps(steps: StepData[]): InternalMessage[] {
         result.push({
           role: "assistant",
           content: cleaned,
+          reasoning: reasoningText,
         })
       }
     }
