@@ -15,8 +15,10 @@ import {
 import { formatRelativeTime } from "@/lib/format"
 import { toast } from "sonner"
 
-function formatDollars(microdollars: number): string {
-  return `$${(microdollars / 1_000_000).toFixed(2)}`
+function formatDollars(microdollars: number, precise = false): string {
+  const dollars = microdollars / 1_000_000
+  if (precise) return `$${dollars.toFixed(4)}`
+  return `$${dollars.toFixed(2)}`
 }
 
 function UsageBar({ percentage }: { percentage: number }) {
@@ -277,13 +279,13 @@ function TransactionSection() {
                   return (
                     <tr key={tx._id} className="border-b border-border/20">
                       <td className="py-3 pr-4 text-sm text-content-secondary whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </td>
                       <td className={`text-right py-3 px-4 text-sm font-medium tabular-nums ${isDebit ? "text-red-400" : "text-green-400"}`}>
-                        {isDebit ? "−" : "+"}{formatDollars(tx.amount)}
+                        {isDebit ? "−" : "+"}{formatDollars(tx.amount, true)}
                       </td>
                       <td className="text-right py-3 px-4 text-sm text-content-tertiary tabular-nums">
-                        {tx.balanceAfter !== undefined ? formatDollars(tx.balanceAfter) : "—"}
+                        {tx.balanceAfter !== undefined ? formatDollars(tx.balanceAfter, true) : "—"}
                       </td>
                       <td className="py-3 pl-4 text-sm text-content-tertiary truncate max-w-[250px]">
                         {tx.description}
