@@ -1,11 +1,11 @@
 import { v } from "convex/values"
-import { query, mutation, action, internalQuery, internalMutation, MutationCtx } from "./_generated/server"
+import { query, internalQuery, internalMutation, MutationCtx } from "./_generated/server"
 import { makeFunctionReference } from "convex/server"
 import { Id } from "./_generated/dataModel"
-import { requireAuth, requireOrgAdmin } from "./lib/auth"
+import { requireAuth } from "./lib/auth"
+import { getPlanLimits, getProductPlan } from "./lib/plans"
+import { polar } from "./polarClient"
 
-const getAuthInfoRef = makeFunctionReference<"query">("chat:getAuthInfo")
-const isOrgAdminInternalRef = makeFunctionReference<"query">("integrations:isOrgAdminInternal")
 const updateKeyLimitRef = makeFunctionReference<"action">("orgKeys:updateKeyLimit")
 
 function formatMicrodollars(microdollars: number): string {
@@ -13,6 +13,12 @@ function formatMicrodollars(microdollars: number): string {
   if (dollars >= 0.01) return `$${dollars.toFixed(2)}`
   if (dollars >= 0.0001) return `$${dollars.toFixed(4)}`
   return `$${dollars.toFixed(6)}`
+}
+
+function resolveCredits(doc: { balance: number; subscriptionCredits?: number; purchasedCredits?: number }) {
+  const sub = doc.subscriptionCredits ?? 0
+  const purchased = doc.purchasedCredits ?? doc.balance
+  return { subscriptionCredits: sub, purchasedCredits: purchased }
 }
 
 async function getOrCreateBalance(ctx: MutationCtx, organizationId: Id<"organizations">) {
@@ -27,6 +33,8 @@ async function getOrCreateBalance(ctx: MutationCtx, organizationId: Id<"organiza
   const id = await ctx.db.insert("creditBalances", {
     organizationId,
     balance: 0,
+    subscriptionCredits: 0,
+    purchasedCredits: 0,
     updatedAt: now,
   })
   return (await ctx.db.get(id))!
@@ -42,9 +50,29 @@ export const getBalance = query({
       .withIndex("by_org", (q) => q.eq("organizationId", auth.organizationId))
       .first()
 
+    if (!balance) {
+      return {
+        balance: 0,
+        subscriptionCredits: 0,
+        purchasedCredits: 0,
+        weeklyCreditsResetAt: undefined as number | undefined,
+        updatedAt: Date.now(),
+      }
+    }
+
+    const { subscriptionCredits, purchasedCredits } = resolveCredits(balance)
+
+    const sub = await polar.getCurrentSubscription(ctx, { userId: auth.organizationId as string })
+    const plan = sub ? getProductPlan(sub.productId) : "starter"
+    const limits = getPlanLimits(plan)
+
     return {
-      balance: balance?.balance ?? 0,
-      updatedAt: balance?.updatedAt ?? Date.now(),
+      balance: subscriptionCredits + purchasedCredits,
+      subscriptionCredits,
+      purchasedCredits,
+      weeklyCreditsLimit: limits.weeklyCredits,
+      weeklyCreditsResetAt: balance.weeklyCreditsResetAt,
+      updatedAt: balance.updatedAt,
     }
   },
 })
@@ -86,7 +114,10 @@ export const getBalanceInternal = internalQuery({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .first()
 
-    return balance?.balance ?? 0
+    if (!balance) return 0
+
+    const { subscriptionCredits, purchasedCredits } = resolveCredits(balance)
+    return subscriptionCredits + purchasedCredits
   },
 })
 
@@ -105,13 +136,56 @@ export const deductCredits = internalMutation({
   },
   handler: async (ctx, args) => {
     const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
-    const newBalance = balanceDoc.balance - args.amount
+
+    if (balanceDoc.weeklyCreditsResetAt && balanceDoc.weeklyCreditsResetAt < Date.now()) {
+      const sub = await polar.getCurrentSubscription(ctx, { userId: args.organizationId as string })
+      if (sub) {
+        const plan = getProductPlan(sub.productId)
+        const limits = getPlanLimits(plan)
+        const resetAmount = limits.weeklyCredits
+        const purchased = balanceDoc.purchasedCredits ?? 0
+        const newBalance = resetAmount + purchased
+        await ctx.db.patch(balanceDoc._id, {
+          balance: newBalance,
+          subscriptionCredits: resetAmount,
+          purchasedCredits: purchased,
+          weeklyCreditsResetAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          updatedAt: Date.now(),
+        })
+        const weekNum = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000))
+        await ctx.db.insert("creditTransactions", {
+          organizationId: args.organizationId,
+          type: "addition",
+          amount: resetAmount,
+          balanceAfter: newBalance,
+          reconciled: true,
+          description: `Weekly credits reset - ${plan} plan (week-${weekNum})`,
+          createdAt: Date.now(),
+        })
+      }
+    }
+
+    const freshDoc = (await ctx.db.get(balanceDoc._id))!
+    const { subscriptionCredits, purchasedCredits } = resolveCredits(freshDoc)
+
+    let newSub = subscriptionCredits
+    let newPurchased = purchasedCredits
+
+    if (newSub >= args.amount) {
+      newSub -= args.amount
+    } else {
+      const remainder = args.amount - newSub
+      newSub = 0
+      newPurchased -= remainder
+    }
+
+    const newBalance = newSub + newPurchased
 
     if (newBalance < 0) {
       console.error("OVERDRAFT", {
         organizationId: args.organizationId,
         amount: args.amount,
-        previousBalance: balanceDoc.balance,
+        previousBalance: subscriptionCredits + purchasedCredits,
         newBalance,
         description: args.description,
       })
@@ -119,6 +193,8 @@ export const deductCredits = internalMutation({
 
     await ctx.db.patch(balanceDoc._id, {
       balance: newBalance,
+      subscriptionCredits: newSub,
+      purchasedCredits: newPurchased,
       updatedAt: Date.now(),
     })
 
@@ -297,13 +373,29 @@ export const reconcileBalances = internalMutation({
 
     for (const tx of unprocessed) {
       const balanceDoc = await getOrCreateBalance(ctx, tx.organizationId)
+      const { subscriptionCredits, purchasedCredits } = resolveCredits(balanceDoc)
 
-      const newBalance = tx.type === "deduction"
-        ? balanceDoc.balance - tx.amount
-        : balanceDoc.balance + tx.amount
+      let newSub = subscriptionCredits
+      let newPurchased = purchasedCredits
+
+      if (tx.type === "deduction") {
+        if (newSub >= tx.amount) {
+          newSub -= tx.amount
+        } else {
+          const remainder = tx.amount - newSub
+          newSub = 0
+          newPurchased -= remainder
+        }
+      } else {
+        newPurchased += tx.amount
+      }
+
+      const newBalance = newSub + newPurchased
 
       await ctx.db.patch(balanceDoc._id, {
         balance: newBalance,
+        subscriptionCredits: newSub,
+        purchasedCredits: newPurchased,
         updatedAt: Date.now(),
       })
 
@@ -312,40 +404,40 @@ export const reconcileBalances = internalMutation({
   },
 })
 
-export const addCredits = mutation({
+export const addCredits = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     amount: v.number(),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-    await requireOrgAdmin(ctx, auth)
-
     if (args.amount <= 0) {
       throw new Error("Amount must be positive")
     }
 
-    const balanceDoc = await getOrCreateBalance(ctx, auth.organizationId)
-    const newBalance = balanceDoc.balance + args.amount
+    const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
+    const { subscriptionCredits, purchasedCredits } = resolveCredits(balanceDoc)
+    const newPurchased = purchasedCredits + args.amount
+    const newBalance = subscriptionCredits + newPurchased
 
     await ctx.db.patch(balanceDoc._id, {
       balance: newBalance,
+      purchasedCredits: newPurchased,
       updatedAt: Date.now(),
     })
 
     await ctx.db.insert("creditTransactions", {
-      organizationId: auth.organizationId,
+      organizationId: args.organizationId,
       type: "addition",
       amount: args.amount,
       balanceAfter: newBalance,
       reconciled: true,
       description: args.description ?? "Manual credit addition",
-      createdBy: auth.userId,
       createdAt: Date.now(),
     })
 
     await ctx.scheduler.runAfter(0, updateKeyLimitRef, {
-      organizationId: auth.organizationId,
+      organizationId: args.organizationId,
       newBalanceMicrodollars: newBalance,
     })
 
@@ -353,35 +445,36 @@ export const addCredits = mutation({
   },
 })
 
-export const adjustBalance = mutation({
+export const adjustBalance = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     newBalance: v.number(),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx)
-    await requireOrgAdmin(ctx, auth)
-
     if (args.newBalance < 0) {
       throw new Error("Balance cannot be set to a negative value")
     }
 
-    const balanceDoc = await getOrCreateBalance(ctx, auth.organizationId)
-    const difference = args.newBalance - balanceDoc.balance
+    const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
+    const { subscriptionCredits } = resolveCredits(balanceDoc)
+    const difference = args.newBalance - (subscriptionCredits + (balanceDoc.purchasedCredits ?? balanceDoc.balance))
+    const newPurchased = Math.max(0, args.newBalance - subscriptionCredits)
 
     await ctx.db.patch(balanceDoc._id, {
       balance: args.newBalance,
+      subscriptionCredits: Math.min(subscriptionCredits, args.newBalance),
+      purchasedCredits: newPurchased,
       updatedAt: Date.now(),
     })
 
     await ctx.db.insert("creditTransactions", {
-      organizationId: auth.organizationId,
+      organizationId: args.organizationId,
       type: "adjustment",
       amount: Math.abs(difference),
       balanceAfter: args.newBalance,
       reconciled: true,
       description: args.description ?? `Balance adjusted from ${formatMicrodollars(balanceDoc.balance)} to ${formatMicrodollars(args.newBalance)}`,
-      createdBy: auth.userId,
       createdAt: Date.now(),
     })
 
@@ -389,58 +482,6 @@ export const adjustBalance = mutation({
   },
 })
 
-export const createCheckoutSession = action({
-  args: {
-    amount: v.number(),
-    successUrl: v.string(),
-  },
-  handler: async (ctx, args): Promise<{ checkoutUrl: string }> => {
-    const auth: { userId: Id<"users">; organizationId: Id<"organizations"> } | null =
-      await ctx.runQuery(getAuthInfoRef)
-    if (!auth) {
-      throw new Error("Not authenticated")
-    }
-
-    const isAdmin: boolean = await ctx.runQuery(isOrgAdminInternalRef, {
-      userId: auth.userId,
-      organizationId: auth.organizationId,
-    })
-    if (!isAdmin) {
-      throw new Error("Admin access required")
-    }
-
-    if (args.amount < 100) {
-      throw new Error("Minimum purchase is $1.00")
-    }
-
-    const polarBase = process.env.POLAR_SERVER === "production" ? "https://api.polar.sh" : "https://sandbox-api.polar.sh"
-    const resp = await fetch(`${polarBase}/v1/checkouts/`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.POLAR_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        products: [process.env.POLAR_PRODUCT_ID],
-        amount: args.amount,
-        success_url: args.successUrl,
-        customer_external_id: auth.organizationId,
-        metadata: {
-          organizationId: auth.organizationId,
-          userId: auth.userId,
-        },
-      }),
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text()
-      throw new Error(`Polar checkout failed: ${text}`)
-    }
-
-    const checkout = await resp.json() as { url: string }
-    return { checkoutUrl: checkout.url }
-  },
-})
 
 export const addCreditsFromPolar = internalMutation({
   args: {
@@ -475,11 +516,14 @@ export const addCreditsFromPolar = internalMutation({
     if (duplicateLegacy) return
 
     const balanceDoc = await getOrCreateBalance(ctx, org._id)
+    const { subscriptionCredits, purchasedCredits } = resolveCredits(balanceDoc)
     const microdollars = args.amount * 10_000
-    const newBalance = balanceDoc.balance + microdollars
+    const newPurchased = purchasedCredits + microdollars
+    const newBalance = subscriptionCredits + newPurchased
 
     await ctx.db.patch(balanceDoc._id, {
       balance: newBalance,
+      purchasedCredits: newPurchased,
       updatedAt: Date.now(),
     })
 
@@ -526,10 +570,13 @@ export const seedWelcomeCredits = internalMutation({
     if (existing) return
 
     const balanceDoc = await getOrCreateBalance(ctx, args.organizationId)
-    const newBalance = balanceDoc.balance + 250_000
+    const { subscriptionCredits, purchasedCredits } = resolveCredits(balanceDoc)
+    const newPurchased = purchasedCredits + 250_000
+    const newBalance = subscriptionCredits + newPurchased
 
     await ctx.db.patch(balanceDoc._id, {
       balance: newBalance,
+      purchasedCredits: newPurchased,
       updatedAt: Date.now(),
     })
 
@@ -566,6 +613,30 @@ export const getCostRollup = query({
   },
 })
 
+
+export const checkLowBalances = internalMutation({
+  handler: async (ctx) => {
+    const balances = await ctx.db.query("creditBalances").take(500)
+
+    for (const bal of balances) {
+      const { subscriptionCredits, purchasedCredits } = resolveCredits(bal)
+      const effective = subscriptionCredits + purchasedCredits
+      if (effective <= 0) {
+        console.error("ZERO_BALANCE", {
+          organizationId: bal.organizationId,
+          balance: effective,
+        })
+      } else if (effective < 2_000_000) {
+        console.warn("LOW_BALANCE", {
+          organizationId: bal.organizationId,
+          balance: effective,
+          dollars: (effective / 1_000_000).toFixed(2),
+        })
+      }
+    }
+  },
+})
+
 export const getCostTrend = query({
   args: {
     periodType: v.union(v.literal("day"), v.literal("month")),
@@ -584,5 +655,44 @@ export const getCostTrend = query({
       results.push({ period, ...(rollup ? { totalCost: rollup.totalCost, totalCount: rollup.totalCount, byAgent: rollup.byAgent, byChannel: rollup.byChannel, byDriver: rollup.byDriver, byActor: rollup.byActor, byModel: rollup.byModel } : { totalCost: 0, totalCount: 0 }) })
     }
     return results
+  },
+})
+
+export const resetWeeklyCredits = internalMutation({
+  handler: async (ctx) => {
+    const now = Date.now()
+    const balances = await ctx.db.query("creditBalances").take(500)
+
+    for (const bal of balances) {
+      if (!bal.weeklyCreditsResetAt || bal.weeklyCreditsResetAt >= now) continue
+
+      const sub = await polar.getCurrentSubscription(ctx, { userId: bal.organizationId as string })
+      if (!sub) continue
+
+      const plan = getProductPlan(sub.productId)
+      const limits = getPlanLimits(plan)
+      const resetAmount = limits.weeklyCredits
+      const purchased = bal.purchasedCredits ?? 0
+      const newBalance = resetAmount + purchased
+
+      await ctx.db.patch(bal._id, {
+        balance: newBalance,
+        subscriptionCredits: resetAmount,
+        purchasedCredits: purchased,
+        weeklyCreditsResetAt: now + 7 * 24 * 60 * 60 * 1000,
+        updatedAt: now,
+      })
+
+      const weekNumber = Math.floor(now / (7 * 24 * 60 * 60 * 1000))
+      await ctx.db.insert("creditTransactions", {
+        organizationId: bal.organizationId,
+        type: "addition",
+        amount: resetAmount,
+        balanceAfter: newBalance,
+        reconciled: true,
+        description: `Weekly credits reset - ${plan} plan (week-${weekNumber})`,
+        createdAt: now,
+      })
+    }
   },
 })
