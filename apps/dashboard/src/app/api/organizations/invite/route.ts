@@ -20,7 +20,9 @@ export async function POST(req: Request) {
   }
 
   const orgRole = session.orgRole
-  if (orgRole !== "org:admin" && orgRole !== "org:owner") {
+  const isClerkAdmin = orgRole === "org:admin" || orgRole === "org:owner" || orgRole === "admin" || orgRole === "owner"
+
+  if (!isClerkAdmin) {
     const token = await session.getToken({ template: "convex" })
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
     if (!permissions.canCreate) {
       return NextResponse.json({ error: "You do not have permission to invite users" }, { status: 403 })
     }
-    if (role === "org:admin") {
+    if (role === "org:admin" && !permissions.isAdmin) {
       return NextResponse.json({ error: "Only admins can invite as admin" }, { status: 403 })
     }
   }

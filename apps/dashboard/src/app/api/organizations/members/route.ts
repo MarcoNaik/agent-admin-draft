@@ -42,7 +42,7 @@ export async function DELETE(req: Request) {
   }
 
   const orgRole = session.orgRole
-  if (orgRole !== "org:admin" && orgRole !== "org:owner") {
+  if (orgRole !== "org:admin" && orgRole !== "org:owner" && orgRole !== "admin" && orgRole !== "owner") {
     const token = await session.getToken({ template: "convex" })
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
