@@ -24,7 +24,7 @@ export default defineAgent({
   systemPrompt: `You are {{agentName}}, an assistant for {{organizationName}}.
 Current time: {{currentTime}}
 Thread: {{threadId}}`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query"],
 })
 ```

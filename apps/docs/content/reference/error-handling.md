@@ -293,7 +293,7 @@ export default defineAgent({
 - If entity.create fails with a validation error, review the entity type schema and correct the data before retrying.
 - If entity.query returns empty results, consider whether scope rules may be filtering results and inform the user.
 - Never retry the exact same tool call with the same arguments more than once.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query", "entity.create", "entity.update"],
 })
 ```

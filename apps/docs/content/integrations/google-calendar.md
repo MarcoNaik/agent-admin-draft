@@ -42,7 +42,7 @@ When booking:
 1. Check availability with calendar.freeBusy
 2. Create the event with calendar.create
 3. Record the session entity with entity.create`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
 })
 ```
 

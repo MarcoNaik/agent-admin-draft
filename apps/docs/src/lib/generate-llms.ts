@@ -72,7 +72,7 @@ export function generateLlmsTxt(): string {
   lines.push("")
   lines.push("- Chat endpoint: `POST /v1/agents/:slug/chat` with Bearer token")
   lines.push("- SDK exports: `defineAgent`, `defineTools`, `defineData`, `defineRole`, `defineTrigger`")
-  lines.push("- Default model: `xai/grok-4-1-fast`")
+  lines.push("- Default model: `openai/gpt-5-mini`")
   lines.push("- Environments: `development`, `production`, `eval`")
   lines.push("- Auth: API keys prefixed `sk_dev_` / `sk_prod_`")
   lines.push("- Package manager: Bun")
@@ -194,7 +194,7 @@ struere.json         # Organization config (auto-generated)
 ## Key Patterns
 
 - **Imports**: \`import { defineAgent, defineData, defineRole, defineTrigger, defineTools } from 'struere'\`
-- **Default model**: \`xai/grok-4-1-fast\` (OpenRouter format: \`provider/model-name\`). Also supports \`anthropic\`, \`openai\`, \`google\`
+- **Default model**: \`openai/gpt-5-mini\` (OpenRouter format: \`provider/model-name\`). Also supports \`anthropic\`, \`openai\`, \`google\`
 - **Scope rule values**: \`actor.userId\`, \`actor.entityId\`, \`actor.organizationId\`, \`actor.relatedIds:TYPE\`, \`literal:VALUE\`
 - **Policy actions**: \`create\`, \`read\`, \`update\`, \`delete\`, \`list\` (deny overrides allow)
 - **Entity link/unlink params**: \`fromId\`, \`toId\`, \`relationType\`

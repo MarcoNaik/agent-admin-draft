@@ -51,7 +51,7 @@ export default defineAgent({
 - If entity.create fails with a validation error, check the schema in entityTypes and fix the data.
 - If entity.query returns empty results, try different filters or inform the user no matches were found.
 - Never retry the exact same tool call more than once.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
 })
 ```
 

@@ -232,7 +232,7 @@ export default defineAgent({
   slug: "notifications",
   version: "0.1.0",
   systemPrompt: "You send notifications to users via email and Slack.",
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: [
     "entity.query",
     "send_email",

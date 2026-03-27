@@ -89,7 +89,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You are a helpful assistant for {{organizationName}}. Current time: {{currentTime}}.",
   model: {
-    model: "xai/grok-4-1-fast",
+    model: "openai/gpt-5-mini",
   },
   tools: ["entity.query"],
 })

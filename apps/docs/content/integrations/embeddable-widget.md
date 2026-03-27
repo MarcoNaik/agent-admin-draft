@@ -124,7 +124,7 @@ Plan: {{threadContext.params.plan}}
 {{entity.get({"type": "customer", "id": "{{threadContext.params.customerId}}"})}}
 
 Greet them by name and tailor your responses to their plan level.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query", "entity.get"],
   threadContextParams: [
     { name: "email", type: "string", required: true, description: "Customer email" },

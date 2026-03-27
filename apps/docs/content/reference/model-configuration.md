@@ -89,7 +89,7 @@ The `model` field in an agent definition accepts the following options:
 
 ```typescript
 model: {
-  model: "xai/grok-4-1-fast",
+  model: "openai/gpt-5-mini",
   temperature: 0.7,
   maxTokens: 4096,
 }
@@ -97,7 +97,7 @@ model: {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `model` | `string` | `"xai/grok-4-1-fast"` | Model ID in `"provider/model-name"` format |
+| `model` | `string` | `"openai/gpt-5-mini"` | Model ID in `"provider/model-name"` format |
 | `temperature` | `number` | `0.7` | Controls randomness. Lower values (0.0-0.3) produce more deterministic output. Higher values (0.7-1.0) produce more creative output. |
 | `maxTokens` | `number` | `4096` | Maximum number of tokens in the model's response |
 
@@ -107,7 +107,7 @@ If no model is specified in the agent definition, the default configuration is u
 
 ```typescript
 {
-  model: "xai/grok-4-1-fast",
+  model: "openai/gpt-5-mini",
   temperature: 0.7,
   maxTokens: 4096,
 }
@@ -218,7 +218,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You assist with general queries.",
   model: {
-    model: "xai/grok-4-1-fast-reasoning",
+    model: "openai/gpt-5-mini-reasoning",
     temperature: 0.7,
     maxTokens: 4096,
   },

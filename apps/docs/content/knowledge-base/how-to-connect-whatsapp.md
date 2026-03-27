@@ -44,7 +44,7 @@ export default defineAgent({
   ],
   systemPrompt: `You are a support agent for {{organizationName}}.
 You are chatting with a customer on WhatsApp. Be concise and helpful.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
 })
 ```
 

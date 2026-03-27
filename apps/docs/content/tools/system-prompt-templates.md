@@ -26,7 +26,7 @@ Current time: {{currentTime}}
 Available data types: {{entityTypes}}
 
 Use entity.query to search for records by type.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query", "entity.get", "event.emit"],
 })
 ```
@@ -322,7 +322,7 @@ Current time: {{currentTime}}
 {{event.query({"eventType": "prospect.contacted", "entityTypeSlug": "prospect", "limit": 10})}}
 
 Personalize your responses based on the prospect's profile and past interactions. Be consultative, not pushy.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query", "entity.update", "event.emit", "event.query", "email.send"],
   threadContextParams: [
     { name: "prospectSlug", type: "string", required: true, description: "Prospect slug" },
@@ -356,7 +356,7 @@ Adapt your response style to the channel:
 - widget: Use markdown formatting, include links when helpful
 - api: Return structured responses
 - dashboard: Be detailed, the user is an internal team member`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query", "entity.get", "entity.update", "event.emit"],
   threadContextParams: [
     { name: "customerId", type: "string", required: true, description: "Customer entity ID" },
@@ -394,7 +394,7 @@ Current time: {{currentTime}}
 {{entity.query({"type": "session", "filters": {"status": {"_op_in": ["scheduled", "confirmed"]}}, "limit": 30})}}
 
 Before booking, use calendar.freeBusy to check the teacher's availability. Create sessions with entity.create and emit a session.created event.`,
-  model: { model: "xai/grok-4-1-fast", temperature: 0.3 },
+  model: { model: "openai/gpt-5-mini", temperature: 0.3 },
   tools: [
     "entity.create",
     "entity.get",
@@ -432,7 +432,7 @@ You are a triage agent. Understand the user's request and delegate to the right 
 - Technical support → delegate to agent "tech-support"
 
 Use agent.chat to delegate. Always pass relevant context in the message.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["agent.chat", "entity.query"],
 })
 ```
@@ -461,7 +461,7 @@ Current time: {{currentTime}}
 {{event.query({"eventType": "whatsapp.sent", "limit": 20})}}
 
 Follow up with pending contacts via WhatsApp. Check conversation history before reaching out to avoid duplicate messages. Log all outreach as events.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: [
     "entity.query",
     "entity.update",
@@ -495,7 +495,7 @@ Current time: {{currentTime}}
 {{entity.query({"type": "customer", "filters": {"slug": "{{threadContext.params.customerSlug}}"}, "limit": 1})}}
 
 Generate payment links with payment.create for unpaid invoices. Send them via WhatsApp or email based on the channel. Update invoice status after successful payment.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: [
     "entity.query",
     "entity.update",
@@ -532,7 +532,7 @@ Current time: {{currentTime}}
 {{entity.query({"type": "lead", "limit": 50})}}
 
 When asked to sync, pull records from Airtable using airtable.listRecords and create or update matching entities. Use entity.query to check for duplicates before creating.`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: [
     "entity.create",
     "entity.query",
@@ -570,7 +570,7 @@ Current time: {{currentTime}}
 {{event.query({"entityTypeSlug": "session", "limit": 10})}}
 
 Help the guardian view their children's schedules, check attendance, and communicate with teachers. You can only see data that belongs to this guardian (enforced by permissions).`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query", "entity.get", "event.query"],
   threadContextParams: [
     { name: "guardianEntityId", type: "string", required: true, description: "Guardian entity ID" },

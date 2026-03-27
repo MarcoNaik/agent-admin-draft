@@ -18,7 +18,7 @@ export default defineAgent({
   version: "0.1.0",
   systemPrompt: "You are a scheduling assistant for {{organizationName}}.",
   model: {
-    model: "xai/grok-4-1-fast",
+    model: "openai/gpt-5-mini",
   },
   tools: [
     "entity.create",
@@ -49,7 +49,7 @@ export default defineAgent({
 
 ## Model Configuration
 
-The `model` field configures which LLM provider and model the agent uses. If omitted, defaults to `xai/grok-4-1-fast` with temperature `0.7` and maxTokens `4096`.
+The `model` field configures which LLM provider and model the agent uses. If omitted, defaults to `openai/gpt-5-mini` with temperature `0.7` and maxTokens `4096`.
 
 ```typescript
 interface ModelConfig {
@@ -59,7 +59,7 @@ interface ModelConfig {
 }
 ```
 
-Model IDs use `"provider/model-name"` format (e.g., `"xai/grok-4-1-fast"`, `"anthropic/claude-sonnet-4-6"`).
+Model IDs use `"provider/model-name"` format (e.g., `"openai/gpt-5-mini"`, `"anthropic/claude-sonnet-4-6"`).
 
 ```typescript
 export default defineAgent({
@@ -68,7 +68,7 @@ export default defineAgent({
   version: "1.0.0",
   systemPrompt: "You are a precise data analyst.",
   model: {
-    model: "xai/grok-4-1-fast",
+    model: "openai/gpt-5-mini",
     temperature: 0.3,
     maxTokens: 8192,
   },
@@ -100,7 +100,7 @@ export default defineAgent({
   slug: "support",
   version: "0.1.0",
   systemPrompt: "You are a support agent for {{organizationName}}.",
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query"],
   firstMessageSuggestions: [
     "What can you help me with?",
@@ -133,7 +133,7 @@ export default defineAgent({
   systemPrompt: `You are a support agent for {{organizationName}}.
 Customer: {{threadContext.params.email}}
 Plan: {{threadContext.params.plan}}`,
-  model: { model: "xai/grok-4-1-fast" },
+  model: { model: "openai/gpt-5-mini" },
   tools: ["entity.query"],
   threadContextParams: [
     { name: "email", type: "string", required: true, description: "Customer email" },
