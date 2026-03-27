@@ -3,346 +3,326 @@
 import { useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Doc } from "@convex/_generated/dataModel"
-import Link from "next/link"
-import { Loader2, CreditCard, DollarSign, CheckCircle2, X, Bot, Monitor, FlaskConical } from "@/lib/icons"
-import { useQuery } from "convex/react"
-import { api } from "@convex/_generated/api"
+import { Loader2, CheckCircle2, X, CreditCard } from "@/lib/icons"
 import {
   useCreditBalance,
   useCreditTransactions,
   useCreateCheckoutSession,
+  useSubscription,
+  useCheckoutStarter,
+  useCreateCustomerPortalSession,
 } from "@/hooks/use-convex-data"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatRelativeTime } from "@/lib/format"
+import { toast } from "sonner"
 
-function FormattedCredits({ microdollars, prefix }: { microdollars: number; prefix?: string }) {
-  const dollars = microdollars / 1_000_000
-  const formatted = dollars.toFixed(6)
-  const bright = formatted.slice(0, -4)
-  const dim = formatted.slice(-4)
+function formatDollars(microdollars: number): string {
+  return `$${(microdollars / 1_000_000).toFixed(2)}`
+}
 
+function UsageBar({ percentage }: { percentage: number }) {
+  const clamped = Math.min(Math.max(percentage, 0), 100)
+  const color = clamped > 95 ? "bg-red-500" : clamped > 80 ? "bg-amber-500" : "bg-primary"
   return (
-    <>
-      {prefix}${bright}<span className="opacity-40">{dim}</span>
-    </>
+    <div className="h-1.5 bg-background-tertiary rounded-full overflow-hidden">
+      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${clamped}%` }} />
+    </div>
   )
 }
 
-function PurchaseCreditsForm() {
-  const createCheckout = useCreateCheckoutSession()
-  const [amount, setAmount] = useState("")
-  const [loading, setLoading] = useState(false)
+function formatResetDate(timestamp: number): string {
+  const date = new Date(timestamp)
+  return `Resets ${date.toLocaleDateString("en-US", { weekday: "short" })} ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const cents = Math.round(parseFloat(amount) * 100)
-    if (isNaN(cents) || cents < 100) return
+export default function BillingPage() {
+  const searchParams = useSearchParams()
+  const showSuccess = searchParams.get("success") === "true"
+  const subscription = useSubscription()
+  const balance = useCreditBalance()
+  const [successDismissed, setSuccessDismissed] = useState(false)
+
+  return (
+    <div className="space-y-10">
+      {showSuccess && !successDismissed && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10">
+          <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+          <p className="text-sm text-success flex-1">Payment successful!</p>
+          <button onClick={() => setSuccessDismissed(true)} className="text-success hover:text-success/80 cursor-pointer">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <PlanSection subscription={subscription} />
+
+      <div className="border-t border-border" />
+
+      <UsageSection subscription={subscription} balance={balance} />
+
+      <div className="border-t border-border" />
+
+      <TransactionSection />
+    </div>
+  )
+}
+
+function PlanSection({ subscription }: { subscription: any }) {
+  const createCheckout = useCheckoutStarter()
+  const createPortalSession = useCreateCustomerPortalSession()
+  const [loading, setLoading] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  if (subscription === undefined) {
+    return <SectionLoader />
+  }
+
+  const isActive = subscription && (subscription.status === "active" || subscription.status === "cancelling")
+
+  if (!isActive) {
+    return (
+      <section>
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-tertiary mb-4">Plan</h2>
+        <p className="text-xl font-semibold text-content-primary">No active plan</p>
+        <p className="text-sm text-content-tertiary mt-1 mb-5">Subscribe to get weekly included credits.</p>
+        <button
+          onClick={async () => {
+            setLoading(true)
+            try {
+              const result = await createCheckout({
+                origin: window.location.origin,
+                successUrl: `${window.location.origin}${window.location.pathname}?success=true`,
+              })
+              window.location.href = result.url
+            } catch (err: any) {
+              toast.error(err.message ?? "Failed to create checkout")
+            } finally {
+              setLoading(false)
+            }
+          }}
+          disabled={loading}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+        >
+          {loading ? "Loading..." : "Subscribe — $30/mo"}
+        </button>
+      </section>
+    )
+  }
+
+  const planLabel = subscription.plan === "pro" ? "Pro" : "Starter"
+  const planPrice = subscription.plan === "pro" ? "$129" : "$30"
+  const nextBilling = new Date(subscription.currentPeriodEnd)
+  const dateStr = nextBilling.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  const isCancelling = subscription.status === "cancelling"
+
+  const handleManage = async () => {
+    setPortalLoading(true)
+    try {
+      const result = await createPortalSession({})
+      window.open(result.url, "_blank")
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to open portal")
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-tertiary">Plan</h2>
+        <button
+          onClick={handleManage}
+          disabled={portalLoading}
+          className="text-xs text-content-tertiary hover:text-content-primary cursor-pointer disabled:opacity-50 underline underline-offset-2"
+        >
+          {portalLoading ? "Opening..." : "Manage"}
+        </button>
+      </div>
+      <p className="text-xl font-semibold text-content-primary">
+        {planLabel} <span className="text-content-tertiary font-normal text-base">{planPrice}/mo</span>
+      </p>
+      {isCancelling ? (
+        <p className="text-sm text-amber-400 mt-1">Cancels {dateStr}</p>
+      ) : (
+        <p className="text-sm text-content-tertiary mt-1">Renews {dateStr}</p>
+      )}
+    </section>
+  )
+}
+
+function UsageSection({ subscription, balance }: { subscription: any; balance: any }) {
+  const createCheckout = useCreateCheckoutSession()
+  const [loading, setLoading] = useState(false)
+  const [creditAmount, setCreditAmount] = useState("25")
+
+  if (balance === undefined) {
+    return <SectionLoader />
+  }
+
+  const hasSubscription = subscription && (subscription.status === "active" || subscription.status === "cancelling")
+  const weeklyTotal = balance.weeklyCreditsLimit
+  const weeklyUsed = weeklyTotal - balance.subscriptionCredits
+  const weeklyPercent = hasSubscription && weeklyTotal > 0
+    ? Math.round((weeklyUsed / weeklyTotal) * 100)
+    : 0
+  const purchasedDollars = balance.purchasedCredits / 1_000_000
+
+  const handleBuy = async () => {
+    const dollars = parseFloat(creditAmount)
+    if (isNaN(dollars) || dollars < 1) {
+      toast.error("Minimum purchase is $1.00")
+      return
+    }
     setLoading(true)
     try {
       const result = await createCheckout({
-        amount: cents,
+        amount: Math.round(dollars * 100),
         successUrl: `${window.location.origin}${window.location.pathname}?success=true`,
       })
-      window.location.href = result.checkoutUrl
+      window.location.href = result.url
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to create checkout")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-3">
-      <div className="space-y-1">
-        <label className="text-xs text-content-secondary">Amount (USD)</label>
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-content-tertiary">$</span>
-          <input
-            type="number"
-            step="0.01"
-            min="1.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="10.00"
-            className="w-32 pl-7 pr-3 py-1.5 font-input bg-background-tertiary border rounded-md text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-content-tertiary">Usage</h2>
+        <span className="text-xs text-content-tertiary">{formatRelativeTime(balance.updatedAt)}</span>
+      </div>
+
+      {hasSubscription && (
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <p className="text-base font-medium text-content-primary">Weekly credits</p>
+            <p className="text-sm tabular-nums text-content-secondary">
+              {formatDollars(weeklyUsed)} <span className="text-content-tertiary">of {formatDollars(weeklyTotal)}</span>
+            </p>
+          </div>
+          <UsageBar percentage={weeklyPercent} />
+          <div className="flex items-center justify-between">
+            {balance.weeklyCreditsResetAt && (
+              <p className="text-xs text-content-tertiary">{formatResetDate(balance.weeklyCreditsResetAt)}</p>
+            )}
+            <p className="text-xs text-content-tertiary">{weeklyPercent}% used</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-base font-medium text-content-primary">Extra credits</p>
+          <p className="text-2xl font-semibold text-content-primary mt-0.5 tabular-nums">${purchasedDollars.toFixed(2)}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-background-tertiary rounded-md border border-border px-2 py-1.5">
+            <span className="text-xs text-content-tertiary">$</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={creditAmount}
+              onChange={(e) => setCreditAmount(e.target.value)}
+              className="w-12 bg-transparent text-sm text-content-primary outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <button
+            onClick={handleBuy}
+            disabled={loading || !creditAmount}
+            className="px-3 py-1.5 bg-background-tertiary text-content-primary rounded-md text-sm font-medium hover:bg-background-tertiary/80 disabled:opacity-50 border border-border cursor-pointer"
+          >
+            {loading ? "..." : "Buy"}
+          </button>
         </div>
       </div>
-      <button
-        type="submit"
-        disabled={loading || !amount || parseFloat(amount) < 1}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-        Buy Credits
-      </button>
-    </form>
+    </section>
   )
 }
 
-function SuccessBanner() {
-  const [dismissed, setDismissed] = useState(false)
-  if (dismissed) return null
-
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/30">
-      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-      <p className="text-sm text-success flex-1">
-        Payment successful! Your credits have been added to your balance.
-      </p>
-      <button onClick={() => setDismissed(true)} className="text-success hover:text-success/80">
-        <X className="h-4 w-4" />
-      </button>
-    </div>
-  )
-}
-
-const PRICING_MARKUP = 1.1
-
-function PricingTable() {
-  const featuredModels = useQuery(api.modelPricing.listFeaturedModels)
-
-  if (featuredModels === undefined) {
-    return (
-      <div className="flex items-center justify-center py-4">
-        <Loader2 className="h-4 w-4 animate-spin text-content-secondary" />
-      </div>
-    )
-  }
-
-  if (featuredModels.length === 0) {
-    return (
-      <p className="text-xs text-content-tertiary py-2">Pricing data not yet available.</p>
-    )
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b text-content-tertiary">
-            <th className="text-left py-1.5 pr-4 font-medium">Model</th>
-            <th className="text-right py-1.5 px-4 font-medium">Input</th>
-            <th className="text-right py-1.5 pl-4 font-medium">Output</th>
-          </tr>
-        </thead>
-        <tbody className="text-content-secondary">
-          {featuredModels.map((m: { struereId: string; displayName: string; inputPerMTok: number; outputPerMTok: number }, i: number) => (
-            <tr key={m.struereId} className={i < featuredModels.length - 1 ? "border-b border-border/50" : ""}>
-              <td className="py-1.5 pr-4 text-content-primary">{m.displayName}</td>
-              <td className="text-right py-1.5 px-4">${(Math.round(m.inputPerMTok * PRICING_MARKUP * 100) / 100).toFixed(2)}</td>
-              <td className="text-right py-1.5 pl-4">${(Math.round(m.outputPerMTok * PRICING_MARKUP * 100) / 100).toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function TransactionBadge({ type }: { type: string }) {
-  const styles: Record<string, string> = {
-    addition: "bg-success/10 text-success",
-    deduction: "bg-destructive/10 text-destructive",
-    adjustment: "bg-ocean/10 text-ocean",
-    purchase: "bg-violet-500/10 text-violet-400",
-  }
-
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${styles[type] ?? "bg-background-tertiary text-content-secondary"}`}>
-      {type}
-    </span>
-  )
-}
-
-function TransactionHistory() {
+function TransactionSection() {
   const PAGE_SIZE = 20
   const [cursors, setCursors] = useState<(number | undefined)[]>([undefined])
   const currentCursor = cursors[cursors.length - 1]
   const result = useCreditTransactions(PAGE_SIZE, currentCursor)
-
-  const loadMore = useCallback(() => {
-    if (result?.nextCursor) {
-      setCursors((prev) => [...prev, result.nextCursor])
-    }
-  }, [result?.nextCursor])
-
-  const loadPrevious = useCallback(() => {
-    if (cursors.length > 1) {
-      setCursors((prev) => prev.slice(0, -1))
-    }
-  }, [cursors.length])
-
-  const transactions = result?.items
   const page = cursors.length
 
+  const transactions = result?.items
+
   return (
-    <Card className="bg-background-secondary">
-      <CardHeader>
-        <CardTitle className="text-base font-semibold text-content-primary">Transaction History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {transactions === undefined ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-content-secondary" />
-          </div>
-        ) : transactions.length === 0 && page === 1 ? (
-          <p className="text-sm text-content-secondary py-4 text-center">No transactions yet</p>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-content-secondary">
-                    <th className="text-left py-2 pr-4 font-medium">Date</th>
-                    <th className="text-left py-2 px-4 font-medium">Type</th>
-                    <th className="text-right py-2 px-4 font-medium">Amount</th>
-                    <th className="text-right py-2 px-4 font-medium">Balance</th>
-                    <th className="text-left py-2 pl-4 font-medium">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((tx: Doc<"creditTransactions">) => (
-                    <tr key={tx._id} className="border-b border-border/50">
-                      <td className="py-2 pr-4 text-content-secondary whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+    <section>
+      <h2 className="text-xs font-medium uppercase tracking-wider text-content-tertiary mb-4">Transactions</h2>
+
+      {transactions === undefined ? (
+        <SectionLoader />
+      ) : transactions.length === 0 && page === 1 ? (
+        <p className="text-sm text-content-tertiary py-4">No transactions yet</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 pr-4 text-xs font-medium text-content-tertiary">Date</th>
+                  <th className="text-right py-2 px-4 text-xs font-medium text-content-tertiary">Amount</th>
+                  <th className="text-right py-2 px-4 text-xs font-medium text-content-tertiary">Balance</th>
+                  <th className="text-left py-2 pl-4 text-xs font-medium text-content-tertiary">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx: Doc<"creditTransactions">) => {
+                  const isDebit = tx.type === "deduction" || tx.type === "usage_sync"
+                  return (
+                    <tr key={tx._id} className="border-b border-border/20">
+                      <td className="py-3 pr-4 text-sm text-content-secondary whitespace-nowrap">
+                        {new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </td>
-                      <td className="py-2 px-4">
-                        <TransactionBadge type={tx.type} />
+                      <td className={`text-right py-3 px-4 text-sm font-medium tabular-nums ${isDebit ? "text-red-400" : "text-green-400"}`}>
+                        {isDebit ? "−" : "+"}{formatDollars(tx.amount)}
                       </td>
-                      <td className={`text-right py-2 px-4 font-medium ${tx.type === "deduction" ? "text-destructive" : "text-success"}`}>
-                        <FormattedCredits microdollars={tx.amount} prefix={tx.type === "deduction" ? "-" : "+"} />
+                      <td className="text-right py-3 px-4 text-sm text-content-tertiary tabular-nums">
+                        {tx.balanceAfter !== undefined ? formatDollars(tx.balanceAfter) : "—"}
                       </td>
-                      <td className="text-right py-2 px-4 text-content-primary">
-                        {tx.balanceAfter !== undefined ? <FormattedCredits microdollars={tx.balanceAfter} /> : "—"}
-                      </td>
-                      <td className="py-2 pl-4 text-content-secondary truncate max-w-[200px]">
+                      <td className="py-3 pl-4 text-sm text-content-tertiary truncate max-w-[250px]">
                         {tx.description}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t mt-3">
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {(page > 1 || result?.nextCursor) && (
+            <div className="flex items-center justify-between pt-3 mt-1">
               <button
-                onClick={loadPrevious}
+                onClick={() => setCursors((prev) => prev.slice(0, -1))}
                 disabled={page === 1}
-                className="text-xs text-content-secondary hover:text-content-primary disabled:opacity-30 disabled:pointer-events-none"
+                className="text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30 cursor-pointer"
               >
                 Previous
               </button>
               <span className="text-xs text-content-tertiary">Page {page}</span>
               <button
-                onClick={loadMore}
+                onClick={() => result?.nextCursor && setCursors((prev) => [...prev, result.nextCursor])}
                 disabled={!result?.nextCursor}
-                className="text-xs text-content-secondary hover:text-content-primary disabled:opacity-30 disabled:pointer-events-none"
+                className="text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30 cursor-pointer"
               >
                 Next
               </button>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </>
+      )}
+    </section>
   )
 }
 
-export default function BillingPage() {
-  const balance = useCreditBalance()
-  const searchParams = useSearchParams()
-  const showSuccess = searchParams.get("success") === "true"
-
-  if (balance === undefined) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-lg font-display font-semibold text-content-primary">Billing</h1>
-          <p className="text-sm text-content-secondary">Credit balance and transaction history</p>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-content-secondary" />
-        </div>
-      </div>
-    )
-  }
-
+function SectionLoader() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-display font-semibold text-content-primary">Billing</h1>
-        <p className="text-sm text-content-secondary">Credit balance and transaction history</p>
-      </div>
-
-      {showSuccess && <SuccessBanner />}
-
-      <Card className="bg-background-secondary">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-content-secondary">Credit Balance</CardTitle>
-          <DollarSign className="h-4 w-4 text-content-tertiary" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <div className="text-3xl font-bold text-content-primary"><FormattedCredits microdollars={balance.balance} /></div>
-            <p className="text-xs text-content-tertiary mt-1">
-              Last updated {formatRelativeTime(balance.updatedAt)}
-            </p>
-          </div>
-          <div className="pt-3 border-t">
-            <PurchaseCreditsForm />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-background-secondary">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-content-primary">How Billing Works</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-content-secondary">
-            Per-token billing at provider rates + 10% markup. Skip the markup by adding your own keys in{" "}
-            <Link href="/system/settings/providers" className="underline text-content-primary hover:text-primary">Providers</Link> or
-            using <code className="text-xs bg-background-tertiary px-1 py-0.5 rounded">struere</code> CLI locally with your own API keys.
-          </p>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
-              <Bot className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-content-primary">Deployed Agents</p>
-                <p className="text-xs text-content-secondary mt-0.5">API and webhook-triggered chats.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
-              <Monitor className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-content-primary">Studio</p>
-                <p className="text-xs text-content-secondary mt-0.5">Each prompt billed per token.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-3 rounded-lg bg-background-tertiary">
-              <FlaskConical className="h-4 w-4 text-content-tertiary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-content-primary">Evals</p>
-                <p className="text-xs text-content-secondary mt-0.5">Agent + judge model tokens.</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-content-secondary mb-2">Pricing per 1M tokens (incl. 10% markup)</p>
-            <PricingTable />
-            <p className="text-xs text-content-tertiary mt-2">
-              40+ models supported. See <Link href="/system/settings/usage" className="underline hover:text-content-secondary">Usage</Link> for per-model breakdowns.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <TransactionHistory />
+    <div className="flex items-center justify-center py-6">
+      <Loader2 className="h-4 w-4 animate-spin text-content-tertiary" />
     </div>
   )
 }
