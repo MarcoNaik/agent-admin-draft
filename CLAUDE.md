@@ -40,8 +40,8 @@ platform/
 | Tool Identity Modes | inherit, system, configured |
 | Custom Tools | Handler code in Convex, executed on Fly.io Node.js sandbox |
 | LLM Calls | Convex actions calling LLM APIs directly |
-| Default Model | `xai/grok-4-1-fast`, temperature 0.7, maxTokens 4096 |
-| Model IDs | OpenRouter format: `provider/model-name` (e.g., `xai/grok-4-1-fast`, `anthropic/claude-sonnet-4`) |
+| Default Model | `openai/gpt-5-mini`, temperature 0.7, maxTokens 4096 |
+| Model IDs | OpenRouter format: `provider/model-name` (e.g., `openai/gpt-5-mini`, `anthropic/claude-sonnet-4`) |
 | Key Resolution | 3-tier fallback: org's direct provider key → org's OpenRouter key → platform OpenRouter key (credits) |
 | Credit Billing | Reservation pattern: reserve -> execute -> consume/release (atomic) |
 
