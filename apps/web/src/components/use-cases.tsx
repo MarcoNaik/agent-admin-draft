@@ -289,7 +289,7 @@ export function UseCases() {
   const uc = useCases[active]
 
   return (
-    <section id="use-cases" className="bg-stone-base py-20 md:py-28">
+    <section id="use-cases" className="bg-stone-deep py-20 md:py-28">
       <motion.div ref={ref} style={{ opacity, y, willChange: "transform, opacity" }} className="mx-auto max-w-7xl px-6 md:px-12">
         <p className="text-center text-xs font-medium uppercase tracking-widest text-charcoal/40 mb-3">
           What you can build
