@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const SEARCH_ENGINE_PATTERNS = [
+  /googlebot/i,
+  /bingbot/i,
+  /yandexbot/i,
+  /duckduckbot/i,
+  /baiduspider/i,
+  /slurp/i,
+  /facebookexternalhit/i,
+  /twitterbot/i,
+  /linkedinbot/i,
+  /whatsapp/i,
+  /telegrambot/i,
+  /applebot/i,
+]
+
 const BOT_UA_PATTERNS = [
   /claude/i,
   /anthropic/i,
@@ -41,6 +56,7 @@ const PASSTHROUGH_PATHS = [
 
 function isBot(req: NextRequest): boolean {
   const ua = req.headers.get("user-agent") || ""
+  if (SEARCH_ENGINE_PATTERNS.some((p) => p.test(ua))) return false
   if (!ua || ua.length < 10) return true
   if (BOT_UA_PATTERNS.some((p) => p.test(ua))) return true
 
