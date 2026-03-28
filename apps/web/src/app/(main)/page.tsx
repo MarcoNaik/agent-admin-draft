@@ -15,8 +15,8 @@ export default function Home() {
     <div>
       <Navigation />
       <HeroSection />
-      <UseCases />
       <DemoVideo />
+      <UseCases />
       <IntegrationsBar />
       <Pricing />
       <FAQ />
