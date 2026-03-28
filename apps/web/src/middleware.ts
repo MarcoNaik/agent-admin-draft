@@ -35,6 +35,8 @@ const PASSTHROUGH_PATHS = [
   "/favicon.svg",
   "/privacy-policy",
   "/terms-of-service",
+  "/pricing",
+  "/contact",
 ]
 
 function isBot(req: NextRequest): boolean {
