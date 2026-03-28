@@ -1,82 +1,38 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const SEARCH_ENGINE_PATTERNS = [
-  /googlebot/i,
-  /bingbot/i,
-  /yandexbot/i,
-  /duckduckbot/i,
-  /baiduspider/i,
-  /slurp/i,
-  /facebookexternalhit/i,
-  /twitterbot/i,
-  /linkedinbot/i,
-  /whatsapp/i,
-  /telegrambot/i,
-  /applebot/i,
-]
-
-const BOT_UA_PATTERNS = [
-  /claude/i,
-  /anthropic/i,
-  /chatgpt/i,
-  /openai/i,
-  /gpt/i,
+const LLM_UA_PATTERNS = [
+  /chatgpt-user/i,
+  /gptbot/i,
+  /claudebot/i,
+  /claude-user/i,
+  /claude-searchbot/i,
+  /anthropic-ai/i,
+  /perplexitybot/i,
   /perplexity/i,
-  /cohere/i,
-  /crawler/i,
-  /spider/i,
-  /scraper/i,
-  /bot\b/i,
-  /python-requests/i,
-  /python-httpx/i,
-  /axios/i,
-  /node-fetch/i,
-  /undici/i,
-  /httpx/i,
-  /curl/i,
-  /wget/i,
-  /go-http-client/i,
-  /java\//i,
-  /libwww/i,
-  /http\.rb/i,
-  /aiohttp/i,
-  /requests/i,
+  /cohere-ai/i,
+  /ccbot/i,
 ]
 
-const PASSTHROUGH_PATHS = [
-  "/llms.txt",
-  "/robots.txt",
-  "/sitemap.xml",
-  "/favicon.svg",
-  "/privacy-policy",
-  "/terms-of-service",
-  "/pricing",
-  "/contact",
+const MARKDOWN_ACCEPT_TYPES = [
+  "text/markdown",
+  "application/markdown",
+  "text/x-markdown",
 ]
 
-function isBot(req: NextRequest): boolean {
-  const ua = req.headers.get("user-agent") || ""
-  if (SEARCH_ENGINE_PATTERNS.some((p) => p.test(ua))) return false
-  if (!ua || ua.length < 10) return true
-  if (BOT_UA_PATTERNS.some((p) => p.test(ua))) return true
-
+function wantsMarkdown(req: NextRequest): boolean {
   const accept = req.headers.get("accept") || ""
-  if (!accept.includes("text/html")) return true
+  if (MARKDOWN_ACCEPT_TYPES.some((t) => accept.includes(t))) return true
 
-  if (!req.headers.get("sec-fetch-mode")) return true
-
-  const secFetchDest = req.headers.get("sec-fetch-dest")
-  if (secFetchDest && secFetchDest !== "document") return true
+  const ua = req.headers.get("user-agent") || ""
+  if (LLM_UA_PATTERNS.some((p) => p.test(ua))) return true
 
   return false
 }
 
 export function middleware(req: NextRequest) {
-  if (!isBot(req)) return NextResponse.next()
+  if (!wantsMarkdown(req)) return NextResponse.next()
 
   const path = req.nextUrl.pathname
-  if (PASSTHROUGH_PATHS.includes(path)) return NextResponse.next()
-  if (path.startsWith("/.well-known/")) return NextResponse.next()
 
   if (path === "/") {
     return NextResponse.rewrite(new URL("/llms.txt", req.url))
