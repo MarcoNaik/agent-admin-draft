@@ -24,6 +24,31 @@ Struere's documentation is optimized for consumption by coding agents. This guid
 | `/{path}.md` | Individual page as raw markdown | Targeted deep-dives |
 | `/openapi.yaml` | OpenAPI 3.1 spec for Chat API | API client generation |
 
+## Developer Skill
+
+The Struere developer skill teaches AI agents behavioral rules, silent failure gotchas, decision frameworks, and workflow checklists. Install it to get automatic guidance when working in a Struere project.
+
+### Install via skills CLI (works with 40+ agents)
+
+```bash
+npx skills add MarcoNaik/struere-skill
+```
+
+### Install via Struere CLI
+
+```bash
+struere init   # auto-installs skill
+struere docs   # auto-installs skill
+struere pull   # auto-installs skill
+```
+
+### Direct access
+
+| Format | URL |
+|--------|-----|
+| Raw SKILL.md | `https://docs.struere.dev/skill` |
+| Zip (for Claude.ai upload) | `https://docs.struere.dev/skill.zip` |
+
 ## Claude Code (CLAUDE.md)
 
 Add Struere context to your project's `CLAUDE.md`:

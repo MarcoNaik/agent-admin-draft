@@ -49,6 +49,7 @@ export function generateLlmsTxt(): string {
     `${BASE_URL}/llms-platform.txt — Data, agents, automations, events, permissions, evals`,
     `${BASE_URL}/llms-integrations.txt — WhatsApp, Google Calendar, Flow payments, Airtable`,
     `${BASE_URL}/llms-cli.txt — CLI reference`,
+    `${BASE_URL}/skill — Developer skill: behavioral rules, gotchas, decision frameworks`,
     "",
     "## All pages",
     "",
@@ -275,13 +276,41 @@ tools: ["agent.chat", "entity.query"]
 
 For details: [Agents](${BASE_URL}/platform/agents.md)
 
-## Best Practices
+## Behavioral Rules
 
-- **Keep tools under 10 per agent.** Agents perform significantly worse when they have too many tools to choose from. If an agent needs more, split it into specialist agents and use \`agent.chat\` to orchestrate
-- **Always ask the user before making assumptions.** The user may not be technical — help them accomplish what they want by asking the right questions and offering clear options
-- **Always check the documentation before making changes.** Fetch the relevant doc link below to verify the correct API, field names, and patterns. Do not guess — wrong field names or patterns will cause silent failures
-- **Use \`struere sync\` to validate changes.** Run after editing files to sync to Convex. Use \`struere dev\` for continuous watch mode during manual development
-- **Test with evals.** Write eval suites to catch regressions in agent behavior (\`struere add eval <name>\`)
+ALWAYS follow these rules when working in a Struere project:
+
+1. **Fetch docs before writing code.** Look up the task in the Documentation section below and fetch the relevant documentation. Do not write Struere definitions from memory.
+2. **Ask before assuming.** Before creating an agent, ask what it should do, who it serves, and what tools it needs. Before creating a role, ask what access level is needed. Do not guess.
+3. **Validate after changes.** Run \`npx struere sync\` after editing resource files to validate and sync to development. Check the output for errors.
+4. **Use bun, never npm.** For package installs and script execution, always use \`bun install\`, \`bun run\`, \`bunx\`.
+5. **One export per file.** Each file in \`agents/\`, \`entity-types/\`, \`roles/\`, \`triggers/\` exports a single default. Only \`tools/index.ts\` exports all custom tools.
+6. **Slugs are identities.** Resources upsert by slug. Renaming a slug creates a new resource — it does not rename the existing one.
+7. **Environments are isolated.** \`struere dev\` syncs to development + eval. \`struere deploy\` syncs to production. Data, configs, and API keys are fully isolated per environment.
+8. **Keep tools under 5 per agent.** Agent performance degrades with more tools. If an agent needs more, split into specialist agents connected with \`agent.chat\`.
+
+## Silent Failure Gotchas
+
+These mistakes cause no visible errors but produce wrong behavior:
+
+1. **PolicyConfig has NO \`priority\` field.** Deny always overrides allow automatically. Adding \`priority\` does nothing.
+2. **Scope rule operators: \`eq\`, \`neq\`, \`in\`, \`contains\`.** Using \`ne\` (common in other systems) silently fails to match.
+3. **Entity link/unlink uses \`fromId\`/\`toId\`.** Using \`fromEntityId\`/\`toEntityId\` silently fails.
+4. **Model IDs use OpenRouter format: \`provider/model-name\`.** Write \`openai/gpt-5-mini\`, not \`gpt-5-mini\`. Write \`anthropic/claude-sonnet-4\`, not \`claude-sonnet-4\`.
+5. **Default model is \`openai/gpt-5-mini\`** (temperature 0.7, maxTokens 4096) when \`model\` is omitted from agent config.
+6. **Field masks use allowlist strategy.** New fields added to a data type are hidden by default if a field mask exists for that entity type.
+7. **Template variables that fail resolve to \`[TEMPLATE_ERROR: variableName not found]\`.** Always test prompts with \`struere compile-prompt <agent-slug>\`.
+8. **Custom tool \`fetch\` is sandboxed** to these domains only: api.openai.com, api.anthropic.com, api.stripe.com, api.sendgrid.com, api.twilio.com, hooks.slack.com, discord.com, api.github.com.
+9. **\`entity.query\` default limit is 50, max is 100.** Agents that need more data should paginate or use template-only tools for prompt injection.
+10. **\`agent.chat\` has depth limit 3 with cycle detection.** A calling B calling A is blocked. Design agent graphs to be shallow.
+11. **Fixture sync deletes all existing entities in eval** and recreates from YAML. This is a full reset every sync — not incremental.
+12. **\`whatsappOwnedTemplates\` is org-scoped, not env-scoped.** Templates are shared across environments.
+
+## Struere Developer Skill
+
+For comprehensive decision frameworks, workflow checklists, model selection guide, and documentation routing table, fetch the full Struere developer skill:
+
+${BASE_URL}/skill
 
 ## Documentation
 

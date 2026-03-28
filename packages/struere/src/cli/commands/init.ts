@@ -12,6 +12,7 @@ import { generateTypeDeclarations } from '../utils/plugin'
 import { generateDocs } from './docs'
 import { isInteractive } from '../utils/runtime'
 import { promptCreateOrg } from './org'
+import { installSkill } from '../utils/skill'
 
 export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boolean> {
   const spinner = ora()
@@ -91,6 +92,8 @@ export async function runInit(cwd: string, selectedOrg?: OrgInfo): Promise<boole
   } catch {
     console.log(chalk.yellow('⚠'), 'Could not fetch docs for CLAUDE.md')
   }
+
+  await installSkill(cwd)
 
   console.log()
   console.log(chalk.green('✓'), 'Project initialized')
@@ -216,6 +219,8 @@ export const initCommand = new Command('init')
     } catch {
       console.log(chalk.yellow('⚠'), 'Could not fetch docs for CLAUDE.md')
     }
+
+    await installSkill(cwd)
 
     console.log()
     console.log(chalk.green('Success!'), 'Project initialized')

@@ -5,6 +5,7 @@ import { join, dirname } from 'path'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { loadProject } from '../utils/project'
 import { loadAllResources, type LoadedResources } from '../utils/loader'
+import { installSkill } from '../utils/skill'
 
 const TEMPLATE_URL = 'https://docs.struere.dev/llms-workspace.txt'
 const FALLBACK_TEMPLATE = `# Struere Workspace
@@ -121,6 +122,8 @@ export async function generateDocs(cwd: string, targets: Target[]): Promise<{ ge
     writeTarget(cwd, target, content)
     generated.push(TARGET_FILES[target])
   }
+
+  await installSkill(cwd)
 
   return { generated }
 }

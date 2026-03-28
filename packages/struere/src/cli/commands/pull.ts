@@ -18,6 +18,7 @@ import {
 import { performLogin } from './login'
 import { runInit } from './init'
 import { isInteractive } from '../utils/runtime'
+import { installSkill } from '../utils/skill'
 
 export const pullCommand = new Command('pull')
   .description('Pull remote resources to local files')
@@ -198,6 +199,8 @@ export const pullCommand = new Command('pull')
       const content = generateIndexFile('triggers', triggerSlugs)
       if (content) writeOrSkip('triggers/index.ts', content)
     }
+
+    await installSkill(cwd)
 
     if (options.json) {
       console.log(JSON.stringify({
