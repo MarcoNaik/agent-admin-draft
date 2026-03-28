@@ -47,7 +47,7 @@ const pricingFaqItems = [
   },
   {
     question: "Which integrations are included on each plan?",
-    answer: "Free includes entity, event, and web tools. Starter adds WhatsApp, email, Google Calendar, and multi-agent orchestration. Pro adds Airtable, payment processing, and unlimited custom tools. All plans include the full SDK and CLI.",
+    answer: "All plans include web tools, Airtable, and payment processing. Starter adds WhatsApp, email, Google Calendar, and multi-agent orchestration. All plans include the full SDK, CLI, and custom tool support.",
   },
   {
     question: "What\u2019s the difference between Starter and Pro?",

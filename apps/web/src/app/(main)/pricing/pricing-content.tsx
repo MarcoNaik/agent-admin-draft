@@ -77,14 +77,12 @@ const featureTable: FeatureCategory[] = [
   {
     category: "Integrations",
     rows: [
-      { feature: "Entity & Event tools", free: true, starter: true, pro: true },
       { feature: "Web search & fetch", free: true, starter: true, pro: true },
       { feature: "WhatsApp connections", free: "1", starter: "5", pro: "Unlimited" },
       { feature: "Google Calendar", free: false, starter: true, pro: true },
       { feature: "Email (Resend)", free: false, starter: true, pro: true },
-      { feature: "Airtable", free: false, starter: false, pro: true },
-      { feature: "Payment processing", free: false, starter: false, pro: true },
-      { feature: "Custom tools", free: false, starter: false, pro: "Unlimited" },
+      { feature: "Airtable", free: true, starter: true, pro: true },
+      { feature: "Payment processing", free: true, starter: true, pro: true },
     ],
   },
   {
@@ -170,7 +168,7 @@ const faqCategories = [
       },
       {
         question: "Which integrations are included on each plan?",
-        answer: "Free includes entity, event, and web tools. Starter adds WhatsApp, email, Google Calendar, and multi-agent orchestration. Pro adds Airtable, payment processing, and unlimited custom tools. All plans include the full SDK and CLI.",
+        answer: "All plans include web tools, Airtable, and payment processing. Starter adds WhatsApp, email, Google Calendar, and multi-agent orchestration. All plans include the full SDK, CLI, and custom tool support.",
       },
       {
         question: "What\u2019s the difference between Starter and Pro?",
