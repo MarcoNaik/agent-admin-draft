@@ -21,14 +21,14 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://struere.dev"),
-  title: "Struere — AI agents for business",
+  title: "Struere: Build AI Agents for Business",
   description:
-    "Struere is an AI agent platform for business automation. Build agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
+    "Struere is an AI agent platform for business automation. Build, deploy, and manage agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "Struere — AI agents for business",
+    title: "Struere: Build AI Agents for Business",
     description:
-      "Struere is an AI agent platform for business automation. Build agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
+      "Struere is an AI agent platform for business automation. Build, deploy, and manage agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
     url: "https://struere.dev",
     siteName: "Struere",
     type: "website",
@@ -36,9 +36,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Struere — AI agents for business",
+    site: "@StruereAI",
+    title: "Struere: Build AI Agents for Business",
     description:
-      "Struere is an AI agent platform for business automation. Build agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
+      "Struere is an AI agent platform for business automation. Build, deploy, and manage agents for customer support, WhatsApp messaging, appointment booking, and payment collection — with 40+ LLM models, multi-agent orchestration, and a free tier. No code required.",
     images: ["/opengraph-image"],
   },
   alternates: {
@@ -56,8 +57,12 @@ const jsonLd = {
       logo: "https://struere.dev/favicon.svg",
       description:
         "AI agent platform for business automation. Build, deploy, and manage AI agents at scale.",
-      email: "hello@struere.dev",
-      sameAs: ["https://x.com/struaborrar"],
+      email: "marco@struere.dev",
+      sameAs: [
+        "https://x.com/StruereAI",
+        "https://linkedin.com/company/struere-ai",
+        "https://youtube.com/@struere-ai",
+      ],
     },
     {
       "@type": "SoftwareApplication",
@@ -132,8 +137,9 @@ const jsonLd = {
     {
       "@type": "WebSite",
       name: "Struere",
+      alternateName: ["Struere AI", "Struere Dev"],
       url: "https://struere.dev",
-      description: "AI agents for business",
+      description: "Build AI agents for business",
     },
   ],
 }
