@@ -15,6 +15,7 @@ import { useAgents } from "@/hooks/use-convex-data"
 import { useStudio } from "@/contexts/studio-context"
 import { AGENT_TEMPLATES } from "@/lib/agent-templates"
 import { Doc } from "@convex/_generated/dataModel"
+import { CliPromptToggle } from "@/components/cli-prompt-toggle"
 
 function AgentRow({ agent }: { agent: Doc<"agents"> }) {
   return (
@@ -39,7 +40,7 @@ function AgentRow({ agent }: { agent: Doc<"agents"> }) {
 
 export default function SystemAgentsPage() {
   const router = useRouter()
-  const { openStudio } = useStudio()
+  const { openStudio, openStudioWithPrefill } = useStudio()
   const agents = useAgents()
 
   if (agents === undefined) {
@@ -60,6 +61,7 @@ export default function SystemAgentsPage() {
       <div className="space-y-1.5">
         {agents.length === 0 ? (
           <div className="space-y-4">
+            <CliPromptToggle />
             <div className="text-center space-y-1">
               <h3 className="text-lg font-medium text-content-primary">Build your first agent</h3>
               <p className="text-sm text-content-secondary">Choose a template to get started, or describe what you want to build.</p>
@@ -78,7 +80,7 @@ export default function SystemAgentsPage() {
                     key={template.id}
                     onClick={() => {
                       if (template.prompt) {
-                        router.push(`/?studio=${encodeURIComponent(template.prompt)}`)
+                        openStudioWithPrefill(template.prompt)
                       } else {
                         openStudio()
                       }
