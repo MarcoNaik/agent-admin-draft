@@ -23,6 +23,5 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: "https://struere.dev/sitemap.xml",
-    host: "https://struere.dev",
   }
 }
