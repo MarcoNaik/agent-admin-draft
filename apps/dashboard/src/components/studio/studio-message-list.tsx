@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react"
 import { Loader2, ChevronRight, Search, FileEdit, Terminal, Eye, Trash2, ArrowRightLeft, Brain, Zap, Globe, ToggleLeft, HelpCircle, AlertCircle } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { StudioMarkdown } from "./studio-markdown"
+import { CliPromptToggle } from "@/components/cli-prompt-toggle"
 import type { ItemState, ContentPart } from "@/hooks/use-studio-events"
 
 interface StudioMessageListProps {
@@ -36,11 +37,12 @@ export function StudioMessageList({ items, turnInProgress }: StudioMessageListPr
   if (items.length === 0 && !turnInProgress) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center space-y-4 px-8 max-w-sm">
+        <div className="text-center space-y-4 px-6 max-w-md">
           <p className="text-lg font-display text-content-primary">What do you want to build?</p>
           <p className="text-xs text-content-tertiary leading-relaxed">
             Studio spins up a sandboxed environment with a coding agent. Describe your idea and it will write, execute, and iterate.
           </p>
+          <CliPromptToggle label="Run it locally with your own coding agent" expandedLabel="Copy this prompt into Claude Code, Cursor, or any coding agent:" compact />
         </div>
       </div>
     )
