@@ -14,6 +14,32 @@ Before you begin, make sure you have:
 - A **Struere account** — sign up at [app.struere.dev](https://app.struere.dev)
 - An **LLM provider** — either use Struere's built-in credits or bring your own API key (configured in **Settings > Providers** in the dashboard)
 
+## Quick Start with a Coding Agent
+
+If you use Claude Code, Cursor, or another AI coding agent, copy this prompt to bootstrap your project instantly:
+
+```
+I want to set up a Struere project (https://struere.dev) — an AI agent platform where I define agents, data types, roles, and automations as TypeScript code.
+
+Step 1: Install the Struere CLI globally
+  bun install -g struere
+
+Step 2: Initialize and pull my project
+  struere pull
+  (This will open a browser to log in, let me select my organization, create the project structure, and download any existing agent configurations)
+
+Step 3: Install the Struere developer skill for coding agents
+  npx skills add MarcoNaik/struere-skill --all --yes
+
+After completing these steps, show me the project structure and summarize what was set up. If any step fails, show me the error and suggest a fix.
+
+Documentation: https://docs.struere.dev/llms.txt
+```
+
+This single prompt handles authentication, project setup, and skill installation. The developer skill teaches your coding agent how to use Struere's SDK, avoid common mistakes, and fetch the right documentation.
+
+If you prefer to set things up manually, continue with the steps below.
+
 ## Installation
 
 Install the Struere package as a project dependency:
