@@ -128,6 +128,8 @@ If you are an AI coding agent (Claude Code, Cursor, Copilot, etc.), use these pa
 
 **Auth**: Set \`STRUERE_API_KEY\` environment variable (no browser login needed)
 
+**Onboarding**: If this is a new project, run \`struere pull\` to initialize, authenticate, and download existing resources in one step.
+
 **Sync**: Use \`struere sync\` instead of \`struere dev\` — it syncs once and exits (no watch loop)
 \`\`\`bash
 struere sync              # sync to development + eval, then exit
