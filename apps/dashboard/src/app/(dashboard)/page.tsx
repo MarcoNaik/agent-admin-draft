@@ -80,7 +80,7 @@ function AgentRow({ agent }: { agent: Doc<"agents"> }) {
 
 function AdminHome() {
   const { environment } = useEnvironment()
-  const { openStudio } = useStudio()
+  const { openStudio, openStudioWithPrefill } = useStudio()
   const searchParams = useSearchParams()
   const router = useRouter()
   const agents = useAgents()
@@ -133,7 +133,7 @@ function AdminHome() {
                       key={template.id}
                       onClick={() => {
                         if (template.prompt) {
-                          router.push(`/?studio=${encodeURIComponent(template.prompt)}`)
+                          openStudioWithPrefill(template.prompt)
                         } else {
                           openStudio()
                         }
