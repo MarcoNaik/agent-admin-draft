@@ -12,6 +12,9 @@ interface StudioContextValue {
   setHasActiveSession: (active: boolean) => void
   initialPrompt: string | null
   consumeInitialPrompt: () => string | null
+  prefillPrompt: string | null
+  consumePrefillPrompt: () => string | null
+  openStudioWithPrefill: (prompt: string) => void
 }
 
 const STORAGE_KEY = "struere-studio-open"
@@ -29,6 +32,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(getStoredOpen)
   const [hasActiveSession, setHasActiveSession] = useState(false)
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null)
+  const [prefillPrompt, setPrefillPrompt] = useState<string | null>(null)
   const paramConsumed = useRef(false)
 
   useEffect(() => {
@@ -70,8 +74,19 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     return prompt
   }, [initialPrompt])
 
+  const consumePrefillPrompt = useCallback(() => {
+    const prompt = prefillPrompt
+    setPrefillPrompt(null)
+    return prompt
+  }, [prefillPrompt])
+
+  const openStudioWithPrefill = useCallback((prompt: string) => {
+    persist(true)
+    setPrefillPrompt(prompt)
+  }, [persist])
+
   return (
-    <StudioContext.Provider value={{ isOpen, toggleStudio, openStudio, closeStudio, hasActiveSession, setHasActiveSession, initialPrompt, consumeInitialPrompt }}>
+    <StudioContext.Provider value={{ isOpen, toggleStudio, openStudio, closeStudio, hasActiveSession, setHasActiveSession, initialPrompt, consumeInitialPrompt, prefillPrompt, consumePrefillPrompt, openStudioWithPrefill }}>
       {children}
     </StudioContext.Provider>
   )
