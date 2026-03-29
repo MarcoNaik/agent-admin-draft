@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ReactNode } from
 import { Send } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { StudioMessageList } from "./studio-message-list"
+import { useStudio } from "@/contexts/studio-context"
 import type { ItemState } from "@/hooks/use-studio-events"
 
 interface StudioChatProps {
@@ -28,6 +29,7 @@ export function StudioChat({
 }: StudioChatProps) {
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { prefillPrompt, consumePrefillPrompt } = useStudio()
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -35,6 +37,21 @@ export function StudioChat({
     }, 350)
     return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    if (!prefillPrompt) return
+    const prompt = consumePrefillPrompt()
+    if (prompt) {
+      setInput(prompt)
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto"
+          textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + "px"
+          textareaRef.current.focus()
+        }
+      }, 100)
+    }
+  }, [prefillPrompt, consumePrefillPrompt])
 
   const inputDisabled = sessionEnded === true
   const canSend = input.trim() && !inputDisabled && !turnInProgress && !isStarting
